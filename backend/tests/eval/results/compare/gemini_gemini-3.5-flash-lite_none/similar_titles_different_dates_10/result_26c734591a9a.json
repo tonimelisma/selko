@@ -1,0 +1,135 @@
+{
+  "fixture_name": "similar_titles_different_dates_10",
+  "fixture_hash": "d5500d95f6226e630b3359a75ea3d1073de624471c6ea5f05d7f5d350aa4cce3",
+  "code_hash": "3b61b944aad7",
+  "prompt_hash": "26c734591a9a",
+  "operation": "compare",
+  "provider": "gemini",
+  "model": "gemini-3.5-flash-lite",
+  "thinking": "none",
+  "run_at": "2026-10-25T03:42:04.985131+00:00",
+  "duration_ms": 1109,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-10-25T03:42:03.868991+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-10-25T03:42:03.869000+00:00",
+      "duration_ms": 17
+    },
+    "api_call": {
+      "started_at": "2026-10-25T03:42:03.886154+00:00",
+      "duration_ms": 1092
+    },
+    "scoring": {
+      "started_at": "2026-10-25T03:42:04.978211+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Similar titles but different dates - weekly meetings - should NOT match",
+  "difficulty": "easy",
+  "tags": [
+    "dedup",
+    "no-match",
+    "different-date"
+  ],
+  "expected": {
+    "matched_event_id": null
+  },
+  "actual": {
+    "matched_event_id": null
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": null,
+    "actual": null
+  },
+  "tokens": {
+    "prompt_tokens": 356,
+    "completion_tokens": 89,
+    "total_tokens": 445
+  },
+  "cost": 0.00032930000000000004,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1012,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Team Retrospective\n- Start: 2026-04-10T14:00:00\n- End: 2026-04-10T15:00:00\n- Location: Conference Room B\n- Description: Sprint 12 retrospective - discuss what went well and what to improve\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Team Retrospective\n   - Start: 2026-04-03T14:00:00\n   - End: 2026-04-03T15:00:00\n   - Location: Conference Room B\n   - Description: Sprint 11 retrospective meeting\n\n2. Event ID: event-002\n   - Title: Sprint Planning\n   - Start: 2026-04-10T10:00:00\n   - End: 2026-04-10T12:00:00\n   - Location: Conference Room A\n   - Description: Plan sprint 13\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "type": "string",
+          "nullable": true
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "raw_response_text": "{\n  \"matched_event_id\": null,\n  \"reasoning\": \"Although the new event shares a title with event-001, event-001 takes place on 2026-04-03 while the new event is on 2026-04-10, representing different weekly sprint retrospectives rather than a duplicate or update of the same event.\"\n}",
+    "finish_reason": "FinishReason.STOP",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "030ed163c9bd4385a194b11942c9fa77",
+    "route_role": "primary"
+  },
+  "inference_key": "8a32d47b2e657bef0b8c68117c9d7936603fe073581d98f12f40546b4858f56d",
+  "score_key": "af58dcf1f622f57fca7af9940cd85f0b2af71b416850921ac8be446ee75f6848",
+  "identity": {
+    "identity_version": 2,
+    "operation": "compare",
+    "provider": "gemini",
+    "model": "gemini-3.5-flash-lite",
+    "thinking": {
+      "mode": "level",
+      "value": "none"
+    },
+    "request_settings": {
+      "api_surface": "gemini/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "gemini-3.5-flash-lite",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "none"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "26c734591a9a2f602b175c5e7f03455199cca7eb847d43a054d339700ba5d2bb",
+    "adapter_contract_hash": "7290a95d479db2e3c5cbf8f212866455a4122a408c9542cc385b4b71b98742d8",
+    "fixture_input_hash": "d5500d95f6226e630b3359a75ea3d1073de624471c6ea5f05d7f5d350aa4cce3"
+  }
+}

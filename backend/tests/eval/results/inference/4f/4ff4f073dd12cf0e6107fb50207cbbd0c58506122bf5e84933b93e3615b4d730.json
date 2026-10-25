@@ -1,0 +1,136 @@
+{
+  "fixture_name": "interview_loop_distinct_slots_20",
+  "operation": "compare",
+  "provider": "gemini",
+  "model": "gemini-3.5-flash-lite",
+  "thinking": {
+    "mode": "level",
+    "value": "none"
+  },
+  "run_at": "2026-10-25T03:42:03.467298+00:00",
+  "duration_ms": 4510,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-10-25T03:41:58.930225+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-10-25T03:41:58.930235+00:00",
+      "duration_ms": 3181
+    },
+    "api_call": {
+      "started_at": "2026-10-25T03:42:02.111920+00:00",
+      "duration_ms": 1329
+    },
+    "scoring": {
+      "started_at": "2026-10-25T03:42:03.441108+00:00",
+      "duration_ms": 0
+    }
+  },
+  "tokens": {
+    "prompt_tokens": 444,
+    "completion_tokens": 69,
+    "total_tokens": 513
+  },
+  "cost": 0.0003057,
+  "actual": {
+    "matched_event_id": null
+  },
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1199,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Northwind PM Interview 3\n- Start: 2026-09-09T18:00:00\n- End: 2026-09-09T18:45:00\n- Location: Video call\n- Description: Product management round with the hiring panel.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Northwind Behavioral Interview\n   - Start: 2026-09-09T17:00:00\n   - End: 2026-09-09T17:45:00\n   - Location: Video call\n   - Description: Behavioral round.\n\n2. Event ID: event-002\n   - Title: Northwind PM Interview 2\n   - Start: 2026-09-09T23:00:00\n   - End: 2026-09-09T23:45:00\n   - Location: Video call\n   - Description: Second product management round.\n\n3. Event ID: event-003\n   - Title: Northwind XFN or PM Interview 5\n   - Start: 2026-09-09T21:30:00\n   - End: 2026-09-09T22:15:00\n   - Location: Video call\n   - Description: Cross-functional round.\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "type": "string",
+          "nullable": true
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "raw_response_text": "{\n  \"matched_event_id\": null,\n  \"reasoning\": \"The new event is 'Northwind PM Interview 3' scheduled from 18:00 to 18:45, which does not match the time or specific interview round of any of the existing events on that day.\"\n}",
+    "finish_reason": "FinishReason.STOP",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "1c5bad5bad834ca7b06503abdf7b6b83",
+    "route_role": "primary"
+  },
+  "category": null,
+  "description": "Interview loop: several sessions with the same company on one day at different times. Each is a distinct event and must NOT be merged. Anonymized from production 2026-09-09, where one confirmation email produced five events across two days.",
+  "difficulty": "hard",
+  "tags": [
+    "dedup",
+    "no-match",
+    "professional",
+    "production-derived"
+  ],
+  "input_summary": {},
+  "fixture_input_hash": "e18308c3ae1188e1e990b528759eddc563013515cce36705785e20b8c62af627",
+  "code_provenance": {
+    "git_commit": "74ff08ec6f33944bbef239fd953d3f1a44935d0b",
+    "event_processing_sha256": "3b61b944aad7f497f768d02cc51e726b757bbf1316635f253a61092cb38b1aad"
+  },
+  "raw_response": null,
+  "identity": {
+    "identity_version": 2,
+    "operation": "compare",
+    "provider": "gemini",
+    "model": "gemini-3.5-flash-lite",
+    "thinking": {
+      "mode": "level",
+      "value": "none"
+    },
+    "request_settings": {
+      "api_surface": "gemini/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "gemini-3.5-flash-lite",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "none"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "26c734591a9a2f602b175c5e7f03455199cca7eb847d43a054d339700ba5d2bb",
+    "adapter_contract_hash": "7290a95d479db2e3c5cbf8f212866455a4122a408c9542cc385b4b71b98742d8",
+    "fixture_input_hash": "e18308c3ae1188e1e990b528759eddc563013515cce36705785e20b8c62af627"
+  },
+  "inference_key": "4ff4f073dd12cf0e6107fb50207cbbd0c58506122bf5e84933b93e3615b4d730",
+  "stored_at": "2026-10-25T03:42:03.524580+00:00"
+}

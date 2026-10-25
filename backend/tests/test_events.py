@@ -463,6 +463,146 @@ class TestRedoEmailContribution:
         assert len(update_calls) >= 1
 
 
+class TestDedupCandidateIntegrity:
+    """Regressions from four copies of one school parade on 2026-10-30.
+
+    Three emails described the same 8am parade. Each was compared against a
+    candidate list in which every synced Selko event appeared twice (itself and
+    its mirrored provider entry) and a shared-calendar recurring event three
+    times; none matched. The fourth email did match -- a spouse's copy on a
+    shared calendar -- and adopting it created a new event anyway.
+    """
+
+    PARADE_ROW = {
+        "id": "event-parade",
+        "title": "Halloween Parade",
+        "start_datetime": "2026-10-30T15:00:00+00:00",
+        "end_datetime": "2026-10-30T16:00:00+00:00",
+        "google_calendar_event_id": "own-parade",
+        "review_status": "active",
+    }
+    NEW_EVENT = {
+        "title": "Morning Halloween Parade",
+        "start_datetime": "2026-10-30T08:00:00-07:00",
+        "end_datetime": "2026-10-30T09:00:00-07:00",
+    }
+
+    def _mirror(self, provider_id, title):
+        return {
+            "id": f"gcal:{provider_id}",
+            "title": title,
+            "start_datetime": "2026-10-30T15:30:00+00:00",
+            "end_datetime": "2026-10-30T16:30:00+00:00",
+            "location": "",
+            "_source": "calendar_mirror",
+        }
+
+    def _match(self, rows, mirror, live, matched_id):
+        client = MagicMock()
+        client.table.return_value.select.return_value.eq.return_value.gte.return_value.lt.return_value.execute.return_value = MagicMock(data=rows)
+        # No Selko row of this user is linked to the matched provider event.
+        client.table.return_value.select.return_value.eq.return_value.eq.return_value.order.return_value.limit.return_value.execute.return_value = MagicMock(data=[])
+        with patch("selko.services.events._mirror_candidates_in_window", return_value=mirror), \
+             patch("selko.services.events.calendars.fetch_calendar_events_for_date_range", return_value=live), \
+             patch("selko.services.events.event_processing.compare_events", return_value=matched_id) as compare:
+            result = find_matching_event(
+                client, MagicMock(), "user-1", dict(self.NEW_EVENT),
+                user_timezone="America/Los_Angeles",
+            )
+        return result, compare
+
+    def test_a_synced_events_own_mirror_entry_is_not_a_second_candidate(self):
+        _, compare = self._match(
+            [dict(self.PARADE_ROW)],
+            [self._mirror("own-parade", "Halloween Parade")],
+            [],
+            None,
+        )
+
+        assert [c["id"] for c in compare.call_args[0][2]] == ["event-parade"]
+
+    def test_one_provider_event_on_two_calendars_is_one_candidate(self):
+        live_copy = {
+            "id": "shared-recurring",
+            "summary": "Evening chores",
+            "start": {"dateTime": "2026-10-30T19:00:00-07:00"},
+            "end": {"dateTime": "2026-10-30T19:15:00-07:00"},
+        }
+        _, compare = self._match(
+            [],
+            [self._mirror("shared-recurring", "Evening chores")] * 2,
+            [live_copy],
+            None,
+        )
+
+        candidates = compare.call_args[0][2]
+        assert [c["id"] for c in candidates] == ["gcal:shared-recurring"]
+        # The live copy wins: it is the one proven to be on the write calendar.
+        assert candidates[0]["_source"] == "google_calendar"
+
+    def test_the_comparison_is_told_the_users_timezone(self):
+        _, compare = self._match([dict(self.PARADE_ROW)], [], [], None)
+
+        assert compare.call_args.kwargs["user_timezone"] == "America/Los_Angeles"
+
+    def test_a_match_on_another_calendar_is_not_adopted(self):
+        result, _ = self._match(
+            [],
+            [self._mirror("spouse-parade", "Costume Parade and Class Party")],
+            [],
+            "gcal:spouse-parade",
+        )
+
+        assert result is not None
+        assert result.on_other_calendar is True
+
+    def test_a_match_on_the_write_calendar_is_still_adopted(self):
+        live = {
+            "id": "own-external",
+            "summary": "Costume Parade",
+            "start": {"dateTime": "2026-10-30T08:30:00-07:00"},
+            "end": {"dateTime": "2026-10-30T09:00:00-07:00"},
+        }
+        result, _ = self._match(
+            [], [self._mirror("own-external", "Costume Parade")], [live],
+            "gcal:own-external",
+        )
+
+        assert result.on_other_calendar is False
+        assert result.gcal_raw == live
+
+    def test_saving_a_match_on_another_calendar_creates_nothing(self):
+        from selko.api.schemas.calendar import CalendarEventExtraction
+        from selko.services.events import EventMatch, save_extracted_events
+
+        extraction = CalendarEventExtraction.model_validate({
+            "email_message_id": "msg-1",
+            "sender_email": "teacher@example.com",
+            "events_found": True,
+            "events": [{
+                "title": "Costume Parade and Class Party",
+                "start_datetime": "2099-10-30T08:30:00",
+                "end_datetime": "2099-10-30T09:30:00",
+                "description": "Parade on the blacktop, then the class party.",
+            }],
+        })
+        match = EventMatch(
+            match_id="gcal:spouse-parade", baseline={}, on_other_calendar=True
+        )
+        with patch("selko.services.events.calendars.get_all_day_policy_and_timezone",
+                   return_value=("timed", "America/Los_Angeles")), \
+             patch("selko.services.events._load_identity_context", return_value=({}, [])), \
+             patch("selko.services.events.find_matching_event", return_value=(match, None)), \
+             patch("selko.services.events._commit_email_extraction",
+                   return_value={"conflict": False}) as commit:
+            created, updated = save_extracted_events(
+                MagicMock(), MagicMock(), "user-1", "email-1", extraction,
+            )
+
+        assert (created, updated) == (0, 0)
+        assert commit.call_args[0][4] == []
+
+
 class TestFindMatchingEventGCal:
     """Tests for GCal read-back during deduplication."""
 

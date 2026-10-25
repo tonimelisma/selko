@@ -118,6 +118,10 @@ class EventMatch:
     candidate_window: Optional[CandidateWindow] = None
     stale_authoritative: bool = False
     ambiguous: bool = False
+    # Matched a provider event the user can see but Selko does not write to --
+    # typically a family member's shared calendar. The user already has it;
+    # adopting it would bind a Selko row to an id the write calendar lacks.
+    on_other_calendar: bool = False
 
     @property
     def is_gcal(self) -> bool:
@@ -574,6 +578,15 @@ def save_extracted_events(
         if match is not None and match.stale_authoritative:
             logger.info(
                 "Stale authoritative calendar identity is an audited no-op for event %s",
+                event_data.get("title"),
+            )
+            if cancellation_mode:
+                cancellation_outcomes.append("cancellation_unmatched")
+            continue
+
+        if match is not None and match.on_other_calendar:
+            logger.info(
+                "Event already on another visible calendar; not adopting %s",
                 event_data.get("title"),
             )
             if cancellation_mode:
@@ -1261,6 +1274,41 @@ def _mirror_candidates_in_window(
     return shaped
 
 
+def _collapse_candidates(candidates: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """One entry per real calendar event, for the LLM comparison.
+
+    Three sources feed the candidate set -- Selko rows, the calendar mirror and
+    the live read-back -- and they overlap. A Selko event that has been synced
+    reappears as its own mirrored provider entry, and a provider event visible
+    on two mirrored calendars (a shared family calendar) appears once per
+    calendar. Production showed 21 candidates for one school morning, about half
+    of them repeats; the comparison model handled the noise badly and matched
+    none of three identical parades.
+
+    A mirrored entry that *is* a Selko row is dropped in favour of the row,
+    which is what a match on it resolves to anyway. Among repeats of the same
+    provider id, the live read-back copy wins: it carries the raw provider event
+    and is the only one proven to be on the calendar Selko writes to.
+    """
+    owned_provider_ids = {
+        str(c["google_calendar_event_id"])
+        for c in candidates
+        if not c.get("_source") and c.get("google_calendar_event_id")
+    }
+    collapsed: dict[str, dict[str, Any]] = {}
+    for candidate in candidates:
+        candidate_id = candidate.get("id")
+        if not candidate_id:
+            continue
+        candidate_id = str(candidate_id)
+        if candidate_id.startswith("gcal:") and candidate_id[5:] in owned_provider_ids:
+            continue
+        kept = collapsed.get(candidate_id)
+        if kept is None or (candidate.get("_gcal_raw") and not kept.get("_gcal_raw")):
+            collapsed[candidate_id] = candidate
+    return list(collapsed.values())
+
+
 def _times_match(left: dict[str, Any], right: dict[str, Any]) -> bool:
     try:
         return (
@@ -1517,7 +1565,8 @@ def find_matching_event(
     if len(strong_candidates) == 1:
         try:
             matched_id = event_processing.compare_events(
-                gateway, event_data, strong_candidates
+                gateway, event_data, strong_candidates,
+                user_timezone=user_timezone,
             )
         except Exception as exc:
             logger.warning("Strong identity comparison failed (%s)", type(exc).__name__)
@@ -1595,6 +1644,8 @@ def find_matching_event(
                 candidate_window=candidate_window,
             ))
 
+    candidates = _collapse_candidates(candidates)
+    candidate_by_id = {str(c["id"]): c for c in candidates}
     if not candidates:
         return resolved(None)
 
@@ -1602,7 +1653,8 @@ def find_matching_event(
         matched_id = event_processing.compare_events(
             gateway,
             event_data,
-            candidates
+            candidates,
+            user_timezone=user_timezone,
         )
     except Exception as e:
         logger.warning(f"LLM comparison failed, no match: {e}")
@@ -1649,6 +1701,21 @@ def find_matching_event(
                     "review_status": row.get("review_status"),
                 },
                 candidate_window=candidate_window,
+            ))
+
+        if not candidate.get("_gcal_raw"):
+            # Only the live read-back reads the calendar Selko writes to; a
+            # mirror-only entry lives on another calendar the account can see.
+            # Adopting one bound a spouse's shared-calendar event id to a new
+            # row of the user's; the worker found no such event on the user's
+            # calendar and created a fourth copy of the same school parade.
+            # Seeing it is enough: there is nothing to create.
+            logger.info("Matched an event on another calendar; nothing to adopt")
+            return resolved(EventMatch(
+                match_id=matched_id,
+                baseline={},
+                candidate_window=candidate_window,
+                on_other_calendar=True,
             ))
 
         baseline = candidate.get("_baseline") or {

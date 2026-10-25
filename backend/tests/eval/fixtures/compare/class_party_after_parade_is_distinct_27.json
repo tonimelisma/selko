@@ -1,0 +1,44 @@
+{
+  "description": "Negative control for the parade fixtures. A classroom Halloween party that starts right after the school parade (8:45-10:30 local, classroom) is a different event from the parade (8-9am, stored in UTC), even though both are the same school on the same morning. Guards against local-time rendering pushing the model into merging adjacent events. Derived from the production 2026-10-19 school digest. Must not match.",
+  "difficulty": "hard",
+  "tags": ["dedup", "no-match", "school", "timezone", "production-derived"],
+  "input": {
+    "user_timezone": "America/Los_Angeles",
+    "new_event": {
+      "title": "Ms. Rivera's 1st Grade Class Halloween Party",
+      "start_datetime": "2026-10-30T08:45:00-07:00",
+      "end_datetime": "2026-10-30T10:30:00-07:00",
+      "location": "Classroom 202",
+      "description": "Classroom Halloween party featuring crafts, outdoor games, music, snacks, and a class photo directly following the costume parade. Students head out for morning recess at 10:30am."
+    },
+    "candidate_events": [
+      {
+        "id": "event-001",
+        "title": "Halloween Parade",
+        "start_datetime": "2026-10-30T15:00:00+00:00",
+        "end_datetime": "2026-10-30T16:00:00+00:00",
+        "location": null,
+        "description": "Halloween Parade event."
+      },
+      {
+        "id": "event-002",
+        "title": "Pumpkin Patch / Halloween Party",
+        "start_datetime": "2026-10-30T21:00:00+00:00",
+        "end_datetime": "2026-10-30T22:00:00+00:00",
+        "location": null,
+        "description": "Preschool pumpkin patch. 2:00pm pick up & join party."
+      },
+      {
+        "id": "event-003",
+        "title": "Trick or Treat Street",
+        "start_datetime": "2026-10-30T23:00:00+00:00",
+        "end_datetime": "2026-10-31T01:00:00+00:00",
+        "location": "Downtown Lafayette",
+        "description": "Trick or Treat Street event downtown."
+      }
+    ]
+  },
+  "expected": {
+    "matched_event_id": null
+  }
+}

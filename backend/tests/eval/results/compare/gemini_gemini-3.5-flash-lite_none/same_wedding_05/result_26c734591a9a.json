@@ -1,0 +1,135 @@
+{
+  "fixture_name": "same_wedding_05",
+  "fixture_hash": "f8f539a57b2f649c77faeb3fde6e915cb040df9000404e5c105f8ae114f1c38e",
+  "code_hash": "3b61b944aad7",
+  "prompt_hash": "26c734591a9a",
+  "operation": "compare",
+  "provider": "gemini",
+  "model": "gemini-3.5-flash-lite",
+  "thinking": "none",
+  "run_at": "2026-10-25T03:42:05.013667+00:00",
+  "duration_ms": 1311,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-10-25T03:42:03.669989+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-10-25T03:42:03.669999+00:00",
+      "duration_ms": 14
+    },
+    "api_call": {
+      "started_at": "2026-10-25T03:42:03.684700+00:00",
+      "duration_ms": 1297
+    },
+    "scoring": {
+      "started_at": "2026-10-25T03:42:04.982542+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Same wedding with RSVP confirmation vs original invite - should match",
+  "difficulty": "easy",
+  "tags": [
+    "dedup",
+    "match",
+    "social"
+  ],
+  "expected": {
+    "matched_event_id": "event-001"
+  },
+  "actual": {
+    "matched_event_id": "event-001"
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": "event-001",
+    "actual": "event-001"
+  },
+  "tokens": {
+    "prompt_tokens": 370,
+    "completion_tokens": 69,
+    "total_tokens": 439
+  },
+  "cost": 0.0002835,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1062,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Sarah & Michael's Wedding\n- Start: 2026-06-20T16:00:00\n- End: 2026-06-20T22:00:00\n- Location: Sunset Gardens, Napa Valley\n- Description: Thank you for RSVPing! Ceremony at 4pm, reception to follow. Cocktail attire.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Wedding - Sarah and Michael\n   - Start: 2026-06-20T16:00:00\n   - End: 2026-06-20T22:00:00\n   - Location: Sunset Gardens, Napa\n   - Description: You're invited to celebrate our special day!\n\n2. Event ID: event-002\n   - Title: Summer BBQ\n   - Start: 2026-06-21T12:00:00\n   - End: 2026-06-21T16:00:00\n   - Location: Central Park\n   - Description: Annual neighborhood BBQ\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "type": "string",
+          "nullable": true
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "raw_response_text": "{\n  \"matched_event_id\": \"event-001\",\n  \"reasoning\": \"The new event matches event-001 in date, start time, end time, and location (Sunset Gardens), and both refer to Sarah and Michael's wedding despite minor variations in the title and description.\"\n}",
+    "finish_reason": "FinishReason.STOP",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "7b9d7e7f80f140628c22722a24f78012",
+    "route_role": "primary"
+  },
+  "inference_key": "538da569de9710a688b3562bd21399229fc674c8a1ea15810691bdc2ec0dde79",
+  "score_key": "bc6dd4495bfb67d292f1314d2630e5fa9dd71843bc36abcdb298c52c8b8e56a3",
+  "identity": {
+    "identity_version": 2,
+    "operation": "compare",
+    "provider": "gemini",
+    "model": "gemini-3.5-flash-lite",
+    "thinking": {
+      "mode": "level",
+      "value": "none"
+    },
+    "request_settings": {
+      "api_surface": "gemini/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "gemini-3.5-flash-lite",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "none"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "26c734591a9a2f602b175c5e7f03455199cca7eb847d43a054d339700ba5d2bb",
+    "adapter_contract_hash": "7290a95d479db2e3c5cbf8f212866455a4122a408c9542cc385b4b71b98742d8",
+    "fixture_input_hash": "f8f539a57b2f649c77faeb3fde6e915cb040df9000404e5c105f8ae114f1c38e"
+  }
+}

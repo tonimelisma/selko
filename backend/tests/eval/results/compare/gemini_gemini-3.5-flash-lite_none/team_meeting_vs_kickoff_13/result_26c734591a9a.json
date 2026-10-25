@@ -1,0 +1,135 @@
+{
+  "fixture_name": "team_meeting_vs_kickoff_13",
+  "fixture_hash": "53299ac61b7858b0f9881b6c004a5b1fa1b00cfff6151a81ca943907c1200b41",
+  "code_hash": "3b61b944aad7",
+  "prompt_hash": "26c734591a9a",
+  "operation": "compare",
+  "provider": "gemini",
+  "model": "gemini-3.5-flash-lite",
+  "thinking": "none",
+  "run_at": "2026-10-25T03:42:05.985814+00:00",
+  "duration_ms": 1166,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-10-25T03:42:04.815010+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-10-25T03:42:04.815029+00:00",
+      "duration_ms": 14
+    },
+    "api_call": {
+      "started_at": "2026-10-25T03:42:04.829151+00:00",
+      "duration_ms": 1152
+    },
+    "scoring": {
+      "started_at": "2026-10-25T03:42:05.981559+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Regular team meeting vs project kickoff same morning - should NOT match",
+  "difficulty": "hard",
+  "tags": [
+    "dedup",
+    "no-match",
+    "work"
+  ],
+  "expected": {
+    "matched_event_id": null
+  },
+  "actual": {
+    "matched_event_id": null
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": null,
+    "actual": null
+  },
+  "tokens": {
+    "prompt_tokens": 446,
+    "completion_tokens": 66,
+    "total_tokens": 512
+  },
+  "cost": 0.00029879999999999994,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1221,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Phoenix Project Kickoff\n- Start: 2026-07-08T10:00:00\n- End: 2026-07-08T12:00:00\n- Location: Large Conference Room\n- Description: Initial kickoff for Phoenix redesign project. All stakeholders required.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Weekly Team Sync\n   - Start: 2026-07-08T09:00:00\n   - End: 2026-07-08T09:30:00\n   - Location: Conference Room B\n   - Description: Regular Tuesday morning team standup\n\n2. Event ID: event-002\n   - Title: 1:1 with Manager\n   - Start: 2026-07-08T14:00:00\n   - End: 2026-07-08T14:30:00\n   - Location: Manager's Office\n   - Description: Bi-weekly check-in\n\n3. Event ID: event-003\n   - Title: Code Review\n   - Start: 2026-07-08T15:00:00\n   - End: 2026-07-08T16:00:00\n   - Location: Dev Room\n   - Description: Review PRs for authentication module\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "type": "string",
+          "nullable": true
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "raw_response_text": "{\n  \"matched_event_id\": null,\n  \"reasoning\": \"The new event 'Phoenix Project Kickoff' takes place at 10:00-12:00, whereas all existing events on that day are at completely different times and have entirely unrelated titles and purposes.\"\n}",
+    "finish_reason": "FinishReason.STOP",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "5daa030c430e4a9aa2ab97537fa80080",
+    "route_role": "primary"
+  },
+  "inference_key": "c13ed723d1efddeba7fa7d916bb7ca6650797c9979d416996624c86fd7b4d88c",
+  "score_key": "18140ba3af8c322880fa3204f528dc78a91f61c159779d171ee0af35a23f6a1f",
+  "identity": {
+    "identity_version": 2,
+    "operation": "compare",
+    "provider": "gemini",
+    "model": "gemini-3.5-flash-lite",
+    "thinking": {
+      "mode": "level",
+      "value": "none"
+    },
+    "request_settings": {
+      "api_surface": "gemini/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "gemini-3.5-flash-lite",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "none"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "26c734591a9a2f602b175c5e7f03455199cca7eb847d43a054d339700ba5d2bb",
+    "adapter_contract_hash": "7290a95d479db2e3c5cbf8f212866455a4122a408c9542cc385b4b71b98742d8",
+    "fixture_input_hash": "53299ac61b7858b0f9881b6c004a5b1fa1b00cfff6151a81ca943907c1200b41"
+  }
+}

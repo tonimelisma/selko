@@ -548,6 +548,41 @@ class TestCompareEvents:
 
         assert "api error" in str(exc_info.value).lower()
 
+    def test_every_time_is_rendered_in_the_users_local_zone(self, mock_provider):
+        """Production shapes: the extracted event is local, stored rows are UTC.
+
+        The model was shown ``08:00-07:00`` beside ``15:00+00:00`` -- the same
+        instant -- and answered that the existing parade was in "a different
+        time slot", creating a duplicate of it.
+        """
+        mock_provider.generate.return_value = LLMResponse(
+            text=json.dumps({"matched_event_id": None, "reasoning": "-"}),
+            prompt_tokens=10, completion_tokens=5
+        )
+        gateway = LLMGateway(mock_provider)
+
+        compare_events(
+            gateway,
+            {
+                "title": "Morning Halloween Parade",
+                "start_datetime": "2026-10-30T08:00:00-07:00",
+                "end_datetime": "2026-10-30T09:00:00-07:00",
+            },
+            [{
+                "id": "event-1",
+                "title": "Halloween Parade",
+                "start_datetime": "2026-10-30T15:00:00+00:00",
+                "end_datetime": "2026-10-30T16:00:00+00:00",
+            }],
+            user_timezone="America/Los_Angeles",
+        )
+
+        prompt = mock_provider.generate.call_args.kwargs["contents"][0]
+        assert "local wall-clock times in America/Los_Angeles" in prompt
+        assert prompt.count("Start: 2026-10-30T08:00:00\n") == 2
+        assert "+00:00" not in prompt
+        assert "-07:00" not in prompt
+
 
 class TestMergeEventData:
     """Test event data merging."""
