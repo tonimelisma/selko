@@ -1,0 +1,20 @@
+{
+  "fixture_name": "same_wedding_05",
+  "operation": "compare",
+  "expected": {
+    "matched_event_id": "event-001"
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": "event-001",
+    "actual": "event-001"
+  },
+  "identity": {
+    "scoring_version": 2,
+    "inference_key": "538da569de9710a688b3562bd21399229fc674c8a1ea15810691bdc2ec0dde79",
+    "expected_output_hash": "fb532ed7006bb0d85ca6e45563073776f4a8eb69fdaee303177c9bdfb53c1b51",
+    "scorer_hash": "34e3b48d9b9902d1f4fee602c48478bc8d2139938715a7417e4baec0709c5298"
+  },
+  "score_key": "bc6dd4495bfb67d292f1314d2630e5fa9dd71843bc36abcdb298c52c8b8e56a3",
+  "stored_at": "2026-10-25T03:42:05.079524+00:00"
+}

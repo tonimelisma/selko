@@ -1,0 +1,136 @@
+{
+  "fixture_name": "text_update_of_an_invite_24",
+  "operation": "compare",
+  "provider": "gemini",
+  "model": "gemini-3.5-flash-lite",
+  "thinking": {
+    "mode": "level",
+    "value": "none"
+  },
+  "run_at": "2026-10-25T03:42:06.197938+00:00",
+  "duration_ms": 1132,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-10-25T03:42:05.060112+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-10-25T03:42:05.060122+00:00",
+      "duration_ms": 25
+    },
+    "api_call": {
+      "started_at": "2026-10-25T03:42:05.085918+00:00",
+      "duration_ms": 1107
+    },
+    "scoring": {
+      "started_at": "2026-10-25T03:42:06.193616+00:00",
+      "duration_ms": 0
+    }
+  },
+  "tokens": {
+    "prompt_tokens": 357,
+    "completion_tokens": 60,
+    "total_tokens": 417
+  },
+  "cost": 0.0002571,
+  "actual": {
+    "matched_event_id": "event-001"
+  },
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 973,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Design Review\n- Start: 2026-09-15T14:00:00\n- End: 2026-09-15T15:00:00\n- Location: Room 4B (moved from Room 2)\n- Description: Note the room change for tomorrow's review.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Design Review\n   - Start: 2026-09-15T14:00:00\n   - End: 2026-09-15T15:00:00\n   - Location: Room 2\n   - Description: Invitation: design review.\n\n2. Event ID: event-002\n   - Title: Design Systems Guild\n   - Start: 2026-09-15T16:00:00\n   - End: 2026-09-15T17:00:00\n   - Location: Room 2\n   - Description: Monthly guild meeting.\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "type": "string",
+          "nullable": true
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "raw_response_text": "{\n  \"matched_event_id\": \"event-001\",\n  \"reasoning\": \"The new event is an update to event-001, featuring the same title, exact same time slot, and continuation of the design review with a room change.\"\n}",
+    "finish_reason": "FinishReason.STOP",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "30c7d9aeb8b74863adbd8170e5c6e459",
+    "route_role": "primary"
+  },
+  "category": null,
+  "description": "S4: a plain-text follow-up updates an event that was created from an ICS invite. Same event, new location. Must match rather than create a second entry.",
+  "difficulty": "medium",
+  "tags": [
+    "dedup",
+    "match",
+    "update",
+    "production-derived"
+  ],
+  "input_summary": {},
+  "fixture_input_hash": "8d81645c6d14cf566ff78cac7ccdb3c0bed6496d67314862f30ede5dc1df96db",
+  "code_provenance": {
+    "git_commit": "74ff08ec6f33944bbef239fd953d3f1a44935d0b",
+    "event_processing_sha256": "3b61b944aad7f497f768d02cc51e726b757bbf1316635f253a61092cb38b1aad"
+  },
+  "raw_response": null,
+  "identity": {
+    "identity_version": 2,
+    "operation": "compare",
+    "provider": "gemini",
+    "model": "gemini-3.5-flash-lite",
+    "thinking": {
+      "mode": "level",
+      "value": "none"
+    },
+    "request_settings": {
+      "api_surface": "gemini/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "gemini-3.5-flash-lite",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "none"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "26c734591a9a2f602b175c5e7f03455199cca7eb847d43a054d339700ba5d2bb",
+    "adapter_contract_hash": "7290a95d479db2e3c5cbf8f212866455a4122a408c9542cc385b4b71b98742d8",
+    "fixture_input_hash": "8d81645c6d14cf566ff78cac7ccdb3c0bed6496d67314862f30ede5dc1df96db"
+  },
+  "inference_key": "6d8317a41b8cf13173e8ad4aa1e7716a369cf93ca9dff06dfa38597c52de07ff",
+  "stored_at": "2026-10-25T03:42:06.237367+00:00"
+}

@@ -1,0 +1,137 @@
+{
+  "fixture_name": "utc_vs_local_same_parade_25",
+  "operation": "compare",
+  "provider": "gemini",
+  "model": "gemini-3.5-flash-lite",
+  "thinking": {
+    "mode": "level",
+    "value": "none"
+  },
+  "run_at": "2026-10-25T03:42:06.092463+00:00",
+  "duration_ms": 1011,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-10-25T03:42:05.075936+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-10-25T03:42:05.075944+00:00",
+      "duration_ms": 15
+    },
+    "api_call": {
+      "started_at": "2026-10-25T03:42:05.091955+00:00",
+      "duration_ms": 996
+    },
+    "scoring": {
+      "started_at": "2026-10-25T03:42:06.088677+00:00",
+      "duration_ms": 0
+    }
+  },
+  "tokens": {
+    "prompt_tokens": 669,
+    "completion_tokens": 89,
+    "total_tokens": 758
+  },
+  "cost": 0.0004232,
+  "actual": {
+    "matched_event_id": "event-001"
+  },
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1778,
+        "text": "You are comparing calendar events to detect duplicates.\n\nAll times below are local wall-clock times in America/Los_Angeles (no timezone offsets).\nCompare civil clock times only \u2014 do not convert timezones.\n\n**New Event:**\n- Title: LE Morning Halloween Parade\n- Start: 2026-10-30T08:00:00\n- End: 2026-10-30T09:00:00\n- Location: None\n- Description: Lincoln Elementary Morning Halloween Parade on October 30th.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Halloween Parade\n   - Start: 2026-10-30T08:00:00\n   - End: 2026-10-30T09:00:00\n   - Location: None\n   - Description: Halloween Parade event.\n\n2. Event ID: event-002\n   - Title: Medicare Advantage Info Session at Denny's\n   - Start: 2026-10-30T10:00:00\n   - End: 2026-10-30T11:00:00\n   - Location: 1313 Willow Pass Rd., Concord, CA\n   - Description: Health plan informational event.\n\n3. Event ID: event-003\n   - Title: Pumpkin Patch / Halloween Party\n   - Start: 2026-10-30T14:00:00\n   - End: 2026-10-30T15:00:00\n   - Location: None\n   - Description: Preschool pumpkin patch. 2:00pm pick up & join party.\n\n4. Event ID: event-004\n   - Title: Trick or Treat Street\n   - Start: 2026-10-30T16:00:00\n   - End: 2026-10-30T18:00:00\n   - Location: Downtown Lafayette\n   - Description: Trick or Treat Street event downtown.\n\n5. Event ID: gcal:evening-chores\n   - Title: Evening tidy-up\n   - Start: 2026-10-30T19:00:00\n   - End: 2026-10-30T19:15:00\n   - Location: \n   - Description: \n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "type": "string",
+          "nullable": true
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "raw_response_text": "{\n  \"matched_event_id\": \"event-001\",\n  \"reasoning\": \"The new event 'LE Morning Halloween Parade' shares the exact same start and end times (2026-10-30 from 08:00 to 09:00) as event-001 ('Halloween Parade') and refers to the same underlying school Halloween parade.\"\n}",
+    "finish_reason": "FinishReason.STOP",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "5f19c8e628e64c16b4aaa963b5f2ed82",
+    "route_role": "primary"
+  },
+  "category": null,
+  "description": "The same 8am school parade, announced twice. The new event arrives in local time and the stored one in UTC -- the shapes production actually sends. Anonymized from production 2026-10-20 (trace 063e0b9d), where the model reasoned that 15:00 UTC was 'a different time slot' from 08:00 local and created a duplicate. Must match.",
+  "difficulty": "medium",
+  "tags": [
+    "dedup",
+    "match",
+    "school",
+    "timezone",
+    "production-derived"
+  ],
+  "input_summary": {},
+  "fixture_input_hash": "a24eb4e6277d4e3173ce1664fab91da4255852dc13b50b465c24c3eed1f0be06",
+  "code_provenance": {
+    "git_commit": "74ff08ec6f33944bbef239fd953d3f1a44935d0b",
+    "event_processing_sha256": "3b61b944aad7f497f768d02cc51e726b757bbf1316635f253a61092cb38b1aad"
+  },
+  "raw_response": null,
+  "identity": {
+    "identity_version": 2,
+    "operation": "compare",
+    "provider": "gemini",
+    "model": "gemini-3.5-flash-lite",
+    "thinking": {
+      "mode": "level",
+      "value": "none"
+    },
+    "request_settings": {
+      "api_surface": "gemini/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "gemini-3.5-flash-lite",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "none"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "26c734591a9a2f602b175c5e7f03455199cca7eb847d43a054d339700ba5d2bb",
+    "adapter_contract_hash": "7290a95d479db2e3c5cbf8f212866455a4122a408c9542cc385b4b71b98742d8",
+    "fixture_input_hash": "a24eb4e6277d4e3173ce1664fab91da4255852dc13b50b465c24c3eed1f0be06"
+  },
+  "inference_key": "74d534d7b346f2ea5d52ca0abd85c3b5e7e3cb773d1059819a26b87502b18157",
+  "stored_at": "2026-10-25T03:42:06.141960+00:00"
+}
