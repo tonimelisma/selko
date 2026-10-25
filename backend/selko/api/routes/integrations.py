@@ -35,6 +35,7 @@ from selko.services.integrations import (
     OAuthProviderNotAllowed,
     OAuthStateError,
     complete_oauth_flow,
+    granted_google_providers,
     initiate_oauth_flow,
     save_oauth_credentials,
     save_provider_tokens,
@@ -287,6 +288,30 @@ def _frontend_oauth_redirect(
     return RedirectResponse(url=url, status_code=status.HTTP_302_FOUND)
 
 
+@router.get("/google/auth")
+async def google_oauth_initiate(
+    user: CurrentUser = Depends(get_current_user),
+    config: Config = Depends(get_config),
+    redirect_uri: Annotated[
+        str | None, Query(description="OAuth callback URI")
+    ] = None,
+    accept: Annotated[str | None, Header()] = None,
+) -> Any:
+    """Initiate one Google consent covering Gmail and Google Calendar.
+
+    With ``Accept: application/json``, returns ``{"auth_url": "..."}`` so
+    authenticated SPA clients can fetch with a Bearer token then navigate.
+    Otherwise redirects (302) to Google — useful for curl -L with auth header.
+    """
+    return _oauth_initiate_response(
+        config=config,
+        provider="google",
+        user_id=user.id,
+        redirect_uri=redirect_uri,
+        accept=accept,
+    )
+
+
 @router.get("/gmail/auth")
 async def gmail_oauth_initiate(
     user: CurrentUser = Depends(get_current_user),
@@ -296,15 +321,14 @@ async def gmail_oauth_initiate(
     ] = None,
     accept: Annotated[str | None, Header()] = None,
 ) -> Any:
-    """Initiate Gmail OAuth flow.
+    """Connect Gmail -- through the combined Google consent.
 
-    With ``Accept: application/json``, returns ``{"auth_url": "..."}`` so
-    authenticated SPA clients can fetch with a Bearer token then navigate.
-    Otherwise redirects (302) to Google — useful for curl -L with auth header.
+    Kept so shipped iOS and Android builds, which call this path, get the
+    single consent without an app-store release.
     """
     return _oauth_initiate_response(
         config=config,
-        provider="gmail",
+        provider="google",
         user_id=user.id,
         redirect_uri=redirect_uri,
         accept=accept,
@@ -353,34 +377,49 @@ async def google_oauth_callback(
 
     try:
         # Validate state and extract user_id FIRST
+        # Single-product states stay accepted for the 10-minute state TTL, so a
+        # consent started before deploy still completes after it.
         credentials, user_id, provider = complete_oauth_flow(
             config=config,
             code=code,
             state=state,
-            allowed_providers={"gmail", "google_calendar"},
+            allowed_providers={"google", "gmail", "google_calendar"},
         )
+
+        if provider == "google":
+            providers = granted_google_providers(credentials)
+            if not providers:
+                logger.warning("Google consent granted neither Gmail nor Calendar")
+                return _frontend_oauth_redirect(
+                    config,
+                    status_value="error",
+                    message="Google did not grant Gmail or Calendar access. Please try again.",
+                )
+        else:
+            providers = [provider]
 
         # Create service role client (bypasses RLS for explicit user_id)
         from selko.services.auth import get_service_client
         client = get_service_client(config)
 
-        # Get provider-specific profile info
+        # The Gmail profile is the only Google API here with an account
+        # address; both rows hold the same account, so both get it.
         provider_email = None
-        if provider == "gmail":
+        if "gmail" in providers:
             try:
                 service = build_service(credentials)
                 profile = get_user_profile(service)
                 provider_email = profile.get("emailAddress")
             except Exception as e:
                 logger.warning(f"Could not get Gmail profile: {e}")
-        # For google_calendar, we don't fetch profile info
-        # (those APIs don't have a user profile endpoint)
 
-        # Save credentials with EXPLICIT user_id
-        save_oauth_credentials(client, user_id, provider, credentials, provider_email)
+        # Save credentials with EXPLICIT user_id. One row per product keeps
+        # polling, the mirror and reconnect recovery keyed exactly as before.
+        for granted in providers:
+            save_oauth_credentials(client, user_id, granted, credentials, provider_email)
 
         # Auto-detect timezone from Google Calendar settings
-        if provider == "google_calendar":
+        if "google_calendar" in providers:
             try:
                 from googleapiclient.discovery import build as build_google_service
                 cal_service = build_google_service("calendar", "v3", credentials=credentials)
@@ -395,7 +434,10 @@ async def google_oauth_callback(
             except Exception as e:
                 logger.warning(f"Could not auto-detect timezone for user {user_id}: {e}")
 
-        logger.info(f"{provider} OAuth completed successfully for user {user_id}")
+        logger.info(
+            f"{provider} OAuth completed successfully for user {user_id} "
+            f"(saved: {', '.join(providers)})"
+        )
 
         return _frontend_oauth_redirect(
             config, status_value="success", provider=provider
@@ -498,14 +540,14 @@ async def calendar_oauth_initiate(
     ] = None,
     accept: Annotated[str | None, Header()] = None,
 ) -> Any:
-    """Initiate Google Calendar OAuth flow.
+    """Connect Google Calendar -- through the combined Google consent.
 
-    With ``Accept: application/json``, returns ``{"auth_url": "..."}``.
-    Otherwise redirects (302) to Google.
+    Kept so shipped iOS and Android builds, which call this path, get the
+    single consent without an app-store release.
     """
     return _oauth_initiate_response(
         config=config,
-        provider="google_calendar",
+        provider="google",
         user_id=user.id,
         redirect_uri=redirect_uri,
         accept=accept,

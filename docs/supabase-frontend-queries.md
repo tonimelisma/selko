@@ -512,11 +512,15 @@ These operations require server-side secrets and MUST go through the Python API.
 ### OAuth Flows
 
 ```
-GET /integrations/gmail/auth?redirect_uri={uri}
-  -> Redirects to Google OAuth consent screen (Gmail)
+GET /integrations/google/auth?redirect_uri={uri}
+  -> One Google consent screen for Gmail AND Calendar. The callback saves the
+     same token to both the `gmail` and `google_calendar` integrations rows
+     (only those whose scopes the user left ticked), so they expire and
+     reconnect together.
 
+GET /integrations/gmail/auth?redirect_uri={uri}
 GET /integrations/calendar/auth?redirect_uri={uri}
-  -> Redirects to Google OAuth consent screen (Calendar)
+  -> Same combined consent; kept for shipped mobile builds that call them.
 
 GET /integrations/google/callback?code={code}&state={state}
   -> Unified callback for all Google OAuth flows (public endpoint)

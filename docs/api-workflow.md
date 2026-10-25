@@ -229,7 +229,7 @@ curl -X POST "http://localhost:8000/events/$EVENT_ID/sync" \
 | Step | Action | Endpoint |
 |------|--------|----------|
 | 1 | Register/Login | Supabase Auth (direct) |
-| 2 | Connect Gmail | Python API: `GET /integrations/gmail/auth` |
+| 2 | Connect Google (Gmail + Calendar) | Python API: `GET /integrations/google/auth` |
 | 3 | Sync emails | Python API: `POST /emails/sync` |
 | 4 | List emails | Supabase (direct) |
 | 5 | Process with LLM | Python API: `POST /emails/{id}/process` |
@@ -251,13 +251,16 @@ Response: {"status": "ok", "database": "connected"}
 ### OAuth Endpoints
 
 ```
-GET /integrations/gmail/auth
+GET /integrations/google/auth
   Requires: Bearer token
-  Returns: Redirect to Google OAuth consent screen (Gmail)
+  Returns: Redirect to one Google consent screen covering Gmail and Calendar.
+  The callback saves the same token to both integrations rows (only those
+  whose scopes were granted), so they expire and reconnect together.
 
+GET /integrations/gmail/auth
 GET /integrations/calendar/auth
   Requires: Bearer token
-  Returns: Redirect to Google OAuth consent screen (Calendar)
+  Returns: The same combined consent (kept for shipped mobile builds)
 
 GET /integrations/google/callback?code={code}&state={state}
   Unified callback for all Google OAuth flows
