@@ -14,9 +14,8 @@
 		applyEventChange,
 		rejectEventChange,
 		undoHistoryEvent,
-		initiateGmailAuth,
-		initiateOutlookAuth,
-		initiateCalendarAuth
+		initiateGoogleAuth,
+		initiateOutlookAuth
 	} from '$lib/api/backend.js';
 	import IntegrationStatus from '$lib/components/IntegrationStatus.svelte';
 	import ConnectionRecovery from '$lib/components/ConnectionRecovery.svelte';
@@ -613,17 +612,19 @@
 	}
 
 	async function handleConnect() {
-		await initiateGmailAuth();
+		await initiateGoogleAuth();
 	}
 
-	/** @param {string} provider */
+	/**
+	 * Gmail and Google Calendar share one Google consent, so any Google
+	 * provider (or the combined 'google' card) starts the same flow.
+	 * @param {string} provider
+	 */
 	async function handleAuthorize(provider) {
-		if (provider === 'gmail') {
-			await initiateGmailAuth();
-		} else if (provider === 'outlook') {
+		if (provider === 'outlook') {
 			await initiateOutlookAuth();
-		} else if (provider === 'google_calendar') {
-			await initiateCalendarAuth();
+		} else {
+			await initiateGoogleAuth();
 		}
 	}
 </script>

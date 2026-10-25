@@ -82,12 +82,16 @@ class IntegrationRepository(
         }
     }
 
-    suspend fun deleteIntegration(provider: IntegrationProvider): IntegrationResult<Unit> {
+    /**
+     * Deletes every listed provider's row in one request. The Google card
+     * passes both Google providers, which share one token.
+     */
+    suspend fun deleteIntegrations(providers: List<IntegrationProvider>): IntegrationResult<Unit> {
         return try {
             supabaseClient.from("integrations")
                 .delete {
                     filter {
-                        eq("provider", providerToString(provider))
+                        isIn("provider", providers.map(::providerToString))
                     }
                 }
 

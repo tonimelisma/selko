@@ -55,6 +55,9 @@ val SelkoErrorDark = Color(0xFFEE7189)
 val SelkoWarning = Color(0xFFF0A85C)
 val SelkoOnWarning = Color(0xFF2B2622)
 val SelkoWarningDark = Color(0xFFF0B45C)
+// Warning-toned text on paper/surface (design/tokens.json warningText).
+val SelkoWarningText = Color(0xFF9A5C1D)
+val SelkoWarningTextDark = Color(0xFFF0B45C)
 
 // Peer action fills (one solid construction per theme — spec review-action-contrast)
 val SelkoActionAccept = Color(0xFF276243)

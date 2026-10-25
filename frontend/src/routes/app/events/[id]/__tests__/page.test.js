@@ -67,9 +67,8 @@ const mockSyncEventToCalendar = vi.fn();
 
 vi.mock('$lib/api/backend.js', () => ({
 	syncEventToCalendar: (...args) => mockSyncEventToCalendar(...args),
-	initiateGmailAuth: vi.fn(),
+	initiateGoogleAuth: vi.fn(),
 	initiateOutlookAuth: vi.fn(),
-	initiateCalendarAuth: vi.fn(),
 	undoHistoryEvent: vi.fn().mockResolvedValue({ data: { event_id: 'evt-1', status: 'pending_review' }, error: null })
 }));
 

@@ -12,7 +12,7 @@ final class MockIntegrationService: IntegrationServiceProtocol, @unchecked Senda
 
     var fetchIntegrationsCallCount = 0
     var deleteIntegrationCallCount = 0
-    var lastDeletedProvider: IntegrationProvider?
+    var lastDeletedProviders: [IntegrationProvider]?
 
     func fetchIntegrations() async throws -> [Integration] {
         fetchIntegrationsCallCount += 1
@@ -34,9 +34,9 @@ final class MockIntegrationService: IntegrationServiceProtocol, @unchecked Senda
         return false
     }
 
-    func deleteIntegration(provider: IntegrationProvider) async throws {
+    func deleteIntegrations(providers: [IntegrationProvider]) async throws {
         deleteIntegrationCallCount += 1
-        lastDeletedProvider = provider
+        lastDeletedProviders = providers
         if let error = deleteIntegrationError {
             throw error
         }

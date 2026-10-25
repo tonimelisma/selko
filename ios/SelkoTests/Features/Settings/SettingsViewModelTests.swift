@@ -122,7 +122,7 @@ struct SettingsViewModelTests {
         #expect(viewModel.integrations.count == 1)
 
         // Set up the provider to disconnect
-        viewModel.providerToDisconnect = .gmail
+        viewModel.confirmDisconnect(provider: .gmail)
 
         // When
         await viewModel.disconnect()
@@ -130,7 +130,7 @@ struct SettingsViewModelTests {
         // Then
         #expect(viewModel.integrations.isEmpty)
         #expect(mockIntegrationService.deleteIntegrationCallCount == 1)
-        #expect(mockIntegrationService.lastDeletedProvider == .gmail)
+        #expect(mockIntegrationService.lastDeletedProviders == [.gmail])
         #expect(viewModel.errorMessage == nil)
     }
 
@@ -164,7 +164,7 @@ struct SettingsViewModelTests {
         )
 
         await viewModel.load()
-        viewModel.providerToDisconnect = .gmail
+        viewModel.confirmDisconnect(provider: .gmail)
 
         // When
         await viewModel.disconnect()
@@ -402,5 +402,47 @@ struct SettingsViewModelTests {
         #expect(backend.updateEmailFolderCalls.last?.isIncluded == true)
         #expect(viewModel.folders(for: .gmail).first?.isIncluded == true)
         #expect(viewModel.folderErrors["folder-1"] == nil)
+    }
+
+    @Test
+    func disconnectGoogleRemovesBothGoogleRowsAndKeepsOutlook() async throws {
+        let mockIntegrationService = MockIntegrationService()
+        func row(_ provider: IntegrationProvider) -> Integration {
+            Integration(
+                id: UUID(),
+                userId: UUID(),
+                provider: provider,
+                status: .active,
+                providerEmail: "user@example.com",
+                scopes: [],
+                lastSyncAt: nil,
+                createdAt: nil,
+                updatedAt: nil
+            )
+        }
+        mockIntegrationService.fetchIntegrationsResult = .success([
+            row(.gmail), row(.googleCalendar), row(.outlook)
+        ])
+
+        let viewModel = SettingsViewModel(
+            integrationService: mockIntegrationService,
+            backendAPI: MockBackendAPI(),
+            calendarSettingsService: MockCalendarSettingsService(),
+            authService: MockAuthService()
+        )
+        await viewModel.load()
+        #expect(viewModel.googleConnection.state == .connected)
+
+        viewModel.confirmDisconnectGoogle()
+        #expect(viewModel.showDisconnectAlert)
+        #expect(viewModel.disconnectMessage?.contains("both Gmail and Google Calendar") == true)
+
+        await viewModel.disconnect()
+
+        #expect(mockIntegrationService.deleteIntegrationCallCount == 1)
+        #expect(mockIntegrationService.lastDeletedProviders == [.gmail, .googleCalendar])
+        #expect(viewModel.integrations.map(\.provider) == [.outlook])
+        #expect(viewModel.googleConnection.state == .notConnected)
+        #expect(viewModel.providersToDisconnect.isEmpty)
     }
 }

@@ -29,7 +29,9 @@ final class SettingsViewModel {
     var isSavingAllDayPreference = false
     var errorMessage: String?
     var showDisconnectAlert = false
-    var providerToDisconnect: IntegrationProvider?
+    /// The rows the pending Disconnect removes: both Google providers for the
+    /// Google card, which share one token, or a single provider.
+    var providersToDisconnect: [IntegrationProvider] = []
     var emailFolders: [IntegrationProvider: [EmailFolderPreference]] = [:]
     var folderLoadErrors: [IntegrationProvider: String] = [:]
     var updatingFolderIds: Set<String> = []
@@ -152,21 +154,36 @@ final class SettingsViewModel {
     }
 
     func confirmDisconnect(provider: IntegrationProvider) {
-        providerToDisconnect = provider
+        providersToDisconnect = [provider]
+        showDisconnectAlert = true
+    }
+
+    func confirmDisconnectGoogle() {
+        providersToDisconnect = GoogleConnection.providers
         showDisconnectAlert = true
     }
 
     func disconnect() async {
-        guard let provider = providerToDisconnect else { return }
+        let providers = providersToDisconnect
+        guard !providers.isEmpty else { return }
 
         do {
-            try await integrationService.deleteIntegration(provider: provider)
-            integrations.removeAll { $0.provider == provider }
+            try await integrationService.deleteIntegrations(providers: providers)
+            integrations.removeAll { providers.contains($0.provider) }
         } catch {
             errorMessage = error.localizedDescription
         }
 
-        providerToDisconnect = nil
+        providersToDisconnect = []
+    }
+
+    /// Disconnect alert copy for the pending target.
+    var disconnectMessage: String? {
+        if providersToDisconnect == GoogleConnection.providers {
+            return String(localized: "This disconnects both Gmail and Google Calendar. You will need to reconnect Google to keep using them.")
+        }
+        guard let provider = providersToDisconnect.first else { return nil }
+        return String(localized: "Are you sure you want to disconnect \(providerDisplayName(provider))? You will need to reconnect to continue using this integration.")
     }
 
     func updateDefaultCalendar() async {
@@ -247,6 +264,10 @@ final class SettingsViewModel {
 
     func integration(for provider: IntegrationProvider) -> Integration? {
         integrations.first { $0.provider == provider }
+    }
+
+    var googleConnection: GoogleConnection {
+        GoogleConnection(integrations: integrations)
     }
 
     func providerDisplayName(_ provider: IntegrationProvider) -> String {

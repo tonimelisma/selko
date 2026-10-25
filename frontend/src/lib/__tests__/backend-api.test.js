@@ -269,20 +269,20 @@ describe('Backend API Client', () => {
 		});
 	});
 
-	describe('getGmailAuthUrl', () => {
+	describe('getGoogleAuthUrl', () => {
 		it('returns auth URL without redirect_uri', async () => {
-			const { getGmailAuthUrl } = await import('../api/backend.js');
-			const url = getGmailAuthUrl();
+			const { getGoogleAuthUrl } = await import('../api/backend.js');
+			const url = getGoogleAuthUrl();
 
-			expect(url).toBe('http://localhost:8000/integrations/gmail/auth');
+			expect(url).toBe('http://localhost:8000/integrations/google/auth');
 		});
 
 		it('returns auth URL with redirect_uri', async () => {
-			const { getGmailAuthUrl } = await import('../api/backend.js');
-			const url = getGmailAuthUrl('http://myapp.com/callback');
+			const { getGoogleAuthUrl } = await import('../api/backend.js');
+			const url = getGoogleAuthUrl('http://myapp.com/callback');
 
 			expect(url).toBe(
-				'http://localhost:8000/integrations/gmail/auth?redirect_uri=http%3A%2F%2Fmyapp.com%2Fcallback'
+				'http://localhost:8000/integrations/google/auth?redirect_uri=http%3A%2F%2Fmyapp.com%2Fcallback'
 			);
 		});
 	});
@@ -294,7 +294,7 @@ describe('Backend API Client', () => {
 		});
 	});
 
-	describe('initiateGmailAuth', () => {
+	describe('initiateGoogleAuth', () => {
 		it('fetches auth_url with bearer token then navigates', async () => {
 			const hrefSetter = vi.fn();
 			vi.stubGlobal('window', {
@@ -316,11 +316,11 @@ describe('Backend API Client', () => {
 					})
 			});
 
-			const { initiateGmailAuth } = await import('../api/backend.js');
-			await initiateGmailAuth();
+			const { initiateGoogleAuth } = await import('../api/backend.js');
+			await initiateGoogleAuth();
 
 			expect(mockFetch).toHaveBeenCalledWith(
-				'http://localhost:8000/integrations/gmail/auth',
+				'http://localhost:8000/integrations/google/auth',
 				expect.objectContaining({
 					headers: expect.objectContaining({
 						Authorization: 'Bearer test-token',

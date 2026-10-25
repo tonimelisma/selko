@@ -516,19 +516,32 @@ This is where users manage their Google account connections after initial setup.
 ```
 Connected Accounts
 ───────────────────────────────────────────────────────────
-Google Account: user@gmail.com                [Disconnect]
-  ✅ Gmail (reading emails)
-  ✅ Google Calendar
-     Syncing events to: [Personal Calendar ▼]
+Google  user@gmail.com            ✅ Connected   [Disconnect]
+Outlook                           ○ Not Connected  [Connect]
 
-── If a scope is missing: ──
+── If the user unticked a product on Google's consent screen: ──
 
-Google Account: user@gmail.com                [Disconnect]
-  ✅ Gmail (reading emails)
-  ❌ Google Calendar (Not connected)          [Connect]
+Google  user@gmail.com  ⚠ Google Calendar not connected
+                              [Disconnect] [Reconnect Google]
+  You didn't allow Google Calendar on Google's screen. Reconnect
+  and keep both boxes ticked.
+
+── If either row is expired / revoked / errored: ──
+
+Google  user@gmail.com  ⚠ Expired  [Disconnect] [Reconnect Google]
 ```
 
-Per-service connection status is shown. If Calendar isn't connected, a "Connect" button triggers a scoped OAuth request for just that permission.
+Gmail and Google Calendar are **one card** on web, iOS and Android. One
+Google consent (`GET /integrations/google/auth`) grants both scopes and the
+callback stores the shared token in both `integrations` rows (`gmail`,
+`google_calendar`), so the rows connect, expire and reconnect together. The
+card derives its state from both rows (`deriveGoogleConnection` on web,
+`GoogleConnection` on iOS/Android): Connected only when both are active;
+"<product> not connected" when one row is missing; "Reconnect Google" when
+either row is inactive. **Disconnect removes both rows** in one request,
+behind a confirmation that says so — leaving one half connected would keep a
+live token behind a card that reads "disconnected". Disconnect deletes the
+rows only; it does not revoke the token at Google.
 
 Photo-library connections are intentionally omitted while ingestion is parked; historical photo-sourced events still use the review rendering paths.
 

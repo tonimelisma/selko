@@ -21,7 +21,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Block
-import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Email
@@ -61,6 +60,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import net.melisma.selko.R
+import net.melisma.selko.data.model.GoogleConnection
 import net.melisma.selko.data.model.IntegrationProvider
 import net.melisma.selko.data.model.IntegrationStatus
 import net.melisma.selko.data.model.SenderRule
@@ -114,7 +114,7 @@ fun SettingsScreen(
                     Spacer(modifier = Modifier.height(8.dp))
                     ConnectedAccountsSection(
                         uiState = uiState,
-                        onDisconnect = { viewModel.disconnectIntegration(it) },
+                        onDisconnect = viewModel::disconnectIntegrations,
                         onAuthorize = viewModel::startOAuth
                     )
 
@@ -200,16 +200,16 @@ private fun SectionHeader(title: String) {
 @Composable
 private fun ConnectedAccountsSection(
     uiState: SettingsUiState,
-    onDisconnect: (IntegrationProvider) -> Unit,
+    onDisconnect: (List<IntegrationProvider>) -> Unit,
     onAuthorize: suspend (IntegrationProvider) -> Result<String>
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var connectingProvider by remember { mutableStateOf<IntegrationProvider?>(null) }
     var connectError by remember { mutableStateOf<String?>(null) }
-    val gmailIntegration = uiState.integrations.find { it.provider == IntegrationProvider.GMAIL }
+    val google = GoogleConnection.from(uiState.integrations)
     val outlookIntegration = uiState.integrations.find { it.provider == IntegrationProvider.OUTLOOK }
-    val calendarIntegration = uiState.integrations.find { it.provider == IntegrationProvider.GOOGLE_CALENDAR }
+    var confirmGoogleDisconnect by remember { mutableStateOf(false) }
 
     fun authorize(provider: IntegrationProvider) {
         if (connectingProvider != null) return
@@ -248,15 +248,13 @@ private fun ConnectedAccountsSection(
                 Spacer(modifier = Modifier.height(12.dp))
             }
 
-            // Gmail
-            IntegrationRow(
-                icon = Icons.Filled.Email,
-                label = stringResource(R.string.settings_gmail),
-                email = gmailIntegration?.providerEmail,
-                isConnected = gmailIntegration?.status == IntegrationStatus.ACTIVE,
+            // Google: Gmail and Google Calendar share one consent and token.
+            // OAuth for either provider starts the combined Google flow.
+            GoogleRow(
+                google = google,
                 isDisconnecting = uiState.isDisconnecting,
                 onConnect = { authorize(IntegrationProvider.GMAIL) },
-                onDisconnect = { onDisconnect(IntegrationProvider.GMAIL) }
+                onDisconnect = { confirmGoogleDisconnect = true }
             )
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
@@ -269,21 +267,133 @@ private fun ConnectedAccountsSection(
                 isConnected = outlookIntegration?.status == IntegrationStatus.ACTIVE,
                 isDisconnecting = uiState.isDisconnecting,
                 onConnect = { authorize(IntegrationProvider.OUTLOOK) },
-                onDisconnect = { onDisconnect(IntegrationProvider.OUTLOOK) }
+                onDisconnect = { onDisconnect(listOf(IntegrationProvider.OUTLOOK)) }
             )
+        }
+    }
 
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+    if (confirmGoogleDisconnect) {
+        AlertDialog(
+            onDismissRequest = { confirmGoogleDisconnect = false },
+            title = { Text(stringResource(R.string.settings_disconnect_google_title)) },
+            text = { Text(stringResource(R.string.settings_disconnect_google_message)) },
+            confirmButton = {
+                SelkoButton(
+                    text = stringResource(R.string.settings_disconnect),
+                    onClick = {
+                        confirmGoogleDisconnect = false
+                        onDisconnect(GoogleConnection.PROVIDERS)
+                    },
+                    role = SelkoActionRole.DestructiveOutline
+                )
+            },
+            dismissButton = {
+                SelkoButton(
+                    stringResource(R.string.settings_delete_rule_cancel),
+                    { confirmGoogleDisconnect = false },
+                    role = SelkoActionRole.Tertiary
+                )
+            }
+        )
+    }
+}
 
-            // Google Calendar
-            IntegrationRow(
-                icon = Icons.Filled.CalendarMonth,
-                label = stringResource(R.string.settings_google_calendar),
-                email = calendarIntegration?.providerEmail,
-                isConnected = calendarIntegration?.status == IntegrationStatus.ACTIVE,
-                isDisconnecting = uiState.isDisconnecting,
-                onConnect = { authorize(IntegrationProvider.GOOGLE_CALENDAR) },
-                onDisconnect = { onDisconnect(IntegrationProvider.GOOGLE_CALENDAR) }
+@Composable
+private fun GoogleRow(
+    google: GoogleConnection,
+    isDisconnecting: Boolean,
+    onConnect: () -> Unit,
+    onDisconnect: () -> Unit
+) {
+    val state = google.state
+    val missingName = (state as? GoogleConnection.State.Partial)?.missing?.let {
+        stringResource(
+            if (it == IntegrationProvider.GMAIL) R.string.settings_gmail else R.string.settings_google_calendar
+        )
+    }
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                Icon(
+                    imageVector = Icons.Filled.Email,
+                    contentDescription = null,
+                    modifier = Modifier.size(24.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text(text = stringResource(R.string.settings_google), style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        text = google.email ?: stringResource(R.string.settings_google_description),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            when (state) {
+                GoogleConnection.State.Connected -> SelkoStatusIndicator(
+                    text = stringResource(R.string.settings_connected),
+                    icon = Icons.Filled.CheckCircle,
+                    color = SelkoTheme.colors.successText
+                )
+                is GoogleConnection.State.Partial -> SelkoStatusIndicator(
+                    text = stringResource(R.string.settings_google_missing, missingName.orEmpty()),
+                    icon = Icons.Filled.Error,
+                    color = SelkoTheme.colors.warningText
+                )
+                is GoogleConnection.State.NeedsReconnect -> SelkoStatusIndicator(
+                    text = stringResource(
+                        when (state.status) {
+                            IntegrationStatus.EXPIRED -> R.string.settings_status_expired
+                            IntegrationStatus.REVOKED -> R.string.settings_status_revoked
+                            else -> R.string.settings_status_error
+                        }
+                    ),
+                    icon = Icons.Filled.Error,
+                    color = SelkoTheme.colors.warningText
+                )
+                GoogleConnection.State.NotConnected -> Unit
+            }
+        }
+
+        if (missingName != null) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = stringResource(R.string.settings_google_partial_hint, missingName),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)
+        ) {
+            if (google.rows.isNotEmpty()) {
+                SelkoButton(
+                    text = stringResource(R.string.settings_disconnect),
+                    onClick = onDisconnect,
+                    role = SelkoActionRole.DestructiveOutline,
+                    enabled = !isDisconnecting,
+                    loading = isDisconnecting
+                )
+            }
+            if (state != GoogleConnection.State.Connected) {
+                SelkoButton(
+                    text = stringResource(
+                        if (state == GoogleConnection.State.NotConnected) R.string.settings_connect
+                        else R.string.settings_reconnect_google
+                    ),
+                    onClick = onConnect,
+                    role = SelkoActionRole.Primary
+                )
+            }
         }
     }
 }

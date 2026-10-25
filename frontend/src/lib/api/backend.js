@@ -489,19 +489,20 @@ export async function undoHistoryEvent(eventId, options = {}) {
 // ============================================================================
 
 /**
- * Get the Gmail OAuth authorization URL
- * Opens in a new window/tab for the user to authorize
+ * Get the Google OAuth authorization URL.
+ * One consent covers both Gmail and Google Calendar; the callback stores the
+ * shared token in both integrations rows.
  * @param {string} [redirectUri] - Optional custom redirect URI
  * @returns {string} The authorization URL
  */
-export function getGmailAuthUrl(redirectUri) {
+export function getGoogleAuthUrl(redirectUri) {
 	const baseUrl = getApiBaseUrl();
 	const params = new URLSearchParams();
 	if (redirectUri) {
 		params.set('redirect_uri', redirectUri);
 	}
 	const queryString = params.toString();
-	return `${baseUrl}/integrations/gmail/auth${queryString ? `?${queryString}` : ''}`;
+	return `${baseUrl}/integrations/google/auth${queryString ? `?${queryString}` : ''}`;
 }
 
 /**
@@ -544,13 +545,13 @@ async function startOAuthRedirect(endpointUrl) {
 }
 
 /**
- * Initiate Gmail OAuth flow
+ * Initiate the combined Google (Gmail + Google Calendar) OAuth flow
  * Fetches Google consent URL with auth, then opens it in the current window
  * @param {string} [redirectUri] - Optional custom redirect URI
  * @returns {Promise<void>}
  */
-export async function initiateGmailAuth(redirectUri) {
-	await startOAuthRedirect(getGmailAuthUrl(redirectUri));
+export async function initiateGoogleAuth(redirectUri) {
+	await startOAuthRedirect(getGoogleAuthUrl(redirectUri));
 }
 
 /**
@@ -575,36 +576,6 @@ export function getOutlookAuthUrl(redirectUri) {
  */
 export async function initiateOutlookAuth(redirectUri) {
 	await startOAuthRedirect(getOutlookAuthUrl(redirectUri));
-}
-
-// ============================================================================
-// Calendar OAuth Operations
-// ============================================================================
-
-/**
- * Get the Google Calendar OAuth authorization URL
- * Opens in a new window/tab for the user to authorize
- * @param {string} [redirectUri] - Optional custom redirect URI
- * @returns {string} The authorization URL
- */
-export function getCalendarAuthUrl(redirectUri) {
-	const baseUrl = getApiBaseUrl();
-	const params = new URLSearchParams();
-	if (redirectUri) {
-		params.set('redirect_uri', redirectUri);
-	}
-	const queryString = params.toString();
-	return `${baseUrl}/integrations/calendar/auth${queryString ? `?${queryString}` : ''}`;
-}
-
-/**
- * Initiate Google Calendar OAuth flow
- * Fetches Google consent URL with auth, then opens it in the current window
- * @param {string} [redirectUri] - Optional custom redirect URI
- * @returns {Promise<void>}
- */
-export async function initiateCalendarAuth(redirectUri) {
-	await startOAuthRedirect(getCalendarAuthUrl(redirectUri));
 }
 
 // ============================================================================

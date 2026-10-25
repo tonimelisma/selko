@@ -10,8 +10,7 @@
 	import { fetchAttachments } from '$lib/services/attachments.js';
 	import { fetchIntegrations } from '$lib/services/integrations.js';
 	import {
-		initiateCalendarAuth,
-		initiateGmailAuth,
+		initiateGoogleAuth,
 		initiateOutlookAuth
 	} from '$lib/api/backend.js';
 import StatusBadge from '$lib/components/StatusBadge.svelte';
@@ -211,9 +210,9 @@ import StatusBadge from '$lib/components/StatusBadge.svelte';
 
 	/** @param {string} provider */
 	async function handleAuthorize(provider) {
-		if (provider === 'gmail') await initiateGmailAuth();
+		// Gmail and Google Calendar share one Google consent.
 		if (provider === 'outlook') await initiateOutlookAuth();
-		if (provider === 'google_calendar') await initiateCalendarAuth();
+		else await initiateGoogleAuth();
 	}
 
 	async function handleReject() {

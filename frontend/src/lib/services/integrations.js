@@ -90,6 +90,23 @@ export async function disconnectIntegration(integrationId) {
 }
 
 /**
+ * Disconnect (delete) several integrations in one request.
+ * Gmail and Google Calendar share one Google token, so the Google card
+ * removes both rows together rather than leaving half a connection behind.
+ * @param {string[]} integrationIds - The integration UUIDs
+ * @returns {Promise<{data: boolean | null, error: import('$lib/errors.js').SupabaseError | null}>}
+ */
+export async function disconnectIntegrations(integrationIds) {
+	try {
+		const { error } = await supabase.from('integrations').delete().in('id', integrationIds);
+		if (error) throw error;
+		return { data: true, error: null };
+	} catch (error) {
+		return { data: null, error: parseSupabaseError(error) };
+	}
+}
+
+/**
  * Check if a provider is connected and active
  * @param {IntegrationProvider} provider - The provider name
  * @returns {Promise<boolean>}

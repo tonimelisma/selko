@@ -160,6 +160,16 @@
     <string name="settings_gmail">Gmail</string>
     <string name="settings_outlook">Outlook</string>
     <string name="settings_google_calendar">Google Calendar</string>
+    <string name="settings_google">Google</string>
+    <string name="settings_google_description">Gmail and Google Calendar</string>
+    <string name="settings_google_missing">%1$s not connected</string>
+    <string name="settings_google_partial_hint">You didn’t allow %1$s on Google’s screen. Reconnect and keep both boxes ticked.</string>
+    <string name="settings_reconnect_google">Reconnect Google</string>
+    <string name="settings_status_expired">Expired</string>
+    <string name="settings_status_revoked">Revoked</string>
+    <string name="settings_status_error">Error</string>
+    <string name="settings_disconnect_google_title">Disconnect Google</string>
+    <string name="settings_disconnect_google_message">This disconnects both Gmail and Google Calendar. You will need to reconnect Google to keep using them.</string>
     <string name="event_source_google_photos">Google Photos</string>
     <string name="settings_connected">Connected</string>
     <string name="settings_disconnect">Disconnect</string>

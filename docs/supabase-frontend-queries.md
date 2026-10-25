@@ -521,6 +521,7 @@ GET /integrations/google/auth?redirect_uri={uri}
 GET /integrations/gmail/auth?redirect_uri={uri}
 GET /integrations/calendar/auth?redirect_uri={uri}
   -> Same combined consent; kept for shipped mobile builds that call them.
+     Current web, iOS and Android clients call /integrations/google/auth.
 
 GET /integrations/google/callback?code={code}&state={state}
   -> Unified callback for all Google OAuth flows (public endpoint)

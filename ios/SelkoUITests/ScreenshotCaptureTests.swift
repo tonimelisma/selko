@@ -410,7 +410,7 @@ final class ScreenshotCaptureTests: XCTestCase {
         // instantiated. Folded in from the deleted SettingsUITests, which paid
         // a full sign-in to reach this same screen.
         XCTAssertTrue(
-            app.staticTexts["integrationName_gmail"].exists
+            app.staticTexts["integrationName_google"].exists
                 || app.staticTexts["integrationName_outlook"].exists,
             "Connected Accounts section rendered no provider rows"
         )

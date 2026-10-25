@@ -54,10 +54,13 @@ class BackendApiClient(
     }
 
     companion object {
+        /**
+         * Gmail and Google Calendar share one Google consent, so both start the
+         * combined flow that grants both scopes and connects both rows.
+         */
         fun oauthPath(provider: IntegrationProvider): String? = when (provider) {
-            IntegrationProvider.GMAIL -> "/integrations/gmail/auth"
+            IntegrationProvider.GMAIL, IntegrationProvider.GOOGLE_CALENDAR -> "/integrations/google/auth"
             IntegrationProvider.OUTLOOK -> "/integrations/outlook/auth"
-            IntegrationProvider.GOOGLE_CALENDAR -> "/integrations/calendar/auth"
             IntegrationProvider.GOOGLE_PHOTOS -> null
         }
 

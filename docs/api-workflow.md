@@ -257,8 +257,9 @@ GET /integrations/google/auth
   The callback saves the same token to both integrations rows (only those
   whose scopes were granted), so they expire and reconnect together.
 
-GET /integrations/gmail/auth
-GET /integrations/calendar/auth
+GET /integrations/google/auth     # one consent: Gmail + Google Calendar (clients use this)
+GET /integrations/gmail/auth      # same combined consent, kept for shipped mobile builds
+GET /integrations/calendar/auth   # same combined consent, kept for shipped mobile builds
   Requires: Bearer token
   Returns: The same combined consent (kept for shipped mobile builds)
 
