@@ -1,0 +1,60 @@
+{
+  "description": "The same 8am school parade, announced twice. The new event arrives in local time and the stored one in UTC -- the shapes production actually sends. Anonymized from production 2026-10-20 (trace 063e0b9d), where the model reasoned that 15:00 UTC was 'a different time slot' from 08:00 local and created a duplicate. Must match.",
+  "difficulty": "medium",
+  "tags": ["dedup", "match", "school", "timezone", "production-derived"],
+  "input": {
+    "user_timezone": "America/Los_Angeles",
+    "new_event": {
+      "title": "LE Morning Halloween Parade",
+      "start_datetime": "2026-10-30T08:00:00-07:00",
+      "end_datetime": "2026-10-30T09:00:00-07:00",
+      "location": null,
+      "description": "Lincoln Elementary Morning Halloween Parade on October 30th."
+    },
+    "candidate_events": [
+      {
+        "id": "event-001",
+        "title": "Halloween Parade",
+        "start_datetime": "2026-10-30T15:00:00+00:00",
+        "end_datetime": "2026-10-30T16:00:00+00:00",
+        "location": null,
+        "description": "Halloween Parade event."
+      },
+      {
+        "id": "event-002",
+        "title": "Medicare Advantage Info Session at Denny's",
+        "start_datetime": "2026-10-30T17:00:00+00:00",
+        "end_datetime": "2026-10-30T18:00:00+00:00",
+        "location": "1313 Willow Pass Rd., Concord, CA",
+        "description": "Health plan informational event."
+      },
+      {
+        "id": "event-003",
+        "title": "Pumpkin Patch / Halloween Party",
+        "start_datetime": "2026-10-30T21:00:00+00:00",
+        "end_datetime": "2026-10-30T22:00:00+00:00",
+        "location": null,
+        "description": "Preschool pumpkin patch. 2:00pm pick up & join party."
+      },
+      {
+        "id": "event-004",
+        "title": "Trick or Treat Street",
+        "start_datetime": "2026-10-30T23:00:00+00:00",
+        "end_datetime": "2026-10-31T01:00:00+00:00",
+        "location": "Downtown Lafayette",
+        "description": "Trick or Treat Street event downtown."
+      },
+      {
+        "id": "gcal:evening-chores",
+        "title": "Evening tidy-up",
+        "start_datetime": "2026-10-31T02:00:00+00:00",
+        "end_datetime": "2026-10-31T02:15:00+00:00",
+        "location": "",
+        "description": ""
+      }
+    ]
+  },
+  "expected": {
+    "matched_event_id": "event-001"
+  }
+}

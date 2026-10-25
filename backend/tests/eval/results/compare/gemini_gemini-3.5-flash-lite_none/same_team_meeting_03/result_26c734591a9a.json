@@ -1,0 +1,135 @@
+{
+  "fixture_name": "same_team_meeting_03",
+  "fixture_hash": "f7cb1b0aa5bd9c33a77f5e870ffdb189dfc6d447e55b84563921f391a2a090e3",
+  "code_hash": "3b61b944aad7",
+  "prompt_hash": "26c734591a9a",
+  "operation": "compare",
+  "provider": "gemini",
+  "model": "gemini-3.5-flash-lite",
+  "thinking": "none",
+  "run_at": "2026-10-25T03:42:04.938456+00:00",
+  "duration_ms": 1236,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-10-25T03:42:03.650503+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-10-25T03:42:03.650512+00:00",
+      "duration_ms": 21
+    },
+    "api_call": {
+      "started_at": "2026-10-25T03:42:03.672353+00:00",
+      "duration_ms": 1215
+    },
+    "scoring": {
+      "started_at": "2026-10-25T03:42:04.888002+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Same team meeting where one has location and other doesn't - should match",
+  "difficulty": "medium",
+  "tags": [
+    "dedup",
+    "match",
+    "work"
+  ],
+  "expected": {
+    "matched_event_id": "event-002"
+  },
+  "actual": {
+    "matched_event_id": "event-002"
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": "event-002",
+    "actual": "event-002"
+  },
+  "tokens": {
+    "prompt_tokens": 437,
+    "completion_tokens": 67,
+    "total_tokens": 504
+  },
+  "cost": 0.00029860000000000005,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1190,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Q2 Planning Session\n- Start: 2026-03-30T13:00:00\n- End: 2026-03-30T15:00:00\n- Location: Conference Room B\n- Description: Quarterly planning for engineering team. Bring your roadmap ideas.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Coffee Chat with Sarah\n   - Start: 2026-03-30T10:00:00\n   - End: 2026-03-30T10:30:00\n   - Location: Starbucks\n   - Description: Catch up\n\n2. Event ID: event-002\n   - Title: Engineering Q2 Planning\n   - Start: 2026-03-30T13:00:00\n   - End: 2026-03-30T15:00:00\n   - Location: \n   - Description: Planning session for second quarter. All team members required.\n\n3. Event ID: event-003\n   - Title: Yoga Class\n   - Start: 2026-03-30T18:00:00\n   - End: 2026-03-30T19:00:00\n   - Location: Zen Studio\n   - Description: Evening yoga\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "type": "string",
+          "nullable": true
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "raw_response_text": "{\n  \"matched_event_id\": \"event-002\",\n  \"reasoning\": \"The new event shares the exact same start and end times, and has a very similar title and subject matter about Q2 planning for the engineering team, making it a duplicate of event-002.\"\n}",
+    "finish_reason": "FinishReason.STOP",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "3b0093a67d06475e856190fa00632e3b",
+    "route_role": "primary"
+  },
+  "inference_key": "b7400fa21763576fde0d20f4136d6ab107f86095927ccc78ea58f192059a73ef",
+  "score_key": "c42ec761017ab7c3c730116e0d862fc93754f2e75c4acc2d6265626d6ec9c4f5",
+  "identity": {
+    "identity_version": 2,
+    "operation": "compare",
+    "provider": "gemini",
+    "model": "gemini-3.5-flash-lite",
+    "thinking": {
+      "mode": "level",
+      "value": "none"
+    },
+    "request_settings": {
+      "api_surface": "gemini/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "gemini-3.5-flash-lite",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "none"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "26c734591a9a2f602b175c5e7f03455199cca7eb847d43a054d339700ba5d2bb",
+    "adapter_contract_hash": "7290a95d479db2e3c5cbf8f212866455a4122a408c9542cc385b4b71b98742d8",
+    "fixture_input_hash": "f7cb1b0aa5bd9c33a77f5e870ffdb189dfc6d447e55b84563921f391a2a090e3"
+  }
+}

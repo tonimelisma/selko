@@ -1,0 +1,136 @@
+{
+  "fixture_name": "same_series_different_level_22",
+  "fixture_hash": "bbd147d5369bc3a4afebe40f88606da39b90162d1fb0efd7de17c962eaf10c1d",
+  "code_hash": "3b61b944aad7",
+  "prompt_hash": "26c734591a9a",
+  "operation": "compare",
+  "provider": "gemini",
+  "model": "gemini-3.5-flash-lite",
+  "thinking": "none",
+  "run_at": "2026-10-25T03:42:04.938542+00:00",
+  "duration_ms": 1247,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-10-25T03:42:03.639518+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-10-25T03:42:03.639533+00:00",
+      "duration_ms": 25
+    },
+    "api_call": {
+      "started_at": "2026-10-25T03:42:03.664820+00:00",
+      "duration_ms": 1222
+    },
+    "scoring": {
+      "started_at": "2026-10-25T03:42:04.887511+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Class series where several levels run on the same day. Similar titles, genuinely different classes -- must NOT merge. Anonymized from production 2026-08-27 (language courses at Intermediate vs Advanced).",
+  "difficulty": "medium",
+  "tags": [
+    "dedup",
+    "no-match",
+    "classes",
+    "production-derived"
+  ],
+  "expected": {
+    "matched_event_id": null
+  },
+  "actual": {
+    "matched_event_id": null
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": null,
+    "actual": null
+  },
+  "tokens": {
+    "prompt_tokens": 360,
+    "completion_tokens": 67,
+    "total_tokens": 427
+  },
+  "cost": 0.0002755,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1013,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Swedish: Advanced\n- Start: 2026-08-27T18:00:00\n- End: 2026-08-27T19:30:00\n- Location: Community Center room 3\n- Description: Advanced conversation class.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Swedish: Beginner 1A\n   - Start: 2026-08-27T16:00:00\n   - End: 2026-08-27T17:30:00\n   - Location: Community Center room 3\n   - Description: Beginner class, first term.\n\n2. Event ID: event-002\n   - Title: Swedish: Intermediate 1A\n   - Start: 2026-08-27T17:00:00\n   - End: 2026-08-27T18:30:00\n   - Location: Community Center room 2\n   - Description: Intermediate class, first term.\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "type": "string",
+          "nullable": true
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "raw_response_text": "{\n  \"matched_event_id\": null,\n  \"reasoning\": \"The new event is an Advanced Swedish conversation class from 18:00 to 19:30, whereas the existing events are for Beginner and Intermediate levels at different times and locations. There is no matching event.\"\n}",
+    "finish_reason": "FinishReason.STOP",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "5991710b5cd845149419b2694c9a9233",
+    "route_role": "primary"
+  },
+  "inference_key": "8cfd83b0a7469834acb22bf10665418680baac9407f98a02a4783b0ef9d890e4",
+  "score_key": "de219f5899dd675e307c7a3a0e39ea3b99a92570f2f0157f9bcc4e5bf9f9465a",
+  "identity": {
+    "identity_version": 2,
+    "operation": "compare",
+    "provider": "gemini",
+    "model": "gemini-3.5-flash-lite",
+    "thinking": {
+      "mode": "level",
+      "value": "none"
+    },
+    "request_settings": {
+      "api_surface": "gemini/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "gemini-3.5-flash-lite",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "none"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "26c734591a9a2f602b175c5e7f03455199cca7eb847d43a054d339700ba5d2bb",
+    "adapter_contract_hash": "7290a95d479db2e3c5cbf8f212866455a4122a408c9542cc385b4b71b98742d8",
+    "fixture_input_hash": "bbd147d5369bc3a4afebe40f88606da39b90162d1fb0efd7de17c962eaf10c1d"
+  }
+}

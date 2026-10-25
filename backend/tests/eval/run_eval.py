@@ -1448,7 +1448,10 @@ def _run_compare_eval_locked(
     # Phase 3: API call
     api_call_started_at = datetime.now(timezone.utc)
     try:
-        matched_id = compare_events(gateway, new_event, candidate_events)
+        matched_id = compare_events(
+            gateway, new_event, candidate_events,
+            user_timezone=input_data.get("user_timezone"),
+        )
         error = None
     except Exception as e:
         matched_id = None

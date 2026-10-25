@@ -474,6 +474,8 @@ def compare_events(
     gateway: LLMGateway,
     new_event: dict[str, Any],
     candidate_events: list[dict[str, Any]],
+    *,
+    user_timezone: Optional[str] = None,
 ) -> Optional[str]:
     """Ask LLM if new_event matches any candidate events.
 
@@ -485,6 +487,10 @@ def compare_events(
         gateway: LLMGateway instance (with user context set).
         new_event: Dict with event details (title, start_datetime, location, etc).
         candidate_events: List of existing event dicts from DB with same date.
+        user_timezone: IANA zone every time is rendered in. Stored events
+            arrive as UTC (``15:00+00:00``) while the extracted event arrives
+            local (``08:00-07:00``); left mixed, the model compared the clock
+            faces and called the same 8am parade "a different time slot".
 
     Returns:
         Event ID of matched event, or None if no match found.
@@ -495,12 +501,26 @@ def compare_events(
     if not candidate_events:
         return None
 
-    prompt = f"""You are comparing calendar events to detect duplicates.
+    from selko.services.civil_time import to_civil_iso
 
+    def _civil(value: Any) -> Any:
+        if not user_timezone or value is None or value == "":
+            return value
+        civil = to_civil_iso(value, user_timezone)
+        return civil if civil is not None else value
+
+    prompt = "You are comparing calendar events to detect duplicates.\n"
+    if user_timezone:
+        prompt += f"""
+All times below are local wall-clock times in {user_timezone} (no timezone offsets).
+Compare civil clock times only — do not convert timezones.
+"""
+
+    prompt += f"""
 **New Event:**
 - Title: {new_event.get('title')}
-- Start: {new_event.get('start_datetime')}
-- End: {new_event.get('end_datetime')}
+- Start: {_civil(new_event.get('start_datetime'))}
+- End: {_civil(new_event.get('end_datetime'))}
 - Location: {new_event.get('location', 'Not specified')}
 - Description: {new_event.get('description', '')}
 
@@ -511,8 +531,8 @@ def compare_events(
         prompt += f"""
 {idx + 1}. Event ID: {candidate.get('id')}
    - Title: {candidate.get('title')}
-   - Start: {candidate.get('start_datetime')}
-   - End: {candidate.get('end_datetime')}
+   - Start: {_civil(candidate.get('start_datetime'))}
+   - End: {_civil(candidate.get('end_datetime'))}
    - Location: {candidate.get('location', 'Not specified')}
    - Description: {candidate.get('description', '')}
 """

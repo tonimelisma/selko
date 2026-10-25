@@ -1,0 +1,135 @@
+{
+  "fixture_name": "same_location_different_events_11",
+  "operation": "compare",
+  "provider": "gemini",
+  "model": "gemini-3.5-flash-lite",
+  "thinking": {
+    "mode": "level",
+    "value": "none"
+  },
+  "run_at": "2026-10-25T03:42:04.974951+00:00",
+  "duration_ms": 1343,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-10-25T03:42:03.577225+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-10-25T03:42:03.577240+00:00",
+      "duration_ms": 40
+    },
+    "api_call": {
+      "started_at": "2026-10-25T03:42:03.617397+00:00",
+      "duration_ms": 1303
+    },
+    "scoring": {
+      "started_at": "2026-10-25T03:42:04.921048+00:00",
+      "duration_ms": 0
+    }
+  },
+  "tokens": {
+    "prompt_tokens": 436,
+    "completion_tokens": 82,
+    "total_tokens": 518
+  },
+  "cost": 0.0003358,
+  "actual": {
+    "matched_event_id": null
+  },
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1230,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Yoga Workshop - Advanced Flow\n- Start: 2026-05-18T10:00:00\n- End: 2026-05-18T12:00:00\n- Location: Zen Wellness Studio\n- Description: Two-hour intensive workshop on advanced vinyasa sequences\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Meditation Class\n   - Start: 2026-05-18T08:00:00\n   - End: 2026-05-18T09:00:00\n   - Location: Zen Wellness Studio\n   - Description: Morning meditation and breathing exercises\n\n2. Event ID: event-002\n   - Title: Pilates Session\n   - Start: 2026-05-18T14:00:00\n   - End: 2026-05-18T15:00:00\n   - Location: Zen Wellness Studio\n   - Description: Core strengthening pilates class\n\n3. Event ID: event-003\n   - Title: Coffee with Maria\n   - Start: 2026-05-18T16:00:00\n   - End: 2026-05-18T17:00:00\n   - Location: Starbucks Downtown\n   - Description: Catch up meeting\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "type": "string",
+          "nullable": true
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "raw_response_text": "{\n  \"matched_event_id\": null,\n  \"reasoning\": \"The new event is a Yoga Workshop from 10:00 to 12:00, whereas the existing events on that day are a Meditation Class, a Pilates Session, and Coffee with Maria. None of the existing events match the title, description, or time of the new event.\"\n}",
+    "finish_reason": "FinishReason.STOP",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "9d59ad0266eb421684b65003ae655140",
+    "route_role": "primary"
+  },
+  "category": null,
+  "description": "Same location but different events - should NOT match",
+  "difficulty": "medium",
+  "tags": [
+    "dedup",
+    "no-match",
+    "different-event"
+  ],
+  "input_summary": {},
+  "fixture_input_hash": "bfe0fb9ecd8ac54495de3fa89b6c3de3847095bd76140ab18f08e794eb09520d",
+  "code_provenance": {
+    "git_commit": "74ff08ec6f33944bbef239fd953d3f1a44935d0b",
+    "event_processing_sha256": "3b61b944aad7f497f768d02cc51e726b757bbf1316635f253a61092cb38b1aad"
+  },
+  "raw_response": null,
+  "identity": {
+    "identity_version": 2,
+    "operation": "compare",
+    "provider": "gemini",
+    "model": "gemini-3.5-flash-lite",
+    "thinking": {
+      "mode": "level",
+      "value": "none"
+    },
+    "request_settings": {
+      "api_surface": "gemini/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "gemini-3.5-flash-lite",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "none"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "26c734591a9a2f602b175c5e7f03455199cca7eb847d43a054d339700ba5d2bb",
+    "adapter_contract_hash": "7290a95d479db2e3c5cbf8f212866455a4122a408c9542cc385b4b71b98742d8",
+    "fixture_input_hash": "bfe0fb9ecd8ac54495de3fa89b6c3de3847095bd76140ab18f08e794eb09520d"
+  },
+  "inference_key": "e69b184d3b96611e7332fe68e05b7740e4b4f839ddf26828b9530c8359bed63f",
+  "stored_at": "2026-10-25T03:42:05.018356+00:00"
+}
