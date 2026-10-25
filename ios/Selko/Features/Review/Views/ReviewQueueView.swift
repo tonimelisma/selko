@@ -28,10 +28,7 @@ struct ReviewQueueView: View {
                             .tint(Color.accentColor)
                             .accessibilityIdentifier("reviewQueueLoading")
                     } else if viewModel.isFirstRun {
-                        IntegrationSetupView(
-                            gmailConnected: false,
-                            calendarConnected: false
-                        )
+                        IntegrationSetupView()
                         .accessibilityIdentifier("integrationSetupView")
                     } else if viewModel.newSenderGroups.isEmpty && viewModel.changeSenderGroups.isEmpty {
                         ScrollView {

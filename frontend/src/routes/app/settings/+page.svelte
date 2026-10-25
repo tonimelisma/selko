@@ -4,13 +4,13 @@
 	import { _ } from 'svelte-i18n';
 	import { user } from '$lib/stores.js';
 	import { supabase } from '$lib/supabase.js';
-	import { fetchIntegrations, disconnectIntegration } from '$lib/services/integrations.js';
+	import { fetchIntegrations, disconnectIntegrations } from '$lib/services/integrations.js';
+	import { GOOGLE_PROVIDERS } from '$lib/google-connection.js';
 	import { getCalendarSettings, updateCalendarSettings } from '$lib/services/calendar-settings.js';
 	import {
 		listCalendars,
-		initiateGmailAuth,
-		initiateOutlookAuth,
-		initiateCalendarAuth
+		initiateGoogleAuth,
+		initiateOutlookAuth
 	} from '$lib/api/backend.js';
 	import { fetchEmailFolders, updateEmailFolder } from '$lib/services/email-folders.js';
 	import IntegrationStatus from '$lib/components/IntegrationStatus.svelte';
@@ -50,8 +50,11 @@
 
 	// Disconnect confirm modal
 	let showDisconnectModal = $state(false);
-	let disconnectTargetId = $state('');
+	/** @type {string[]} */
+	let disconnectTargetIds = $state([]);
 	let disconnectTargetName = $state('');
+	/** @type {'google' | 'outlook' | null} */
+	let disconnectTargetKey = $state(null);
 
 	/** @param {string | null | undefined} value */
 	function toTimeInputValue(value) {
@@ -252,45 +255,48 @@
 		isSavingAllDay = false;
 	}
 
-	/** @param {string} integrationId */
-	function handleDisconnectRequest(integrationId) {
-		const integration = integrationsList.find((i) => i.id === integrationId);
-		disconnectTargetId = integrationId;
-		/** @type {Record<string, string>} */
-		const providerNames = {
-			gmail: $_('integrations.gmail'),
-			outlook: $_('integrations.outlook'),
-			google_calendar: $_('integrations.googleCalendar')
-		};
-		disconnectTargetName = providerNames[integration?.provider] || integration?.provider || '';
+	/**
+	 * @param {'google' | 'outlook'} key - The connection card; 'google' covers
+	 *   both the Gmail and Google Calendar rows, which share one token.
+	 */
+	function handleDisconnectRequest(key) {
+		disconnectTargetKey = key;
+		const providers = key === 'google' ? GOOGLE_PROVIDERS : ['outlook'];
+		disconnectTargetIds = integrationsList
+			.filter((i) => /** @type {readonly string[]} */ (providers).includes(i.provider))
+			.map((i) => i.id);
+		disconnectTargetName =
+			key === 'google' ? $_('integrations.google') : $_('integrations.outlook');
 		showDisconnectModal = true;
 	}
 
 	async function handleDisconnectConfirm() {
 		showDisconnectModal = false;
 		integrationError = '';
-		const { error: disconnectError } = await disconnectIntegration(disconnectTargetId);
+		const { error: disconnectError } = await disconnectIntegrations(disconnectTargetIds);
 		if (disconnectError) {
 			integrationError = disconnectError.message;
 			return;
 		}
-		integrationsList = integrationsList.filter((i) => i.id !== disconnectTargetId);
-		disconnectTargetId = '';
+		integrationsList = integrationsList.filter((i) => !disconnectTargetIds.includes(i.id));
+		disconnectTargetIds = [];
 	}
 
 	function handleDisconnectCancel() {
 		showDisconnectModal = false;
-		disconnectTargetId = '';
+		disconnectTargetIds = [];
 	}
 
-	/** @param {string} provider */
+	/**
+	 * Gmail and Google Calendar share one Google consent, so any Google
+	 * provider (or the combined 'google' card) starts the same flow.
+	 * @param {string} provider
+	 */
 	async function handleAuthorize(provider) {
-		if (provider === 'gmail') {
-			await initiateGmailAuth();
-		} else if (provider === 'outlook') {
+		if (provider === 'outlook') {
 			await initiateOutlookAuth();
-		} else if (provider === 'google_calendar') {
-			await initiateCalendarAuth();
+		} else {
+			await initiateGoogleAuth();
 		}
 	}
 
@@ -495,7 +501,9 @@
 <ConfirmModal
 	open={showDisconnectModal}
 	title={$_('settings.disconnectTitle', { values: { name: disconnectTargetName } })}
-	description={$_('settings.disconnectDescription', { values: { name: disconnectTargetName } })}
+	description={disconnectTargetKey === 'google'
+		? $_('settings.disconnectGoogleDescription')
+		: $_('settings.disconnectDescription', { values: { name: disconnectTargetName } })}
 	confirmText={$_('settings.disconnect')}
 	confirmClass="btn-error"
 	onconfirm={handleDisconnectConfirm}

@@ -44,16 +44,14 @@ vi.mock('$lib/services/sender-rules.js', () => ({
 }));
 
 const mockSyncEventToCalendar = vi.fn();
-const mockInitiateGmailAuth = vi.fn();
+const mockInitiateGoogleAuth = vi.fn();
 const mockInitiateOutlookAuth = vi.fn();
-const mockInitiateCalendarAuth = vi.fn();
 const mockUndoHistoryEvent = vi.fn();
 
 vi.mock('$lib/api/backend.js', () => ({
 	syncEventToCalendar: (...args) => mockSyncEventToCalendar(...args),
-	initiateGmailAuth: (...args) => mockInitiateGmailAuth(...args),
+	initiateGoogleAuth: (...args) => mockInitiateGoogleAuth(...args),
 	initiateOutlookAuth: (...args) => mockInitiateOutlookAuth(...args),
-	initiateCalendarAuth: (...args) => mockInitiateCalendarAuth(...args),
 	applyEventChange: vi.fn().mockResolvedValue({ data: { status: 'approved' }, error: null }),
 	rejectEventChange: vi.fn().mockResolvedValue({ data: { status: 'deleted' }, error: null }),
 	undoHistoryEvent: (...args) => mockUndoHistoryEvent(...args)

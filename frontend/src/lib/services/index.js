@@ -40,7 +40,8 @@ export {
 	getIntegration,
 	getIntegrationByProvider,
 	isProviderConnected,
-	disconnectIntegration
+	disconnectIntegration,
+	disconnectIntegrations
 } from './integrations.js';
 
 // Attachment operations

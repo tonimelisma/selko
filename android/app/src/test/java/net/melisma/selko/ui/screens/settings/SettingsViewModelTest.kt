@@ -14,6 +14,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import net.melisma.selko.R
 import net.melisma.selko.data.api.BackendApiClient
+import net.melisma.selko.data.model.GoogleConnection
 import net.melisma.selko.data.model.Integration
 import net.melisma.selko.data.model.IntegrationProvider
 import net.melisma.selko.data.model.IntegrationStatus
@@ -440,5 +441,29 @@ class SettingsViewModelTest {
                 allDayCustomEnd = "14:30"
             )
         }
+    }
+
+    @Test
+    fun `disconnecting Google removes both Google rows and keeps Outlook`() = runTest {
+        val calendar = gmailIntegration.copy(id = "integration-2", provider = IntegrationProvider.GOOGLE_CALENDAR)
+        val outlook = gmailIntegration.copy(id = "integration-3", provider = IntegrationProvider.OUTLOOK)
+        coEvery { integrationRepository.fetchIntegrations() } returns
+            IntegrationResult.Success(listOf(gmailIntegration, calendar, outlook))
+        coEvery { integrationRepository.deleteIntegrations(any()) } returns IntegrationResult.Success(Unit)
+        coEvery { senderRuleRepository.fetchRules() } returns RepositoryResult.Success(emptyList())
+
+        viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.disconnectIntegrations(GoogleConnection.PROVIDERS)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        coVerify(exactly = 1) {
+            integrationRepository.deleteIntegrations(
+                listOf(IntegrationProvider.GMAIL, IntegrationProvider.GOOGLE_CALENDAR)
+            )
+        }
+        assertEquals(listOf(outlook), viewModel.uiState.value.integrations)
+        assertFalse(viewModel.uiState.value.isDisconnecting)
     }
 }
