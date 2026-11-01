@@ -32,7 +32,13 @@ This is the whole loop. Do not invent a different one per task.
 4. **Report the table plus a recommendation.** Never ask "should I deploy?"
    with no evidence attached.
 5. **After deploying, fill in `docs/deploy-log/<date>-<sha>.md`.** T+0 and T+15m
-   before you report done; T+24h next day.
+   before you report done; T+24h next day. **Enforced:** the Stop hook
+   `.claude/hooks/require-deploy-observation.sh` refuses to end a turn while a
+   log dated today or yesterday has a blank T+0/T+15m row or is uncommitted.
+   Wait for T+15m *inside* the turn (Monitor with an until-loop). Never end the
+   turn on a background sleep and say "waiting": nothing comes back to fill the
+   row, which is how three logs shipped with it blank. A window that passed
+   unobserved is written as `missed`, never left empty.
 
 ### Checking that production is actually healthy
 
