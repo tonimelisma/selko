@@ -32,6 +32,7 @@ import net.melisma.selko.data.repository.RepositoryResult
 import net.melisma.selko.data.repository.SenderRuleRepository
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import io.mockk.coVerify
 import org.junit.Before
@@ -72,7 +73,7 @@ class ReviewQueueViewModelTest {
             status = IntegrationStatus.EXPIRED
         )
 
-        assertEquals(emptyList<RecoveryAction>(), recoveryPlanFor(integrations).actions)
+        assertNull(recoveryPlanFor(integrations))
     }
 
     private val testEmail = Email(

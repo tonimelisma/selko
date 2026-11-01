@@ -73,41 +73,65 @@ struct CalendarCapabilityTests {
         #expect(outlookInfo.id == "outlook:AAMk")
     }
 
-    // MARK: - Reconnect banner: one action per sign-in
+    // MARK: - Connection banner: name the account that broke
 
     @Test
-    func bothGoogleRowsExpiredOfferOneGoogleAction() {
-        // Regression: one button per row offered "Reconnect Gmail" and
-        // "Reconnect Google Calendar" for the same Google sign-in.
+    func googleSignedOutBesideMailOnlyOutlookNamesGoogleOnly() {
+        // Regression: production showed "Reconnect your calendar" with equal
+        // Outlook and Google buttons, although Gmail was down too and Outlook
+        // had never been the user's calendar.
         let plan = [
             Self.integration(.gmail, status: .expired),
             Self.integration(.googleCalendar, status: .expired),
+            Self.integration(.outlook, scopes: ["Mail.Read"]),
         ].recoveryPlan
 
-        let google = plan.actions.filter { $0.signIn == .google }
-        #expect(google == [RecoveryAction(signIn: .google, isReconnect: true)])
-        #expect(google.first?.label == "Reconnect Google")
-        #expect(google.first?.authProvider == .gmail)
-        #expect(plan.title == .email)
+        #expect(plan?.kind == .signedOut(.google, RecoveryPlan.Lost(mail: true, calendar: true)))
+        #expect(plan?.title == "Reconnect your Google account")
+        #expect(plan?.message.contains("can’t read new Gmail or add events to Google Calendar") == true)
+        #expect(plan?.actions == [RecoveryAction(signIn: .google, verb: .reconnect)])
+        #expect(plan?.actions.first?.label == "Reconnect Google")
+        #expect(plan?.actions.first?.authProvider == .gmail)
     }
 
     @Test
-    func lapsedGoogleCalendarAloneOffersOnlyGoogle() {
+    func lapsedGoogleCalendarAloneSaysCalendar() {
         let plan = [
             Self.integration(.gmail),
             Self.integration(.googleCalendar, status: .revoked),
         ].recoveryPlan
 
-        #expect(plan.actions == [RecoveryAction(signIn: .google, isReconnect: true)])
-        #expect(plan.title == .reconnectCalendar)
+        #expect(plan?.kind == .signedOut(.google, RecoveryPlan.Lost(mail: false, calendar: true)))
+        #expect(plan?.actions.count == 1)
     }
 
     @Test
-    func outlookWithoutCalendarOffersConnectGoogleOrReconnectOutlook() {
+    func lapsedGoogleCalendarIsQuietWhileOutlookCalendarWorks() {
+        let plan = [
+            Self.integration(.outlook, scopes: ["Calendars.ReadWrite"]),
+            Self.integration(.googleCalendar, status: .expired),
+        ].recoveryPlan
+
+        #expect(plan == nil)
+    }
+
+    @Test
+    func bothSignInsLapsedOffersBoth() {
+        let plan = [
+            Self.integration(.gmail, status: .expired),
+            Self.integration(.outlook, status: .expired),
+        ].recoveryPlan
+
+        #expect(plan?.kind == .accounts)
+        #expect(plan?.actions.map(\.label) == ["Reconnect Google", "Reconnect Outlook"])
+    }
+
+    @Test
+    func mailOnlyOutlookOffersOutlookCalendarOnly() {
         let plan = [Self.integration(.outlook, scopes: ["Mail.Read"])].recoveryPlan
 
-        #expect(plan.actions.map(\.label) == ["Reconnect Outlook", "Connect Google"])
-        #expect(plan.title == .connectCalendar)
+        #expect(plan?.kind == .connectCalendar)
+        #expect(plan?.actions.map(\.label) == ["Connect Outlook Calendar"])
     }
 
     @Test
@@ -118,7 +142,6 @@ struct CalendarCapabilityTests {
             Self.integration(.googlePhotos, status: .expired),
         ].recoveryPlan
 
-        #expect(plan.actions.isEmpty)
-        #expect(plan.title == .attention)
+        #expect(plan == nil)
     }
 }

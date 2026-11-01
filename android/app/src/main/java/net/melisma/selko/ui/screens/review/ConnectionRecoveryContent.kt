@@ -40,7 +40,6 @@ import net.melisma.selko.data.model.IntegrationRecovery
 import net.melisma.selko.data.model.IntegrationRecoveryStatus
 import net.melisma.selko.data.model.IntegrationStatus
 import net.melisma.selko.data.model.hasWritableCalendar
-import net.melisma.selko.data.model.needsOutlookCalendarReconnect
 import net.melisma.selko.data.repository.IntegrationRepository
 import net.melisma.selko.data.repository.IntegrationResult
 import net.melisma.selko.ui.components.SelkoActionRole
@@ -50,85 +49,155 @@ import org.koin.compose.koinInject
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-/** One sign-in the reconnect banner can offer. */
+/** One sign-in the connection banner can offer. */
 internal enum class RecoverySignIn { GOOGLE, OUTLOOK }
 
-internal data class RecoveryAction(val signIn: RecoverySignIn, val isReconnect: Boolean) {
+internal enum class RecoveryVerb { RECONNECT, CONNECT_EMAIL, CONNECT_CALENDAR }
+
+internal data class RecoveryAction(val signIn: RecoverySignIn, val verb: RecoveryVerb) {
     /**
      * Gmail stands in for the combined Google consent, which grants Gmail and
      * Google Calendar together (`/integrations/google/auth`).
      */
     val authProvider: IntegrationProvider
         get() = if (signIn == RecoverySignIn.GOOGLE) IntegrationProvider.GMAIL else IntegrationProvider.OUTLOOK
+
+    val labelRes: Int
+        get() = when (verb) {
+            RecoveryVerb.RECONNECT -> if (signIn == RecoverySignIn.GOOGLE) {
+                R.string.recovery_reconnect_google
+            } else {
+                R.string.recovery_reconnect_outlook
+            }
+            RecoveryVerb.CONNECT_EMAIL -> if (signIn == RecoverySignIn.GOOGLE) {
+                R.string.recovery_connect_gmail
+            } else {
+                R.string.recovery_connect_outlook
+            }
+            RecoveryVerb.CONNECT_CALENDAR -> if (signIn == RecoverySignIn.GOOGLE) {
+                R.string.recovery_connect_google_calendar
+            } else {
+                R.string.recovery_connect_outlook_calendar
+            }
+        }
 }
 
-internal enum class RecoveryTitle { EMAIL, CONNECT_CALENDAR, RECONNECT_CALENDAR, ATTENTION }
+/** What a lapsed sign-in stopped doing. */
+internal enum class LostAccess { MAIL, CALENDAR, MAIL_AND_CALENDAR }
 
-internal data class RecoveryPlan(val title: RecoveryTitle, val actions: List<RecoveryAction>)
+internal sealed interface RecoveryKind {
+    data class SignedOut(val signIn: RecoverySignIn, val lost: LostAccess) : RecoveryKind
+    data object Accounts : RecoveryKind
+    data object ConnectEmail : RecoveryKind
+    data object ConnectCalendar : RecoveryKind
+}
+
+internal data class RecoveryPlan(val kind: RecoveryKind, val actions: List<RecoveryAction>) {
+    val titleRes: Int
+        get() = when (kind) {
+            is RecoveryKind.SignedOut -> if (kind.signIn == RecoverySignIn.GOOGLE) {
+                R.string.recovery_google_title
+            } else {
+                R.string.recovery_outlook_title
+            }
+            RecoveryKind.Accounts -> R.string.recovery_accounts_title
+            RecoveryKind.ConnectEmail -> R.string.recovery_connect_email_title
+            RecoveryKind.ConnectCalendar -> R.string.recovery_connect_calendar_title
+        }
+
+    val messageRes: Int
+        get() = when (kind) {
+            is RecoveryKind.SignedOut -> when (kind.signIn) {
+                RecoverySignIn.GOOGLE -> when (kind.lost) {
+                    LostAccess.MAIL_AND_CALENDAR -> R.string.recovery_google_mail_and_calendar
+                    LostAccess.MAIL -> R.string.recovery_google_mail
+                    LostAccess.CALENDAR -> R.string.recovery_google_calendar
+                }
+                RecoverySignIn.OUTLOOK -> when (kind.lost) {
+                    LostAccess.MAIL_AND_CALENDAR -> R.string.recovery_outlook_mail_and_calendar
+                    LostAccess.MAIL -> R.string.recovery_outlook_mail
+                    LostAccess.CALENDAR -> R.string.recovery_outlook_calendar
+                }
+            }
+            RecoveryKind.Accounts -> R.string.recovery_accounts
+            RecoveryKind.ConnectEmail -> R.string.recovery_connect_email
+            RecoveryKind.ConnectCalendar -> R.string.recovery_connect_calendar
+        }
+}
+
+private fun lostAccess(mail: Boolean, calendar: Boolean): LostAccess = when {
+    mail && calendar -> LostAccess.MAIL_AND_CALENDAR
+    mail -> LostAccess.MAIL
+    else -> LostAccess.CALENDAR
+}
 
 /**
- * What the reconnect banner offers: one action per sign-in, not per row.
+ * What the connection banner asks for, written from the user's side: name the
+ * account that stopped working and what it stopped doing, then offer the one
+ * sign-in that fixes it. Null when nothing needs the user.
  *
- * Gmail and Google Calendar are separate rows but one Google consent grants
- * both, so offering both only duplicated the same flow. Outlook mail and
- * Outlook Calendar share one row.
+ * A lapsed sign-in comes first, because it is the account the user already
+ * chose. Offering a different provider beside it made the banner a menu of
+ * equal-looking buttons for a problem with one answer; switching providers
+ * stays in Settings.
  */
-internal fun recoveryPlanFor(integrations: List<Integration>): RecoveryPlan {
+internal fun recoveryPlanFor(integrations: List<Integration>): RecoveryPlan? {
     val rows = integrations.filter { it.provider != IntegrationProvider.GOOGLE_PHOTOS }
-    val googleRows = rows.filter {
-        it.provider == IntegrationProvider.GMAIL || it.provider == IntegrationProvider.GOOGLE_CALENDAR
-    }
+    val gmail = rows.firstOrNull { it.provider == IntegrationProvider.GMAIL }
+    val googleCalendar = rows.firstOrNull { it.provider == IntegrationProvider.GOOGLE_CALENDAR }
     val outlook = rows.firstOrNull { it.provider == IntegrationProvider.OUTLOOK }
-    val emailConnected = rows.any {
-        it.provider in setOf(IntegrationProvider.GMAIL, IntegrationProvider.OUTLOOK) &&
-            it.status == IntegrationStatus.ACTIVE
-    }
-    val calendarConnected = rows.hasWritableCalendar()
-    val outlookNeedsCalendar = outlook != null && outlook.status == IntegrationStatus.ACTIVE &&
-        rows.needsOutlookCalendarReconnect()
+    val calendarWritable = rows.hasWritableCalendar()
 
-    // A lapsed Gmail always matters. A lapsed Google Calendar matters only when
-    // no calendar is writable; with Outlook Calendar working it is not a reason
-    // to prompt.
-    var wantsGoogle = rows.any {
-        it.provider == IntegrationProvider.GMAIL && it.status != IntegrationStatus.ACTIVE
+    // A lapsed Google Calendar is not worth a prompt while Outlook Calendar works.
+    val googleMailLost = gmail != null && gmail.status != IntegrationStatus.ACTIVE
+    val googleCalendarLost = googleCalendar != null &&
+        googleCalendar.status != IntegrationStatus.ACTIVE && !calendarWritable
+    val outlookLost = outlook != null && outlook.status != IntegrationStatus.ACTIVE
+
+    if ((googleMailLost || googleCalendarLost) && outlookLost) {
+        return RecoveryPlan(
+            RecoveryKind.Accounts,
+            listOf(
+                RecoveryAction(RecoverySignIn.GOOGLE, RecoveryVerb.RECONNECT),
+                RecoveryAction(RecoverySignIn.OUTLOOK, RecoveryVerb.RECONNECT)
+            )
+        )
     }
-    var wantsOutlook = outlook != null && outlook.status != IntegrationStatus.ACTIVE
-    if (!emailConnected) {
-        wantsGoogle = true
-        wantsOutlook = true
-    } else if (!calendarConnected) {
-        wantsGoogle = true
-        if (outlook != null && (outlook.status != IntegrationStatus.ACTIVE || outlookNeedsCalendar)) {
-            wantsOutlook = true
-        }
+    if (outlookLost) {
+        val hadCalendar = outlook!!.scopes.orEmpty().any { it.lowercase().endsWith("calendars.readwrite") }
+        return RecoveryPlan(
+            RecoveryKind.SignedOut(RecoverySignIn.OUTLOOK, lostAccess(true, hadCalendar && !calendarWritable)),
+            listOf(RecoveryAction(RecoverySignIn.OUTLOOK, RecoveryVerb.RECONNECT))
+        )
+    }
+    if (googleMailLost || googleCalendarLost) {
+        return RecoveryPlan(
+            RecoveryKind.SignedOut(RecoverySignIn.GOOGLE, lostAccess(googleMailLost, googleCalendarLost)),
+            listOf(RecoveryAction(RecoverySignIn.GOOGLE, RecoveryVerb.RECONNECT))
+        )
     }
 
-    val google = if (wantsGoogle) {
-        listOf(RecoveryAction(RecoverySignIn.GOOGLE, isReconnect = googleRows.isNotEmpty()))
-    } else {
-        emptyList()
+    val gmailActive = gmail?.status == IntegrationStatus.ACTIVE
+    val outlookActive = outlook?.status == IntegrationStatus.ACTIVE
+    if (!gmailActive && !outlookActive) {
+        // Two equal choices are right here: Selko cannot know which mail the user has.
+        return RecoveryPlan(
+            RecoveryKind.ConnectEmail,
+            listOf(
+                RecoveryAction(RecoverySignIn.GOOGLE, RecoveryVerb.CONNECT_EMAIL),
+                RecoveryAction(RecoverySignIn.OUTLOOK, RecoveryVerb.CONNECT_EMAIL)
+            )
+        )
     }
-    val outlookAction = if (wantsOutlook) {
-        listOf(RecoveryAction(RecoverySignIn.OUTLOOK, isReconnect = outlook != null))
-    } else {
-        emptyList()
+    if (!calendarWritable) {
+        // Offer the calendar of the account the user already signed in with.
+        val signIn = if (gmailActive) RecoverySignIn.GOOGLE else RecoverySignIn.OUTLOOK
+        return RecoveryPlan(
+            RecoveryKind.ConnectCalendar,
+            listOf(RecoveryAction(signIn, RecoveryVerb.CONNECT_CALENDAR))
+        )
     }
-    // An Outlook account that only lacks calendar consent is the shortest fix,
-    // so it is offered first.
-    val outlookFirst = emailConnected && !calendarConnected && outlookNeedsCalendar
-    val actions = if (outlookFirst) outlookAction + google else google + outlookAction
-
-    val title = when {
-        !emailConnected -> RecoveryTitle.EMAIL
-        !calendarConnected -> {
-            val hadCalendar = rows.any { it.provider == IntegrationProvider.GOOGLE_CALENDAR } ||
-                outlook?.scopes.orEmpty().any { it.lowercase().endsWith("calendars.readwrite") }
-            if (hadCalendar) RecoveryTitle.RECONNECT_CALENDAR else RecoveryTitle.CONNECT_CALENDAR
-        }
-        else -> RecoveryTitle.ATTENTION
-    }
-    return RecoveryPlan(title, actions)
+    return null
 }
 
 internal data class CatchUpDisplay(
@@ -228,20 +297,7 @@ fun ConnectionRecoveryContent(
     val plan = recoveryPlanFor(integrations)
     val catchUp = rememberCatchUpDisplay(recovery, justCaughtUp)
 
-    if (catchUp == null && plan.actions.isEmpty()) return
-
-    val title = when (plan.title) {
-        RecoveryTitle.EMAIL -> stringResource(R.string.recovery_email_title)
-        RecoveryTitle.CONNECT_CALENDAR -> stringResource(R.string.recovery_any_calendar_title)
-        RecoveryTitle.RECONNECT_CALENDAR -> stringResource(R.string.recovery_calendar_title)
-        RecoveryTitle.ATTENTION -> stringResource(R.string.recovery_attention_title)
-    }
-    val description = when (plan.title) {
-        RecoveryTitle.EMAIL -> stringResource(R.string.recovery_email_description)
-        RecoveryTitle.CONNECT_CALENDAR,
-        RecoveryTitle.RECONNECT_CALENDAR -> stringResource(R.string.recovery_calendar_description)
-        RecoveryTitle.ATTENTION -> stringResource(R.string.recovery_attention_description)
-    }
+    if (catchUp == null && plan == null) return
 
     Column(modifier = modifier.fillMaxWidth()) {
         catchUp?.let {
@@ -276,7 +332,7 @@ fun ConnectionRecoveryContent(
             }
         }
 
-        if (plan.actions.isNotEmpty()) {
+        plan?.let { plan ->
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
@@ -305,10 +361,10 @@ fun ConnectionRecoveryContent(
                             tint = SelkoTheme.colors.warning
                         )
                         Column {
-                            Text(text = title, style = MaterialTheme.typography.titleMedium)
+                            Text(text = stringResource(plan.titleRes), style = MaterialTheme.typography.titleMedium)
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = description,
+                                text = stringResource(plan.messageRes),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -319,17 +375,8 @@ fun ConnectionRecoveryContent(
 
                     plan.actions.forEachIndexed { index, action ->
                         val provider = action.authProvider
-                        val providerName = when (action.signIn) {
-                            RecoverySignIn.GOOGLE -> stringResource(R.string.recovery_google)
-                            RecoverySignIn.OUTLOOK -> stringResource(R.string.settings_outlook)
-                        }
-                        val label = if (action.isReconnect) {
-                            stringResource(R.string.recovery_reconnect_provider, providerName)
-                        } else {
-                            stringResource(R.string.recovery_connect_provider, providerName)
-                        }
                         SelkoButton(
-                            text = label,
+                            text = stringResource(action.labelRes),
                             onClick = {
                                 scope.launch {
                                     connectingProvider = provider
@@ -363,11 +410,19 @@ fun ConnectionRecoveryContent(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(
-                        text = stringResource(R.string.recovery_settings_note),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    Spacer(modifier = Modifier.height(8.dp))
+                    SelkoButton(
+                        text = stringResource(R.string.recovery_manage_connections),
+                        onClick = {
+                            context.startActivity(
+                                Intent(Intent.ACTION_VIEW, Uri.parse("selko://settings"))
+                                    .setPackage(context.packageName)
+                                    // Reuse the running activity; it routes via onNewIntent.
+                                    .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                            )
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        role = SelkoActionRole.Tertiary
                     )
                 }
             }

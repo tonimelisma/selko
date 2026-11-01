@@ -49,75 +49,96 @@ export function needsOutlookCalendarReconnect(integrations) {
 	);
 }
 
-/** Rows that belong to one Google consent (one sign-in covers both). */
-const GOOGLE_ROWS = new Set(['gmail', 'google_calendar']);
-
 /**
- * @typedef {{ provider: 'google' | 'outlook', verb: 'connect' | 'reconnect' }} RecoveryAction
- * @typedef {'email' | 'connectCalendar' | 'reconnectCalendar' | 'attention'} RecoveryTitle
+ * @typedef {'google' | 'outlook'} SignIn
+ * @typedef {'reconnect' | 'connectEmail' | 'connectCalendar'} RecoveryVerb
+ * @typedef {{ provider: SignIn, verb: RecoveryVerb }} RecoveryAction
+ * @typedef {'mail' | 'calendar' | 'mailAndCalendar'} LostAccess
+ * @typedef {'google' | 'outlook' | 'accounts' | 'connectEmail' | 'connectCalendar'} RecoveryKind
+ * @typedef {{ kind: RecoveryKind, lost: LostAccess | null, actions: RecoveryAction[] }} RecoveryPlan
  */
 
 /**
- * What the reconnect banner offers, one action per sign-in rather than per row.
+ * @param {boolean} mail
+ * @param {boolean} calendar
+ * @returns {LostAccess}
+ */
+function lostAccess(mail, calendar) {
+	if (mail && calendar) return 'mailAndCalendar';
+	return mail ? 'mail' : 'calendar';
+}
+
+/**
+ * What the connection banner asks for, written from the user's side: name the
+ * account that stopped working and what it stopped doing, then offer the one
+ * sign-in that fixes it.
  *
- * Gmail and Google Calendar are separate rows but a single Google consent
- * grants both, so offering both buttons only duplicated the same flow.
- * Outlook mail and Outlook Calendar share one row.
+ * A lapsed sign-in comes first, because it is the account the user already
+ * chose. Offering a different provider beside it ("or switch to Outlook")
+ * made the banner a menu of equal-looking buttons for a problem with one
+ * answer. Switching providers stays in Settings.
  *
  * @param {IntegrationLike[] | null | undefined} integrations
- * @returns {{ title: RecoveryTitle, actions: RecoveryAction[] }}
+ * @returns {RecoveryPlan | null} null when nothing needs the user
  */
-export function recoveryActions(integrations) {
+export function recoveryPlan(integrations) {
 	const rows = (integrations ?? []).filter((row) => row?.provider !== 'google_photos');
-	const googleRows = rows.filter((row) => GOOGLE_ROWS.has(row.provider ?? ''));
+	const gmail = rows.find((row) => row.provider === 'gmail');
+	const googleCalendar = rows.find((row) => row.provider === 'google_calendar');
 	const outlook = rows.find((row) => row.provider === 'outlook');
-	const emailConnected = rows.some(
-		(row) => (row.provider === 'gmail' || row.provider === 'outlook') && row.status === 'active'
-	);
-	const calendarConnected = hasWritableCalendar(rows);
+	const calendarWritable = hasWritableCalendar(rows);
 
-	/** @type {Set<'google' | 'outlook'>} */
-	const wanted = new Set();
-	if (!emailConnected) {
-		wanted.add('google');
-		wanted.add('outlook');
-	} else if (!calendarConnected) {
-		wanted.add('google');
-		if (outlook && (outlook.status !== 'active' || !outlookHasCalendarScope(outlook))) {
-			wanted.add('outlook');
+	// A lapsed Google Calendar is not worth a prompt while Outlook Calendar works.
+	const googleMailLost = !!gmail && gmail.status !== 'active';
+	const googleCalendarLost =
+		!!googleCalendar && googleCalendar.status !== 'active' && !calendarWritable;
+	const outlookLost = !!outlook && outlook.status !== 'active';
+
+	if (googleMailLost || googleCalendarLost || outlookLost) {
+		if ((googleMailLost || googleCalendarLost) && outlookLost) {
+			return {
+				kind: 'accounts',
+				lost: null,
+				actions: [
+					{ provider: 'google', verb: 'reconnect' },
+					{ provider: 'outlook', verb: 'reconnect' }
+				]
+			};
 		}
+		if (outlookLost) {
+			return {
+				kind: 'outlook',
+				lost: lostAccess(true, outlookHasCalendarScope(outlook) && !calendarWritable),
+				actions: [{ provider: 'outlook', verb: 'reconnect' }]
+			};
+		}
+		return {
+			kind: 'google',
+			lost: lostAccess(googleMailLost, googleCalendarLost),
+			actions: [{ provider: 'google', verb: 'reconnect' }]
+		};
 	}
-	// A lapsed Gmail always matters. A lapsed Google Calendar matters only when
-	// no calendar is writable, which the branch above already covers; with
-	// Outlook Calendar working it is not a reason to prompt.
-	if (rows.some((row) => row.provider === 'gmail' && row.status !== 'active')) wanted.add('google');
-	if (outlook && outlook.status !== 'active') wanted.add('outlook');
 
-	/** @type {RecoveryAction[]} */
-	const google = wanted.has('google')
-		? [{ provider: 'google', verb: googleRows.length > 0 ? 'reconnect' : 'connect' }]
-		: [];
-	/** @type {RecoveryAction[]} */
-	const outlookAction = wanted.has('outlook')
-		? [{ provider: 'outlook', verb: outlook ? 'reconnect' : 'connect' }]
-		: [];
-	// An Outlook account that only lacks calendar consent is the shortest fix,
-	// so it is offered first.
-	const outlookFirst =
-		emailConnected &&
-		!calendarConnected &&
-		outlook?.status === 'active' &&
-		!outlookHasCalendarScope(outlook);
-	const actions = outlookFirst ? [...outlookAction, ...google] : [...google, ...outlookAction];
-
-	/** @type {RecoveryTitle} */
-	let title = 'attention';
-	if (!emailConnected) {
-		title = 'email';
-	} else if (!calendarConnected) {
-		const hadCalendar =
-			rows.some((row) => row.provider === 'google_calendar') || outlookHasCalendarScope(outlook);
-		title = hadCalendar ? 'reconnectCalendar' : 'connectCalendar';
+	const gmailActive = gmail?.status === 'active';
+	const outlookActive = outlook?.status === 'active';
+	if (!gmailActive && !outlookActive) {
+		// Two equal choices are right here: Selko cannot know which mail the user has.
+		return {
+			kind: 'connectEmail',
+			lost: null,
+			actions: [
+				{ provider: 'google', verb: 'connectEmail' },
+				{ provider: 'outlook', verb: 'connectEmail' }
+			]
+		};
 	}
-	return { title, actions };
+	if (!calendarWritable) {
+		// Offer the calendar of the account the user already signed in with.
+		return {
+			kind: 'connectCalendar',
+			lost: null,
+			actions: [{ provider: gmailActive ? 'google' : 'outlook', verb: 'connectCalendar' }]
+		};
+	}
+	return null;
 }

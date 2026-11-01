@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { _ } from 'svelte-i18n';
 	import { fetchCalendarRecovery } from '$lib/services/integrations.js';
-	import { recoveryActions } from '$lib/calendar-providers.js';
+	import { recoveryPlan } from '$lib/calendar-providers.js';
 	import ErrorAlert from './ErrorAlert.svelte';
 
 	let { integrations = [], onauthorize } = $props();
@@ -15,27 +15,19 @@
 	let pollTimer = $state(undefined);
 	let justCaughtUp = $state(false);
 
-	// One action per sign-in: a single Google consent covers Gmail and Google
-	// Calendar, and Outlook mail and calendar share one connection.
-	let recoveryPlan = $derived(recoveryActions(integrations));
-	let recoveryProviders = $derived(recoveryPlan.actions);
+	// Names the account that stopped working and offers the one sign-in that
+	// fixes it; see recoveryPlan.
+	let plan = $derived(recoveryPlan(integrations));
 
-	let title = $derived(
-		{
-			email: $_('integrations.reconnectEmailTitle'),
-			connectCalendar: $_('integrations.connectCalendarTitle'),
-			reconnectCalendar: $_('integrations.reconnectCalendarTitle'),
-			attention: $_('integrations.connectionAttentionTitle')
-		}[recoveryPlan.title]
-	);
-	let description = $derived(
-		{
-			email: $_('integrations.reconnectEmailDescription'),
-			connectCalendar: $_('integrations.reconnectCalendarDescription'),
-			reconnectCalendar: $_('integrations.reconnectCalendarDescription'),
-			attention: $_('integrations.connectionAttentionDescription')
-		}[recoveryPlan.title]
-	);
+	let title = $derived(plan ? $_(`integrations.recovery.${plan.kind}Title`) : '');
+	let description = $derived.by(() => {
+		if (!plan) return '';
+		if (plan.kind === 'google' || plan.kind === 'outlook') {
+			const lost = plan.lost === 'mailAndCalendar' ? 'MailAndCalendar' : plan.lost === 'mail' ? 'Mail' : 'Calendar';
+			return $_(`integrations.recovery.${plan.kind}${lost}`);
+		}
+		return $_(`integrations.recovery.${plan.kind}`);
+	});
 
 	/** @param {import('$lib/types.js').IntegrationRecovery} r */
 	function isTerminal(r) {
@@ -114,10 +106,8 @@
 
 	/** @param {import('$lib/calendar-providers.js').RecoveryAction} action */
 	function actionLabel(action) {
-		const verb =
-			action.verb === 'reconnect' ? $_('integrations.reconnect') : $_('integrations.connect');
-		const name = action.provider === 'outlook' ? $_('integrations.outlook') : $_('integrations.google');
-		return `${verb} ${name}`;
+		const provider = action.provider === 'outlook' ? 'Outlook' : 'Google';
+		return $_(`integrations.recovery.${action.verb}${provider}`);
 	}
 
 	/** @param {string} provider */
@@ -182,42 +172,40 @@
 	</section>
 {/if}
 
-{#if recoveryProviders.length > 0}
+{#if plan}
 	<section class="warm-card mb-6 border border-warning/30 bg-warning/5 p-5" aria-labelledby="connection-recovery-title">
 		{#if connectError}
 			<div class="mb-4"><ErrorAlert message={connectError} /></div>
 		{/if}
-		<div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-			<div class="flex min-w-0 gap-3">
-				<div class="grid h-11 w-11 shrink-0 place-items-center rounded-[12px] bg-base-200 text-warning" aria-hidden="true">
-					<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-						<path stroke-linecap="round" stroke-linejoin="round" d="M8 12h8m-4-4v8M5.5 18.5a9 9 0 1 1 13 0" />
-					</svg>
-				</div>
-				<div>
-					<h2 id="connection-recovery-title" class="font-bold">{title}</h2>
-					<p class="mt-1 max-w-2xl text-sm text-base-content/65">{description}</p>
-				</div>
+		<div class="flex min-w-0 gap-3">
+			<div class="grid h-11 w-11 shrink-0 place-items-center rounded-[12px] bg-base-200 text-warning" aria-hidden="true">
+				<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+					<path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.3 3.9 2.4 17.5A2 2 0 0 0 4.1 20.5h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" />
+				</svg>
 			</div>
-			<div class="flex shrink-0 flex-wrap gap-2 sm:justify-end">
-				<div class="peer-action-group peer-action-group--intrinsic" data-peer-count={Math.min(recoveryProviders.length, 3)}>
-					{#each recoveryProviders as action (action.provider)}
-						<button
-							class="btn btn-primary peer-action shadow-brand"
-							disabled={connectingProvider !== ''}
-							aria-busy={connectingProvider === action.provider}
-							onclick={() => reconnect(action.provider)}
-						>
-							{#if connectingProvider === action.provider}
-								<span class="loading loading-spinner loading-sm" aria-hidden="true"></span>
-								{$_('integrations.connecting')}
-							{:else}
-								{actionLabel(action)}
-							{/if}
-						</button>
-					{/each}
+			<div class="min-w-0 flex-1">
+				<h2 id="connection-recovery-title" class="font-bold">{title}</h2>
+				<p class="mt-1 max-w-2xl text-sm text-base-content/65">{description}</p>
+				<div class="mt-4 flex flex-wrap items-center gap-2">
+					<div class="peer-action-group peer-action-group--intrinsic" data-peer-count={plan.actions.length}>
+						{#each plan.actions as action (action.provider)}
+							<button
+								class="btn btn-primary peer-action"
+								disabled={connectingProvider !== ''}
+								aria-busy={connectingProvider === action.provider}
+								onclick={() => reconnect(action.provider)}
+							>
+								{#if connectingProvider === action.provider}
+									<span class="loading loading-spinner loading-sm" aria-hidden="true"></span>
+									{$_('integrations.connecting')}
+								{:else}
+									{actionLabel(action)}
+								{/if}
+							</button>
+						{/each}
+					</div>
+					<a class="btn action-tertiary" href="/app/settings">{$_('integrations.manageConnections')}</a>
 				</div>
-				<a class="btn action-secondary" href="/app/settings">{$_('integrations.manageConnections')}</a>
 			</div>
 		</div>
 	</section>

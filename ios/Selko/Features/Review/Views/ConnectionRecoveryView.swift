@@ -15,8 +15,8 @@ struct ConnectionRecoveryView: View {
         let message: String
     }
 
-    /// One action per sign-in; see `[Integration].recoveryPlan`.
-    private var plan: RecoveryPlan { integrations.recoveryPlan }
+    /// Names the account that stopped working; see `[Integration].recoveryPlan`.
+    private var plan: RecoveryPlan? { integrations.recoveryPlan }
 
     private var recoveryDisplay: CatchUpDisplay? {
         guard let recovery else { return nil }
@@ -63,34 +63,14 @@ struct ConnectionRecoveryView: View {
         }
     }
 
-    private var title: String {
-        switch plan.title {
-        case .email: "Reconnect your email"
-        case .connectCalendar: "Connect a calendar"
-        case .reconnectCalendar: "Reconnect your calendar"
-        case .attention: "A connection needs attention"
-        }
-    }
-
-    private var message: String {
-        switch plan.title {
-        case .email:
-            "New email suggestions are paused. Your existing suggestions and history are still available."
-        case .connectCalendar, .reconnectCalendar:
-            "You can keep reviewing, editing, and rejecting suggestions. Reconnect before accepting one."
-        case .attention:
-            "Selko is still working through another connected account. Reconnect this provider when convenient."
-        }
-    }
-
     var body: some View {
         VStack(spacing: 12) {
             if let display = recoveryDisplay {
                 catchUpCard(display)
             }
 
-            if !plan.actions.isEmpty {
-                reconnectCard
+            if let plan {
+                reconnectCard(plan)
             }
         }
         .task {
@@ -128,7 +108,7 @@ struct ConnectionRecoveryView: View {
 
     // MARK: - Reconnect card
 
-    private var reconnectCard: some View {
+    private func reconnectCard(_ plan: RecoveryPlan) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             if let error = authorizer.errorMessage {
                 Text(error)
@@ -142,12 +122,13 @@ struct ConnectionRecoveryView: View {
                     .foregroundStyle(Color.selkoWarningText)
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(title)
+                    Text(plan.title)
                         .font(SelkoTypography.title)
                         .foregroundStyle(Color.selkoInk)
-                    Text(message)
+                    Text(plan.message)
                         .font(SelkoTypography.body)
                         .foregroundStyle(Color.selkoMuted)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
 
@@ -162,9 +143,12 @@ struct ConnectionRecoveryView: View {
                 }
             }
 
-            Text("You can also manage connections in Settings.")
-                .font(SelkoTypography.caption)
-                .foregroundStyle(Color.selkoFaint)
+            Button("Manage Connections") {
+                if let url = URL(string: "selko://settings") { openURL(url) }
+            }
+            .buttonStyle(.selko(.tertiary))
+            .frame(maxWidth: .infinity)
+            .accessibilityIdentifier("manageConnectionsButton")
         }
         .padding(16)
         .background(Color.selkoSurface)

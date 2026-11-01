@@ -108,7 +108,7 @@ describe('Review Queue (App Page)', () => {
 
 		await waitFor(() => {
 			expect(
-				screen.getByRole('heading', { name: 'Connect your calendar' })
+				screen.getByRole('heading', { name: 'Connect a calendar' })
 			).toBeInTheDocument();
 			expect(screen.getByText('All caught up!')).toBeInTheDocument();
 		});
@@ -129,7 +129,7 @@ describe('Review Queue (App Page)', () => {
 
 		await waitFor(() => {
 			expect(screen.getByText('All caught up!')).toBeInTheDocument();
-			expect(screen.getByText('Connection needs attention')).toBeInTheDocument();
+			expect(screen.getByRole('heading', { name: 'Reconnect your Google account' })).toBeInTheDocument();
 			expect(screen.queryByText('Reconnect an email account')).not.toBeInTheDocument();
 		});
 	});
@@ -371,8 +371,8 @@ describe('Review Queue (App Page)', () => {
 		render(AppPage);
 
 		await waitFor(() => expect(screen.getByText('Outlook Standup')).toBeInTheDocument());
-		expect(screen.queryByRole('heading', { name: 'Reconnect your calendar' })).not.toBeInTheDocument();
-		expect(screen.queryByRole('heading', { name: 'Connect your calendar' })).not.toBeInTheDocument();
+		expect(screen.queryByRole('heading', { name: 'Reconnect your Google account' })).not.toBeInTheDocument();
+		expect(screen.queryByRole('heading', { name: 'Connect a calendar' })).not.toBeInTheDocument();
 
 		await user.click(screen.getByRole('button', { name: 'Accept Outlook Standup' }));
 
@@ -406,10 +406,10 @@ describe('Review Queue (App Page)', () => {
 
 		await waitFor(() => expect(screen.getByText('Scopeless Sync')).toBeInTheDocument());
 		expect(screen.getByRole('button', { name: /^Accept Scopeless Sync\./ })).toBeDisabled();
-		expect(screen.getByRole('heading', { name: 'Connect your calendar' })).toBeInTheDocument();
-		expect(screen.getByRole('button', { name: 'Connect Google' })).toBeEnabled();
+		expect(screen.getByRole('heading', { name: 'Connect a calendar' })).toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: /google/i })).not.toBeInTheDocument();
 
-		await user.click(screen.getByRole('button', { name: 'Reconnect Outlook' }));
+		await user.click(screen.getByRole('button', { name: 'Connect Outlook Calendar' }));
 		expect(mockInitiateOutlookAuth).toHaveBeenCalledTimes(1);
 		expect(mockInitiateGoogleAuth).not.toHaveBeenCalled();
 	});
