@@ -32,6 +32,14 @@ class ImageContent:
 
 
 # A content part is either text or binary image content
+class SystemText(str):
+    """Operator instructions, as opposed to the email being analysed.
+
+    Providers with a system role (Anthropic) send it there; every other
+    provider sees an ordinary string, so callers need not branch.
+    """
+
+
 ContentPart = str | ImageContent
 
 
@@ -1221,9 +1229,12 @@ class AnthropicProvider(LLMProvider):
         from selko.services.format_conversion import prepare_content_for_provider
 
         # Build message content parts
+        system_parts: list[str] = []
         message_content: list[dict[str, Any]] = []
         for part in contents:
-            if isinstance(part, str):
+            if isinstance(part, SystemText):
+                system_parts.append(str(part))
+            elif isinstance(part, str):
                 message_content.append({"type": "text", "text": part})
             elif isinstance(part, ImageContent):
                 converted_list = prepare_content_for_provider(
@@ -1275,6 +1286,7 @@ class AnthropicProvider(LLMProvider):
             "model": self.model,
             "max_tokens": 4096,
             "messages": [{"role": "user", "content": message_content}],
+            **({"system": "\n\n".join(system_parts)} if system_parts else {}),
         }
 
         # Tinker Inkling: effort via output_config; none disables thinking.

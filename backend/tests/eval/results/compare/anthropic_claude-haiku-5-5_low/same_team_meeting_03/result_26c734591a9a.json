@@ -1,29 +1,29 @@
 {
   "fixture_name": "same_team_meeting_03",
   "fixture_hash": "f7cb1b0aa5bd9c33a77f5e870ffdb189dfc6d447e55b84563921f391a2a090e3",
-  "code_hash": "3b61b944aad7",
+  "code_hash": "23e8bc9980aa",
   "prompt_hash": "26c734591a9a",
   "operation": "compare",
   "provider": "anthropic",
   "model": "claude-haiku-5-5",
   "thinking": "low",
-  "run_at": "2026-11-01T02:40:24.705098+00:00",
-  "duration_ms": 1159,
+  "run_at": "2026-11-01T04:08:48.059291+00:00",
+  "duration_ms": 1058,
   "timing": {
     "fixture_load": {
-      "started_at": "2026-11-01T02:40:23.540934+00:00",
+      "started_at": "2026-11-01T04:08:46.995543+00:00",
       "duration_ms": 0
     },
     "gateway_create": {
-      "started_at": "2026-11-01T02:40:23.540943+00:00",
+      "started_at": "2026-11-01T04:08:46.995552+00:00",
       "duration_ms": 7
     },
     "api_call": {
-      "started_at": "2026-11-01T02:40:23.548869+00:00",
-      "duration_ms": 1152
+      "started_at": "2026-11-01T04:08:47.003297+00:00",
+      "duration_ms": 1051
     },
     "scoring": {
-      "started_at": "2026-11-01T02:40:24.701427+00:00",
+      "started_at": "2026-11-01T04:08:48.054661+00:00",
       "duration_ms": 0
     }
   },
@@ -47,10 +47,10 @@
   },
   "tokens": {
     "prompt_tokens": 625,
-    "completion_tokens": 163,
-    "total_tokens": 788
+    "completion_tokens": 168,
+    "total_tokens": 793
   },
-  "cost": 0.000144,
+  "cost": 0.0001465,
   "trace": {
     "content_parts": [
       {
@@ -103,15 +103,15 @@
         "reasoning"
       ]
     },
-    "raw_response_text": "{\"matched_event_id\": \"event-002\", \"reasoning\": \"The new event 'Q2 Planning Session' and existing event-002 'Engineering Q2 Planning' have identical start and end times (2026-03-30 13:00-15:00), the same date, and both concern quarterly/second-quarter planning for the engineering team. The differences are only wording and details (location and attendance expectations), which do not indicate a different real-world event. event-001 and event-003 are at different times and for unrelated activities.\"}",
+    "raw_response_text": "{\"matched_event_id\": \"event-002\", \"reasoning\": \"The new event 'Q2 Planning Session' and existing event-002 'Engineering Q2 Planning' have identical start and end times (2026-03-30 13:00-15:00), the same date, and both describe quarterly/second-quarter planning for the engineering team. The differences are only wording and details (event-002 lacks a location and has a different description), which do not indicate a different real-world event. Event-001 and event-003 are at different times and are unrelated.\"}",
     "finish_reason": "end_turn",
     "retry_count": 0,
     "error_traceback": null,
-    "correlation_id": "0c57f778aa7742aabe64aa917fd36919",
+    "correlation_id": "69fb77069fd949bdb90f5c5d1d8f9dcb",
     "route_role": "primary"
   },
-  "inference_key": "22e03912476be33286db02de9dc2f0cf777cf646692b40ef2703e48e6f856e0d",
-  "score_key": "b319a698002f3ccaad28ad96d13f80bc04956a03e0444536402168e5deb741c2",
+  "inference_key": "6181d1b99f05f6e014806c48e663c170957cbf7a29591c62a7cdfc4f08257756",
+  "score_key": "4247f269c228926946bc51695fa958360fcb4f027cf41b0e08c8db8c81fe6d7d",
   "identity": {
     "identity_version": 2,
     "operation": "compare",
@@ -135,7 +135,7 @@
       "top_p": null
     },
     "prompt_contract_hash": "26c734591a9a2f602b175c5e7f03455199cca7eb847d43a054d339700ba5d2bb",
-    "adapter_contract_hash": "853277a8daf01bb6dff0cf2b0332682d532c648421bec5a11cf77d1d0cee152d",
+    "adapter_contract_hash": "d3cff82711b897f93c4044d5f12effe2e04dcdd511f069e9a2ac48452c725455",
     "fixture_input_hash": "f7cb1b0aa5bd9c33a77f5e870ffdb189dfc6d447e55b84563921f391a2a090e3"
   }
 }

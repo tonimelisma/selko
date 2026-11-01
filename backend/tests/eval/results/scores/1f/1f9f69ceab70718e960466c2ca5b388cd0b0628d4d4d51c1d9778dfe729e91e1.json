@@ -1,0 +1,61 @@
+{
+  "fixture_name": "multiple_fields_change_11",
+  "operation": "merge",
+  "expected": {
+    "title": "Customer Workshop",
+    "start_datetime": "2026-04-22T13:00:00",
+    "end_datetime": "2026-04-22T16:00:00",
+    "all_day": false,
+    "location": "Zoom: https://zoom.us/j/987654321",
+    "description_contains": [
+      "product training",
+      "new customers",
+      "virtual",
+      "Q&A session",
+      "materials"
+    ]
+  },
+  "auto_score": {
+    "title": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "start_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "end_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "all_day": {
+      "match": true
+    },
+    "location": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "description_contains": {
+      "found": [
+        "product training",
+        "new customers",
+        "virtual",
+        "Q&A session",
+        "materials"
+      ],
+      "missing": [],
+      "match": true
+    },
+    "fields_matched": 6,
+    "total_fields": 6,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 2,
+    "inference_key": "2db0df83c280c973886618bcc1e2392f5dd9f76a02f4ed174dbfba64a360b0dd",
+    "expected_output_hash": "9d0afa54b4ece66d712bc35d78f2c0e09f403c25cb04e3ab755924ec2a268a68",
+    "scorer_hash": "6b0c50845803d5938429b012b60ed0906d2cf92060436a8519290b174a564677"
+  },
+  "score_key": "1f9f69ceab70718e960466c2ca5b388cd0b0628d4d4d51c1d9778dfe729e91e1",
+  "stored_at": "2026-11-01T04:09:02.667955+00:00"
+}

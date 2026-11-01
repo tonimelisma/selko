@@ -1,29 +1,29 @@
 {
   "fixture_name": "different_kids_birthdays_14",
   "fixture_hash": "d70cb423f79a8aeb6d2b81acbf6cabd8121f2a0f7a7fbcca8839094e162baff2",
-  "code_hash": "3b61b944aad7",
+  "code_hash": "23e8bc9980aa",
   "prompt_hash": "26c734591a9a",
   "operation": "compare",
   "provider": "anthropic",
   "model": "claude-haiku-5-5",
   "thinking": "low",
-  "run_at": "2026-11-01T02:40:21.703017+00:00",
-  "duration_ms": 1219,
+  "run_at": "2026-11-01T04:08:44.731159+00:00",
+  "duration_ms": 1230,
   "timing": {
     "fixture_load": {
-      "started_at": "2026-11-01T02:40:20.478802+00:00",
+      "started_at": "2026-11-01T04:08:43.497457+00:00",
       "duration_ms": 0
     },
     "gateway_create": {
-      "started_at": "2026-11-01T02:40:20.478813+00:00",
-      "duration_ms": 10
+      "started_at": "2026-11-01T04:08:43.497463+00:00",
+      "duration_ms": 6
     },
     "api_call": {
-      "started_at": "2026-11-01T02:40:20.488994+00:00",
-      "duration_ms": 1209
+      "started_at": "2026-11-01T04:08:43.503916+00:00",
+      "duration_ms": 1224
     },
     "scoring": {
-      "started_at": "2026-11-01T02:40:21.698501+00:00",
+      "started_at": "2026-11-01T04:08:44.728529+00:00",
       "duration_ms": 0
     }
   },
@@ -47,10 +47,10 @@
   },
   "tokens": {
     "prompt_tokens": 669,
-    "completion_tokens": 193,
-    "total_tokens": 862
+    "completion_tokens": 208,
+    "total_tokens": 877
   },
-  "cost": 0.00016340000000000001,
+  "cost": 0.0001709,
   "trace": {
     "content_parts": [
       {
@@ -103,15 +103,15 @@
         "reasoning"
       ]
     },
-    "raw_response_text": "{\"matched_event_id\": null, \"reasoning\": \"The new event is Sophie's 6th Birthday Party on 2026-08-15 from 13:00 to 16:00 at Rainbow Play Center. None of the existing events on that date match it. event-001 is Lucas's 8th birthday on a different date (08-22) at a different venue. event-002 is a swimming lesson at 10:00-11:00 at the Community Pool. event-003 is a book club at 19:00-21:00 at Barnes & Noble Cafe. No existing event has a matching title, time, location, or description.\"}",
+    "raw_response_text": "{\"matched_event_id\": null, \"reasoning\": \"The new event is Sophie's 6th Birthday Party on 2026-08-15 from 13:00 to 16:00 at Rainbow Play Center. None of the existing events on that date match it. event-001 is Lucas's 8th Birthday Celebration on 2026-08-22 at a different venue and for a different child. event-002 is a Swimming Lesson at 10:00-11:00 at the Community Pool. event-003 is a Book Club at 19:00-21:00 at Barnes & Noble Cafe. Titles, times, locations, and descriptions all differ.\"}",
     "finish_reason": "end_turn",
     "retry_count": 0,
     "error_traceback": null,
-    "correlation_id": "8bea922b1c1147a89fa3a8958e3bee63",
+    "correlation_id": "da3750e9b8b94258bb394e3ca160b45e",
     "route_role": "primary"
   },
-  "inference_key": "7c6034ad7809b8993fc0d4699a708e82734ecb825bac467fbad1db87412ce3fd",
-  "score_key": "3694c488840aeb400a19c8a55fc078652e517f53d90ebc24d9c4597b95e934b9",
+  "inference_key": "fcbbb966255d7e50dc5c80ea98047246d9aefdac785fbc771f4c78b2d866e74a",
+  "score_key": "d907c1bfaa1a2a1f74b8b10ac241091679897f4b8551e1a7b4c7d6dfc2224dd8",
   "identity": {
     "identity_version": 2,
     "operation": "compare",
@@ -135,7 +135,7 @@
       "top_p": null
     },
     "prompt_contract_hash": "26c734591a9a2f602b175c5e7f03455199cca7eb847d43a054d339700ba5d2bb",
-    "adapter_contract_hash": "853277a8daf01bb6dff0cf2b0332682d532c648421bec5a11cf77d1d0cee152d",
+    "adapter_contract_hash": "d3cff82711b897f93c4044d5f12effe2e04dcdd511f069e9a2ac48452c725455",
     "fixture_input_hash": "d70cb423f79a8aeb6d2b81acbf6cabd8121f2a0f7a7fbcca8839094e162baff2"
   }
 }

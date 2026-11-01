@@ -1,29 +1,29 @@
 {
   "fixture_name": "same_conference_06",
   "fixture_hash": "afa7948f606ce4da596d227bac8952a8054bc3f2228f59d974450b4998f8aa77",
-  "code_hash": "3b61b944aad7",
+  "code_hash": "23e8bc9980aa",
   "prompt_hash": "26c734591a9a",
   "operation": "compare",
   "provider": "anthropic",
   "model": "claude-haiku-5-5",
   "thinking": "low",
-  "run_at": "2026-11-01T02:40:22.837665+00:00",
-  "duration_ms": 1473,
+  "run_at": "2026-11-01T04:08:46.004239+00:00",
+  "duration_ms": 1426,
   "timing": {
     "fixture_load": {
-      "started_at": "2026-11-01T02:40:21.359976+00:00",
+      "started_at": "2026-11-01T04:08:44.574775+00:00",
       "duration_ms": 0
     },
     "gateway_create": {
-      "started_at": "2026-11-01T02:40:21.359983+00:00",
+      "started_at": "2026-11-01T04:08:44.574783+00:00",
       "duration_ms": 6
     },
     "api_call": {
-      "started_at": "2026-11-01T02:40:21.366751+00:00",
-      "duration_ms": 1467
+      "started_at": "2026-11-01T04:08:44.581537+00:00",
+      "duration_ms": 1420
     },
     "scoring": {
-      "started_at": "2026-11-01T02:40:22.834638+00:00",
+      "started_at": "2026-11-01T04:08:46.001581+00:00",
       "duration_ms": 0
     }
   },
@@ -47,10 +47,10 @@
   },
   "tokens": {
     "prompt_tokens": 637,
-    "completion_tokens": 188,
-    "total_tokens": 825
+    "completion_tokens": 196,
+    "total_tokens": 833
   },
-  "cost": 0.00015769999999999998,
+  "cost": 0.0001617,
   "trace": {
     "content_parts": [
       {
@@ -103,15 +103,15 @@
         "reasoning"
       ]
     },
-    "raw_response_text": "{\"matched_event_id\": \"event-001\", \"reasoning\": \"The new event 'TechSummit 2026' and existing event-001 'TechSummit Conference' have identical start and end times (2026-09-15T09:00 to 2026-09-17T17:00) and the same venue (Moscone Center, San Francisco; abbreviated as SF in the existing event). The descriptions differ in wording (registration confirmed vs. early bird tickets), but both refer to the same three-day tech conference. Event-002 and event-003 are unrelated single-day events with different times and titles.\"}",
+    "raw_response_text": "{\"matched_event_id\": \"event-001\", \"reasoning\": \"The new event 'TechSummit 2026' and existing event-001 'TechSummit Conference' have identical start and end times (2026-09-15T09:00 to 2026-09-17T17:00) and the same venue (Moscone Center, San Francisco; abbreviated as SF in event-001). The descriptions differ in wording (registration confirmed vs. early bird tickets), but both refer to the same three-day tech conference. The other existing events (Code Review Session and Dinner with Alex) are unrelated in title, time, and location.\"}",
     "finish_reason": "end_turn",
     "retry_count": 0,
     "error_traceback": null,
-    "correlation_id": "6bbf94e4fbd34b3396823eaf618f3738",
+    "correlation_id": "90a2ee96b4d54fafa97a905899df6811",
     "route_role": "primary"
   },
-  "inference_key": "b7bb7dcba0093698494862d0baffc775a9855e0e87ac57aa43120106516cd151",
-  "score_key": "a1605f62975625347d7b9d0c8c3655a12efdd1b80bef67b2f51afb270d091c29",
+  "inference_key": "16dd76bf86782c982cf580deb2f1305f893c67107c24e00b15bc5767427625ac",
+  "score_key": "62bdd54d3f1da77d8c2a227d8719ae2a329555cbb114bc9910e7f8874c48f9c3",
   "identity": {
     "identity_version": 2,
     "operation": "compare",
@@ -135,7 +135,7 @@
       "top_p": null
     },
     "prompt_contract_hash": "26c734591a9a2f602b175c5e7f03455199cca7eb847d43a054d339700ba5d2bb",
-    "adapter_contract_hash": "853277a8daf01bb6dff0cf2b0332682d532c648421bec5a11cf77d1d0cee152d",
+    "adapter_contract_hash": "d3cff82711b897f93c4044d5f12effe2e04dcdd511f069e9a2ac48452c725455",
     "fixture_input_hash": "afa7948f606ce4da596d227bac8952a8054bc3f2228f59d974450b4998f8aa77"
   }
 }

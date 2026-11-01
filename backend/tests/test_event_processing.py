@@ -110,15 +110,7 @@ class TestExtractCalendarEvents:
 
     def test_prompt_excludes_calendar_derived_digests(self):
         """Calendar recaps of existing entries are not new event sources."""
-        prompt = _build_prompt(
-            {
-                "subject": "Daily Brief",
-                "from_name": "Contact Assistant",
-                "from_email": "notify@example.com",
-                "date_sent": "2026-07-15T14:01:14Z",
-            },
-            "2026-07-15",
-        )
+        prompt = _build_prompt()
 
         assert "calendar-derived briefs" in prompt
         assert "already on the recipient's calendar" in prompt
@@ -126,6 +118,67 @@ class TestExtractCalendarEvents:
         assert "does NOT apply to organizer-sent meeting invitations" in prompt
         assert "attached agendas" in prompt
         assert "briefs, agendas" not in prompt
+
+    def test_instructions_are_system_text_and_identical_for_every_email(self):
+        """Per-email details must stay out of the system prompt, so it can be
+        cached later and so instructions cannot be confused with email content."""
+        from selko.services.llm_provider import SystemText
+
+        prompt = _build_prompt()
+
+        assert isinstance(prompt, SystemText)
+        assert prompt == _build_prompt()
+        assert "Daily Brief" not in prompt
+
+    def test_email_message_puts_attachments_before_the_email_text(self):
+        from selko.services.event_processing import (
+            _build_content_parts,
+            _build_email_context,
+        )
+        from selko.services.llm_provider import ImageContent, SystemText
+
+        context = _build_email_context(
+            {
+                "subject": "Daily Brief",
+                "from_name": "Contact Assistant",
+                "from_email": "notify@example.com",
+                "date_sent": "2026-07-15T14:01:14Z",
+                "user_timezone": "America/Los_Angeles",
+            },
+            "2026-07-15",
+        )
+        parts = _build_content_parts(
+            _build_prompt(),
+            "See you there",
+            [{"data": b"%PDF-1.4", "mime_type": "application/pdf", "filename": "f.pdf"}],
+            email_context=context,
+        )
+
+        assert isinstance(parts[0], SystemText)
+        assert isinstance(parts[1], ImageContent)
+        email_text = parts[2]
+        assert email_text.startswith("<email_context>")
+        assert "Today's date: 2026-07-15" in email_text
+        assert "America/Los_Angeles" in email_text
+        assert "<email_body>\nSee you there\n</email_body>" in email_text
+
+    def test_anthropic_sends_system_text_as_the_system_prompt(self):
+        """SystemText must reach the request's system field, not the user turn."""
+        from unittest.mock import MagicMock, patch
+
+        from selko.services.llm_provider import AnthropicProvider, SystemText
+
+        client = MagicMock()
+        client.messages.create.return_value = MagicMock(
+            content=[MagicMock(type="text", text="{}")], usage=None, stop_reason="end_turn"
+        )
+        with patch("anthropic.Anthropic", return_value=client):
+            provider = AnthropicProvider(api_key="k", model="claude-haiku-5-5")
+        provider.generate([SystemText("rules"), "the email"])
+
+        kwargs = client.messages.create.call_args.kwargs
+        assert kwargs["system"] == "rules"
+        assert kwargs["messages"][0]["content"] == [{"type": "text", "text": "the email"}]
 
     @pytest.mark.parametrize(
         "fixture_name,expected_found,expected_count",

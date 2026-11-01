@@ -1,29 +1,29 @@
 {
   "fixture_name": "different_events_same_day_09",
   "fixture_hash": "b59957c7123f54118dd7b5a72ba2f034b5e21814c98ddbf2588eedadaba3e603",
-  "code_hash": "3b61b944aad7",
+  "code_hash": "23e8bc9980aa",
   "prompt_hash": "26c734591a9a",
   "operation": "compare",
   "provider": "anthropic",
   "model": "claude-haiku-5-5",
   "thinking": "low",
-  "run_at": "2026-11-01T02:40:21.175593+00:00",
-  "duration_ms": 897,
+  "run_at": "2026-11-01T04:08:44.459453+00:00",
+  "duration_ms": 1162,
   "timing": {
     "fixture_load": {
-      "started_at": "2026-11-01T02:40:20.273555+00:00",
+      "started_at": "2026-11-01T04:08:43.293871+00:00",
       "duration_ms": 0
     },
     "gateway_create": {
-      "started_at": "2026-11-01T02:40:20.273565+00:00",
-      "duration_ms": 9
+      "started_at": "2026-11-01T04:08:43.293879+00:00",
+      "duration_ms": 6
     },
     "api_call": {
-      "started_at": "2026-11-01T02:40:20.283049+00:00",
-      "duration_ms": 888
+      "started_at": "2026-11-01T04:08:43.300286+00:00",
+      "duration_ms": 1156
     },
     "scoring": {
-      "started_at": "2026-11-01T02:40:21.171872+00:00",
+      "started_at": "2026-11-01T04:08:44.456486+00:00",
       "duration_ms": 0
     }
   },
@@ -47,10 +47,10 @@
   },
   "tokens": {
     "prompt_tokens": 633,
-    "completion_tokens": 109,
-    "total_tokens": 742
+    "completion_tokens": 149,
+    "total_tokens": 782
   },
-  "cost": 0.00011780000000000002,
+  "cost": 0.00013780000000000002,
   "trace": {
     "content_parts": [
       {
@@ -103,15 +103,15 @@
         "reasoning"
       ]
     },
-    "raw_response_text": "{\"matched_event_id\": null, \"reasoning\": \"The new event (Max's 5th Birthday Party, 15:00-18:00 at Bounce House Adventure) does not match any existing event. Daily Standup, Lunch with Client, and Gym Session have different titles, times, and locations, and none refer to a birthday party.\"}",
+    "raw_response_text": "{\"matched_event_id\": null, \"reasoning\": \"The new event is Max's 5th Birthday Party at Bounce House Adventure from 15:00 to 18:00. None of the existing events match: Daily Standup (09:00-09:15, office), Lunch with Client (12:00-13:30, The Blue Bistro), and Gym Session (18:30-19:30, 24 Hour Fitness) differ in title, time, location, and purpose.\"}",
     "finish_reason": "end_turn",
     "retry_count": 0,
     "error_traceback": null,
-    "correlation_id": "7864cf5e4d1147458ce3070e4e442710",
+    "correlation_id": "11ee07ef2b9a4c5c92740e67c1d55c2e",
     "route_role": "primary"
   },
-  "inference_key": "253e9e2a709cd55c5c66bf6c673ab33e904ff833722fd75d89f14a98314ed106",
-  "score_key": "feeb16e4e43250245dbf03dd7693b9b7757c8906d775ca9c9dfb0e1e9d2721b5",
+  "inference_key": "d99c70955aebda2befe63d86f1cb2274dd01b3a87db8377224874fc9916320c8",
+  "score_key": "3383a2f7bc1ad9b402f9f2c3d5e4007446625be20ea7ba1157eceb99c83b9df7",
   "identity": {
     "identity_version": 2,
     "operation": "compare",
@@ -135,7 +135,7 @@
       "top_p": null
     },
     "prompt_contract_hash": "26c734591a9a2f602b175c5e7f03455199cca7eb847d43a054d339700ba5d2bb",
-    "adapter_contract_hash": "853277a8daf01bb6dff0cf2b0332682d532c648421bec5a11cf77d1d0cee152d",
+    "adapter_contract_hash": "d3cff82711b897f93c4044d5f12effe2e04dcdd511f069e9a2ac48452c725455",
     "fixture_input_hash": "b59957c7123f54118dd7b5a72ba2f034b5e21814c98ddbf2588eedadaba3e603"
   }
 }

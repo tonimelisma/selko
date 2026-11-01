@@ -1,29 +1,29 @@
 {
   "fixture_name": "same_school_play_07",
   "fixture_hash": "f84b738555c565b856f3fd0386b44efe7e866b682ed5d8109383ff49b6648c61",
-  "code_hash": "3b61b944aad7",
+  "code_hash": "23e8bc9980aa",
   "prompt_hash": "26c734591a9a",
   "operation": "compare",
   "provider": "anthropic",
   "model": "claude-haiku-5-5",
   "thinking": "low",
-  "run_at": "2026-11-01T02:40:24.069661+00:00",
-  "duration_ms": 1197,
+  "run_at": "2026-11-01T04:08:47.360636+00:00",
+  "duration_ms": 1308,
   "timing": {
     "fixture_load": {
-      "started_at": "2026-11-01T02:40:22.868300+00:00",
+      "started_at": "2026-11-01T04:08:46.047750+00:00",
       "duration_ms": 0
     },
     "gateway_create": {
-      "started_at": "2026-11-01T02:40:22.868306+00:00",
-      "duration_ms": 10
+      "started_at": "2026-11-01T04:08:46.047759+00:00",
+      "duration_ms": 6
     },
     "api_call": {
-      "started_at": "2026-11-01T02:40:22.879180+00:00",
-      "duration_ms": 1187
+      "started_at": "2026-11-01T04:08:46.054360+00:00",
+      "duration_ms": 1302
     },
     "scoring": {
-      "started_at": "2026-11-01T02:40:24.066676+00:00",
+      "started_at": "2026-11-01T04:08:47.356585+00:00",
       "duration_ms": 0
     }
   },
@@ -47,10 +47,10 @@
   },
   "tokens": {
     "prompt_tokens": 666,
-    "completion_tokens": 208,
-    "total_tokens": 874
+    "completion_tokens": 205,
+    "total_tokens": 871
   },
-  "cost": 0.00017060000000000003,
+  "cost": 0.00016910000000000002,
   "trace": {
     "content_parts": [
       {
@@ -103,15 +103,15 @@
         "reasoning"
       ]
     },
-    "raw_response_text": "{\"matched_event_id\": \"event-001\", \"reasoning\": \"The new event 'Spring Musical: The Wizard of Oz' and existing event-001 'School Play - Wizard of Oz' share the same date (2026-04-25), identical start and end times (19:00-21:00), and the same location (Lincoln Elementary Auditorium vs. Lincoln Elementary). The descriptions both refer to the annual spring performance by students. Differences in wording and detail are minor, so they refer to the same real-world event. event-002 (PTA Meeting) is on a different date and event-003 (Soccer Practice) has different times and location.\"}",
+    "raw_response_text": "{\"matched_event_id\": \"event-001\", \"reasoning\": \"The new event 'Spring Musical: The Wizard of Oz' and existing event-001 'School Play - Wizard of Oz' have the same date (2026-04-25), identical start and end times (19:00-21:00), and the same location (Lincoln Elementary Auditorium vs. Lincoln Elementary). The titles differ only in wording, and the new event adds details like the $5 ticket price, so they refer to the same real-world performance. event-002 (PTA Meeting) is on a different date and event-003 (Soccer Practice) has a different time and location.\"}",
     "finish_reason": "end_turn",
     "retry_count": 0,
     "error_traceback": null,
-    "correlation_id": "4a8c621d2f3a4c2b91320635ad060b94",
+    "correlation_id": "17db5623a1a74725a6536913761fe8dc",
     "route_role": "primary"
   },
-  "inference_key": "fcf8e22ab6ebb816c6637a0fbc020b5394697625e22a920bf86c392fe49d203f",
-  "score_key": "fddc23a00ac3eaa8f98c9077ded992e33619d3e66ed0e308176087259f9cc742",
+  "inference_key": "58039cb8f5c4d20262c61881a1fe3f150bdde3134aa8b5f73902fa556b4c8b24",
+  "score_key": "9d9bf74226491cdfc77306f5f09ca84e6ced1a3f020f39228d52ed96311b7572",
   "identity": {
     "identity_version": 2,
     "operation": "compare",
@@ -135,7 +135,7 @@
       "top_p": null
     },
     "prompt_contract_hash": "26c734591a9a2f602b175c5e7f03455199cca7eb847d43a054d339700ba5d2bb",
-    "adapter_contract_hash": "853277a8daf01bb6dff0cf2b0332682d532c648421bec5a11cf77d1d0cee152d",
+    "adapter_contract_hash": "d3cff82711b897f93c4044d5f12effe2e04dcdd511f069e9a2ac48452c725455",
     "fixture_input_hash": "f84b738555c565b856f3fd0386b44efe7e866b682ed5d8109383ff49b6648c61"
   }
 }

@@ -1,29 +1,29 @@
 {
   "fixture_name": "same_event_two_agenda_titles_21",
   "fixture_hash": "0b96a54ec47c11e6c9edc9682e24ca55affca50b08103fc44ffef8cef48a62b2",
-  "code_hash": "3b61b944aad7",
+  "code_hash": "23e8bc9980aa",
   "prompt_hash": "26c734591a9a",
   "operation": "compare",
   "provider": "anthropic",
   "model": "claude-haiku-5-5",
   "thinking": "low",
-  "run_at": "2026-11-01T02:40:25.569941+00:00",
-  "duration_ms": 3231,
+  "run_at": "2026-11-01T04:08:49.018665+00:00",
+  "duration_ms": 3942,
   "timing": {
     "fixture_load": {
-      "started_at": "2026-11-01T02:40:22.334439+00:00",
+      "started_at": "2026-11-01T04:08:45.070828+00:00",
       "duration_ms": 0
     },
     "gateway_create": {
-      "started_at": "2026-11-01T02:40:22.334448+00:00",
-      "duration_ms": 8
+      "started_at": "2026-11-01T04:08:45.070835+00:00",
+      "duration_ms": 9
     },
     "api_call": {
-      "started_at": "2026-11-01T02:40:22.342787+00:00",
-      "duration_ms": 3223
+      "started_at": "2026-11-01T04:08:45.080387+00:00",
+      "duration_ms": 3933
     },
     "scoring": {
-      "started_at": "2026-11-01T02:40:25.566409+00:00",
+      "started_at": "2026-11-01T04:08:49.014143+00:00",
       "duration_ms": 0
     }
   },
@@ -39,19 +39,19 @@
     "matched_event_id": "event-001"
   },
   "actual": {
-    "matched_event_id": null
+    "matched_event_id": "event-001"
   },
   "auto_score": {
-    "correct": false,
+    "correct": true,
     "expected": "event-001",
-    "actual": null
+    "actual": "event-001"
   },
   "tokens": {
     "prompt_tokens": 575,
-    "completion_tokens": 599,
-    "total_tokens": 1174
+    "completion_tokens": 761,
+    "total_tokens": 1336
   },
-  "cost": 0.000357,
+  "cost": 0.000438,
   "trace": {
     "content_parts": [
       {
@@ -104,15 +104,15 @@
         "reasoning"
       ]
     },
-    "raw_response_text": "{\"matched_event_id\": null, \"reasoning\": \"Both events are ice cream socials at Lincoln Elementary on 2026-09-18 with starts about 30 minutes apart, but they describe different core activities. The new event is a parent meeting, while event-001 is a costume swap, and the new description never mentions a swap. This looks like a separate event that shares the social, not an update to event-001. Event-002 (Fall Book Fair) is clearly unrelated.\"}",
+    "raw_response_text": "{\"matched_event_id\": \"event-001\", \"reasoning\": \"Both events are an ice cream social at Lincoln Elementary on 2026-09-18 with heavily overlapping times (17:00-18:00 vs 17:30-18:30). The titles share the same core event name, and the new event's location is a more specific version of the same school. The differences (parent meeting vs. costume swap, and a 30-minute shift) could reflect an updated agenda for the same gathering, though they could also be two separate activities sharing an evening. The event-002 Fall Book Fair is clearly different.\"}",
     "finish_reason": "end_turn",
     "retry_count": 0,
     "error_traceback": null,
-    "correlation_id": "eb8a92c6488f482294992d7cb81aceb4",
+    "correlation_id": "bd2321fb495d4a678408b4dc3d09ffd0",
     "route_role": "primary"
   },
-  "inference_key": "68be56384d9a0c2f599e9300742113cf3a442f8832e8128cc1efd75dee8a3e04",
-  "score_key": "01690ff0dfb463c04063afe99bd054005fba9c5a372b65b28ef6a48c99dcb548",
+  "inference_key": "d5b1ffeac238f73f01cab17aa845cb721723991d451297fd1de15cca2b5fcd00",
+  "score_key": "275dae94495923dd202ac9af3d24b53f117c18ce451d9eabb6c614f3b9cf5c90",
   "identity": {
     "identity_version": 2,
     "operation": "compare",
@@ -136,7 +136,7 @@
       "top_p": null
     },
     "prompt_contract_hash": "26c734591a9a2f602b175c5e7f03455199cca7eb847d43a054d339700ba5d2bb",
-    "adapter_contract_hash": "853277a8daf01bb6dff0cf2b0332682d532c648421bec5a11cf77d1d0cee152d",
+    "adapter_contract_hash": "d3cff82711b897f93c4044d5f12effe2e04dcdd511f069e9a2ac48452c725455",
     "fixture_input_hash": "0b96a54ec47c11e6c9edc9682e24ca55affca50b08103fc44ffef8cef48a62b2"
   }
 }

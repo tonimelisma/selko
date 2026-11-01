@@ -1,0 +1,411 @@
+{
+  "fixture_name": "meetings/meeting_with_agenda_attachment",
+  "fixture_hash": "3b85c53cf3693be75fb2b6a91454df510033cb23f7e7c3ef7e334668831f8c76",
+  "code_hash": "23e8bc9980aa",
+  "prompt_hash": "600bdb62e7c3",
+  "operation": "extract",
+  "provider": "anthropic",
+  "model": "claude-haiku-5-5",
+  "thinking": "low",
+  "run_at": "2026-11-01T04:08:09.988155+00:00",
+  "duration_ms": 2306,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-11-01T04:08:07.674377+00:00",
+      "duration_ms": 1
+    },
+    "gateway_create": {
+      "started_at": "2026-11-01T04:08:07.675924+00:00",
+      "duration_ms": 13
+    },
+    "api_call": {
+      "started_at": "2026-11-01T04:08:07.689547+00:00",
+      "duration_ms": 2292
+    },
+    "scoring": {
+      "started_at": "2026-11-01T04:08:09.982221+00:00",
+      "duration_ms": 0
+    }
+  },
+  "category": "meetings",
+  "description": "Meeting invitation with attached agenda document",
+  "difficulty": "medium",
+  "tags": [
+    "meeting",
+    "attachment",
+    "agenda",
+    "txt"
+  ],
+  "input_summary": {
+    "subject": "Quarterly Planning Meeting - March 10th (Agenda Attached)",
+    "from": "planning@company.com",
+    "has_attachments": true,
+    "attachment_count": 1,
+    "attachment_types": [
+      "text"
+    ],
+    "total_attachment_bytes": 878
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Quarterly Planning Meeting",
+        "start_datetime": "2026-03-10T09:00:00",
+        "end_datetime": "2026-03-10T12:00:00",
+        "location": "Main Conference Room, Building A",
+        "all_day": false,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Quarterly Planning Meeting",
+        "start_datetime": "2026-03-10T00:00:00",
+        "end_datetime": null,
+        "all_day": true,
+        "location": null,
+        "description": "Quarterly planning meeting on March 10, 2026, from the Planning Team to the Leadership Team. The agenda is attached to the email but its contents were not available. Start time is not stated in the email body. Attendees should review the agenda and come prepared to discuss their department's Q2 priorities.",
+        "importance": "action_required",
+        "recurrence_rule": null
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "start_datetime": {
+          "difference_minutes": 540.0,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": true,
+          "match": false
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "extra_events": [],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "tokens": {
+    "prompt_tokens": 2599,
+    "completion_tokens": 403,
+    "total_tokens": 3002
+  },
+  "cost": 0.00046140000000000005,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 4050,
+        "text": "Selko turns the user's email into calendar events. You read one email, with its attachments, and report every event in it that the user would put on their personal calendar.\n\nThe user message gives the email in <email_context> (today's date, the user's timezone, subject, sender, date sent) and <email_body>, with any attachments before it.\n\n<what_to_extract>\nExtract every event the email states with an explicit date: meetings, appointments, parties, performances, conferences, closures, early dismissals, half days, deadlines, and informational items such as themed dress-up days or staff birthdays.\n\nFor each event give:\n- title: a clear, descriptive name\n- start_datetime and end_datetime (end only if stated)\n- all_day: true or false\n- location: the physical address, room, venue or meeting link stated in the email. If none is stated, use null. Do not infer a location from the organization's name or the kind of event.\n- description: every relevant detail from the email\n- importance: action_required or fyi (see below)\n- recurrence_rule: an RFC 5545 RRULE for a recurring event (for example RRULE:FREQ=WEEKLY;BYDAY=MO), otherwise null\n\nA multi-day event (a three-day conference, say) is one event spanning the whole period, not one event per day. RSVP deadlines, early-bird deadlines and registration cutoffs belong in the main event's description, not in events of their own. Only extract events whose dates are stated explicitly; do not infer a date from a holiday, the surrounding context or the subject line. Read dates relative to today's date. For PDFs and images, extract events from calendar grids, flyers and schedules.\n</what_to_extract>\n\n<times>\nWrite start_datetime and end_datetime as naive local ISO times in the user's timezone, such as 2026-09-13T10:00:00, with no Z and no numeric offset; the system applies the timezone. When an email lists both an event time (or doors or show time) and setup, vendor or cleanup windows, use the event time and put the other windows in the description. For example, \"Event Time: 10:00 AM \u2013 2:00 PM\" with \"Vendor Set-Up: 7:00 AM \u2013 9:00 AM\" is 10:00 to 14:00, not 7:00 to 15:00.\n</times>\n\n<importance>\naction_required: the user has to act or change their schedule. Closures, early dismissals, half days, deadlines, appointments, meetings, conferences, registration deadlines, performances to attend, invitations such as birthday parties.\nfyi: nice to know, no action needed. Themed dress-up days such as pajama day or hat day, staff birthdays, spirit weeks, movie days, classroom activities the child takes part in without a parent. Extract these too; mark them fyi.\n</importance>\n\n<not_events>\nAn event is something the user would attend, take part in or prepare for. If the email is purely transactional (receipts, shipping, payments) or administrative (password resets, terms updates, account statements) and has no such event, set events_found to false and return an empty events list.\n\nThird-party automated calendar-derived briefs, relationship digests and reminder summaries that only restate entries already on the recipient's calendar are not new event sources. Return events_found false for them unless the email communicates a genuine organizer-issued change, cancellation, or new action beyond the existing calendar data. This exclusion does NOT apply to organizer-sent meeting invitations, preparation requests, or attached agendas: extract those events when the recipient is expected to attend or prepare and the date is explicit.\n</not_events>\n\n<cancellations>\nSet cancellation_detected to true only when the email is an organizer's or provider's cancellation of an existing calendar event. Keep it false for RSVP declines, counter-proposals, subscription or account cancellations, and other uses of the word cancel. A cancellation may carry no usable event details; still set cancellation_detected to true, so the system records it rather than creating a new event.\n</cancellations>\n\nIf the email contains no events, set events_found to false and return an empty events list."
+      },
+      {
+        "type": "image",
+        "mime_type": "text/plain",
+        "size_bytes": 878
+      },
+      {
+        "type": "text",
+        "length": 502,
+        "text": "<email_context>\nToday's date: 2026-02-25\nUser's timezone (local wall clock): America/New_York\nSubject: Quarterly Planning Meeting - March 10th (Agenda Attached)\nFrom: Planning Team <planning@company.com>\nDate sent: 2026-02-25T09:00:00Z\n</email_context>\n\n<email_body>\nDear Leadership Team,\n\nPlease find attached the agenda for our upcoming quarterly planning meeting.\n\nPlease review and come prepared to discuss your department's Q2 priorities.\n\nDetails in attachment.\n\nBest,\nPlanning Team\n</email_body>"
+      }
+    ],
+    "json_schema_input": {
+      "$defs": {
+        "CalendarEvent": {
+          "description": "A single calendar event extracted from an email.",
+          "properties": {
+            "title": {
+              "description": "The event title or name",
+              "title": "Title",
+              "type": "string"
+            },
+            "start_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Local wall-clock start in the user's timezone as naive ISO 8601 (e.g. 2026-09-13T10:00:00). Do not include Z or numeric offsets.",
+              "title": "Start Datetime"
+            },
+            "end_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Local wall-clock end in the user's timezone as naive ISO 8601 (e.g. 2026-09-13T14:00:00). Do not include Z or numeric offsets.",
+              "title": "End Datetime"
+            },
+            "all_day": {
+              "default": false,
+              "description": "Whether this is an all-day event",
+              "title": "All Day",
+              "type": "boolean"
+            },
+            "location": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event location or venue",
+              "title": "Location"
+            },
+            "description": {
+              "description": "Detailed description of the event with all relevant information",
+              "title": "Description",
+              "type": "string"
+            },
+            "importance": {
+              "default": "action_required",
+              "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+              "enum": [
+                "action_required",
+                "fyi"
+              ],
+              "title": "Importance",
+              "type": "string"
+            },
+            "recurrence_rule": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "RFC 5545 RRULE for recurring events (e.g., 'RRULE:FREQ=WEEKLY;BYDAY=MO'). Null for one-time events.",
+              "title": "Recurrence Rule"
+            }
+          },
+          "required": [
+            "title",
+            "description"
+          ],
+          "title": "CalendarEvent",
+          "type": "object"
+        }
+      },
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "title": "Events Found",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "$ref": "#/$defs/CalendarEvent"
+          },
+          "title": "Events",
+          "type": "array"
+        },
+        "cancellation_detected": {
+          "default": false,
+          "description": "Whether the email explicitly cancels an existing event. Set true only for an organizer/provider cancellation, never for an RSVP decline or a generic account cancellation.",
+          "title": "Cancellation Detected",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "events_found"
+      ],
+      "title": "EventExtractionResponse",
+      "type": "object"
+    },
+    "json_schema_sanitized": {
+      "$defs": {
+        "CalendarEvent": {
+          "description": "A single calendar event extracted from an email.",
+          "properties": {
+            "title": {
+              "description": "The event title or name",
+              "title": "Title",
+              "type": "string"
+            },
+            "start_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Local wall-clock start in the user's timezone as naive ISO 8601 (e.g. 2026-09-13T10:00:00). Do not include Z or numeric offsets.",
+              "title": "Start Datetime"
+            },
+            "end_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Local wall-clock end in the user's timezone as naive ISO 8601 (e.g. 2026-09-13T14:00:00). Do not include Z or numeric offsets.",
+              "title": "End Datetime"
+            },
+            "all_day": {
+              "default": false,
+              "description": "Whether this is an all-day event",
+              "title": "All Day",
+              "type": "boolean"
+            },
+            "location": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event location or venue",
+              "title": "Location"
+            },
+            "description": {
+              "description": "Detailed description of the event with all relevant information",
+              "title": "Description",
+              "type": "string"
+            },
+            "importance": {
+              "default": "action_required",
+              "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+              "enum": [
+                "action_required",
+                "fyi"
+              ],
+              "title": "Importance",
+              "type": "string"
+            },
+            "recurrence_rule": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "RFC 5545 RRULE for recurring events (e.g., 'RRULE:FREQ=WEEKLY;BYDAY=MO'). Null for one-time events.",
+              "title": "Recurrence Rule"
+            }
+          },
+          "required": [
+            "title",
+            "description"
+          ],
+          "title": "CalendarEvent",
+          "type": "object"
+        }
+      },
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "title": "Events Found",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "$ref": "#/$defs/CalendarEvent"
+          },
+          "title": "Events",
+          "type": "array"
+        },
+        "cancellation_detected": {
+          "default": false,
+          "description": "Whether the email explicitly cancels an existing event. Set true only for an organizer/provider cancellation, never for an RSVP decline or a generic account cancellation.",
+          "title": "Cancellation Detected",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "events_found"
+      ],
+      "title": "EventExtractionResponse",
+      "type": "object"
+    },
+    "raw_response_text": "{\"events_found\": true, \"events\": [{\"title\": \"Quarterly Planning Meeting\", \"start_datetime\": \"2026-03-10T00:00:00\", \"end_datetime\": null, \"all_day\": true, \"location\": null, \"description\": \"Quarterly planning meeting on March 10, 2026, from the Planning Team to the Leadership Team. The agenda is attached to the email but its contents were not available. Start time is not stated in the email body. Attendees should review the agenda and come prepared to discuss their department's Q2 priorities.\", \"importance\": \"action_required\", \"recurrence_rule\": null}], \"cancellation_detected\": false}",
+    "finish_reason": "end_turn",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "52dc1576dec7496192bceeaa97bd621d",
+    "route_role": "primary"
+  },
+  "inference_key": "db70f5188e370b4c2e13272608ad5e5cf6f0ec8e8d59a418bb2553450270b1ac",
+  "score_key": "782ae78496a7b750290bdbae217f36cf43973af733ba6b6a41dad66b17f0ee43",
+  "identity": {
+    "identity_version": 2,
+    "operation": "extract",
+    "provider": "anthropic",
+    "model": "claude-haiku-5-5",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "anthropic/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "claude-haiku-5-5",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "600bdb62e7c3197d7ea49a29dbcf7156cd3b717464681ef778da888d4cbc8a8d",
+    "adapter_contract_hash": "d3cff82711b897f93c4044d5f12effe2e04dcdd511f069e9a2ac48452c725455",
+    "fixture_input_hash": "3b85c53cf3693be75fb2b6a91454df510033cb23f7e7c3ef7e334668831f8c76"
+  }
+}

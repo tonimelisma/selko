@@ -1,0 +1,57 @@
+{
+  "fixture_name": "appointments/accountant_meeting_06",
+  "operation": "extract",
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Tax Preparation Meeting - Linda Park CPA",
+        "start_datetime": "2026-03-02T16:00:00",
+        "end_datetime": null,
+        "location": "Park Accounting Services, 555 Main Street, Suite 300, Sunnyvale, CA 94086",
+        "description": "Tax preparation meeting with accountant",
+        "all_day": false,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      }
+    ],
+    "extra_events": [],
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 2,
+    "inference_key": "5b7f13bc6f620a1d745f37eab3c3258900290b9946978d8b1d3411d7ece11b1b",
+    "expected_output_hash": "db510f05affab5f7bd4a5fcfc72bc05db8417eaee9b6feeb5bd873d8d9390efc",
+    "scorer_hash": "a4bebf9e53234c7487f4d65ea503fd0e35febe52e584ee52eda52f5faf46ec14"
+  },
+  "score_key": "0dc4d7a16fa18215228fc2fd7d87133f0de377661239f9e62dfb26bfcfbe7c06",
+  "stored_at": "2026-11-01T04:08:03.589986+00:00"
+}

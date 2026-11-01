@@ -1,29 +1,29 @@
 {
   "fixture_name": "team_meeting_vs_kickoff_13",
   "fixture_hash": "53299ac61b7858b0f9881b6c004a5b1fa1b00cfff6151a81ca943907c1200b41",
-  "code_hash": "3b61b944aad7",
+  "code_hash": "23e8bc9980aa",
   "prompt_hash": "26c734591a9a",
   "operation": "compare",
   "provider": "anthropic",
   "model": "claude-haiku-5-5",
   "thinking": "low",
-  "run_at": "2026-11-01T02:40:25.103117+00:00",
-  "duration_ms": 1118,
+  "run_at": "2026-11-01T04:08:48.785365+00:00",
+  "duration_ms": 1385,
   "timing": {
     "fixture_load": {
-      "started_at": "2026-11-01T02:40:23.981522+00:00",
+      "started_at": "2026-11-01T04:08:47.395084+00:00",
       "duration_ms": 0
     },
     "gateway_create": {
-      "started_at": "2026-11-01T02:40:23.981527+00:00",
+      "started_at": "2026-11-01T04:08:47.395092+00:00",
       "duration_ms": 6
     },
     "api_call": {
-      "started_at": "2026-11-01T02:40:23.987991+00:00",
-      "duration_ms": 1112
+      "started_at": "2026-11-01T04:08:47.401718+00:00",
+      "duration_ms": 1379
     },
     "scoring": {
-      "started_at": "2026-11-01T02:40:25.100128+00:00",
+      "started_at": "2026-11-01T04:08:48.781068+00:00",
       "duration_ms": 0
     }
   },
@@ -47,10 +47,10 @@
   },
   "tokens": {
     "prompt_tokens": 636,
-    "completion_tokens": 183,
-    "total_tokens": 819
+    "completion_tokens": 178,
+    "total_tokens": 814
   },
-  "cost": 0.0001551,
+  "cost": 0.0001526,
   "trace": {
     "content_parts": [
       {
@@ -103,15 +103,15 @@
         "reasoning"
       ]
     },
-    "raw_response_text": "{\"matched_event_id\": null, \"reasoning\": \"The new event, Phoenix Project Kickoff (10:00-12:00, Large Conference Room), does not match any existing event. Event-001 (Weekly Team Sync, 09:00-09:30) is a different meeting with a different title, time, and location. Event-002 (1:1 with Manager, 14:00-14:30) and event-003 (Code Review, 15:00-16:00) also differ in title, time, location, and purpose. No existing event overlaps with the same title, time window, or purpose.\"}",
+    "raw_response_text": "{\"matched_event_id\": null, \"reasoning\": \"The new event, Phoenix Project Kickoff (10:00-12:00, Large Conference Room), does not match any existing event. Event-001 (Weekly Team Sync, 09:00-09:30) is a different meeting with a different time, location, and purpose. Event-002 (1:1 with Manager, 14:00-14:30) and event-003 (Code Review, 15:00-16:00) also differ in title, time, location, and content. No existing event refers to the same real-world meeting.\"}",
     "finish_reason": "end_turn",
     "retry_count": 0,
     "error_traceback": null,
-    "correlation_id": "b2ea65a26365444585d51074ddbb8395",
+    "correlation_id": "51548e961c834b3187747363da83fda1",
     "route_role": "primary"
   },
-  "inference_key": "6fa1bff090c4e0530c0d273cecd8b834c26f0ab5546411c392bc3cb42924cd7b",
-  "score_key": "ccff1b27ddf260fdbd26bcd0c8a9877d8b3aef0fd0c6ffa6f45c383e1de798e5",
+  "inference_key": "ac1ba54e99507f065ff7841045966c141ab3cd4a744d3a370eb81b2d7a5a3490",
+  "score_key": "a66369ef0c440f2a768835269211f5882180e75defde80e02288ac64c44b528a",
   "identity": {
     "identity_version": 2,
     "operation": "compare",
@@ -135,7 +135,7 @@
       "top_p": null
     },
     "prompt_contract_hash": "26c734591a9a2f602b175c5e7f03455199cca7eb847d43a054d339700ba5d2bb",
-    "adapter_contract_hash": "853277a8daf01bb6dff0cf2b0332682d532c648421bec5a11cf77d1d0cee152d",
+    "adapter_contract_hash": "d3cff82711b897f93c4044d5f12effe2e04dcdd511f069e9a2ac48452c725455",
     "fixture_input_hash": "53299ac61b7858b0f9881b6c004a5b1fa1b00cfff6151a81ca943907c1200b41"
   }
 }

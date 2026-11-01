@@ -32,6 +32,30 @@ Every provider that can receive email content must be named in the public
 privacy policy (`frontend/src/routes/privacy/+page.svelte`). Changing the
 primary or fallback provider is a privacy-policy change too.
 
+### Claude-specific decisions (measured Nov 2026)
+
+- **Prompt shape.** Extraction instructions are a `SystemText` part, which the
+  Anthropic provider sends as the `system` prompt (other providers see a plain
+  string). The user turn is attachments first, then `<email_context>` and
+  `<email_body>`. The system prompt is identical for every email, so it can be
+  cached once traffic justifies it. Eval at `low`: extract 77/11/0 against the
+  old prompt's 76/12/0. The borderline deadline fixture
+  `credential_maintenance_deadlines_07` went from 1/8 to 3/8 over eight runs.
+- **Effort: `low`.** `medium` scored worse (72/15/1), and cost and latency
+  were higher. Haiku 5.5's default is `medium`, so `LLM_THINKING=low` must stay
+  explicit.
+- **No structured outputs (`output_config.format`).** They were tried and
+  rejected. With the format constrained, Haiku 5.5 at `low` often skips
+  thinking entirely: about 26 output tokens, `{"events_found": false, ...}`,
+  against roughly 600 tokens with thinking when the JSON is prompt-instructed.
+  Over eight runs, `government_comment_period_13` dropped from 8/8 to 0/8 on
+  the old prompt and from 8/8 to 4/8 on the new one; `medium` effort recovered
+  it only to 6/8. Prompt-instructed JSON parsed in every eval and production
+  call, so the guarantee fixed nothing observed. Re-measure before adding them.
+- **No prompt caching yet.** About one call every 25 minutes against a
+  5-minute cache TTL means every call would pay the write premium and almost
+  never hit. Revisit if bulk backfills become common.
+
 > **Photo-library status:** Google Photos/OneDrive library ingestion is dormant while photo ingestion is parked; see [`docs/backlog.md`](backlog.md). The multimodal/image-processing material below describes the active email-attachment pipeline and remains applicable to email attachments.
 
 ### Current registry models (preferred low/minimal thinking each)

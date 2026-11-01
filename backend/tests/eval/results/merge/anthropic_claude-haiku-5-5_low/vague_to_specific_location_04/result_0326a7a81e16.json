@@ -1,29 +1,29 @@
 {
   "fixture_name": "vague_to_specific_location_04",
   "fixture_hash": "f439eb7e0952e3a144665e18ce5600e5df9d64e2062d475a9438a86982beb1ff",
-  "code_hash": "3b61b944aad7",
+  "code_hash": "23e8bc9980aa",
   "prompt_hash": "0326a7a81e16",
   "operation": "merge",
   "provider": "anthropic",
   "model": "claude-haiku-5-5",
   "thinking": "low",
-  "run_at": "2026-11-01T02:40:29.461517+00:00",
-  "duration_ms": 909,
+  "run_at": "2026-11-01T04:08:53.407569+00:00",
+  "duration_ms": 1038,
   "timing": {
     "fixture_load": {
-      "started_at": "2026-11-01T02:40:28.549259+00:00",
+      "started_at": "2026-11-01T04:08:52.367284+00:00",
       "duration_ms": 0
     },
     "gateway_create": {
-      "started_at": "2026-11-01T02:40:28.549267+00:00",
-      "duration_ms": 6
+      "started_at": "2026-11-01T04:08:52.367300+00:00",
+      "duration_ms": 9
     },
     "api_call": {
-      "started_at": "2026-11-01T02:40:28.556050+00:00",
-      "duration_ms": 903
+      "started_at": "2026-11-01T04:08:52.376365+00:00",
+      "duration_ms": 1029
     },
     "scoring": {
-      "started_at": "2026-11-01T02:40:29.459188+00:00",
+      "started_at": "2026-11-01T04:08:53.405448+00:00",
       "duration_ms": 0
     }
   },
@@ -220,11 +220,11 @@
     "finish_reason": "end_turn",
     "retry_count": 0,
     "error_traceback": null,
-    "correlation_id": "1cf7f9a4c6f44a9ab9cd296c6a86a9d3",
+    "correlation_id": "a0320fdb77d2432fa0c864597dabe296",
     "route_role": "primary"
   },
-  "inference_key": "c0b5ebc621ed349d903bdcb21d35504e415343f490bf17ed30043f33f03b5ed5",
-  "score_key": "305e52eefb057f35661071f7d74a52cd7924e51ff7365944179afad4098a6a13",
+  "inference_key": "71efb7e7686ce5e03b2562a7d8217717a3c79bc97ef363546dc86bffeb529f6c",
+  "score_key": "155ef0f2e178fc8143f9b8d0cd3c73a2d5d1adef5d89f1e57e98f5dbea39dfe4",
   "identity": {
     "identity_version": 2,
     "operation": "merge",
@@ -248,7 +248,7 @@
       "top_p": null
     },
     "prompt_contract_hash": "0326a7a81e169edaf924fb8a09fe97a184519ff43052c4a3ce59137d4d4545b6",
-    "adapter_contract_hash": "853277a8daf01bb6dff0cf2b0332682d532c648421bec5a11cf77d1d0cee152d",
+    "adapter_contract_hash": "d3cff82711b897f93c4044d5f12effe2e04dcdd511f069e9a2ac48452c725455",
     "fixture_input_hash": "f439eb7e0952e3a144665e18ce5600e5df9d64e2062d475a9438a86982beb1ff"
   }
 }

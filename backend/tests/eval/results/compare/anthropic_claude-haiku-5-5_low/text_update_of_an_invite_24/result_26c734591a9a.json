@@ -1,29 +1,29 @@
 {
   "fixture_name": "text_update_of_an_invite_24",
   "fixture_hash": "8d81645c6d14cf566ff78cac7ccdb3c0bed6496d67314862f30ede5dc1df96db",
-  "code_hash": "3b61b944aad7",
+  "code_hash": "23e8bc9980aa",
   "prompt_hash": "26c734591a9a",
   "operation": "compare",
   "provider": "anthropic",
   "model": "claude-haiku-5-5",
   "thinking": "low",
-  "run_at": "2026-11-01T02:40:25.040196+00:00",
-  "duration_ms": 931,
+  "run_at": "2026-11-01T04:08:48.404714+00:00",
+  "duration_ms": 946,
   "timing": {
     "fixture_load": {
-      "started_at": "2026-11-01T02:40:24.103696+00:00",
+      "started_at": "2026-11-01T04:08:47.454454+00:00",
       "duration_ms": 0
     },
     "gateway_create": {
-      "started_at": "2026-11-01T02:40:24.103703+00:00",
-      "duration_ms": 6
+      "started_at": "2026-11-01T04:08:47.454463+00:00",
+      "duration_ms": 7
     },
     "api_call": {
-      "started_at": "2026-11-01T02:40:24.110194+00:00",
-      "duration_ms": 925
+      "started_at": "2026-11-01T04:08:47.461508+00:00",
+      "duration_ms": 939
     },
     "scoring": {
-      "started_at": "2026-11-01T02:40:25.035996+00:00",
+      "started_at": "2026-11-01T04:08:48.401379+00:00",
       "duration_ms": 0
     }
   },
@@ -48,10 +48,10 @@
   },
   "tokens": {
     "prompt_tokens": 523,
-    "completion_tokens": 138,
-    "total_tokens": 661
+    "completion_tokens": 126,
+    "total_tokens": 649
   },
-  "cost": 0.00012130000000000001,
+  "cost": 0.00011530000000000001,
   "trace": {
     "content_parts": [
       {
@@ -104,15 +104,15 @@
         "reasoning"
       ]
     },
-    "raw_response_text": "{\"matched_event_id\": \"event-001\", \"reasoning\": \"The new event and event-001 share the same title (Design Review), date, and time (14:00-15:00 on 2026-09-15). The only difference is the location, which the new event describes as a room change from Room 2 to Room 4B, so it is an update to the same real-world meeting. event-002 is a different event (Design Systems Guild at 16:00-17:00).\"}",
+    "raw_response_text": "{\"matched_event_id\": \"event-001\", \"reasoning\": \"The new event has the same title (Design Review), same date and time (2026-09-15 14:00-15:00) as event-001. The only difference is the location change from Room 2 to Room 4B, which is an update to the same real-world meeting. Event-002 is a different event (Design Systems Guild at 16:00-17:00).\"}",
     "finish_reason": "end_turn",
     "retry_count": 0,
     "error_traceback": null,
-    "correlation_id": "ab2e119c4d1b4095ab5af81cdfa220d6",
+    "correlation_id": "c7afc3e15826476ab9cf54059dbe71e6",
     "route_role": "primary"
   },
-  "inference_key": "3c28f28cf3969b699c1b1a69b9b4f2323d5797cd244ef6338d186a2cc2d37110",
-  "score_key": "22b9e1478c348534972b8fe3735da130fbdffea353a6c677d865bffb1efa1b65",
+  "inference_key": "64075cad404f540ce1a85fc0d2f751db11346f35db19f13b5a6d06c36978d2e9",
+  "score_key": "22abe608b926c6a1f7e7e58c28488b037b5402ac7b84a72ee561fb249adf2f2d",
   "identity": {
     "identity_version": 2,
     "operation": "compare",
@@ -136,7 +136,7 @@
       "top_p": null
     },
     "prompt_contract_hash": "26c734591a9a2f602b175c5e7f03455199cca7eb847d43a054d339700ba5d2bb",
-    "adapter_contract_hash": "853277a8daf01bb6dff0cf2b0332682d532c648421bec5a11cf77d1d0cee152d",
+    "adapter_contract_hash": "d3cff82711b897f93c4044d5f12effe2e04dcdd511f069e9a2ac48452c725455",
     "fixture_input_hash": "8d81645c6d14cf566ff78cac7ccdb3c0bed6496d67314862f30ede5dc1df96db"
   }
 }

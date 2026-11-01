@@ -1,0 +1,34 @@
+{
+  "run_id": "20261101T041233Z-d6b57896",
+  "operations": [
+    "extract"
+  ],
+  "matrix": [
+    {
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": "low"
+    }
+  ],
+  "provenance": {
+    "git_commit": "bef4435b633d504542962945d6d48e01fa0aa675",
+    "event_processing_sha256": "23e8bc9980aafa28c2b852b7d666c359d45d389289cd4f547500020e0302a689"
+  },
+  "cells": [
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "school/government_comment_period_13",
+      "inference_key": "33e5d54d4bf42865c149372ba97aa662241c0fa21d15cf57e23dc00519a12fd7",
+      "score_key": "a54f00c249025c9f623fa2e099fc4fe87c7d1e2d2eb51081bc8e46af502de0a6",
+      "state": "HIT",
+      "reason": "execution completed"
+    }
+  ],
+  "written_at": "2026-11-01T04:12:33.871684+00:00"
+}

@@ -1,0 +1,20 @@
+{
+  "fixture_name": "same_birthday_party_01",
+  "operation": "compare",
+  "expected": {
+    "matched_event_id": "event-001"
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": "event-001",
+    "actual": "event-001"
+  },
+  "identity": {
+    "scoring_version": 2,
+    "inference_key": "52b3121eb11cc5cb246e927b3a575460a7daf05433a0df2fa2f39a0775d00a59",
+    "expected_output_hash": "fb532ed7006bb0d85ca6e45563073776f4a8eb69fdaee303177c9bdfb53c1b51",
+    "scorer_hash": "34e3b48d9b9902d1f4fee602c48478bc8d2139938715a7417e4baec0709c5298"
+  },
+  "score_key": "bf738a1486111c0aab3abdf7e28d4fee2a9eceb4b70907ae0680b6ffb0dc40b2",
+  "stored_at": "2026-11-01T04:08:45.832741+00:00"
+}

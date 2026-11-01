@@ -1,0 +1,20 @@
+{
+  "fixture_name": "text_update_of_an_invite_24",
+  "operation": "compare",
+  "expected": {
+    "matched_event_id": "event-001"
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": "event-001",
+    "actual": "event-001"
+  },
+  "identity": {
+    "scoring_version": 2,
+    "inference_key": "97e2013aa1a3b67bcdde4d503da76f245bea7ef0d884d5d73ccfe6c278f439a9",
+    "expected_output_hash": "fb532ed7006bb0d85ca6e45563073776f4a8eb69fdaee303177c9bdfb53c1b51",
+    "scorer_hash": "34e3b48d9b9902d1f4fee602c48478bc8d2139938715a7417e4baec0709c5298"
+  },
+  "score_key": "ba76abc001ea7bc28970e0a6610fac3dd60d83075384c516e8d3930091577bad",
+  "stored_at": "2026-11-01T04:08:57.964203+00:00"
+}

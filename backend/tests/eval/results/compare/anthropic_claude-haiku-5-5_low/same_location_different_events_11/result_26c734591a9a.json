@@ -1,29 +1,29 @@
 {
   "fixture_name": "same_location_different_events_11",
   "fixture_hash": "bfe0fb9ecd8ac54495de3fa89b6c3de3847095bd76140ab18f08e794eb09520d",
-  "code_hash": "3b61b944aad7",
+  "code_hash": "23e8bc9980aa",
   "prompt_hash": "26c734591a9a",
   "operation": "compare",
   "provider": "anthropic",
   "model": "claude-haiku-5-5",
   "thinking": "low",
-  "run_at": "2026-11-01T02:40:23.797562+00:00",
-  "duration_ms": 1411,
+  "run_at": "2026-11-01T04:08:46.964863+00:00",
+  "duration_ms": 1105,
   "timing": {
     "fixture_load": {
-      "started_at": "2026-11-01T02:40:22.382377+00:00",
+      "started_at": "2026-11-01T04:08:45.854935+00:00",
       "duration_ms": 0
     },
     "gateway_create": {
-      "started_at": "2026-11-01T02:40:22.382383+00:00",
+      "started_at": "2026-11-01T04:08:45.854942+00:00",
       "duration_ms": 6
     },
     "api_call": {
-      "started_at": "2026-11-01T02:40:22.388561+00:00",
-      "duration_ms": 1405
+      "started_at": "2026-11-01T04:08:45.861616+00:00",
+      "duration_ms": 1099
     },
     "scoring": {
-      "started_at": "2026-11-01T02:40:23.794442+00:00",
+      "started_at": "2026-11-01T04:08:46.960987+00:00",
       "duration_ms": 0
     }
   },
@@ -47,10 +47,10 @@
   },
   "tokens": {
     "prompt_tokens": 647,
-    "completion_tokens": 214,
-    "total_tokens": 861
+    "completion_tokens": 189,
+    "total_tokens": 836
   },
-  "cost": 0.0001717,
+  "cost": 0.0001592,
   "trace": {
     "content_parts": [
       {
@@ -103,15 +103,15 @@
         "reasoning"
       ]
     },
-    "raw_response_text": "{\"matched_event_id\": null, \"reasoning\": \"The new event (Yoga Workshop - Advanced Flow, 10:00-12:00) does not match any existing event. Event-001 (Meditation Class, 08:00-09:00) has a different title, time, and content. Event-002 (Pilates Session, 14:00-15:00) has a different title, time, and content. Event-003 (Coffee with Maria, 16:00-17:00) is at a different location and is clearly unrelated. Although event-001 and event-002 share the Zen Wellness Studio location, their times and activities differ from the yoga workshop, so they refer to different real-world events.\"}",
+    "raw_response_text": "{\"matched_event_id\": null, \"reasoning\": \"The new event is 'Yoga Workshop - Advanced Flow' from 10:00 to 12:00 at Zen Wellness Studio. None of the existing events overlap in content or time: event-001 is a meditation class at 08:00-09:00, event-002 is a Pilates session at 14:00-15:00, and event-003 is a coffee meeting at 16:00-17:00 at a different location. Although event-001 and event-002 share the same studio, they are different activities at different times, so none refer to the same real-world event.\"}",
     "finish_reason": "end_turn",
     "retry_count": 0,
     "error_traceback": null,
-    "correlation_id": "a900ba1f1f2247c6897ec5f0166f964e",
+    "correlation_id": "226606ccf0a443459f6c498fa6501702",
     "route_role": "primary"
   },
-  "inference_key": "f772c3038fbedd6a285fb68165c2950679091459117aa628a81226d8178b0d9f",
-  "score_key": "2c02302e99dc19ff0ed7dd449a7d428e4d080aa009a10b4e60c69f817f133a0e",
+  "inference_key": "0247959cb274fa260411ba5e52b5b14b43794e02a896c2257251470789db8a53",
+  "score_key": "e91517f8d710f866fbc8b8cd1276745bab79fce4d22f169579052fdc43fe128c",
   "identity": {
     "identity_version": 2,
     "operation": "compare",
@@ -135,7 +135,7 @@
       "top_p": null
     },
     "prompt_contract_hash": "26c734591a9a2f602b175c5e7f03455199cca7eb847d43a054d339700ba5d2bb",
-    "adapter_contract_hash": "853277a8daf01bb6dff0cf2b0332682d532c648421bec5a11cf77d1d0cee152d",
+    "adapter_contract_hash": "d3cff82711b897f93c4044d5f12effe2e04dcdd511f069e9a2ac48452c725455",
     "fixture_input_hash": "bfe0fb9ecd8ac54495de3fa89b6c3de3847095bd76140ab18f08e794eb09520d"
   }
 }

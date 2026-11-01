@@ -1,0 +1,57 @@
+{
+  "fixture_name": "school/valentines_exchange_06",
+  "operation": "extract",
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Valentine's Day Gift Exchange at KinderCare",
+        "start_datetime": "2026-02-13",
+        "all_day": true,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "start_datetime": {
+          "expected_date": "2026-02-13",
+          "actual_date": "2026-02-13",
+          "match": true,
+          "allday_relaxed": true
+        },
+        "end_datetime": {
+          "match": true,
+          "allday_relaxed": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true,
+          "allday_relaxed": false
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      }
+    ],
+    "extra_events": [],
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 2,
+    "inference_key": "d3d01c1fc58b2a01918998193aa0d582872d184e5c8ad8b1c8cd9ffac24c9cc1",
+    "expected_output_hash": "020abd7bae4ad9a73821db4b8fa1e7a7326a9aa8b48522f2b20634490ee89037",
+    "scorer_hash": "a4bebf9e53234c7487f4d65ea503fd0e35febe52e584ee52eda52f5faf46ec14"
+  },
+  "score_key": "0b85bb878f141b2886be8a03afd64d82c021583b3423e1d4dcc3fb7a95d7ee73",
+  "stored_at": "2026-11-01T04:08:38.652388+00:00"
+}

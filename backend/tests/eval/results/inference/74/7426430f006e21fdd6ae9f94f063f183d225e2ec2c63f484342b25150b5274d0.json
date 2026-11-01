@@ -1,0 +1,396 @@
+{
+  "fixture_name": "travel/travel_itinerary_06",
+  "operation": "extract",
+  "provider": "anthropic",
+  "model": "claude-haiku-5-5",
+  "thinking": {
+    "mode": "level",
+    "value": "low"
+  },
+  "run_at": "2026-11-01T04:08:26.739559+00:00",
+  "duration_ms": 13138,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-11-01T04:08:13.595310+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-11-01T04:08:13.595325+00:00",
+      "duration_ms": 7
+    },
+    "api_call": {
+      "started_at": "2026-11-01T04:08:13.602817+00:00",
+      "duration_ms": 13131
+    },
+    "scoring": {
+      "started_at": "2026-11-01T04:08:26.734123+00:00",
+      "duration_ms": 0
+    }
+  },
+  "tokens": {
+    "prompt_tokens": 3251,
+    "completion_tokens": 3277,
+    "total_tokens": 6528
+  },
+  "cost": 0.0019636,
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Outbound Flight: Japan Airlines JL 001, San Francisco to Tokyo Narita",
+        "start_datetime": "2026-04-10T14:30:00",
+        "end_datetime": "2026-04-11T02:30:00",
+        "all_day": false,
+        "location": "San Francisco (SFO)",
+        "description": "Japan Airlines JL 001. Departs San Francisco (SFO) 11:30 AM Pacific (2:30 PM Eastern) on Friday, April 10, 2026. Arrives Tokyo Narita (NRT) 3:30 PM Japan time on April 11, 2026 (2:30 AM Eastern). Duration 11h 0m. Seat 32K. Booking reference PTT-2026-4589 (Premier Travel Agency). Traveler: Sarah Johnson. Times converted to Eastern; the itinerary lists local airport times.",
+        "importance": "action_required",
+        "recurrence_rule": null
+      },
+      {
+        "title": "Airport Transfer: Limousine Bus Narita to Shinjuku",
+        "start_datetime": "2026-04-11T03:30:00",
+        "end_datetime": "2026-04-11T05:30:00",
+        "all_day": false,
+        "location": "Narita Airport",
+        "description": "Limousine Bus from Narita Airport to Shinjuku Bus Terminal. Departs 4:30 PM Japan time (3:30 AM Eastern) on April 11, 2026. Arrives about 6:30 PM Japan time (5:30 AM Eastern). Ticket is prepaid; show the email at boarding. Booking reference PTT-2026-4589.",
+        "importance": "action_required",
+        "recurrence_rule": null
+      },
+      {
+        "title": "Park Hyatt Tokyo Stay (Check-in to Check-out)",
+        "start_datetime": "2026-04-11T02:00:00",
+        "end_datetime": "2026-04-17T23:00:00",
+        "all_day": false,
+        "location": "Park Hyatt Tokyo, 3-7-1-2 Nishi Shinjuku, Shinjuku-ku, Tokyo 163-1055",
+        "description": "Hotel stay, 7 nights (April 11 to April 18, 2026). Check-in from 3:00 PM Japan time on April 11 (2:00 AM Eastern). Check-out by 12:00 PM Japan time on April 18 (11:00 PM Eastern on April 17). Confirmation number 12345PH. Booking reference PTT-2026-4589.",
+        "importance": "action_required",
+        "recurrence_rule": null
+      },
+      {
+        "title": "Return Flight: Japan Airlines JL 002, Tokyo Narita to San Francisco",
+        "start_datetime": "2026-04-18T04:00:00",
+        "end_datetime": "2026-04-18T13:30:00",
+        "all_day": false,
+        "location": "Tokyo Narita (NRT)",
+        "description": "Japan Airlines JL 002. Departs Tokyo Narita (NRT) 5:00 PM Japan time (4:00 AM Eastern) on Saturday, April 18, 2026. Arrives San Francisco (SFO) 10:30 AM Pacific (1:30 PM Eastern) the same day. Duration 9h 30m. Seat 31K. Booking reference PTT-2026-4589. Emergency contact: +1-800-555-TRAV. Support: support@travelagency.com. Times converted to Eastern; the itinerary lists local airport times.",
+        "importance": "action_required",
+        "recurrence_rule": null
+      }
+    ]
+  },
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 4050,
+        "text": "Selko turns the user's email into calendar events. You read one email, with its attachments, and report every event in it that the user would put on their personal calendar.\n\nThe user message gives the email in <email_context> (today's date, the user's timezone, subject, sender, date sent) and <email_body>, with any attachments before it.\n\n<what_to_extract>\nExtract every event the email states with an explicit date: meetings, appointments, parties, performances, conferences, closures, early dismissals, half days, deadlines, and informational items such as themed dress-up days or staff birthdays.\n\nFor each event give:\n- title: a clear, descriptive name\n- start_datetime and end_datetime (end only if stated)\n- all_day: true or false\n- location: the physical address, room, venue or meeting link stated in the email. If none is stated, use null. Do not infer a location from the organization's name or the kind of event.\n- description: every relevant detail from the email\n- importance: action_required or fyi (see below)\n- recurrence_rule: an RFC 5545 RRULE for a recurring event (for example RRULE:FREQ=WEEKLY;BYDAY=MO), otherwise null\n\nA multi-day event (a three-day conference, say) is one event spanning the whole period, not one event per day. RSVP deadlines, early-bird deadlines and registration cutoffs belong in the main event's description, not in events of their own. Only extract events whose dates are stated explicitly; do not infer a date from a holiday, the surrounding context or the subject line. Read dates relative to today's date. For PDFs and images, extract events from calendar grids, flyers and schedules.\n</what_to_extract>\n\n<times>\nWrite start_datetime and end_datetime as naive local ISO times in the user's timezone, such as 2026-09-13T10:00:00, with no Z and no numeric offset; the system applies the timezone. When an email lists both an event time (or doors or show time) and setup, vendor or cleanup windows, use the event time and put the other windows in the description. For example, \"Event Time: 10:00 AM \u2013 2:00 PM\" with \"Vendor Set-Up: 7:00 AM \u2013 9:00 AM\" is 10:00 to 14:00, not 7:00 to 15:00.\n</times>\n\n<importance>\naction_required: the user has to act or change their schedule. Closures, early dismissals, half days, deadlines, appointments, meetings, conferences, registration deadlines, performances to attend, invitations such as birthday parties.\nfyi: nice to know, no action needed. Themed dress-up days such as pajama day or hat day, staff birthdays, spirit weeks, movie days, classroom activities the child takes part in without a parent. Extract these too; mark them fyi.\n</importance>\n\n<not_events>\nAn event is something the user would attend, take part in or prepare for. If the email is purely transactional (receipts, shipping, payments) or administrative (password resets, terms updates, account statements) and has no such event, set events_found to false and return an empty events list.\n\nThird-party automated calendar-derived briefs, relationship digests and reminder summaries that only restate entries already on the recipient's calendar are not new event sources. Return events_found false for them unless the email communicates a genuine organizer-issued change, cancellation, or new action beyond the existing calendar data. This exclusion does NOT apply to organizer-sent meeting invitations, preparation requests, or attached agendas: extract those events when the recipient is expected to attend or prepare and the date is explicit.\n</not_events>\n\n<cancellations>\nSet cancellation_detected to true only when the email is an organizer's or provider's cancellation of an existing calendar event. Keep it false for RSVP declines, counter-proposals, subscription or account cancellations, and other uses of the word cancel. A cancellation may carry no usable event details; still set cancellation_detected to true, so the system records it rather than creating a new event.\n</cancellations>\n\nIf the email contains no events, set events_found to false and return an empty events list."
+      },
+      {
+        "type": "text",
+        "length": 1600,
+        "text": "<email_context>\nToday's date: 2026-02-15\nUser's timezone (local wall clock): America/New_York\nSubject: Your Complete Travel Itinerary - Tokyo Trip\nFrom: Premier Travel Agency <bookings@travelagency.com>\nDate sent: 2026-02-15T11:30:00Z\n</email_context>\n\n<email_body>\nPREMIER TRAVEL AGENCY\nYour Complete Itinerary\n\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\nTOKYO ADVENTURE\nApril 10-17, 2026\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\n\nTraveler: Sarah Johnson\nBooking Ref: PTT-2026-4589\n\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nDAY 1 - FRIDAY, APRIL 10\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\n\u2708\ufe0f OUTBOUND FLIGHT\nJapan Airlines JL 001\nDepart: San Francisco (SFO) 11:30 AM\nArrive: Tokyo Narita (NRT) 3:30 PM +1 day (April 11)\nDuration: 11h 0m\nSeat: 32K\n\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nDAY 2 - SATURDAY, APRIL 11\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\n\ud83d\ude8c AIRPORT TRANSFER\nLimousine Bus - Narita to Shinjuku\nDepart: 4:30 PM from Narita Airport\nArrive: ~6:30 PM at Shinjuku Bus Terminal\nTicket: Prepaid, show email\n\n\ud83c\udfe8 HOTEL CHECK-IN\nPark Hyatt Tokyo\n3-7-1-2 Nishi Shinjuku\nShinjuku-ku, Tokyo 163-1055\nCheck-in: From 3:00 PM\nConfirmation: 12345PH\n7 nights (April 11-18)\n\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nDAY 8 - SATURDAY, APRIL 18\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n\n\ud83c\udfe8 HOTEL CHECK-OUT\nBy 12:00 PM\n\n\u2708\ufe0f RETURN FLIGHT\nJapan Airlines JL 002\nDepart: Tokyo Narita (NRT) 5:00 PM\nArrive: San Francisco (SFO) 10:30 AM (same day)\nDuration: 9h 30m\nSeat: 31K\n\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\n\nEmergency Contact: +1-800-555-TRAV\n24/7 Support: support@travelagency.com\n\nHave a wonderful trip!\n</email_body>"
+      }
+    ],
+    "json_schema_input": {
+      "$defs": {
+        "CalendarEvent": {
+          "description": "A single calendar event extracted from an email.",
+          "properties": {
+            "title": {
+              "description": "The event title or name",
+              "title": "Title",
+              "type": "string"
+            },
+            "start_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Local wall-clock start in the user's timezone as naive ISO 8601 (e.g. 2026-09-13T10:00:00). Do not include Z or numeric offsets.",
+              "title": "Start Datetime"
+            },
+            "end_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Local wall-clock end in the user's timezone as naive ISO 8601 (e.g. 2026-09-13T14:00:00). Do not include Z or numeric offsets.",
+              "title": "End Datetime"
+            },
+            "all_day": {
+              "default": false,
+              "description": "Whether this is an all-day event",
+              "title": "All Day",
+              "type": "boolean"
+            },
+            "location": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event location or venue",
+              "title": "Location"
+            },
+            "description": {
+              "description": "Detailed description of the event with all relevant information",
+              "title": "Description",
+              "type": "string"
+            },
+            "importance": {
+              "default": "action_required",
+              "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+              "enum": [
+                "action_required",
+                "fyi"
+              ],
+              "title": "Importance",
+              "type": "string"
+            },
+            "recurrence_rule": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "RFC 5545 RRULE for recurring events (e.g., 'RRULE:FREQ=WEEKLY;BYDAY=MO'). Null for one-time events.",
+              "title": "Recurrence Rule"
+            }
+          },
+          "required": [
+            "title",
+            "description"
+          ],
+          "title": "CalendarEvent",
+          "type": "object"
+        }
+      },
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "title": "Events Found",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "$ref": "#/$defs/CalendarEvent"
+          },
+          "title": "Events",
+          "type": "array"
+        },
+        "cancellation_detected": {
+          "default": false,
+          "description": "Whether the email explicitly cancels an existing event. Set true only for an organizer/provider cancellation, never for an RSVP decline or a generic account cancellation.",
+          "title": "Cancellation Detected",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "events_found"
+      ],
+      "title": "EventExtractionResponse",
+      "type": "object"
+    },
+    "json_schema_sanitized": {
+      "$defs": {
+        "CalendarEvent": {
+          "description": "A single calendar event extracted from an email.",
+          "properties": {
+            "title": {
+              "description": "The event title or name",
+              "title": "Title",
+              "type": "string"
+            },
+            "start_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Local wall-clock start in the user's timezone as naive ISO 8601 (e.g. 2026-09-13T10:00:00). Do not include Z or numeric offsets.",
+              "title": "Start Datetime"
+            },
+            "end_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Local wall-clock end in the user's timezone as naive ISO 8601 (e.g. 2026-09-13T14:00:00). Do not include Z or numeric offsets.",
+              "title": "End Datetime"
+            },
+            "all_day": {
+              "default": false,
+              "description": "Whether this is an all-day event",
+              "title": "All Day",
+              "type": "boolean"
+            },
+            "location": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event location or venue",
+              "title": "Location"
+            },
+            "description": {
+              "description": "Detailed description of the event with all relevant information",
+              "title": "Description",
+              "type": "string"
+            },
+            "importance": {
+              "default": "action_required",
+              "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+              "enum": [
+                "action_required",
+                "fyi"
+              ],
+              "title": "Importance",
+              "type": "string"
+            },
+            "recurrence_rule": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "RFC 5545 RRULE for recurring events (e.g., 'RRULE:FREQ=WEEKLY;BYDAY=MO'). Null for one-time events.",
+              "title": "Recurrence Rule"
+            }
+          },
+          "required": [
+            "title",
+            "description"
+          ],
+          "title": "CalendarEvent",
+          "type": "object"
+        }
+      },
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "title": "Events Found",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "$ref": "#/$defs/CalendarEvent"
+          },
+          "title": "Events",
+          "type": "array"
+        },
+        "cancellation_detected": {
+          "default": false,
+          "description": "Whether the email explicitly cancels an existing event. Set true only for an organizer/provider cancellation, never for an RSVP decline or a generic account cancellation.",
+          "title": "Cancellation Detected",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "events_found"
+      ],
+      "title": "EventExtractionResponse",
+      "type": "object"
+    },
+    "raw_response_text": "{\"events_found\":true,\"cancellation_detected\":false,\"events\":[{\"title\":\"Outbound Flight: Japan Airlines JL 001, San Francisco to Tokyo Narita\",\"start_datetime\":\"2026-04-10T14:30:00\",\"end_datetime\":\"2026-04-11T02:30:00\",\"all_day\":false,\"location\":\"San Francisco (SFO)\",\"description\":\"Japan Airlines JL 001. Departs San Francisco (SFO) 11:30 AM Pacific (2:30 PM Eastern) on Friday, April 10, 2026. Arrives Tokyo Narita (NRT) 3:30 PM Japan time on April 11, 2026 (2:30 AM Eastern). Duration 11h 0m. Seat 32K. Booking reference PTT-2026-4589 (Premier Travel Agency). Traveler: Sarah Johnson. Times converted to Eastern; the itinerary lists local airport times.\",\"importance\":\"action_required\",\"recurrence_rule\":null},{\"title\":\"Airport Transfer: Limousine Bus Narita to Shinjuku\",\"start_datetime\":\"2026-04-11T03:30:00\",\"end_datetime\":\"2026-04-11T05:30:00\",\"all_day\":false,\"location\":\"Narita Airport\",\"description\":\"Limousine Bus from Narita Airport to Shinjuku Bus Terminal. Departs 4:30 PM Japan time (3:30 AM Eastern) on April 11, 2026. Arrives about 6:30 PM Japan time (5:30 AM Eastern). Ticket is prepaid; show the email at boarding. Booking reference PTT-2026-4589.\",\"importance\":\"action_required\",\"recurrence_rule\":null},{\"title\":\"Park Hyatt Tokyo Stay (Check-in to Check-out)\",\"start_datetime\":\"2026-04-11T02:00:00\",\"end_datetime\":\"2026-04-17T23:00:00\",\"all_day\":false,\"location\":\"Park Hyatt Tokyo, 3-7-1-2 Nishi Shinjuku, Shinjuku-ku, Tokyo 163-1055\",\"description\":\"Hotel stay, 7 nights (April 11 to April 18, 2026). Check-in from 3:00 PM Japan time on April 11 (2:00 AM Eastern). Check-out by 12:00 PM Japan time on April 18 (11:00 PM Eastern on April 17). Confirmation number 12345PH. Booking reference PTT-2026-4589.\",\"importance\":\"action_required\",\"recurrence_rule\":null},{\"title\":\"Return Flight: Japan Airlines JL 002, Tokyo Narita to San Francisco\",\"start_datetime\":\"2026-04-18T04:00:00\",\"end_datetime\":\"2026-04-18T13:30:00\",\"all_day\":false,\"location\":\"Tokyo Narita (NRT)\",\"description\":\"Japan Airlines JL 002. Departs Tokyo Narita (NRT) 5:00 PM Japan time (4:00 AM Eastern) on Saturday, April 18, 2026. Arrives San Francisco (SFO) 10:30 AM Pacific (1:30 PM Eastern) the same day. Duration 9h 30m. Seat 31K. Booking reference PTT-2026-4589. Emergency contact: +1-800-555-TRAV. Support: support@travelagency.com. Times converted to Eastern; the itinerary lists local airport times.\",\"importance\":\"action_required\",\"recurrence_rule\":null}]}",
+    "finish_reason": "end_turn",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "c713861c0488499d8cffba266a5d47cc",
+    "route_role": "primary"
+  },
+  "category": "travel",
+  "description": "Complete travel itinerary with multiple events",
+  "difficulty": "hard",
+  "tags": [
+    "itinerary",
+    "multiple-events",
+    "complex",
+    "multi-day"
+  ],
+  "input_summary": {
+    "subject": "Your Complete Travel Itinerary - Tokyo Trip",
+    "from": "bookings@travelagency.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "fixture_input_hash": "cc2a6ab67eae1e8265c2d5f94f9c9dafabaa294a9f17c05d8db24c23d2c06150",
+  "code_provenance": {
+    "git_commit": "bef4435b633d504542962945d6d48e01fa0aa675",
+    "event_processing_sha256": "23e8bc9980aafa28c2b852b7d666c359d45d389289cd4f547500020e0302a689"
+  },
+  "raw_response": null,
+  "identity": {
+    "identity_version": 2,
+    "operation": "extract",
+    "provider": "anthropic",
+    "model": "claude-haiku-5-5",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "anthropic/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "claude-haiku-5-5",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "600bdb62e7c3197d7ea49a29dbcf7156cd3b717464681ef778da888d4cbc8a8d",
+    "adapter_contract_hash": "d3cff82711b897f93c4044d5f12effe2e04dcdd511f069e9a2ac48452c725455",
+    "fixture_input_hash": "cc2a6ab67eae1e8265c2d5f94f9c9dafabaa294a9f17c05d8db24c23d2c06150"
+  },
+  "inference_key": "7426430f006e21fdd6ae9f94f063f183d225e2ec2c63f484342b25150b5274d0",
+  "stored_at": "2026-11-01T04:08:26.769851+00:00"
+}

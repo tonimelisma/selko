@@ -1,29 +1,29 @@
 {
   "fixture_name": "same_flight_04",
   "fixture_hash": "32c87702f55274c4b4a38de375d2716d6068149d2b340df126659d183b59d753",
-  "code_hash": "3b61b944aad7",
+  "code_hash": "23e8bc9980aa",
   "prompt_hash": "26c734591a9a",
   "operation": "compare",
   "provider": "anthropic",
   "model": "claude-haiku-5-5",
   "thinking": "low",
-  "run_at": "2026-11-01T02:40:23.502949+00:00",
-  "duration_ms": 1148,
+  "run_at": "2026-11-01T04:08:47.105078+00:00",
+  "duration_ms": 1260,
   "timing": {
     "fixture_load": {
-      "started_at": "2026-11-01T02:40:22.347907+00:00",
+      "started_at": "2026-11-01T04:08:45.840252+00:00",
       "duration_ms": 0
     },
     "gateway_create": {
-      "started_at": "2026-11-01T02:40:22.347913+00:00",
-      "duration_ms": 15
+      "started_at": "2026-11-01T04:08:45.840267+00:00",
+      "duration_ms": 7
     },
     "api_call": {
-      "started_at": "2026-11-01T02:40:22.363891+00:00",
-      "duration_ms": 1133
+      "started_at": "2026-11-01T04:08:45.848014+00:00",
+      "duration_ms": 1253
     },
     "scoring": {
-      "started_at": "2026-11-01T02:40:23.497312+00:00",
+      "started_at": "2026-11-01T04:08:47.102006+00:00",
       "duration_ms": 0
     }
   },
@@ -47,10 +47,10 @@
   },
   "tokens": {
     "prompt_tokens": 662,
-    "completion_tokens": 162,
-    "total_tokens": 824
+    "completion_tokens": 148,
+    "total_tokens": 810
   },
-  "cost": 0.0001472,
+  "cost": 0.0001402,
   "trace": {
     "content_parts": [
       {
@@ -103,15 +103,15 @@
         "reasoning"
       ]
     },
-    "raw_response_text": "{\"matched_event_id\": \"event-002\", \"reasoning\": \"The new event and event-002 both describe United flight UA 1234 from San Francisco to Denver on 2026-05-10, with identical start (08:15) and end (11:45) times. The titles differ in wording, and event-002 has a different location detail (SFO Terminal 3) and a timezone note (MT on arrival), but these are the same real-world flight. event-001 (packing) and event-003 (hotel check-in) are different events.\"}",
+    "raw_response_text": "{\"matched_event_id\": \"event-002\", \"reasoning\": \"The new event and event-002 both describe United flight UA 1234 from San Francisco (SFO) to Denver on 2026-05-10, with identical start (08:15) and end (11:45) times. Wording and location details differ slightly (SFO vs. SFO Terminal 3), but they refer to the same real-world flight. The other existing events (packing and hotel check-in) are different activities.\"}",
     "finish_reason": "end_turn",
     "retry_count": 0,
     "error_traceback": null,
-    "correlation_id": "99777019330e439c85e5646e781219f0",
+    "correlation_id": "14aba32326d7444fbc1aedc78711cca0",
     "route_role": "primary"
   },
-  "inference_key": "dc6701e1a9c6b81f1c7bbf4673e51235b6fbde3105383c581a400bf2d0fe807a",
-  "score_key": "36e41b684f62b7677dbf7657c4e365c0588c28a048601388ed472392bbc3b74b",
+  "inference_key": "c5bc1e4a7908fb4bdfccad149d4bf0098a1702fd67708fb48095730c2973fa38",
+  "score_key": "45b5ce0640bd3c462a97f36aaf73f4a796c524a3b0d0d3d3d7c643bb1f250a13",
   "identity": {
     "identity_version": 2,
     "operation": "compare",
@@ -135,7 +135,7 @@
       "top_p": null
     },
     "prompt_contract_hash": "26c734591a9a2f602b175c5e7f03455199cca7eb847d43a054d339700ba5d2bb",
-    "adapter_contract_hash": "853277a8daf01bb6dff0cf2b0332682d532c648421bec5a11cf77d1d0cee152d",
+    "adapter_contract_hash": "d3cff82711b897f93c4044d5f12effe2e04dcdd511f069e9a2ac48452c725455",
     "fixture_input_hash": "32c87702f55274c4b4a38de375d2716d6068149d2b340df126659d183b59d753"
   }
 }

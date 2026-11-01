@@ -1,0 +1,143 @@
+{
+  "fixture_name": "utc_vs_local_same_parade_25",
+  "operation": "compare",
+  "provider": "anthropic",
+  "model": "claude-haiku-5-5",
+  "thinking": {
+    "mode": "level",
+    "value": "low"
+  },
+  "run_at": "2026-11-01T04:08:49.658066+00:00",
+  "duration_ms": 1553,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-11-01T04:08:48.097605+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-11-01T04:08:48.097614+00:00",
+      "duration_ms": 7
+    },
+    "api_call": {
+      "started_at": "2026-11-01T04:08:48.104655+00:00",
+      "duration_ms": 1546
+    },
+    "scoring": {
+      "started_at": "2026-11-01T04:08:49.651436+00:00",
+      "duration_ms": 0
+    }
+  },
+  "tokens": {
+    "prompt_tokens": 891,
+    "completion_tokens": 124,
+    "total_tokens": 1015
+  },
+  "cost": 0.00015110000000000001,
+  "actual": {
+    "matched_event_id": "event-001"
+  },
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1778,
+        "text": "You are comparing calendar events to detect duplicates.\n\nAll times below are local wall-clock times in America/Los_Angeles (no timezone offsets).\nCompare civil clock times only \u2014 do not convert timezones.\n\n**New Event:**\n- Title: LE Morning Halloween Parade\n- Start: 2026-10-30T08:00:00\n- End: 2026-10-30T09:00:00\n- Location: None\n- Description: Lincoln Elementary Morning Halloween Parade on October 30th.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Halloween Parade\n   - Start: 2026-10-30T08:00:00\n   - End: 2026-10-30T09:00:00\n   - Location: None\n   - Description: Halloween Parade event.\n\n2. Event ID: event-002\n   - Title: Medicare Advantage Info Session at Denny's\n   - Start: 2026-10-30T10:00:00\n   - End: 2026-10-30T11:00:00\n   - Location: 1313 Willow Pass Rd., Concord, CA\n   - Description: Health plan informational event.\n\n3. Event ID: event-003\n   - Title: Pumpkin Patch / Halloween Party\n   - Start: 2026-10-30T14:00:00\n   - End: 2026-10-30T15:00:00\n   - Location: None\n   - Description: Preschool pumpkin patch. 2:00pm pick up & join party.\n\n4. Event ID: event-004\n   - Title: Trick or Treat Street\n   - Start: 2026-10-30T16:00:00\n   - End: 2026-10-30T18:00:00\n   - Location: Downtown Lafayette\n   - Description: Trick or Treat Street event downtown.\n\n5. Event ID: gcal:evening-chores\n   - Title: Evening tidy-up\n   - Start: 2026-10-30T19:00:00\n   - End: 2026-10-30T19:15:00\n   - Location: \n   - Description: \n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "raw_response_text": "{\"matched_event_id\": \"event-001\", \"reasoning\": \"The new event and event-001 have identical start (2026-10-30T08:00:00) and end (2026-10-30T09:00:00) times, both are Halloween parades on October 30, and neither lists a location. The new event adds detail (Lincoln Elementary, morning parade), but it refers to the same real-world event.\"}",
+    "finish_reason": "end_turn",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "96c9bc63f17d40bda223b4205a7075e8",
+    "route_role": "primary"
+  },
+  "category": null,
+  "description": "The same 8am school parade, announced twice. The new event arrives in local time and the stored one in UTC -- the shapes production actually sends. Anonymized from production 2026-10-20 (trace 063e0b9d), where the model reasoned that 15:00 UTC was 'a different time slot' from 08:00 local and created a duplicate. Must match.",
+  "difficulty": "medium",
+  "tags": [
+    "dedup",
+    "match",
+    "school",
+    "timezone",
+    "production-derived"
+  ],
+  "input_summary": {},
+  "fixture_input_hash": "a24eb4e6277d4e3173ce1664fab91da4255852dc13b50b465c24c3eed1f0be06",
+  "code_provenance": {
+    "git_commit": "bef4435b633d504542962945d6d48e01fa0aa675",
+    "event_processing_sha256": "23e8bc9980aafa28c2b852b7d666c359d45d389289cd4f547500020e0302a689"
+  },
+  "raw_response": null,
+  "identity": {
+    "identity_version": 2,
+    "operation": "compare",
+    "provider": "anthropic",
+    "model": "claude-haiku-5-5",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "anthropic/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "claude-haiku-5-5",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "26c734591a9a2f602b175c5e7f03455199cca7eb847d43a054d339700ba5d2bb",
+    "adapter_contract_hash": "d3cff82711b897f93c4044d5f12effe2e04dcdd511f069e9a2ac48452c725455",
+    "fixture_input_hash": "a24eb4e6277d4e3173ce1664fab91da4255852dc13b50b465c24c3eed1f0be06"
+  },
+  "inference_key": "175bb2d4c48a78fe19cfad18ca17cc12d2224b2c77d1cac0019322c816c4ab50",
+  "stored_at": "2026-11-01T04:08:49.704858+00:00"
+}

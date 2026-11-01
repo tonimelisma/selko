@@ -1,0 +1,23 @@
+{
+  "fixture_name": "no_events/social_notification_05",
+  "operation": "extract",
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 2,
+    "inference_key": "eae29e975544ddb0c48da0b77e3e492464dfcfe10858a06ee660dcc1ec1b304e",
+    "expected_output_hash": "17d9c6dd1f1fdc362e8af3956f555cfc40dbf07c82265fd452a7ecdac52382a7",
+    "scorer_hash": "a4bebf9e53234c7487f4d65ea503fd0e35febe52e584ee52eda52f5faf46ec14"
+  },
+  "score_key": "5ee133f739dca5a8a30a7a3545ced579e2798ef5036945afb62e3de083277eac",
+  "stored_at": "2026-11-01T04:08:48.739668+00:00"
+}
