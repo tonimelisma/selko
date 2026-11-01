@@ -289,6 +289,10 @@ _CLONE_ORDER = (
     # is exactly the shape that aborted the 2026-08-22 push. Child of events --
     # keep it after both events and calendar_entries.
     "calendar_entries", "event_identity_hints",
+    # Flagged by the coverage check when 20261031000001 replaced its
+    # graph_surface CHECK to admit 'outlook_calendar': every production row
+    # must still satisfy the new domain. Child of integrations.
+    "graph_api_failures",
 )
 
 
