@@ -1,6 +1,7 @@
 """Tests for configuration loading."""
 
 import os
+from unittest.mock import patch
 
 import pytest
 
@@ -589,3 +590,54 @@ class TestVisionFallback:
         assert config.llm_thinking == "minimal"
         assert config.llm_fallback_provider == "qwen"
         assert config.llm_fallback_model == "qwen3.7-flash"
+
+    def test_load_config_fallback_none_disables_the_provisional_pairing(
+        self, monkeypatch, caplog
+    ):
+        """LLM_FALLBACK_PROVIDER=none must not be refilled with Gemini.
+
+        Anthropic's provisional pairing is Gemini; a Claude-only deployment that
+        silently got it back would send email content to a processor the
+        privacy policy no longer names.
+        """
+        from selko.config import load_config
+
+        monkeypatch.setattr("selko.config.dotenv_values", lambda *a, **k: {})
+        monkeypatch.setenv("ENVIRONMENT", "production")
+        monkeypatch.setenv("SUPABASE_URL", "http://localhost:54321")
+        monkeypatch.setenv("SUPABASE_PUBLISHABLE_KEY", "test-key")
+        monkeypatch.setenv("ENABLE_BACKGROUND_PROCESSING", "false")
+        monkeypatch.setenv("LLM_PROVIDER", "anthropic")
+        monkeypatch.setenv("LLM_MODEL", "claude-haiku-5-5")
+        monkeypatch.setenv("LLM_FALLBACK_PROVIDER", "None")
+        monkeypatch.setenv("LLM_FALLBACK_MODEL", "gemini-3.5-flash-lite")
+        monkeypatch.setenv("GEMINI_API_KEY", "present-but-unwanted")
+
+        config = load_config()
+
+        assert config.llm_fallback_provider is None
+        assert config.llm_fallback_model is None
+        assert "FALLBACK UNAVAILABLE" not in caplog.text
+
+    def test_create_llm_gateway_with_fallback_none_has_no_fallback_route(
+        self, monkeypatch
+    ):
+        """The disabled setting must reach the gateway, not just the config."""
+        from selko.config import load_config
+        from selko.services.llm_gateway import create_llm_gateway
+
+        monkeypatch.setattr("selko.config.dotenv_values", lambda *a, **k: {})
+        monkeypatch.setenv("ENVIRONMENT", "development")
+        monkeypatch.setenv("SUPABASE_URL", "http://localhost:54321")
+        monkeypatch.setenv("SUPABASE_PUBLISHABLE_KEY", "test-key")
+        monkeypatch.setenv("LLM_PROVIDER", "anthropic")
+        monkeypatch.setenv("LLM_MODEL", "claude-haiku-5-5")
+        monkeypatch.setenv("LLM_FALLBACK_PROVIDER", "none")
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+        monkeypatch.setenv("GEMINI_API_KEY", "present-but-unwanted")
+
+        with patch("anthropic.Anthropic"):
+            gateway = create_llm_gateway(load_config())
+
+        assert gateway.fallback_provider is None
+        assert [route.role for route in gateway.routes] == ["primary"]

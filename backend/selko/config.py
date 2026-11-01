@@ -375,11 +375,53 @@ def _warn_if_fallback_unavailable(
     logger.warning(
         "⚠️  LLM FALLBACK UNAVAILABLE in %s environment: missing %s. "
         "Primary failures that need a different provider will not be recovered. "
-        "Set LLM_FALLBACK_PROVIDER / LLM_FALLBACK_MODEL and the matching API key. "
-        "Current pairing: gemini→qwen/qwen3.7-flash (primary gemini-3.5-flash-lite).",
+        "Set LLM_FALLBACK_PROVIDER / LLM_FALLBACK_MODEL and the matching API key, "
+        "or LLM_FALLBACK_PROVIDER=none to run on the primary alone.",
         environment,
         ", ".join(missing_bits),
     )
+
+
+FALLBACK_DISABLED = "none"
+
+
+def _resolve_fallback_route(
+    environment: str, primary_provider: str, getenv=os.getenv
+) -> tuple[Optional[str], Optional[str]]:
+    """Resolve the fallback provider/model, or (None, None) when disabled.
+
+    ``LLM_FALLBACK_PROVIDER=none`` is an explicit decision to run on the
+    primary alone: every provider that can see email content is named in the
+    public privacy policy, so a fallback must never be filled in behind the
+    operator's back. Unset still means "use the provisional pairing".
+    """
+    configured = (getenv("LLM_FALLBACK_PROVIDER") or "").strip()
+    if configured.lower() == FALLBACK_DISABLED:
+        primary_model = getenv("LLM_MODEL") or None
+        if primary_model and not _is_vision_model(primary_model):
+            logger.warning(
+                "LLM fallback disabled and primary model '%s' is text-only: "
+                "attachments will be dropped.",
+                primary_model,
+            )
+        logger.info("LLM fallback disabled (LLM_FALLBACK_PROVIDER=none)")
+        return None, None
+
+    fallback_provider, fallback_model = _resolve_provisional_fallback(
+        primary_provider, configured or None, getenv("LLM_FALLBACK_MODEL") or None
+    )
+    # Ensure attachments are never silently dropped: text-only primary
+    # must have a vision fallback. This is a safety net even if provisional
+    # mapping misses a new text-only model.
+    fallback_provider, fallback_model = _ensure_vision_fallback(
+        primary_provider,
+        getenv("LLM_MODEL") or None,
+        fallback_provider,
+        fallback_model,
+        getenv,
+    )
+    _warn_if_fallback_unavailable(environment, fallback_provider, fallback_model, getenv)
+    return fallback_provider, fallback_model
 
 
 def load_config(env_override: Optional[str] = None) -> Config:
@@ -443,23 +485,8 @@ def load_config(env_override: Optional[str] = None) -> Config:
         sys.exit(1)
 
     llm_provider = getenv("LLM_PROVIDER", "gemini")
-    llm_fallback_provider = getenv("LLM_FALLBACK_PROVIDER") or None
-    llm_fallback_model = getenv("LLM_FALLBACK_MODEL") or None
-    llm_fallback_provider, llm_fallback_model = _resolve_provisional_fallback(
-        llm_provider, llm_fallback_provider, llm_fallback_model
-    )
-    # Ensure attachments are never silently dropped: text-only primary
-    # must have a vision fallback. This is a safety net even if provisional
-    # mapping misses a new text-only model.
-    llm_fallback_provider, llm_fallback_model = _ensure_vision_fallback(
-        llm_provider,
-        getenv("LLM_MODEL") or None,
-        llm_fallback_provider,
-        llm_fallback_model,
-        getenv,
-    )
-    _warn_if_fallback_unavailable(
-        environment, llm_fallback_provider, llm_fallback_model, getenv
+    llm_fallback_provider, llm_fallback_model = _resolve_fallback_route(
+        environment, llm_provider, getenv
     )
 
     enable_background_processing = (

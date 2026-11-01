@@ -19,10 +19,14 @@ at roughly 17x Haiku's cost, so it is registered but not the default:
 LLM_PROVIDER=anthropic
 LLM_MODEL=claude-haiku-5-5
 LLM_THINKING=low
-LLM_FALLBACK_PROVIDER=gemini
-LLM_FALLBACK_MODEL=gemini-3.5-flash-lite
-LLM_FALLBACK_THINKING=minimal
+LLM_FALLBACK_PROVIDER=none
 ```
+
+Production runs on Claude alone (Nov 2026). `none` is explicit on purpose: an
+unset fallback is filled from the provisional pairing in `config.py`
+(Anthropic → Gemini). With no fallback, a refusal (`stop_reason: "refusal"`,
+logged as `[refusal] category=…`) or exhausted transient retries fail the
+attempt, and the email is retried by `fail_email_processing` backoff.
 
 Every provider that can receive email content must be named in the public
 privacy policy (`frontend/src/routes/privacy/+page.svelte`). Changing the
@@ -34,7 +38,7 @@ primary or fallback provider is a privacy-policy change too.
 
 | Provider | Env Var Key | Model ID | Preferred thinking |
 |----------|-------------|----------|--------------------|
-| Gemini | `GEMINI_API_KEY` | `gemini-3.5-flash-lite` (fallback default), `gemini-3.6-flash`, … | minimal |
+| Gemini | `GEMINI_API_KEY` | `gemini-3.5-flash-lite`, `gemini-3.6-flash`, … | minimal |
 | Qwen | `ALIBABA_API_KEY` | `qwen3.7-flash`, `qwen3.7-plus`, … | low budget |
 | OpenAI | `OPENAI_API_KEY` | `gpt-5.6-luna`, `gpt-5.6-terra`, … | low |
 | Anthropic | `ANTHROPIC_API_KEY` | `claude-haiku-5-5` (default), `claude-sonnet-5-5`, `claude-sonnet-5`, `claude-haiku-4-5` | adaptive low |
