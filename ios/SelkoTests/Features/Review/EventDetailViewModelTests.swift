@@ -133,7 +133,7 @@ struct EventDetailViewModelTests {
         #expect(viewModel.event != nil)
         #expect(!viewModel.calendarConnected)
         #expect(eventService.approveEventCallCount == 0)
-        #expect(viewModel.errorMessage == "Reconnect Google Calendar to accept suggestions.")
+        #expect(viewModel.errorMessage == "Reconnect your calendar to accept suggestions.")
     }
 
     @Test
@@ -252,5 +252,47 @@ struct EventDetailViewModelTests {
         #expect(viewModel.errorMessage != nil)
         #expect(viewModel.didComplete == false)
         #expect(mockEventService.rejectEventCallCount == 1)
+    }
+
+    @Test
+    func outlookWithCalendarScopeIsAConnectedCalendar() async {
+        let eventService = MockEventService()
+        eventService.getEventWithSourcesResult = .success(.mock)
+        let integrationService = MockIntegrationService()
+        integrationService.fetchIntegrationsResult = .success([
+            CalendarCapabilityTests.integration(
+                .outlook, scopes: [CalendarCapabilityTests.outlookCalendarScope]
+            )
+        ])
+        let viewModel = EventDetailViewModel(
+            eventId: CalendarEvent.mock.id,
+            eventService: eventService,
+            integrationService: integrationService
+        )
+
+        await viewModel.load()
+
+        #expect(viewModel.calendarConnected)
+    }
+
+    @Test
+    func outlookWithoutCalendarScopeIsNotAConnectedCalendar() async {
+        let eventService = MockEventService()
+        eventService.getEventWithSourcesResult = .success(.mock)
+        let integrationService = MockIntegrationService()
+        integrationService.fetchIntegrationsResult = .success([
+            CalendarCapabilityTests.integration(.outlook)
+        ])
+        let viewModel = EventDetailViewModel(
+            eventId: CalendarEvent.mock.id,
+            eventService: eventService,
+            integrationService: integrationService
+        )
+
+        await viewModel.load()
+        await viewModel.approve()
+
+        #expect(!viewModel.calendarConnected)
+        #expect(eventService.approveEventCallCount == 0)
     }
 }

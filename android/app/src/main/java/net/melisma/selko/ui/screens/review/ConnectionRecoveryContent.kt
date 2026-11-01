@@ -39,6 +39,8 @@ import net.melisma.selko.data.model.IntegrationProvider
 import net.melisma.selko.data.model.IntegrationRecovery
 import net.melisma.selko.data.model.IntegrationRecoveryStatus
 import net.melisma.selko.data.model.IntegrationStatus
+import net.melisma.selko.data.model.hasWritableCalendar
+import net.melisma.selko.data.model.needsOutlookCalendarReconnect
 import net.melisma.selko.data.repository.IntegrationRepository
 import net.melisma.selko.data.repository.IntegrationResult
 import net.melisma.selko.ui.components.SelkoActionRole
@@ -55,10 +57,7 @@ internal fun recoveryProvidersFor(
         it.provider in setOf(IntegrationProvider.GMAIL, IntegrationProvider.OUTLOOK) &&
             it.status == IntegrationStatus.ACTIVE
     }
-    val calendarConnected = integrations.any {
-        it.provider == IntegrationProvider.GOOGLE_CALENDAR &&
-            it.status == IntegrationStatus.ACTIVE
-    }
+    val calendarConnected = integrations.hasWritableCalendar()
     return when {
         !emailConnected -> buildList {
             add(IntegrationProvider.GMAIL)
@@ -66,6 +65,9 @@ internal fun recoveryProvidersFor(
             if (!calendarConnected) add(IntegrationProvider.GOOGLE_CALENDAR)
         }
         !calendarConnected -> buildList {
+            // An Outlook connection without the calendar scope is fixed by
+            // reconnecting Outlook; offer that first, Google Calendar second.
+            if (integrations.needsOutlookCalendarReconnect()) add(IntegrationProvider.OUTLOOK)
             add(IntegrationProvider.GOOGLE_CALENDAR)
             integrations
                 .filter {
@@ -77,7 +79,10 @@ internal fun recoveryProvidersFor(
         else -> integrations
             .filter {
                 it.provider != IntegrationProvider.GOOGLE_PHOTOS &&
-                    it.status != IntegrationStatus.ACTIVE
+                    it.status != IntegrationStatus.ACTIVE &&
+                    // A calendar is already writable (e.g. via Outlook), so a
+                    // stale Google Calendar row is not a reason to prompt.
+                    it.provider != IntegrationProvider.GOOGLE_CALENDAR
             }
             .map { it.provider }
     }.distinct()
@@ -181,10 +186,9 @@ fun ConnectionRecoveryContent(
         it.provider in setOf(IntegrationProvider.GMAIL, IntegrationProvider.OUTLOOK) &&
             it.status == IntegrationStatus.ACTIVE
     }
-    val calendarConnected = integrations.any {
-        it.provider == IntegrationProvider.GOOGLE_CALENDAR &&
-            it.status == IntegrationStatus.ACTIVE
-    }
+    val calendarConnected = integrations.hasWritableCalendar()
+    val outlookCalendarReconnect = !calendarConnected &&
+        integrations.needsOutlookCalendarReconnect()
     val recoveryProviders = recoveryProvidersFor(integrations)
     val catchUp = rememberCatchUpDisplay(recovery, justCaughtUp)
 
@@ -192,6 +196,7 @@ fun ConnectionRecoveryContent(
 
     val title = when {
         !emailConnected -> stringResource(R.string.recovery_email_title)
+        outlookCalendarReconnect -> stringResource(R.string.recovery_any_calendar_title)
         !calendarConnected -> stringResource(R.string.recovery_calendar_title)
         else -> stringResource(R.string.recovery_attention_title)
     }
@@ -277,8 +282,10 @@ fun ConnectionRecoveryContent(
 
                     recoveryProviders.forEachIndexed { index, provider ->
                         val integration = integrations.find { it.provider == provider }
-                        val reconnecting = integration != null &&
-                            integration.status != IntegrationStatus.ACTIVE
+                        val reconnecting = integration != null && (
+                            integration.status != IntegrationStatus.ACTIVE ||
+                                (provider == IntegrationProvider.OUTLOOK && outlookCalendarReconnect)
+                            )
                         val providerName = when (provider) {
                             IntegrationProvider.GMAIL -> stringResource(R.string.settings_gmail)
                             IntegrationProvider.OUTLOOK -> stringResource(R.string.settings_outlook)

@@ -60,6 +60,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import net.melisma.selko.R
+import net.melisma.selko.data.api.BackendApiClient
 import net.melisma.selko.data.model.GoogleConnection
 import net.melisma.selko.data.model.IntegrationProvider
 import net.melisma.selko.data.model.IntegrationStatus
@@ -269,6 +270,27 @@ private fun ConnectedAccountsSection(
                 onConnect = { authorize(IntegrationProvider.OUTLOOK) },
                 onDisconnect = { onDisconnect(listOf(IntegrationProvider.OUTLOOK)) }
             )
+
+            // Outlook connected before Selko asked for Calendars.ReadWrite:
+            // mail works, but Outlook calendars cannot be targeted until the
+            // user reconnects through the same Outlook consent flow.
+            if (uiState.needsOutlookCalendarReconnect) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = stringResource(R.string.settings_outlook_calendar_reconnect_prompt),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                SelkoButton(
+                    text = stringResource(R.string.settings_outlook_calendar_reconnect),
+                    onClick = { authorize(IntegrationProvider.OUTLOOK) },
+                    modifier = Modifier.fillMaxWidth(),
+                    role = SelkoActionRole.Secondary,
+                    enabled = connectingProvider == null,
+                    loading = connectingProvider == IntegrationProvider.OUTLOOK
+                )
+            }
         }
     }
 
@@ -544,6 +566,15 @@ private fun CalendarDefaultsSection(
             if (uiState.calendars.isNotEmpty()) {
                 var expanded by remember { mutableStateOf(false) }
                 val selectedCalendar = uiState.calendars.find { it.id == uiState.selectedCalendarId }
+                val outlookName = stringResource(R.string.settings_outlook)
+                val googleName = stringResource(R.string.settings_google_calendar)
+                val calendarLabelFormat = stringResource(R.string.settings_calendar_with_provider)
+                fun calendarLabel(calendar: BackendApiClient.Calendar): String =
+                    String.format(
+                        calendarLabelFormat,
+                        calendar.name,
+                        if (calendar.isOutlook) outlookName else googleName
+                    )
 
                 Text(
                     text = stringResource(R.string.settings_target_calendar),
@@ -556,7 +587,8 @@ private fun CalendarDefaultsSection(
                     onExpandedChange = { expanded = !expanded }
                 ) {
                     OutlinedTextField(
-                        value = selectedCalendar?.name ?: stringResource(R.string.settings_select_calendar),
+                        value = selectedCalendar?.let(::calendarLabel)
+                            ?: stringResource(R.string.settings_select_calendar),
                         onValueChange = {},
                         readOnly = true,
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
@@ -574,7 +606,7 @@ private fun CalendarDefaultsSection(
                             DropdownMenuItem(
                                 text = {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text(calendar.name)
+                                        Text(calendarLabel(calendar))
                                         if (calendar.is_primary) {
                                             Spacer(modifier = Modifier.width(4.dp))
                                             Text(

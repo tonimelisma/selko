@@ -46,7 +46,7 @@ id
 occurred_at
 environment
 integration_id
-graph_surface            # outlook_mail | onedrive
+graph_surface            # outlook_mail | outlook_calendar | onedrive
 operation                # delta | list | message_get | attachment_get | token
 http_method
 safe_url_template        # no tenant, user, item, token, or query values

@@ -24,6 +24,7 @@ import net.melisma.selko.data.model.SourceOrigin
 import net.melisma.selko.data.model.Integration
 import net.melisma.selko.data.model.IntegrationProvider
 import net.melisma.selko.data.model.IntegrationStatus
+import net.melisma.selko.data.model.hasWritableCalendar
 import net.melisma.selko.data.repository.EventRepository
 import net.melisma.selko.data.repository.EventResult
 import net.melisma.selko.data.repository.IntegrationRepository
@@ -53,11 +54,9 @@ data class EventDetailUiState(
     val undoSnackbarMessage: String = "",
     val lastRejectedEvent: CalendarEvent? = null
 ) {
+    /** Google Calendar or a calendar-scoped Outlook connection can receive approvals. */
     val isCalendarConnected: Boolean
-        get() = integrations.any {
-            it.provider == IntegrationProvider.GOOGLE_CALENDAR &&
-                it.status == IntegrationStatus.ACTIVE
-        }
+        get() = integrations.hasWritableCalendar()
 }
 
 class EventDetailViewModel(

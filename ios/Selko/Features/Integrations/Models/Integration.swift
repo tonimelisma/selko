@@ -94,6 +94,37 @@ struct Integration: Identifiable, Codable, Sendable, Equatable {
     var isActive: Bool {
         status == .active
     }
+
+    /// Whether Selko can write events through this integration. Google
+    /// Calendar is writable whenever it is active. The Outlook row is shared
+    /// with Outlook mail and is calendar-capable only once its consent
+    /// includes `Calendars.ReadWrite`; Outlook rows connected before calendar
+    /// support lack that scope until the user reconnects.
+    var canWriteCalendar: Bool {
+        guard isActive else { return false }
+        switch provider {
+        case .googleCalendar:
+            return true
+        case .outlook:
+            return scopes.contains { $0.lowercased().hasSuffix("calendars.readwrite") }
+        case .gmail, .googlePhotos:
+            return false
+        }
+    }
+}
+
+extension Array where Element == Integration {
+    /// True when at least one integration can receive approved events:
+    /// an active Google Calendar, or an Outlook account with calendar consent.
+    var hasWritableCalendar: Bool {
+        contains { $0.canWriteCalendar }
+    }
+
+    /// True when Outlook is connected for mail but its consent predates
+    /// calendar support, so reconnecting Outlook would add calendar writes.
+    var needsOutlookCalendarReconnect: Bool {
+        contains { $0.provider == .outlook && $0.isActive && !$0.canWriteCalendar }
+    }
 }
 
 extension Integration {
