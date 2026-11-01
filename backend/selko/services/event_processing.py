@@ -26,7 +26,13 @@ from selko.services.llm_gateway import (
     LLMValidationError,
 )
 from selko.services.llm_logging import LLMOperationType
-from selko.services.llm_provider import ContentPart, ImageContent, LLMResponse, strip_markdown_json
+from selko.services.llm_provider import (
+    ContentPart,
+    ImageContent,
+    LLMResponse,
+    SystemText,
+    strip_markdown_json,
+)
 from selko.services.email_body import is_substantive
 
 logger = logging.getLogger(__name__)
@@ -124,88 +130,72 @@ def validate_merge_response(response: LLMResponse) -> dict[str, Any]:
         ) from e
     return merged.model_dump()
 
-def _build_prompt(email_metadata: dict[str, Any], current_date: str) -> str:
+def _build_prompt() -> SystemText:
     """Build the system prompt for calendar event extraction.
 
-    Args:
-        email_metadata: Dict with email metadata (subject, from, date, etc).
-        current_date: Current date in YYYY-MM-DD format for relative date parsing.
+    Contains only operator instructions, so it is identical for every email;
+    the email's own details come from ``_build_email_context``.
 
     Returns:
-        Formatted prompt string.
+        The instructions, marked as system text.
     """
+    return SystemText("""Selko turns the user's email into calendar events. You read one email, with its attachments, and report every event in it that the user would put on their personal calendar.
+
+The user message gives the email in <email_context> (today's date, the user's timezone, subject, sender, date sent) and <email_body>, with any attachments before it.
+
+<what_to_extract>
+Extract every event the email states with an explicit date: meetings, appointments, parties, performances, conferences, closures, early dismissals, half days, deadlines, and informational items such as themed dress-up days or staff birthdays.
+
+For each event give:
+- title: a clear, descriptive name
+- start_datetime and end_datetime (end only if stated)
+- all_day: true or false
+- location: the physical address, room, venue or meeting link stated in the email. If none is stated, use null. Do not infer a location from the organization's name or the kind of event.
+- description: every relevant detail from the email
+- importance: action_required or fyi (see below)
+- recurrence_rule: an RFC 5545 RRULE for a recurring event (for example RRULE:FREQ=WEEKLY;BYDAY=MO), otherwise null
+
+A multi-day event (a three-day conference, say) is one event spanning the whole period, not one event per day. RSVP deadlines, early-bird deadlines and registration cutoffs belong in the main event's description, not in events of their own. Only extract events whose dates are stated explicitly; do not infer a date from a holiday, the surrounding context or the subject line. Read dates relative to today's date. For PDFs and images, extract events from calendar grids, flyers and schedules.
+</what_to_extract>
+
+<times>
+Write start_datetime and end_datetime as naive local ISO times in the user's timezone, such as 2026-09-13T10:00:00, with no Z and no numeric offset; the system applies the timezone. When an email lists both an event time (or doors or show time) and setup, vendor or cleanup windows, use the event time and put the other windows in the description. For example, "Event Time: 10:00 AM – 2:00 PM" with "Vendor Set-Up: 7:00 AM – 9:00 AM" is 10:00 to 14:00, not 7:00 to 15:00.
+</times>
+
+<importance>
+action_required: the user has to act or change their schedule. Closures, early dismissals, half days, deadlines, appointments, meetings, conferences, registration deadlines, performances to attend, invitations such as birthday parties.
+fyi: nice to know, no action needed. Themed dress-up days such as pajama day or hat day, staff birthdays, spirit weeks, movie days, classroom activities the child takes part in without a parent. Extract these too; mark them fyi.
+</importance>
+
+<not_events>
+An event is something the user would attend, take part in or prepare for. If the email is purely transactional (receipts, shipping, payments) or administrative (password resets, terms updates, account statements) and has no such event, set events_found to false and return an empty events list.
+
+Third-party automated calendar-derived briefs, relationship digests and reminder summaries that only restate entries already on the recipient's calendar are not new event sources. Return events_found false for them unless the email communicates a genuine organizer-issued change, cancellation, or new action beyond the existing calendar data. This exclusion does NOT apply to organizer-sent meeting invitations, preparation requests, or attached agendas: extract those events when the recipient is expected to attend or prepare and the date is explicit.
+</not_events>
+
+<cancellations>
+Set cancellation_detected to true only when the email is an organizer's or provider's cancellation of an existing calendar event. Keep it false for RSVP declines, counter-proposals, subscription or account cancellations, and other uses of the word cancel. A cancellation may carry no usable event details; still set cancellation_detected to true, so the system records it rather than creating a new event.
+</cancellations>
+
+If the email contains no events, set events_found to false and return an empty events list.""")
+
+
+def _build_email_context(email_metadata: dict[str, Any], current_date: str) -> str:
+    """Describe the email being analysed, for the user message."""
     subject = email_metadata.get("subject", "(no subject)")
     from_name = email_metadata.get("from_name", "")
     from_email = email_metadata.get("from_email", "unknown")
     date_sent = email_metadata.get("date_sent", "")
     user_timezone = email_metadata.get("user_timezone", "America/New_York")
-
-    prompt = f"""You are an expert at extracting calendar events from emails.
-
-**Current Date:** {current_date}
-**User timezone (local wall clock):** {user_timezone}
-
-**Email Metadata:**
-- Subject: {subject}
-- From: {from_name} <{from_email}>
-- Date Sent: {date_sent}
-
-**Instructions:**
-1. Analyze the email content and any attachments (including PDFs, images, calendars)
-2. Set cancellation_detected=true only when the email is an organizer/provider cancellation of an existing calendar event. Set it false for RSVP declines, counter-proposals, subscription/account cancellations, or generic use of the word cancel.
-3. Extract ALL calendar events mentioned — meetings, appointments, parties, closures, themed days, deadlines, etc.
-4. For each event, extract:
-   - Title: clear, descriptive event name
-   - Start date/time as a LOCAL wall-clock time in {user_timezone}
-   - End date/time as a LOCAL wall-clock time in {user_timezone} (if mentioned)
-   - Location: physical address, room, venue, or virtual meeting link. If no specific location is mentioned in the email, set to null. Do NOT infer or guess locations from the organization name or event type.
-   - Full description with all relevant details
-   - Whether it's an all-day event (true/false)
-   - Importance: "action_required" or "fyi" (see classification below)
-   - Recurrence rule: for recurring events (weekly meetings, monthly reviews, etc.), provide an RFC 5545 RRULE string (e.g., "RRULE:FREQ=WEEKLY;BYDAY=MO"). Null for one-time events.
-
-**Time rules (critical):**
-- Emit start_datetime / end_datetime as naive local ISO strings like 2026-09-13T10:00:00
-- Do NOT include Z, +00:00, or any numeric timezone offset — the system applies {user_timezone}
-- When an email lists both an Event Time (or doors / show time) AND setup / vendor / cleanup windows, use the Event Time for start/end. Put setup and cleanup only in the description.
-- Example: "Event Time: 10:00 AM – 2:00 PM" with "Vendor Set-Up: 7:00 AM – 9:00 AM" → start 10:00, end 14:00 (not 7:00–15:00)
-
-**Importance Classification:**
-- **action_required**: Events that require the recipient to take action or change their schedule.
-  Examples: closures (school closed, office closed), early dismissals, half days, deadlines,
-  appointments, meetings, conferences, registration deadlines, performances to attend.
-- **fyi**: Informational events that are nice to know but don't require action.
-  Examples: themed dress-up days (pajama day, hat day), staff birthdays, spirit weeks,
-  movie days, classroom activities the child participates in without parent involvement.
-
-**Important:**
-- If NO calendar events are found, set events_found=false and return empty events list
-- A cancellation may have no usable event details; still set cancellation_detected=true so the system records an unmatched cancellation instead of creating a new event.
-- Parse dates carefully using the current date as context
-- Extract ALL events including themed days and informational items — classify them as "fyi"
-- For PDFs: extract events from calendar grids, flyers, and schedules
-
-**Examples of events:**
-✓ Birthday party invitations (action_required)
-✓ Doctor/dentist appointments (action_required)
-✓ Meeting requests (action_required)
-✓ School closures (action_required)
-✓ Themed dress-up days at school (fyi)
-✓ Staff birthdays (fyi)
-✓ Conference registrations (action_required)
-
-**NOT events — do NOT extract these:**
-An event is something the recipient would put on their personal calendar to attend, participate in, or prepare for.
-If the email is purely transactional (receipts, shipping, payments) or administrative (password resets, terms updates, account statements) with no event the recipient needs to attend or prepare for, set events_found=false.
-- Third-party automated calendar-derived briefs, relationship digests, and reminder summaries that merely restate entries already on the recipient's calendar are NOT new event sources. Return events_found=false unless the email communicates a genuine organizer-issued change, cancellation, or new action beyond the existing calendar data.
-- This exclusion does NOT apply to organizer-sent meeting invitations, preparation requests, or attached agendas. Extract those events when the recipient is expected to attend or prepare and the date is explicit.
-
-**Extraction rules:**
-- Multi-day events (e.g., 3-day conference) should be ONE event with start/end spanning the full duration, not separate per-day events
-- Do NOT create separate events for RSVP deadlines, early bird deadlines, or registration cutoffs — note them in the main event's description instead
-- Only extract events with explicitly stated dates — do NOT infer dates from holidays, context, or subject lines
-"""
-    return prompt
+    return (
+        "<email_context>\n"
+        f"Today's date: {current_date}\n"
+        f"User's timezone (local wall clock): {user_timezone}\n"
+        f"Subject: {subject}\n"
+        f"From: {from_name} <{from_email}>\n"
+        f"Date sent: {date_sent}\n"
+        "</email_context>"
+    )
 
 
 def _get_attachment_size_limit(mime_type: str, config: Optional[Config] = None) -> int:
@@ -237,21 +227,27 @@ def _build_content_parts(
     email_text: str,
     attachments: Optional[list[dict[str, Any]]] = None,
     config: Optional[Config] = None,
+    email_context: str = "",
 ) -> list[ContentPart]:
     """Build multimodal content parts for LLM.
 
+    Order follows Anthropic's guidance for long inputs: instructions as the
+    system prompt, then attachments, then the email text. The email text comes
+    last because providers without native schemas append their JSON
+    instruction to the final text part.
+
     Args:
-        prompt: The system prompt.
+        prompt: The extraction instructions (system text).
         email_text: Email body text.
         attachments: Optional list of attachment dicts with data, mime_type, filename.
         config: Optional Config for per-type attachment size limits.
+        email_context: The ``<email_context>`` block for this email.
 
     Returns:
         List of ContentPart for the LLM provider.
     """
     content_parts: list[ContentPart] = [
-        prompt,
-        f"\n**Email Body:**\n{email_text}",
+        prompt if isinstance(prompt, SystemText) else SystemText(prompt)
     ]
 
     # Add attachments if provided
@@ -283,6 +279,9 @@ def _build_content_parts(
                     f"limit {size_limit} bytes)"
                 )
 
+    email_parts = [email_context] if email_context else []
+    email_parts.append(f"<email_body>\n{email_text}\n</email_body>")
+    content_parts.append("\n\n".join(email_parts))
     return content_parts
 
 
@@ -319,8 +318,13 @@ def extract_calendar_events(
         logger.warning(f"Invalid timezone '{user_tz_name}', falling back to America/New_York")
         user_tz = ZoneInfo("America/New_York")
     current_date = email_metadata.get("current_date_override") or datetime.now(user_tz).strftime("%Y-%m-%d")
-    prompt = _build_prompt(email_metadata, current_date)
-    content_parts = _build_content_parts(prompt, email_text, attachments, config=config)
+    content_parts = _build_content_parts(
+        _build_prompt(),
+        email_text,
+        attachments,
+        config=config,
+        email_context=_build_email_context(email_metadata, current_date),
+    )
 
     # Use JSON schema for structured output
     json_schema = EventExtractionResponse.model_json_schema()

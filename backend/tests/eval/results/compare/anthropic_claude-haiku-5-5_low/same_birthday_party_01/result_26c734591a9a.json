@@ -1,29 +1,29 @@
 {
   "fixture_name": "same_birthday_party_01",
   "fixture_hash": "9f9962120694719025f73b9df0067541c2e6a50cb9d908894cb740ac5d4c68f2",
-  "code_hash": "3b61b944aad7",
+  "code_hash": "23e8bc9980aa",
   "prompt_hash": "26c734591a9a",
   "operation": "compare",
   "provider": "anthropic",
   "model": "claude-haiku-5-5",
   "thinking": "low",
-  "run_at": "2026-11-01T02:40:22.303460+00:00",
-  "duration_ms": 1088,
+  "run_at": "2026-11-01T04:08:45.788835+00:00",
+  "duration_ms": 1290,
   "timing": {
     "fixture_load": {
-      "started_at": "2026-11-01T02:40:21.211485+00:00",
+      "started_at": "2026-11-01T04:08:44.491061+00:00",
       "duration_ms": 0
     },
     "gateway_create": {
-      "started_at": "2026-11-01T02:40:21.211491+00:00",
-      "duration_ms": 6
+      "started_at": "2026-11-01T04:08:44.491068+00:00",
+      "duration_ms": 7
     },
     "api_call": {
-      "started_at": "2026-11-01T02:40:21.218098+00:00",
-      "duration_ms": 1082
+      "started_at": "2026-11-01T04:08:44.498099+00:00",
+      "duration_ms": 1283
     },
     "scoring": {
-      "started_at": "2026-11-01T02:40:22.300695+00:00",
+      "started_at": "2026-11-01T04:08:45.781350+00:00",
       "duration_ms": 0
     }
   },
@@ -47,10 +47,10 @@
   },
   "tokens": {
     "prompt_tokens": 669,
-    "completion_tokens": 139,
-    "total_tokens": 808
+    "completion_tokens": 166,
+    "total_tokens": 835
   },
-  "cost": 0.0001364,
+  "cost": 0.0001499,
   "trace": {
     "content_parts": [
       {
@@ -103,15 +103,15 @@
         "reasoning"
       ]
     },
-    "raw_response_text": "{\"matched_event_id\": \"event-001\", \"reasoning\": \"The new event and event-001 share the same date, start and end times (2026-03-15 14:00-17:00), and location (Adventure Zone, with the new event adding the street address). Both describe Emily's 7th birthday party with pizza and cake. The differing titles and wording are only surface variations of the same real-world event. The other existing events are at different times and are unrelated.\"}",
+    "raw_response_text": "{\"matched_event_id\": \"event-001\", \"reasoning\": \"The new event and event-001 both describe Emily's 7th birthday party on 2026-03-15 with identical start and end times (14:00-17:00), the same venue (Adventure Zone), and overlapping descriptions (pizza, cake, activities/games). The differing titles and the extra address and RSVP details in the new event are wording and detail differences, so they refer to the same real-world event. The standup and dentist appointment are clearly unrelated.\"}",
     "finish_reason": "end_turn",
     "retry_count": 0,
     "error_traceback": null,
-    "correlation_id": "ce42c720e9ff48f49df0f5f0a3e8f649",
+    "correlation_id": "7371b2a45b014e6c99301e415aabf5c9",
     "route_role": "primary"
   },
-  "inference_key": "53d1bfd2fd138501e63ad61fb124f234dfb06b2b30659e8dc38b7c79651dcbd3",
-  "score_key": "b289bc640c108478e982a06564a3fd932ad702912c590378ba6f6aad596679b4",
+  "inference_key": "52b3121eb11cc5cb246e927b3a575460a7daf05433a0df2fa2f39a0775d00a59",
+  "score_key": "bf738a1486111c0aab3abdf7e28d4fee2a9eceb4b70907ae0680b6ffb0dc40b2",
   "identity": {
     "identity_version": 2,
     "operation": "compare",
@@ -135,7 +135,7 @@
       "top_p": null
     },
     "prompt_contract_hash": "26c734591a9a2f602b175c5e7f03455199cca7eb847d43a054d339700ba5d2bb",
-    "adapter_contract_hash": "853277a8daf01bb6dff0cf2b0332682d532c648421bec5a11cf77d1d0cee152d",
+    "adapter_contract_hash": "d3cff82711b897f93c4044d5f12effe2e04dcdd511f069e9a2ac48452c725455",
     "fixture_input_hash": "9f9962120694719025f73b9df0067541c2e6a50cb9d908894cb740ac5d4c68f2"
   }
 }

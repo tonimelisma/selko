@@ -1,0 +1,23 @@
+{
+  "fixture_name": "meetings/ics_calendar_invite",
+  "operation": "extract",
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 2,
+    "inference_key": "462e6d34c04a93660e266a5ffeefb8e9f254985924f32b7918342b77529a7f65",
+    "expected_output_hash": "17d9c6dd1f1fdc362e8af3956f555cfc40dbf07c82265fd452a7ecdac52382a7",
+    "scorer_hash": "a4bebf9e53234c7487f4d65ea503fd0e35febe52e584ee52eda52f5faf46ec14"
+  },
+  "score_key": "881f1a4eaff1906105e93b80515b4a0f704e63f504f863c79151874d476dfb59",
+  "stored_at": "2026-11-01T04:08:07.674245+00:00"
+}

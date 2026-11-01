@@ -1,29 +1,29 @@
 {
   "fixture_name": "same_series_different_level_22",
   "fixture_hash": "bbd147d5369bc3a4afebe40f88606da39b90162d1fb0efd7de17c962eaf10c1d",
-  "code_hash": "3b61b944aad7",
+  "code_hash": "23e8bc9980aa",
   "prompt_hash": "26c734591a9a",
   "operation": "compare",
   "provider": "anthropic",
   "model": "claude-haiku-5-5",
   "thinking": "low",
-  "run_at": "2026-11-01T02:40:23.868387+00:00",
-  "duration_ms": 957,
+  "run_at": "2026-11-01T04:08:47.419380+00:00",
+  "duration_ms": 1014,
   "timing": {
     "fixture_load": {
-      "started_at": "2026-11-01T02:40:22.907694+00:00",
+      "started_at": "2026-11-01T04:08:46.402129+00:00",
       "duration_ms": 0
     },
     "gateway_create": {
-      "started_at": "2026-11-01T02:40:22.907699+00:00",
-      "duration_ms": 6
+      "started_at": "2026-11-01T04:08:46.402137+00:00",
+      "duration_ms": 7
     },
     "api_call": {
-      "started_at": "2026-11-01T02:40:22.913825+00:00",
-      "duration_ms": 951
+      "started_at": "2026-11-01T04:08:46.409155+00:00",
+      "duration_ms": 1007
     },
     "scoring": {
-      "started_at": "2026-11-01T02:40:23.865286+00:00",
+      "started_at": "2026-11-01T04:08:47.416429+00:00",
       "duration_ms": 0
     }
   },
@@ -48,10 +48,10 @@
   },
   "tokens": {
     "prompt_tokens": 536,
-    "completion_tokens": 143,
-    "total_tokens": 679
+    "completion_tokens": 151,
+    "total_tokens": 687
   },
-  "cost": 0.0001251,
+  "cost": 0.0001291,
   "trace": {
     "content_parts": [
       {
@@ -104,15 +104,15 @@
         "reasoning"
       ]
     },
-    "raw_response_text": "{\"matched_event_id\": null, \"reasoning\": \"The new event is 'Swedish: Advanced' from 18:00-19:30 in room 3. Event-001 is 'Beginner 1A' at 16:00-17:30 and event-002 is 'Intermediate 1A' at 17:00-18:30 in room 2. Different course levels, different times, and different descriptions mean these are distinct classes, not the same real-world event.\"}",
+    "raw_response_text": "{\"matched_event_id\": null, \"reasoning\": \"The new event, 'Swedish: Advanced' (18:00-19:30, room 3), differs in course level and time from both existing events. Event-001 is 'Beginner 1A' at 16:00-17:30 and event-002 is 'Intermediate 1A' at 17:00-18:30 in room 2. Different titles, levels, and times indicate separate real-world classes, so there is no duplicate.\"}",
     "finish_reason": "end_turn",
     "retry_count": 0,
     "error_traceback": null,
-    "correlation_id": "ac422d7033ec4ca69b7cd049ee4683f5",
+    "correlation_id": "dc0ece305fb74430bdd91ae0b9795307",
     "route_role": "primary"
   },
-  "inference_key": "79f8e1be2fd37cf27113f1e06537d319bc61a1fc558809419581652a51c2d553",
-  "score_key": "d63ec458ef9bcdfef8489fdf5e144855da5fcdab55ccc003565f6fd9723532cf",
+  "inference_key": "4e68ede9ac8de8f8264dccae583cee45577f54dd414bf42835737949eb617235",
+  "score_key": "07cd30d7c9de568d6443442f4076fc9c99564e45b919f5f35a06ba436615cecd",
   "identity": {
     "identity_version": 2,
     "operation": "compare",
@@ -136,7 +136,7 @@
       "top_p": null
     },
     "prompt_contract_hash": "26c734591a9a2f602b175c5e7f03455199cca7eb847d43a054d339700ba5d2bb",
-    "adapter_contract_hash": "853277a8daf01bb6dff0cf2b0332682d532c648421bec5a11cf77d1d0cee152d",
+    "adapter_contract_hash": "d3cff82711b897f93c4044d5f12effe2e04dcdd511f069e9a2ac48452c725455",
     "fixture_input_hash": "bbd147d5369bc3a4afebe40f88606da39b90162d1fb0efd7de17c962eaf10c1d"
   }
 }

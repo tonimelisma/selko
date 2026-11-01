@@ -1,29 +1,29 @@
 {
   "fixture_name": "same_doctor_appointment_02",
   "fixture_hash": "7e195c59be6f7ef9e42999f9e516724b67e6ffd8b0dcb03a514f02405afb5c9c",
-  "code_hash": "3b61b944aad7",
+  "code_hash": "23e8bc9980aa",
   "prompt_hash": "26c734591a9a",
   "operation": "compare",
   "provider": "anthropic",
   "model": "claude-haiku-5-5",
   "thinking": "low",
-  "run_at": "2026-11-01T02:40:22.876496+00:00",
-  "duration_ms": 1129,
+  "run_at": "2026-11-01T04:08:45.934472+00:00",
+  "duration_ms": 1168,
   "timing": {
     "fixture_load": {
-      "started_at": "2026-11-01T02:40:21.744960+00:00",
+      "started_at": "2026-11-01T04:08:44.763012+00:00",
       "duration_ms": 0
     },
     "gateway_create": {
-      "started_at": "2026-11-01T02:40:21.744967+00:00",
-      "duration_ms": 7
+      "started_at": "2026-11-01T04:08:44.763021+00:00",
+      "duration_ms": 6
     },
     "api_call": {
-      "started_at": "2026-11-01T02:40:21.752135+00:00",
-      "duration_ms": 1122
+      "started_at": "2026-11-01T04:08:44.769304+00:00",
+      "duration_ms": 1162
     },
     "scoring": {
-      "started_at": "2026-11-01T02:40:22.874265+00:00",
+      "started_at": "2026-11-01T04:08:45.931657+00:00",
       "duration_ms": 0
     }
   },
@@ -47,10 +47,10 @@
   },
   "tokens": {
     "prompt_tokens": 571,
-    "completion_tokens": 192,
-    "total_tokens": 763
+    "completion_tokens": 187,
+    "total_tokens": 758
   },
-  "cost": 0.00015309999999999998,
+  "cost": 0.0001506,
   "trace": {
     "content_parts": [
       {
@@ -103,15 +103,15 @@
         "reasoning"
       ]
     },
-    "raw_response_text": "{\"matched_event_id\": \"event-001\", \"reasoning\": \"The new event 'Dr. Smith - Annual Physical' and existing event-001 'Annual Physical Exam' have identical start and end times (2026-04-22 10:30-11:30) and both describe the same yearly checkup with Dr. Smith. Locations match (Riverside Medical Center, with the new event adding Suite 200). The new event only adds details such as the arrival instruction, so they refer to the same real-world appointment. event-002 (Grocery Shopping) is at a different time and clearly unrelated.\"}",
+    "raw_response_text": "{\"matched_event_id\": \"event-001\", \"reasoning\": \"The new event 'Dr. Smith - Annual Physical' and existing event-001 'Annual Physical Exam' have identical start and end times (2026-04-22 10:30-11:30) and both describe the same yearly checkup with Dr. Smith. The locations are consistent (Riverside Medical Center, with the new event adding Suite 200). The new event's extra details (arrival instructions) do not indicate a different appointment. Event-002 is a grocery shopping trip at a different time and is not a match.\"}",
     "finish_reason": "end_turn",
     "retry_count": 0,
     "error_traceback": null,
-    "correlation_id": "d785252802014b19891e302dd100eb25",
+    "correlation_id": "0ea77acd0eb14efaa66a86988c967bac",
     "route_role": "primary"
   },
-  "inference_key": "643856f9a303088ccb7a2da5e71f64ac5df3e1d833c966dab4cd0ef560294b8b",
-  "score_key": "e926e6751cb4a006d717ce68ec122db4040f63a4dd660779d0e761d6a8a4422d",
+  "inference_key": "066f8d66a59b53f8cd6dd2470863d1dfcfe77aef16480fff517e27cc1197e585",
+  "score_key": "774629332300c40d08e7a18b17c52e8feb3a1f1a50610913e16304dd3ef67753",
   "identity": {
     "identity_version": 2,
     "operation": "compare",
@@ -135,7 +135,7 @@
       "top_p": null
     },
     "prompt_contract_hash": "26c734591a9a2f602b175c5e7f03455199cca7eb847d43a054d339700ba5d2bb",
-    "adapter_contract_hash": "853277a8daf01bb6dff0cf2b0332682d532c648421bec5a11cf77d1d0cee152d",
+    "adapter_contract_hash": "d3cff82711b897f93c4044d5f12effe2e04dcdd511f069e9a2ac48452c725455",
     "fixture_input_hash": "7e195c59be6f7ef9e42999f9e516724b67e6ffd8b0dcb03a514f02405afb5c9c"
   }
 }

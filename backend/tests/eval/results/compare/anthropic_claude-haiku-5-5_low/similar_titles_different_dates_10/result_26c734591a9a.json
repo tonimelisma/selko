@@ -1,29 +1,29 @@
 {
   "fixture_name": "similar_titles_different_dates_10",
   "fixture_hash": "d5500d95f6226e630b3359a75ea3d1073de624471c6ea5f05d7f5d350aa4cce3",
-  "code_hash": "3b61b944aad7",
+  "code_hash": "23e8bc9980aa",
   "prompt_hash": "26c734591a9a",
   "operation": "compare",
   "provider": "anthropic",
   "model": "claude-haiku-5-5",
   "thinking": "low",
-  "run_at": "2026-11-01T02:40:25.372846+00:00",
-  "duration_ms": 1466,
+  "run_at": "2026-11-01T04:08:48.629814+00:00",
+  "duration_ms": 1490,
   "timing": {
     "fixture_load": {
-      "started_at": "2026-11-01T02:40:23.901262+00:00",
+      "started_at": "2026-11-01T04:08:47.134359+00:00",
       "duration_ms": 0
     },
     "gateway_create": {
-      "started_at": "2026-11-01T02:40:23.901269+00:00",
+      "started_at": "2026-11-01T04:08:47.134365+00:00",
       "duration_ms": 6
     },
     "api_call": {
-      "started_at": "2026-11-01T02:40:23.907856+00:00",
-      "duration_ms": 1460
+      "started_at": "2026-11-01T04:08:47.141131+00:00",
+      "duration_ms": 1484
     },
     "scoring": {
-      "started_at": "2026-11-01T02:40:25.368467+00:00",
+      "started_at": "2026-11-01T04:08:48.625513+00:00",
       "duration_ms": 0
     }
   },
@@ -47,10 +47,10 @@
   },
   "tokens": {
     "prompt_tokens": 537,
-    "completion_tokens": 194,
-    "total_tokens": 731
+    "completion_tokens": 190,
+    "total_tokens": 727
   },
-  "cost": 0.00015069999999999998,
+  "cost": 0.00014869999999999998,
   "trace": {
     "content_parts": [
       {
@@ -103,15 +103,15 @@
         "reasoning"
       ]
     },
-    "raw_response_text": "{\"matched_event_id\": null, \"reasoning\": \"The new event (Sprint 12 Team Retrospective on 2026-04-10 at 14:00-15:00) differs from event-001 (Sprint 11 Team Retrospective on 2026-04-03 at 14:00-15:00). Although the titles and location match, they are different recurring instances on different dates, referring to different sprints, so they are different real-world events. event-002 (Sprint Planning, 10:00-12:00 in Conference Room A) is a different event with a different title, time, and purpose. No existing event matches the new event.\"}",
+    "raw_response_text": "{\"matched_event_id\": null, \"reasoning\": \"The new event (Team Retrospective, 2026-04-10 14:00-15:00, Conference Room B, Sprint 12) is not the same as event-001, which is the Sprint 11 retrospective held on 2026-04-03 at the same time and place. Although the titles and location match, they are different recurring meetings on different dates for different sprints. event-002 (Sprint Planning, 10:00-12:00, Conference Room A) has a different title, time, location, and purpose. No existing event refers to the same real-world meeting.\"}",
     "finish_reason": "end_turn",
     "retry_count": 0,
     "error_traceback": null,
-    "correlation_id": "e3887347b60c4aceb640c132915b7d5e",
+    "correlation_id": "1dd33d3ff53545ab90b280edc929f894",
     "route_role": "primary"
   },
-  "inference_key": "d35d458c0e723d5701f3300353f3fd9216f857b8f40e4d2131dabbbdb8e94a84",
-  "score_key": "56586adc0000ff9e6efcf6db8bc6dddf4798f31f0d3bc18d13c61b69a1d6ed56",
+  "inference_key": "5557fc1fc968ea27f9a98401024256ac65ca969ca279cfb81e91840cbd97d26c",
+  "score_key": "2d84a9293b7a59c212cc2008430375ed43660e957461f69a41771edd6596f0b3",
   "identity": {
     "identity_version": 2,
     "operation": "compare",
@@ -135,7 +135,7 @@
       "top_p": null
     },
     "prompt_contract_hash": "26c734591a9a2f602b175c5e7f03455199cca7eb847d43a054d339700ba5d2bb",
-    "adapter_contract_hash": "853277a8daf01bb6dff0cf2b0332682d532c648421bec5a11cf77d1d0cee152d",
+    "adapter_contract_hash": "d3cff82711b897f93c4044d5f12effe2e04dcdd511f069e9a2ac48452c725455",
     "fixture_input_hash": "d5500d95f6226e630b3359a75ea3d1073de624471c6ea5f05d7f5d350aa4cce3"
   }
 }

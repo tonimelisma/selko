@@ -1,0 +1,141 @@
+{
+  "fixture_name": "same_flight_04",
+  "operation": "compare",
+  "provider": "anthropic",
+  "model": "claude-haiku-5-5",
+  "thinking": {
+    "mode": "level",
+    "value": "low"
+  },
+  "run_at": "2026-11-01T04:08:47.105078+00:00",
+  "duration_ms": 1260,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-11-01T04:08:45.840252+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-11-01T04:08:45.840267+00:00",
+      "duration_ms": 7
+    },
+    "api_call": {
+      "started_at": "2026-11-01T04:08:45.848014+00:00",
+      "duration_ms": 1253
+    },
+    "scoring": {
+      "started_at": "2026-11-01T04:08:47.102006+00:00",
+      "duration_ms": 0
+    }
+  },
+  "tokens": {
+    "prompt_tokens": 662,
+    "completion_tokens": 148,
+    "total_tokens": 810
+  },
+  "cost": 0.0001402,
+  "actual": {
+    "matched_event_id": "event-002"
+  },
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1213,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Flight to Denver - UA 1234\n- Start: 2026-05-10T08:15:00\n- End: 2026-05-10T11:45:00\n- Location: SFO to DEN\n- Description: United Airlines confirmation #ABC123XYZ. Seat 12A.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Pack for Trip\n   - Start: 2026-05-09T20:00:00\n   - End: 2026-05-09T21:00:00\n   - Location: Home\n   - Description: Pack bags for Denver\n\n2. Event ID: event-002\n   - Title: UA1234 - San Francisco to Denver\n   - Start: 2026-05-10T08:15:00\n   - End: 2026-05-10T11:45:00\n   - Location: SFO Terminal 3\n   - Description: Flight itinerary - departs 8:15am, arrives 11:45am MT\n\n3. Event ID: event-003\n   - Title: Hotel Check-in Denver\n   - Start: 2026-05-10T15:00:00\n   - End: 2026-05-10T15:30:00\n   - Location: Hyatt Regency Denver\n   - Description: Reservation #456789\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "raw_response_text": "{\"matched_event_id\": \"event-002\", \"reasoning\": \"The new event and event-002 both describe United flight UA 1234 from San Francisco (SFO) to Denver on 2026-05-10, with identical start (08:15) and end (11:45) times. Wording and location details differ slightly (SFO vs. SFO Terminal 3), but they refer to the same real-world flight. The other existing events (packing and hotel check-in) are different activities.\"}",
+    "finish_reason": "end_turn",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "14aba32326d7444fbc1aedc78711cca0",
+    "route_role": "primary"
+  },
+  "category": null,
+  "description": "Same flight with confirmation vs itinerary wording - should match",
+  "difficulty": "medium",
+  "tags": [
+    "dedup",
+    "match",
+    "travel"
+  ],
+  "input_summary": {},
+  "fixture_input_hash": "32c87702f55274c4b4a38de375d2716d6068149d2b340df126659d183b59d753",
+  "code_provenance": {
+    "git_commit": "bef4435b633d504542962945d6d48e01fa0aa675",
+    "event_processing_sha256": "23e8bc9980aafa28c2b852b7d666c359d45d389289cd4f547500020e0302a689"
+  },
+  "raw_response": null,
+  "identity": {
+    "identity_version": 2,
+    "operation": "compare",
+    "provider": "anthropic",
+    "model": "claude-haiku-5-5",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "anthropic/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "claude-haiku-5-5",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "26c734591a9a2f602b175c5e7f03455199cca7eb847d43a054d339700ba5d2bb",
+    "adapter_contract_hash": "d3cff82711b897f93c4044d5f12effe2e04dcdd511f069e9a2ac48452c725455",
+    "fixture_input_hash": "32c87702f55274c4b4a38de375d2716d6068149d2b340df126659d183b59d753"
+  },
+  "inference_key": "c5bc1e4a7908fb4bdfccad149d4bf0098a1702fd67708fb48095730c2973fa38",
+  "stored_at": "2026-11-01T04:08:47.125737+00:00"
+}

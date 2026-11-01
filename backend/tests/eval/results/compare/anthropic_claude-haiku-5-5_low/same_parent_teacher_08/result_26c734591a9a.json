@@ -1,29 +1,29 @@
 {
   "fixture_name": "same_parent_teacher_08",
   "fixture_hash": "d9142b557e1ef150dabeaa6e54479898aecff04136deb2eb5eaacd5a7edd74c5",
-  "code_hash": "3b61b944aad7",
+  "code_hash": "23e8bc9980aa",
   "prompt_hash": "26c734591a9a",
   "operation": "compare",
   "provider": "anthropic",
   "model": "claude-haiku-5-5",
   "thinking": "low",
-  "run_at": "2026-11-01T02:40:23.952002+00:00",
-  "duration_ms": 1133,
+  "run_at": "2026-11-01T04:08:47.084730+00:00",
+  "duration_ms": 1109,
   "timing": {
     "fixture_load": {
-      "started_at": "2026-11-01T02:40:22.815409+00:00",
+      "started_at": "2026-11-01T04:08:45.972218+00:00",
       "duration_ms": 0
     },
     "gateway_create": {
-      "started_at": "2026-11-01T02:40:22.815414+00:00",
+      "started_at": "2026-11-01T04:08:45.972230+00:00",
       "duration_ms": 7
     },
     "api_call": {
-      "started_at": "2026-11-01T02:40:22.823386+00:00",
-      "duration_ms": 1126
+      "started_at": "2026-11-01T04:08:45.979508+00:00",
+      "duration_ms": 1102
     },
     "scoring": {
-      "started_at": "2026-11-01T02:40:23.949449+00:00",
+      "started_at": "2026-11-01T04:08:47.082173+00:00",
       "duration_ms": 0
     }
   },
@@ -47,10 +47,10 @@
   },
   "tokens": {
     "prompt_tokens": 582,
-    "completion_tokens": 165,
-    "total_tokens": 747
+    "completion_tokens": 168,
+    "total_tokens": 750
   },
-  "cost": 0.00014069999999999998,
+  "cost": 0.0001422,
   "trace": {
     "content_parts": [
       {
@@ -103,15 +103,15 @@
         "reasoning"
       ]
     },
-    "raw_response_text": "{\"matched_event_id\": \"event-001\", \"reasoning\": \"The new event and event-001 share the same start and end times (2026-05-12 15:30-16:00), the same location (Room 204, Lincoln Elementary), and both describe a parent-teacher conference with Mrs. Johnson about Jake. The new event's description says 'tomorrow' and '3:30pm', which is a reminder of the same meeting. Event-002 (dry cleaning pickup at a different time and place) is unrelated.\"}",
+    "raw_response_text": "{\"matched_event_id\": \"event-001\", \"reasoning\": \"The new event and event-001 share the same start and end times (2026-05-12 15:30-16:00), the same location (Room 204, Lincoln Elementary), and both describe a parent-teacher conference with Mrs. Johnson about Jake. The new event's description says 'tomorrow', which is just a relative reference to the same date. They refer to the same real-world appointment. event-002 (dry cleaning pickup at 17:00) is unrelated.\"}",
     "finish_reason": "end_turn",
     "retry_count": 0,
     "error_traceback": null,
-    "correlation_id": "64375efaa11849d4ba22c3acd7d8d75d",
+    "correlation_id": "12ccf097bdd8467592d7c9b041235e58",
     "route_role": "primary"
   },
-  "inference_key": "691cdb7b5d6c0e8186af287cd2c0eb10089ac688d8ac3bff95391ad4c329b384",
-  "score_key": "fc0e119c1b6fbfb4af606a2cdcc0e54b989e8c89b56f2a7ed1f75830efc0f3cb",
+  "inference_key": "624d5fa3999ece751daab1bfb2c414b3ecbf26750296bdbe8b184687359a7589",
+  "score_key": "ef5b7770d619c1de577512c3deb67519699b17df23a6c8df518289d67fc851d7",
   "identity": {
     "identity_version": 2,
     "operation": "compare",
@@ -135,7 +135,7 @@
       "top_p": null
     },
     "prompt_contract_hash": "26c734591a9a2f602b175c5e7f03455199cca7eb847d43a054d339700ba5d2bb",
-    "adapter_contract_hash": "853277a8daf01bb6dff0cf2b0332682d532c648421bec5a11cf77d1d0cee152d",
+    "adapter_contract_hash": "d3cff82711b897f93c4044d5f12effe2e04dcdd511f069e9a2ac48452c725455",
     "fixture_input_hash": "d9142b557e1ef150dabeaa6e54479898aecff04136deb2eb5eaacd5a7edd74c5"
   }
 }

@@ -1,29 +1,29 @@
 {
   "fixture_name": "interview_loop_distinct_slots_20",
   "fixture_hash": "e18308c3ae1188e1e990b528759eddc563013515cce36705785e20b8c62af627",
-  "code_hash": "3b61b944aad7",
+  "code_hash": "23e8bc9980aa",
   "prompt_hash": "26c734591a9a",
   "operation": "compare",
   "provider": "anthropic",
   "model": "claude-haiku-5-5",
   "thinking": "low",
-  "run_at": "2026-11-01T02:40:22.352317+00:00",
-  "duration_ms": 1556,
+  "run_at": "2026-11-01T04:08:45.039670+00:00",
+  "duration_ms": 1188,
   "timing": {
     "fixture_load": {
-      "started_at": "2026-11-01T02:40:20.788283+00:00",
+      "started_at": "2026-11-01T04:08:43.846476+00:00",
       "duration_ms": 0
     },
     "gateway_create": {
-      "started_at": "2026-11-01T02:40:20.788291+00:00",
-      "duration_ms": 7
+      "started_at": "2026-11-01T04:08:43.846484+00:00",
+      "duration_ms": 6
     },
     "api_call": {
-      "started_at": "2026-11-01T02:40:20.796199+00:00",
-      "duration_ms": 1549
+      "started_at": "2026-11-01T04:08:43.852865+00:00",
+      "duration_ms": 1182
     },
     "scoring": {
-      "started_at": "2026-11-01T02:40:22.345254+00:00",
+      "started_at": "2026-11-01T04:08:45.035301+00:00",
       "duration_ms": 0
     }
   },
@@ -48,10 +48,10 @@
   },
   "tokens": {
     "prompt_tokens": 613,
-    "completion_tokens": 176,
-    "total_tokens": 789
+    "completion_tokens": 188,
+    "total_tokens": 801
   },
-  "cost": 0.00014930000000000002,
+  "cost": 0.0001553,
   "trace": {
     "content_parts": [
       {
@@ -104,15 +104,15 @@
         "reasoning"
       ]
     },
-    "raw_response_text": "{\"matched_event_id\": null, \"reasoning\": \"The new event is 'Northwind PM Interview 3' at 18:00-18:45 on 2026-09-09. Event-001 is a behavioral interview at 17:00-17:45, a different round and time. Event-002 is 'PM Interview 2' at 23:00-23:45, a different round and time. Event-003 is 'XFN or PM Interview 5' at 21:30-22:15, a different round and time. None refers to the same real-world interview, so there is no duplicate.\"}",
+    "raw_response_text": "{\"matched_event_id\": null, \"reasoning\": \"The new event is 'Northwind PM Interview 3' at 18:00-18:45 on 2026-09-09. Event-001 is a behavioral round at 17:00-17:45, a different round and time. Event-002 is 'PM Interview 2' at 23:00-23:45, a different round and time. Event-003 is 'XFN or PM Interview 5' at 21:30-22:15, a different round and time. Each existing event is a distinct interview round at a different time, so none refers to the same real-world event as the new one.\"}",
     "finish_reason": "end_turn",
     "retry_count": 0,
     "error_traceback": null,
-    "correlation_id": "f750e2962b2c4c6fafb0bdd44eed7c71",
+    "correlation_id": "6efa8e74824f46078e29ae8f7c01d6ba",
     "route_role": "primary"
   },
-  "inference_key": "35cb7d19f58ba09f8fdc6e8aad5745acbd652885d48e0d1427f27e89aa0a17b9",
-  "score_key": "16d065c403ba4b28ee044e9120eee55b8d8d75c805c8ecaafb8abdf52389285d",
+  "inference_key": "9932d888871c7ebec776c04857e85832f2157c6bfbc0ea163c7c4ee05f5b0546",
+  "score_key": "72e765de3cdbc929562491061375347d6e18c22995a0b6b8fcb3ef9aa2c7699b",
   "identity": {
     "identity_version": 2,
     "operation": "compare",
@@ -136,7 +136,7 @@
       "top_p": null
     },
     "prompt_contract_hash": "26c734591a9a2f602b175c5e7f03455199cca7eb847d43a054d339700ba5d2bb",
-    "adapter_contract_hash": "853277a8daf01bb6dff0cf2b0332682d532c648421bec5a11cf77d1d0cee152d",
+    "adapter_contract_hash": "d3cff82711b897f93c4044d5f12effe2e04dcdd511f069e9a2ac48452c725455",
     "fixture_input_hash": "e18308c3ae1188e1e990b528759eddc563013515cce36705785e20b8c62af627"
   }
 }

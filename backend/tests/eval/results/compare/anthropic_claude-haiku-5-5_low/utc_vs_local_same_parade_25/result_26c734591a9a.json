@@ -1,29 +1,29 @@
 {
   "fixture_name": "utc_vs_local_same_parade_25",
   "fixture_hash": "a24eb4e6277d4e3173ce1664fab91da4255852dc13b50b465c24c3eed1f0be06",
-  "code_hash": "3b61b944aad7",
+  "code_hash": "23e8bc9980aa",
   "prompt_hash": "26c734591a9a",
   "operation": "compare",
   "provider": "anthropic",
   "model": "claude-haiku-5-5",
   "thinking": "low",
-  "run_at": "2026-11-01T02:40:25.774360+00:00",
-  "duration_ms": 1018,
+  "run_at": "2026-11-01T04:08:49.658066+00:00",
+  "duration_ms": 1553,
   "timing": {
     "fixture_load": {
-      "started_at": "2026-11-01T02:40:24.751798+00:00",
+      "started_at": "2026-11-01T04:08:48.097605+00:00",
       "duration_ms": 0
     },
     "gateway_create": {
-      "started_at": "2026-11-01T02:40:24.751803+00:00",
-      "duration_ms": 8
+      "started_at": "2026-11-01T04:08:48.097614+00:00",
+      "duration_ms": 7
     },
     "api_call": {
-      "started_at": "2026-11-01T02:40:24.759941+00:00",
-      "duration_ms": 1010
+      "started_at": "2026-11-01T04:08:48.104655+00:00",
+      "duration_ms": 1546
     },
     "scoring": {
-      "started_at": "2026-11-01T02:40:25.770606+00:00",
+      "started_at": "2026-11-01T04:08:49.651436+00:00",
       "duration_ms": 0
     }
   },
@@ -49,10 +49,10 @@
   },
   "tokens": {
     "prompt_tokens": 891,
-    "completion_tokens": 129,
-    "total_tokens": 1020
+    "completion_tokens": 124,
+    "total_tokens": 1015
   },
-  "cost": 0.00015360000000000002,
+  "cost": 0.00015110000000000001,
   "trace": {
     "content_parts": [
       {
@@ -105,15 +105,15 @@
         "reasoning"
       ]
     },
-    "raw_response_text": "{\"matched_event_id\": \"event-001\", \"reasoning\": \"The new event and event-001 have identical start (2026-10-30T08:00:00) and end (2026-10-30T09:00:00) times on the same date. Both describe a Halloween parade at the same time slot, with the new event adding detail that it is Lincoln Elementary's morning parade. This is the same real-world event with different wording.\"}",
+    "raw_response_text": "{\"matched_event_id\": \"event-001\", \"reasoning\": \"The new event and event-001 have identical start (2026-10-30T08:00:00) and end (2026-10-30T09:00:00) times, both are Halloween parades on October 30, and neither lists a location. The new event adds detail (Lincoln Elementary, morning parade), but it refers to the same real-world event.\"}",
     "finish_reason": "end_turn",
     "retry_count": 0,
     "error_traceback": null,
-    "correlation_id": "26bb55a8bfc44dad88a10d2a69ebb5ab",
+    "correlation_id": "96c9bc63f17d40bda223b4205a7075e8",
     "route_role": "primary"
   },
-  "inference_key": "8d602c59b4f001e724b0a739e147917a694b809250ab27f97ebdfe334b755587",
-  "score_key": "ec313983a01c635bb00d5ddb8e74520607a73a919268175da4988c1298e26cb7",
+  "inference_key": "175bb2d4c48a78fe19cfad18ca17cc12d2224b2c77d1cac0019322c816c4ab50",
+  "score_key": "f23685a3d1fc4d3514894b0d53d5507c0c5940dee61c9299844f8f39c7690127",
   "identity": {
     "identity_version": 2,
     "operation": "compare",
@@ -137,7 +137,7 @@
       "top_p": null
     },
     "prompt_contract_hash": "26c734591a9a2f602b175c5e7f03455199cca7eb847d43a054d339700ba5d2bb",
-    "adapter_contract_hash": "853277a8daf01bb6dff0cf2b0332682d532c648421bec5a11cf77d1d0cee152d",
+    "adapter_contract_hash": "d3cff82711b897f93c4044d5f12effe2e04dcdd511f069e9a2ac48452c725455",
     "fixture_input_hash": "a24eb4e6277d4e3173ce1664fab91da4255852dc13b50b465c24c3eed1f0be06"
   }
 }
