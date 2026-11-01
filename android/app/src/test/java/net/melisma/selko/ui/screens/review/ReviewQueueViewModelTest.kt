@@ -72,7 +72,7 @@ class ReviewQueueViewModelTest {
             status = IntegrationStatus.EXPIRED
         )
 
-        assertEquals(emptyList<IntegrationProvider>(), recoveryProvidersFor(integrations))
+        assertEquals(emptyList<RecoveryAction>(), recoveryPlanFor(integrations).actions)
     }
 
     private val testEmail = Email(

@@ -219,9 +219,9 @@
     "gmailMissing": "Gmail not connected",
     "googleCalendarMissing": "Google Calendar not connected",
     "partialHint": "You didn’t allow {product} on Google’s screen. Reconnect and keep both boxes ticked.",
-    "reconnectEmailTitle": "Reconnect an email account",
+    "reconnectEmailTitle": "Reconnect your email",
     "reconnectEmailDescription": "New email suggestions are paused. Your existing suggestions and history are safe.",
-    "reconnectCalendarTitle": "Reconnect Google Calendar",
+    "reconnectCalendarTitle": "Reconnect your calendar",
     "connectCalendarTitle": "Connect your calendar",
     "reconnectCalendarDescription": "You can still review and reject suggestions, but accepting is paused until your calendar is reconnected.",
     "connectionAttentionTitle": "Connection needs attention",
@@ -240,7 +240,7 @@
     "catchUpCompletedWithErrors": "Caught up with {count} items needing attention",
     "catchUpCompletedWithErrorsDescription": "Most events synced, but {count} didn't make it. Review them from Settings.",
     "catchUpFailed": "Catch-up didn't finish",
-    "catchUpFailedDescription": "Reconnect Google Calendar to try again."
+    "catchUpFailedDescription": "Reconnect your calendar to try again."
   },
   "senderRules": {
     "noRules": "No automation rules yet. Create rules from the review queue or add one below.",

@@ -125,6 +125,78 @@ extension Array where Element == Integration {
     var needsOutlookCalendarReconnect: Bool {
         contains { $0.provider == .outlook && $0.isActive && !$0.canWriteCalendar }
     }
+
+    /// What the reconnect banner offers: one action per sign-in, not per row.
+    /// Gmail and Google Calendar are separate rows but one Google consent
+    /// grants both, so offering both only duplicated the same flow. Outlook
+    /// mail and Outlook Calendar share one row.
+    var recoveryPlan: RecoveryPlan {
+        let rows = filter { $0.provider != .googlePhotos }
+        let googleRows = rows.filter { $0.provider == .gmail || $0.provider == .googleCalendar }
+        let outlook = rows.first { $0.provider == .outlook }
+        let emailConnected = rows.contains {
+            ($0.provider == .gmail || $0.provider == .outlook) && $0.isActive
+        }
+        let calendarConnected = rows.hasWritableCalendar
+
+        // A lapsed Gmail always matters. A lapsed Google Calendar matters only
+        // when no calendar is writable; with Outlook Calendar working it is not
+        // a reason to prompt.
+        var wantsGoogle = rows.contains { $0.provider == .gmail && !$0.isActive }
+        var wantsOutlook = outlook.map { !$0.isActive } ?? false
+        if !emailConnected {
+            wantsGoogle = true
+            wantsOutlook = true
+        } else if !calendarConnected {
+            wantsGoogle = true
+            if let outlook, !outlook.canWriteCalendar { wantsOutlook = true }
+        }
+
+        let google = wantsGoogle
+            ? [RecoveryAction(signIn: .google, isReconnect: !googleRows.isEmpty)] : []
+        let outlookAction = wantsOutlook
+            ? [RecoveryAction(signIn: .outlook, isReconnect: outlook != nil)] : []
+        // An Outlook account that only lacks calendar consent is the shortest
+        // fix, so it is offered first.
+        let outlookFirst = emailConnected && !calendarConnected
+            && outlook?.isActive == true && outlook?.canWriteCalendar == false
+        let actions = outlookFirst ? outlookAction + google : google + outlookAction
+
+        let title: RecoveryPlan.Title
+        if !emailConnected {
+            title = .email
+        } else if !calendarConnected {
+            let hadCalendar = rows.contains { $0.provider == .googleCalendar }
+                || (outlook?.scopes.contains { $0.lowercased().hasSuffix("calendars.readwrite") } ?? false)
+            title = hadCalendar ? .reconnectCalendar : .connectCalendar
+        } else {
+            title = .attention
+        }
+        return RecoveryPlan(title: title, actions: actions)
+    }
+}
+
+/// One sign-in the reconnect banner can offer.
+struct RecoveryAction: Equatable {
+    enum SignIn: Equatable { case google, outlook }
+
+    let signIn: SignIn
+    let isReconnect: Bool
+
+    /// Gmail stands in for the combined Google consent, which grants Gmail
+    /// and Google Calendar together (`/integrations/google/auth`).
+    var authProvider: IntegrationProvider { signIn == .google ? .gmail : .outlook }
+
+    var label: String {
+        "\(isReconnect ? "Reconnect" : "Connect") \(signIn == .google ? "Google" : "Outlook")"
+    }
+}
+
+struct RecoveryPlan: Equatable {
+    enum Title: Equatable { case email, connectCalendar, reconnectCalendar, attention }
+
+    let title: Title
+    let actions: [RecoveryAction]
 }
 
 extension Integration {

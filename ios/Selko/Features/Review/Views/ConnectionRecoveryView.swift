@@ -15,45 +15,8 @@ struct ConnectionRecoveryView: View {
         let message: String
     }
 
-    private var emailConnected: Bool {
-        integrations.contains {
-            ($0.provider == .gmail || $0.provider == .outlook) && $0.isActive
-        }
-    }
-
-    /// Google Calendar or a calendar-capable Outlook account. When Outlook can
-    /// write events, the user is never prompted to connect Google Calendar.
-    private var calendarConnected: Bool {
-        integrations.hasWritableCalendar
-    }
-
-    /// Outlook is connected for mail but lacks calendar consent; reconnecting
-    /// it is an alternative to connecting Google Calendar.
-    private var outlookCalendarReconnect: Bool {
-        integrations.needsOutlookCalendarReconnect
-    }
-
-    private var recoveryProviders: [IntegrationProvider] {
-        let providers: [IntegrationProvider]
-        if !emailConnected {
-            providers = [.gmail, .outlook] + (calendarConnected ? [] : [.googleCalendar])
-        } else if !calendarConnected {
-            let inactiveEmailProviders = integrations
-                .filter {
-                    ($0.provider == .gmail || $0.provider == .outlook) && !$0.isActive
-                }
-                .map(\.provider)
-            providers = [.googleCalendar]
-                + (outlookCalendarReconnect ? [.outlook] : [])
-                + inactiveEmailProviders
-        } else {
-            providers = integrations.filter { !$0.isActive }.map(\.provider)
-        }
-        return providers.reduce(into: []) { result, provider in
-            guard provider != .googlePhotos, !result.contains(provider) else { return }
-            result.append(provider)
-        }
-    }
+    /// One action per sign-in; see `[Integration].recoveryPlan`.
+    private var plan: RecoveryPlan { integrations.recoveryPlan }
 
     private var recoveryDisplay: CatchUpDisplay? {
         guard let recovery else { return nil }
@@ -93,7 +56,7 @@ struct ConnectionRecoveryView: View {
                 icon: "exclamationmark.triangle",
                 tone: Color.selkoError,
                 title: "Catch-up didn't finish",
-                message: "Reconnect Google Calendar to try again."
+                message: "Reconnect your calendar to try again."
             )
         case .superseded:
             return nil
@@ -101,21 +64,23 @@ struct ConnectionRecoveryView: View {
     }
 
     private var title: String {
-        if !emailConnected { return "Reconnect an email account" }
-        if !calendarConnected {
-            return outlookCalendarReconnect ? "Connect a calendar" : "Reconnect Google Calendar"
+        switch plan.title {
+        case .email: "Reconnect your email"
+        case .connectCalendar: "Connect a calendar"
+        case .reconnectCalendar: "Reconnect your calendar"
+        case .attention: "A connection needs attention"
         }
-        return "A connection needs attention"
     }
 
     private var message: String {
-        if !emailConnected {
-            return "New email suggestions are paused. Your existing suggestions and history are still available."
+        switch plan.title {
+        case .email:
+            "New email suggestions are paused. Your existing suggestions and history are still available."
+        case .connectCalendar, .reconnectCalendar:
+            "You can keep reviewing, editing, and rejecting suggestions. Reconnect before accepting one."
+        case .attention:
+            "Selko is still working through another connected account. Reconnect this provider when convenient."
         }
-        if !calendarConnected {
-            return "You can keep reviewing, editing, and rejecting suggestions. Reconnect before accepting one."
-        }
-        return "Selko is still working through another connected account. Reconnect this provider when convenient."
     }
 
     var body: some View {
@@ -124,7 +89,7 @@ struct ConnectionRecoveryView: View {
                 catchUpCard(display)
             }
 
-            if !recoveryProviders.isEmpty {
+            if !plan.actions.isEmpty {
                 reconnectCard
             }
         }
@@ -187,9 +152,9 @@ struct ConnectionRecoveryView: View {
             }
 
             SelkoPeerActionGroup {
-                ForEach(recoveryProviders, id: \.rawValue) { provider in
-                    Button(buttonLabel(for: provider)) {
-                        Task { await openAuth(for: provider) }
+                ForEach(plan.actions, id: \.label) { action in
+                    Button(action.label) {
+                        Task { await openAuth(for: action.authProvider) }
                     }
                     .buttonStyle(.selko(.primary))
                     .frame(maxWidth: .infinity)
@@ -208,22 +173,6 @@ struct ConnectionRecoveryView: View {
         .accessibilityElement(children: .contain)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("connectionRecoveryView")
-    }
-
-    private func buttonLabel(for provider: IntegrationProvider) -> String {
-        let needsReconnect = integrations.contains(where: { $0.provider == provider && !$0.isActive })
-            || (provider == .outlook && outlookCalendarReconnect)
-        let verb = needsReconnect ? "Reconnect" : "Connect"
-        return "\(verb) \(providerName(provider))"
-    }
-
-    private func providerName(_ provider: IntegrationProvider) -> String {
-        switch provider {
-        case .gmail: "Gmail"
-        case .outlook: "Outlook"
-        case .googleCalendar: "Google Calendar"
-        case .googlePhotos: "Google Photos"
-        }
     }
 
     private func openAuth(for provider: IntegrationProvider) async {
