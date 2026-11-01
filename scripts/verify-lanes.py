@@ -38,6 +38,33 @@ STATE_PATH = VERIFY_DIR / "lane-state.json"
 LEDGER_PATH = VERIFY_DIR / "ledger.jsonl"
 LOG_DIR = VERIFY_DIR / "logs"
 RUN_DIR = VERIFY_DIR / "runs"
+
+
+def _lock_dir() -> Path:
+    """Where lane locks live: shared by every worktree of this repository.
+
+    The resources a lock protects -- the local Supabase database, the
+    simulator, port 8000 -- belong to the machine, not to a checkout. Locks
+    used to live in each checkout's `.verify/`, so two sessions in two
+    worktrees never saw each other's run: each began with `supabase db reset`
+    and wiped the other's database mid-suite, which surfaced as auth errors
+    ("Database error checking email") and as a schema with another branch's
+    migrations. The git common directory is the one path every worktree
+    shares. A run with its own SELKO_VERIFY_DIR (the tests) keeps its own
+    locks, so a test never reports a real lane BUSY or the reverse.
+    """
+    if os.environ.get("SELKO_VERIFY_LOCK_DIR"):
+        return Path(os.environ["SELKO_VERIFY_LOCK_DIR"])
+    if os.environ.get("SELKO_VERIFY_DIR"):
+        return VERIFY_DIR / "locks"
+    try:
+        common = subprocess.run(
+            ["git", "rev-parse", "--path-format=absolute", "--git-common-dir"],
+            cwd=ROOT, capture_output=True, text=True, check=True,
+        ).stdout.strip()
+    except (OSError, subprocess.CalledProcessError):
+        return VERIFY_DIR / "locks"
+    return Path(common) / "selko-verify-locks"
 MAX_HASHED_BYTES = 5 * 1024 * 1024
 
 
@@ -143,7 +170,7 @@ class LaneBusy(Exception):
 
 
 def _lock_path(name: str) -> Path:
-    return VERIFY_DIR / "locks" / f"{name}.lock"
+    return _lock_dir() / f"{name}.lock"
 
 
 def acquire_lane_lock(name: str) -> Path:

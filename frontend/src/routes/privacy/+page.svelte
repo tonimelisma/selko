@@ -2,7 +2,7 @@
 	import LogoMark from '$lib/components/LogoMark.svelte';
 
 	const contactEmail = 'toni.melisma@gmail.com';
-	const lastUpdated = 'October 31, 2026';
+	const lastUpdated = 'November 1, 2026';
 </script>
 
 <svelte:head>
@@ -90,9 +90,9 @@
 		<section>
 			<h2 class="text-xl font-bold">AI processing</h2>
 			<p class="mt-3">
-				Selko uses large language models to read emails and attachments and extract events. The
-				content of an email is sent to an AI provider's API for that purpose only. We use paid API
-				services whose terms do not allow the provider to train its models on what we send.
+				Selko uses Anthropic's Claude models to read emails and attachments and extract events. The
+				content of an email is sent to Anthropic's API for that purpose only. We use a paid API
+				service whose terms do not allow Anthropic to train its models on what we send.
 			</p>
 		</section>
 
@@ -105,10 +105,7 @@
 				<li>
 					<strong>Anthropic:</strong> the AI model that extracts events from email content.
 				</li>
-				<li>
-					<strong>Google:</strong> Gmail and Google Calendar for the accounts you connect, and
-					the Gemini API as a backup AI model when Anthropic's is unavailable.
-				</li>
+				<li><strong>Google:</strong> Gmail and Google Calendar for the accounts you connect.</li>
 				<li>
 					<strong>Microsoft:</strong> Outlook mail and Outlook Calendar for the accounts you
 					connect.
