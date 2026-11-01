@@ -29,6 +29,14 @@ describe('Privacy Policy Page', () => {
 		}
 	});
 
+	it('names no AI provider besides Anthropic', () => {
+		const { container } = render(PrivacyPage);
+
+		// Production runs Claude only (LLM_FALLBACK_PROVIDER=none); a backup
+		// model must be added here before it is configured.
+		expect(container.textContent).not.toMatch(/gemini|qwen|openai|alibaba/i);
+	});
+
 	it('gives a way to request deletion', () => {
 		render(PrivacyPage);
 
