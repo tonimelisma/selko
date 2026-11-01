@@ -1,0 +1,142 @@
+{
+  "fixture_name": "interview_loop_distinct_slots_20",
+  "fixture_hash": "e18308c3ae1188e1e990b528759eddc563013515cce36705785e20b8c62af627",
+  "code_hash": "3b61b944aad7",
+  "prompt_hash": "26c734591a9a",
+  "operation": "compare",
+  "provider": "anthropic",
+  "model": "claude-sonnet-5-5",
+  "thinking": "low",
+  "run_at": "2026-11-01T02:44:39.737402+00:00",
+  "duration_ms": 2019,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-11-01T02:44:37.715553+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-11-01T02:44:37.715561+00:00",
+      "duration_ms": 7
+    },
+    "api_call": {
+      "started_at": "2026-11-01T02:44:37.722579+00:00",
+      "duration_ms": 2012
+    },
+    "scoring": {
+      "started_at": "2026-11-01T02:44:39.734622+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Interview loop: several sessions with the same company on one day at different times. Each is a distinct event and must NOT be merged. Anonymized from production 2026-09-09, where one confirmation email produced five events across two days.",
+  "difficulty": "hard",
+  "tags": [
+    "dedup",
+    "no-match",
+    "professional",
+    "production-derived"
+  ],
+  "expected": {
+    "matched_event_id": null
+  },
+  "actual": {
+    "matched_event_id": null
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": null,
+    "actual": null
+  },
+  "tokens": {
+    "prompt_tokens": 613,
+    "completion_tokens": 159,
+    "total_tokens": 772
+  },
+  "cost": 0.002816,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1199,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Northwind PM Interview 3\n- Start: 2026-09-09T18:00:00\n- End: 2026-09-09T18:45:00\n- Location: Video call\n- Description: Product management round with the hiring panel.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Northwind Behavioral Interview\n   - Start: 2026-09-09T17:00:00\n   - End: 2026-09-09T17:45:00\n   - Location: Video call\n   - Description: Behavioral round.\n\n2. Event ID: event-002\n   - Title: Northwind PM Interview 2\n   - Start: 2026-09-09T23:00:00\n   - End: 2026-09-09T23:45:00\n   - Location: Video call\n   - Description: Second product management round.\n\n3. Event ID: event-003\n   - Title: Northwind XFN or PM Interview 5\n   - Start: 2026-09-09T21:30:00\n   - End: 2026-09-09T22:15:00\n   - Location: Video call\n   - Description: Cross-functional round.\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "raw_response_text": "{\"matched_event_id\": null, \"reasoning\": \"The new event, 'Northwind PM Interview 3' (18:00-18:45), is a distinct interview round. event-001 is a behavioral round at 17:00, a different time and type. event-002 is 'PM Interview 2' at 23:00, a different round number and time. event-003 is 'XFN or PM Interview 5' at 21:30, a different round number and time. Each is a separate round in the same interview loop, so none match.\"}",
+    "finish_reason": "end_turn",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "f3d93e28658c4aff9c293a91f61b364e",
+    "route_role": "primary"
+  },
+  "inference_key": "31cecc7db6a5ad0442a60fe761b8ed1a7cd4711ea706fa66020ec840fde64865",
+  "score_key": "9152a40d86fe1b1ace1ebdb1bebf19a505ceaaaa44f1568e62dc2c82f1f6943e",
+  "identity": {
+    "identity_version": 2,
+    "operation": "compare",
+    "provider": "anthropic",
+    "model": "claude-sonnet-5-5",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "anthropic/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "claude-sonnet-5-5",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "26c734591a9a2f602b175c5e7f03455199cca7eb847d43a054d339700ba5d2bb",
+    "adapter_contract_hash": "853277a8daf01bb6dff0cf2b0332682d532c648421bec5a11cf77d1d0cee152d",
+    "fixture_input_hash": "e18308c3ae1188e1e990b528759eddc563013515cce36705785e20b8c62af627"
+  }
+}

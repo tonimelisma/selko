@@ -1,0 +1,141 @@
+{
+  "fixture_name": "same_birthday_party_01",
+  "operation": "compare",
+  "provider": "anthropic",
+  "model": "claude-haiku-5-5",
+  "thinking": {
+    "mode": "level",
+    "value": "low"
+  },
+  "run_at": "2026-11-01T02:40:22.303460+00:00",
+  "duration_ms": 1088,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-11-01T02:40:21.211485+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-11-01T02:40:21.211491+00:00",
+      "duration_ms": 6
+    },
+    "api_call": {
+      "started_at": "2026-11-01T02:40:21.218098+00:00",
+      "duration_ms": 1082
+    },
+    "scoring": {
+      "started_at": "2026-11-01T02:40:22.300695+00:00",
+      "duration_ms": 0
+    }
+  },
+  "tokens": {
+    "prompt_tokens": 669,
+    "completion_tokens": 139,
+    "total_tokens": 808
+  },
+  "cost": 0.0001364,
+  "actual": {
+    "matched_event_id": "event-001"
+  },
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1263,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Emily's 7th Birthday Party\n- Start: 2026-03-15T14:00:00\n- End: 2026-03-15T17:00:00\n- Location: Adventure Zone, 123 Main St\n- Description: Come celebrate Emily turning 7! Pizza, cake, and fun activities. Please RSVP by March 10th.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Emily's Birthday Celebration\n   - Start: 2026-03-15T14:00:00\n   - End: 2026-03-15T17:00:00\n   - Location: Adventure Zone\n   - Description: Join us for Emily's 7th birthday! Pizza, cake, games.\n\n2. Event ID: event-002\n   - Title: Team Standup\n   - Start: 2026-03-15T09:00:00\n   - End: 2026-03-15T09:30:00\n   - Location: Office\n   - Description: Daily standup meeting\n\n3. Event ID: event-003\n   - Title: Dentist Appointment\n   - Start: 2026-03-14T10:00:00\n   - End: 2026-03-14T11:00:00\n   - Location: Bright Smiles Dental\n   - Description: Regular checkup\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "raw_response_text": "{\"matched_event_id\": \"event-001\", \"reasoning\": \"The new event and event-001 share the same date, start and end times (2026-03-15 14:00-17:00), and location (Adventure Zone, with the new event adding the street address). Both describe Emily's 7th birthday party with pizza and cake. The differing titles and wording are only surface variations of the same real-world event. The other existing events are at different times and are unrelated.\"}",
+    "finish_reason": "end_turn",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "ce42c720e9ff48f49df0f5f0a3e8f649",
+    "route_role": "primary"
+  },
+  "category": null,
+  "description": "Same birthday party with slightly different wording - should match",
+  "difficulty": "easy",
+  "tags": [
+    "dedup",
+    "match",
+    "birthday"
+  ],
+  "input_summary": {},
+  "fixture_input_hash": "9f9962120694719025f73b9df0067541c2e6a50cb9d908894cb740ac5d4c68f2",
+  "code_provenance": {
+    "git_commit": "46a63d11338b7a0fa0e55d41efe6477e6a187f2d",
+    "event_processing_sha256": "3b61b944aad7f497f768d02cc51e726b757bbf1316635f253a61092cb38b1aad"
+  },
+  "raw_response": null,
+  "identity": {
+    "identity_version": 2,
+    "operation": "compare",
+    "provider": "anthropic",
+    "model": "claude-haiku-5-5",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "anthropic/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "claude-haiku-5-5",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "26c734591a9a2f602b175c5e7f03455199cca7eb847d43a054d339700ba5d2bb",
+    "adapter_contract_hash": "853277a8daf01bb6dff0cf2b0332682d532c648421bec5a11cf77d1d0cee152d",
+    "fixture_input_hash": "9f9962120694719025f73b9df0067541c2e6a50cb9d908894cb740ac5d4c68f2"
+  },
+  "inference_key": "53d1bfd2fd138501e63ad61fb124f234dfb06b2b30659e8dc38b7c79651dcbd3",
+  "stored_at": "2026-11-01T02:40:22.326886+00:00"
+}

@@ -1,0 +1,23 @@
+{
+  "fixture_name": "no_events/early_direct_deposit_notice_20",
+  "operation": "extract",
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 2,
+    "inference_key": "a7fc8fda022e2bf3a20775c9f4f11d52266d993f76df2e148300612785b1237e",
+    "expected_output_hash": "17d9c6dd1f1fdc362e8af3956f555cfc40dbf07c82265fd452a7ecdac52382a7",
+    "scorer_hash": "a4bebf9e53234c7487f4d65ea503fd0e35febe52e584ee52eda52f5faf46ec14"
+  },
+  "score_key": "c8647a6df816a2912d443e8dc49f56790144110033751c9e2406d84842dc4532",
+  "stored_at": "2026-11-01T02:44:31.305193+00:00"
+}

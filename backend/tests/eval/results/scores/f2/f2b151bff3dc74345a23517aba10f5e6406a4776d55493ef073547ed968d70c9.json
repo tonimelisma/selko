@@ -1,0 +1,20 @@
+{
+  "fixture_name": "costume_parade_vs_vague_parade_26",
+  "operation": "compare",
+  "expected": {
+    "matched_event_id": "event-001"
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": "event-001",
+    "actual": "event-001"
+  },
+  "identity": {
+    "scoring_version": 2,
+    "inference_key": "48a0ccffbffde7a8a9200c2683d2bf84b2278d30b84f2095ebe5923512b6df5d",
+    "expected_output_hash": "fb532ed7006bb0d85ca6e45563073776f4a8eb69fdaee303177c9bdfb53c1b51",
+    "scorer_hash": "34e3b48d9b9902d1f4fee602c48478bc8d2139938715a7417e4baec0709c5298"
+  },
+  "score_key": "f2b151bff3dc74345a23517aba10f5e6406a4776d55493ef073547ed968d70c9",
+  "stored_at": "2026-11-01T02:40:22.339187+00:00"
+}

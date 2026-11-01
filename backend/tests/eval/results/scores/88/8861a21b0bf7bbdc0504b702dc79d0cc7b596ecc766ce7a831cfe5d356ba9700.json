@@ -1,0 +1,23 @@
+{
+  "fixture_name": "no_events/order_pickup_12",
+  "operation": "extract",
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 2,
+    "inference_key": "3834dcd8d2033b350fbe8f1af22ddeee2d0ac1846f61f5af17d4f04e2cd0814e",
+    "expected_output_hash": "17d9c6dd1f1fdc362e8af3956f555cfc40dbf07c82265fd452a7ecdac52382a7",
+    "scorer_hash": "a4bebf9e53234c7487f4d65ea503fd0e35febe52e584ee52eda52f5faf46ec14"
+  },
+  "score_key": "8861a21b0bf7bbdc0504b702dc79d0cc7b596ecc766ce7a831cfe5d356ba9700",
+  "stored_at": "2026-11-01T02:44:34.209303+00:00"
+}

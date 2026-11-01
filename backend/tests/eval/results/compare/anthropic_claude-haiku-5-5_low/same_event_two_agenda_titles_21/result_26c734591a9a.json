@@ -1,0 +1,142 @@
+{
+  "fixture_name": "same_event_two_agenda_titles_21",
+  "fixture_hash": "0b96a54ec47c11e6c9edc9682e24ca55affca50b08103fc44ffef8cef48a62b2",
+  "code_hash": "3b61b944aad7",
+  "prompt_hash": "26c734591a9a",
+  "operation": "compare",
+  "provider": "anthropic",
+  "model": "claude-haiku-5-5",
+  "thinking": "low",
+  "run_at": "2026-11-01T02:40:25.569941+00:00",
+  "duration_ms": 3231,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-11-01T02:40:22.334439+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-11-01T02:40:22.334448+00:00",
+      "duration_ms": 8
+    },
+    "api_call": {
+      "started_at": "2026-11-01T02:40:22.342787+00:00",
+      "duration_ms": 3223
+    },
+    "scoring": {
+      "started_at": "2026-11-01T02:40:25.566409+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "One community event announced twice with different agenda emphasis and a 30-minute start difference. Same event, should match. Anonymized from production 2026-09-18 ('Ice Cream Social & Costume Swap' vs '& PTA Meeting'), which shipped as two separate accepted events.",
+  "difficulty": "hard",
+  "tags": [
+    "dedup",
+    "match",
+    "community",
+    "production-derived"
+  ],
+  "expected": {
+    "matched_event_id": "event-001"
+  },
+  "actual": {
+    "matched_event_id": null
+  },
+  "auto_score": {
+    "correct": false,
+    "expected": "event-001",
+    "actual": null
+  },
+  "tokens": {
+    "prompt_tokens": 575,
+    "completion_tokens": 599,
+    "total_tokens": 1174
+  },
+  "cost": 0.000357,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1090,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Ice Cream Social & Parent Meeting\n- Start: 2026-09-18T17:30:00\n- End: 2026-09-18T18:30:00\n- Location: Lincoln Elementary multipurpose room\n- Description: Join us for ice cream and the first parent meeting of the year.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Ice Cream Social & Costume Swap\n   - Start: 2026-09-18T17:00:00\n   - End: 2026-09-18T18:00:00\n   - Location: Lincoln Elementary\n   - Description: Ice cream social, plus bring outgrown costumes to swap.\n\n2. Event ID: event-002\n   - Title: Fall Book Fair\n   - Start: 2026-09-18T09:00:00\n   - End: 2026-09-18T15:00:00\n   - Location: Lincoln Elementary library\n   - Description: Annual book fair.\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "raw_response_text": "{\"matched_event_id\": null, \"reasoning\": \"Both events are ice cream socials at Lincoln Elementary on 2026-09-18 with starts about 30 minutes apart, but they describe different core activities. The new event is a parent meeting, while event-001 is a costume swap, and the new description never mentions a swap. This looks like a separate event that shares the social, not an update to event-001. Event-002 (Fall Book Fair) is clearly unrelated.\"}",
+    "finish_reason": "end_turn",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "eb8a92c6488f482294992d7cb81aceb4",
+    "route_role": "primary"
+  },
+  "inference_key": "68be56384d9a0c2f599e9300742113cf3a442f8832e8128cc1efd75dee8a3e04",
+  "score_key": "01690ff0dfb463c04063afe99bd054005fba9c5a372b65b28ef6a48c99dcb548",
+  "identity": {
+    "identity_version": 2,
+    "operation": "compare",
+    "provider": "anthropic",
+    "model": "claude-haiku-5-5",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "anthropic/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "claude-haiku-5-5",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "26c734591a9a2f602b175c5e7f03455199cca7eb847d43a054d339700ba5d2bb",
+    "adapter_contract_hash": "853277a8daf01bb6dff0cf2b0332682d532c648421bec5a11cf77d1d0cee152d",
+    "fixture_input_hash": "0b96a54ec47c11e6c9edc9682e24ca55affca50b08103fc44ffef8cef48a62b2"
+  }
+}

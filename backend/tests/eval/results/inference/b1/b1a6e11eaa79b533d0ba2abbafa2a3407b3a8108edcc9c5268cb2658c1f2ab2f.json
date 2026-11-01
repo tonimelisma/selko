@@ -1,0 +1,141 @@
+{
+  "fixture_name": "different_kids_birthdays_14",
+  "operation": "compare",
+  "provider": "anthropic",
+  "model": "claude-sonnet-5-5",
+  "thinking": {
+    "mode": "level",
+    "value": "low"
+  },
+  "run_at": "2026-11-01T02:44:38.197554+00:00",
+  "duration_ms": 1605,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-11-01T02:44:36.588056+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-11-01T02:44:36.588063+00:00",
+      "duration_ms": 7
+    },
+    "api_call": {
+      "started_at": "2026-11-01T02:44:36.595773+00:00",
+      "duration_ms": 1598
+    },
+    "scoring": {
+      "started_at": "2026-11-01T02:44:38.194052+00:00",
+      "duration_ms": 0
+    }
+  },
+  "tokens": {
+    "prompt_tokens": 669,
+    "completion_tokens": 126,
+    "total_tokens": 795
+  },
+  "cost": 0.002598,
+  "actual": {
+    "matched_event_id": null
+  },
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1257,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Sophie's 6th Birthday Party\n- Start: 2026-08-15T13:00:00\n- End: 2026-08-15T16:00:00\n- Location: Rainbow Play Center\n- Description: Join us for Sophie's princess-themed birthday bash! Arts and crafts, games, and cake.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Lucas's 8th Birthday Celebration\n   - Start: 2026-08-22T14:00:00\n   - End: 2026-08-22T17:00:00\n   - Location: Laser Tag Arena\n   - Description: Laser tag party for Lucas turning 8!\n\n2. Event ID: event-002\n   - Title: Swimming Lesson\n   - Start: 2026-08-15T10:00:00\n   - End: 2026-08-15T11:00:00\n   - Location: Community Pool\n   - Description: Level 3 swimming class\n\n3. Event ID: event-003\n   - Title: Book Club\n   - Start: 2026-08-15T19:00:00\n   - End: 2026-08-15T21:00:00\n   - Location: Barnes & Noble Cafe\n   - Description: Discussing 'The Midnight Library'\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "raw_response_text": "{\"matched_event_id\": null, \"reasoning\": \"None of the existing events match. Sophie's 6th Birthday Party is a different event from Lucas's 8th Birthday Celebration, which has a different child, date (Aug 22), location, and theme. The Swimming Lesson (10-11am) and Book Club (7-9pm) are unrelated activities with different times and locations.\"}",
+    "finish_reason": "end_turn",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "19d347fc50694dcea7693cf0acf68abd",
+    "route_role": "primary"
+  },
+  "category": null,
+  "description": "Two different kids' birthday parties on different days - should NOT match",
+  "difficulty": "medium",
+  "tags": [
+    "dedup",
+    "no-match",
+    "birthday"
+  ],
+  "input_summary": {},
+  "fixture_input_hash": "d70cb423f79a8aeb6d2b81acbf6cabd8121f2a0f7a7fbcca8839094e162baff2",
+  "code_provenance": {
+    "git_commit": "46a63d11338b7a0fa0e55d41efe6477e6a187f2d",
+    "event_processing_sha256": "3b61b944aad7f497f768d02cc51e726b757bbf1316635f253a61092cb38b1aad"
+  },
+  "raw_response": null,
+  "identity": {
+    "identity_version": 2,
+    "operation": "compare",
+    "provider": "anthropic",
+    "model": "claude-sonnet-5-5",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "anthropic/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "claude-sonnet-5-5",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "26c734591a9a2f602b175c5e7f03455199cca7eb847d43a054d339700ba5d2bb",
+    "adapter_contract_hash": "853277a8daf01bb6dff0cf2b0332682d532c648421bec5a11cf77d1d0cee152d",
+    "fixture_input_hash": "d70cb423f79a8aeb6d2b81acbf6cabd8121f2a0f7a7fbcca8839094e162baff2"
+  },
+  "inference_key": "b1a6e11eaa79b533d0ba2abbafa2a3407b3a8108edcc9c5268cb2658c1f2ab2f",
+  "stored_at": "2026-11-01T02:44:38.224382+00:00"
+}

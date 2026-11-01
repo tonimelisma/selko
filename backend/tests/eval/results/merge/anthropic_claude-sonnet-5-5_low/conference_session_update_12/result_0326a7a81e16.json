@@ -1,0 +1,258 @@
+{
+  "fixture_name": "conference_session_update_12",
+  "fixture_hash": "b75416d594aa097b236df8327187712986496a798e4dec5b74e6b3ea853588b3",
+  "code_hash": "3b61b944aad7",
+  "prompt_hash": "0326a7a81e16",
+  "operation": "merge",
+  "provider": "anthropic",
+  "model": "claude-sonnet-5-5",
+  "thinking": "low",
+  "run_at": "2026-11-01T02:44:46.865847+00:00",
+  "duration_ms": 1724,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-11-01T02:44:45.122339+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-11-01T02:44:45.122348+00:00",
+      "duration_ms": 9
+    },
+    "api_call": {
+      "started_at": "2026-11-01T02:44:45.131466+00:00",
+      "duration_ms": 1715
+    },
+    "scoring": {
+      "started_at": "2026-11-01T02:44:46.846845+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Conference session: early-bird announcement has basic info, later update adds speaker and room details",
+  "difficulty": "medium",
+  "tags": [
+    "merge",
+    "description-enrichment",
+    "conference"
+  ],
+  "expected": {
+    "title": "DevCon 2026: Keynote - Future of AI",
+    "start_datetime": "2026-09-12T09:00:00",
+    "end_datetime": "2026-09-12T10:30:00",
+    "all_day": false,
+    "location": "Convention Center - Main Hall A",
+    "description_contains": [
+      "AI trends",
+      "Dr. Jane Chen",
+      "TechCorp",
+      "Q&A",
+      "coffee"
+    ]
+  },
+  "actual": {
+    "title": "DevCon 2026: Keynote - Future of AI",
+    "start_datetime": "2026-09-12T09:00:00",
+    "end_datetime": "2026-09-12T10:30:00",
+    "all_day": false,
+    "location": "Convention Center - Main Hall A",
+    "description": "Opening keynote session about AI trends and predictions. Speaker: Dr. Jane Chen, Chief AI Researcher at TechCorp. Live Q&A follows presentation. Coffee service at 8:30am.",
+    "importance": "action_required"
+  },
+  "auto_score": {
+    "title": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "start_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "end_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "all_day": {
+      "match": true
+    },
+    "location": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "description_contains": {
+      "found": [
+        "AI trends",
+        "Dr. Jane Chen",
+        "TechCorp",
+        "Q&A",
+        "coffee"
+      ],
+      "missing": [],
+      "match": true
+    },
+    "fields_matched": 6,
+    "total_fields": 6,
+    "auto_rating": 5
+  },
+  "tokens": {
+    "prompt_tokens": 809,
+    "completion_tokens": 195,
+    "total_tokens": 1004
+  },
+  "cost": 0.003568,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1328,
+        "text": "You are merging calendar event data from multiple emails.\n\n**Existing Event:**\n- Title: DevCon 2026: Keynote - Future of AI\n- Start: 2026-09-12T09:00:00\n- End: 2026-09-12T10:30:00\n- All Day: False\n- Location: Convention Center\n- Description: Opening keynote session about AI trends and predictions\n- Importance: action_required\n\n**New Information (source type: update):**\n- Title: DevCon 2026: Keynote - Future of AI\n- Start: 2026-09-12T09:00:00\n- End: 2026-09-12T10:30:00\n- All Day: False\n- Location: Convention Center - Main Hall A\n- Description: Speaker: Dr. Jane Chen, Chief AI Researcher at TechCorp. Live Q&A follows presentation. Coffee service at 8:30am.\n- Importance: action_required\n\n**Merge Rules:**\n1. If source_type is \"cancellation\", prefix title with \"CANCELLED: \" (if not already)\n2. Prefer specific time (e.g., 6-7pm) over all-day\n3. Combine descriptions, keeping all relevant info (append new info)\n4. Use most specific location (longer address usually better)\n5. Keep newer times if they differ (updates)\n6. For importance: keep the highest level (action_required > fyi)\n\nOutput JSON with merged event data:\n{\n    \"title\": \"...\",\n    \"start_datetime\": \"...\",\n    \"end_datetime\": \"...\",\n    \"all_day\": true/false,\n    \"location\": \"...\",\n    \"description\": \"...\",\n    \"importance\": \"action_required\" or \"fyi\"\n}\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "start_datetime": {
+          "type": "string"
+        },
+        "end_datetime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "all_day": {
+          "type": "boolean"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "action_required",
+            "fyi"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "start_datetime",
+        "all_day",
+        "importance"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "start_datetime": {
+          "type": "string"
+        },
+        "end_datetime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "all_day": {
+          "type": "boolean"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "action_required",
+            "fyi"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "start_datetime",
+        "all_day",
+        "importance"
+      ]
+    },
+    "raw_response_text": "{\n    \"title\": \"DevCon 2026: Keynote - Future of AI\",\n    \"start_datetime\": \"2026-09-12T09:00:00\",\n    \"end_datetime\": \"2026-09-12T10:30:00\",\n    \"all_day\": false,\n    \"location\": \"Convention Center - Main Hall A\",\n    \"description\": \"Opening keynote session about AI trends and predictions. Speaker: Dr. Jane Chen, Chief AI Researcher at TechCorp. Live Q&A follows presentation. Coffee service at 8:30am.\",\n    \"importance\": \"action_required\"\n}",
+    "finish_reason": "end_turn",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "2e1e1e04cab746c1b7229f70311cf98b",
+    "route_role": "primary"
+  },
+  "inference_key": "c88f83de9239f9b251d8d19181fdccc416c2a1e6e2538f11f6f1c93d330007c4",
+  "score_key": "c112592451a36face860f629a35fdfaab91e2c374e2a701f579d00702a1efb23",
+  "identity": {
+    "identity_version": 2,
+    "operation": "merge",
+    "provider": "anthropic",
+    "model": "claude-sonnet-5-5",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "anthropic/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "claude-sonnet-5-5",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "0326a7a81e169edaf924fb8a09fe97a184519ff43052c4a3ce59137d4d4545b6",
+    "adapter_contract_hash": "853277a8daf01bb6dff0cf2b0332682d532c648421bec5a11cf77d1d0cee152d",
+    "fixture_input_hash": "b75416d594aa097b236df8327187712986496a798e4dec5b74e6b3ea853588b3"
+  }
+}

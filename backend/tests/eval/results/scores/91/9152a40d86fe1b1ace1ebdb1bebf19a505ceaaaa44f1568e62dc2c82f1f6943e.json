@@ -1,0 +1,20 @@
+{
+  "fixture_name": "interview_loop_distinct_slots_20",
+  "operation": "compare",
+  "expected": {
+    "matched_event_id": null
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": null,
+    "actual": null
+  },
+  "identity": {
+    "scoring_version": 2,
+    "inference_key": "31cecc7db6a5ad0442a60fe761b8ed1a7cd4711ea706fa66020ec840fde64865",
+    "expected_output_hash": "4486b03d387fa4a0aa0f782ea4e16cb28dc9732fa759705666a69458617a92bf",
+    "scorer_hash": "34e3b48d9b9902d1f4fee602c48478bc8d2139938715a7417e4baec0709c5298"
+  },
+  "score_key": "9152a40d86fe1b1ace1ebdb1bebf19a505ceaaaa44f1568e62dc2c82f1f6943e",
+  "stored_at": "2026-11-01T02:44:39.769234+00:00"
+}

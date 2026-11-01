@@ -1,0 +1,199 @@
+{
+  "fixture_name": "reminder_adds_parking_09",
+  "operation": "merge",
+  "provider": "gemini",
+  "model": "gemini-3.5-flash-lite",
+  "thinking": {
+    "mode": "level",
+    "value": "none"
+  },
+  "run_at": "2026-11-01T02:40:09.514426+00:00",
+  "duration_ms": 865,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-11-01T02:40:08.646509+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-11-01T02:40:08.646516+00:00",
+      "duration_ms": 13
+    },
+    "api_call": {
+      "started_at": "2026-11-01T02:40:08.659722+00:00",
+      "duration_ms": 852
+    },
+    "scoring": {
+      "started_at": "2026-11-01T02:40:09.512075+00:00",
+      "duration_ms": 0
+    }
+  },
+  "tokens": {
+    "prompt_tokens": 416,
+    "completion_tokens": 140,
+    "total_tokens": 556
+  },
+  "cost": 0.0004748,
+  "actual": {
+    "title": "Medical Appointment - Dr. Smith",
+    "start_datetime": "2026-03-30T11:00:00",
+    "end_datetime": "2026-03-30T11:30:00",
+    "all_day": false,
+    "location": "Downtown Medical Center, Suite 405",
+    "description": "Annual checkup appointment. Reminder: Arrive 15 min early. Free parking in garage level 2. Bring insurance card.",
+    "importance": "action_required"
+  },
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1284,
+        "text": "You are merging calendar event data from multiple emails.\n\n**Existing Event:**\n- Title: Medical Appointment - Dr. Smith\n- Start: 2026-03-30T11:00:00\n- End: 2026-03-30T11:30:00\n- All Day: False\n- Location: Downtown Medical Center, Suite 405\n- Description: Annual checkup appointment\n- Importance: action_required\n\n**New Information (source type: reminder):**\n- Title: Medical Appointment - Dr. Smith\n- Start: 2026-03-30T11:00:00\n- End: 2026-03-30T11:30:00\n- All Day: False\n- Location: Downtown Medical Center, Suite 405\n- Description: Reminder: Arrive 15 min early. Free parking in garage level 2. Bring insurance card.\n- Importance: action_required\n\n**Merge Rules:**\n1. If source_type is \"cancellation\", prefix title with \"CANCELLED: \" (if not already)\n2. Prefer specific time (e.g., 6-7pm) over all-day\n3. Combine descriptions, keeping all relevant info (append new info)\n4. Use most specific location (longer address usually better)\n5. Keep newer times if they differ (updates)\n6. For importance: keep the highest level (action_required > fyi)\n\nOutput JSON with merged event data:\n{\n    \"title\": \"...\",\n    \"start_datetime\": \"...\",\n    \"end_datetime\": \"...\",\n    \"all_day\": true/false,\n    \"location\": \"...\",\n    \"description\": \"...\",\n    \"importance\": \"action_required\" or \"fyi\"\n}\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "start_datetime": {
+          "type": "string"
+        },
+        "end_datetime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "all_day": {
+          "type": "boolean"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "action_required",
+            "fyi"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "start_datetime",
+        "all_day",
+        "importance"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "start_datetime": {
+          "type": "string"
+        },
+        "end_datetime": {
+          "type": "string",
+          "nullable": true
+        },
+        "all_day": {
+          "type": "boolean"
+        },
+        "location": {
+          "type": "string",
+          "nullable": true
+        },
+        "description": {
+          "type": "string",
+          "nullable": true
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "action_required",
+            "fyi"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "start_datetime",
+        "all_day",
+        "importance"
+      ]
+    },
+    "raw_response_text": "{\n  \"title\": \"Medical Appointment - Dr. Smith\",\n  \"start_datetime\": \"2026-03-30T11:00:00\",\n  \"end_datetime\": \"2026-03-30T11:30:00\",\n  \"all_day\": false,\n  \"location\": \"Downtown Medical Center, Suite 405\",\n  \"description\": \"Annual checkup appointment. Reminder: Arrive 15 min early. Free parking in garage level 2. Bring insurance card.\",\n  \"importance\": \"action_required\"\n}",
+    "finish_reason": "FinishReason.STOP",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "611cc55c83334e4f89b6e375dcb86a30",
+    "route_role": "primary"
+  },
+  "category": null,
+  "description": "Reminder email adds parking instructions to existing event",
+  "difficulty": "easy",
+  "tags": [
+    "merge",
+    "description-enrichment",
+    "logistics"
+  ],
+  "input_summary": {},
+  "fixture_input_hash": "d1cdb595a3817ee072baacbbe4680457d219517c3192edd43c1d4bdb7faa003a",
+  "code_provenance": {
+    "git_commit": "46a63d11338b7a0fa0e55d41efe6477e6a187f2d",
+    "event_processing_sha256": "3b61b944aad7f497f768d02cc51e726b757bbf1316635f253a61092cb38b1aad"
+  },
+  "raw_response": null,
+  "identity": {
+    "identity_version": 2,
+    "operation": "merge",
+    "provider": "gemini",
+    "model": "gemini-3.5-flash-lite",
+    "thinking": {
+      "mode": "level",
+      "value": "none"
+    },
+    "request_settings": {
+      "api_surface": "gemini/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "gemini-3.5-flash-lite",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "none"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "0326a7a81e169edaf924fb8a09fe97a184519ff43052c4a3ce59137d4d4545b6",
+    "adapter_contract_hash": "7290a95d479db2e3c5cbf8f212866455a4122a408c9542cc385b4b71b98742d8",
+    "fixture_input_hash": "d1cdb595a3817ee072baacbbe4680457d219517c3192edd43c1d4bdb7faa003a"
+  },
+  "inference_key": "e51bb001d5b12f923f487adaf7d9170d173f5dac8bb3eb975bb8afdadba47340",
+  "stored_at": "2026-11-01T02:40:09.544731+00:00"
+}

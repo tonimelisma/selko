@@ -34,7 +34,7 @@ class TestModelRegistry:
     def test_registry_matches_model_specs(self):
         """MODEL_REGISTRY is the dict view of MODEL_SPECS."""
         assert set(MODEL_REGISTRY) == set(MODEL_SPECS)
-        assert len(MODEL_SPECS) == 30
+        assert len(MODEL_SPECS) == 32
 
     def test_all_models_have_required_fields(self):
         """Test that every model has required fields."""
@@ -103,6 +103,14 @@ class TestModelRegistry:
         assert MODEL_REGISTRY["claude-sonnet-5"].get("adaptive_thinking") is True
         assert MODEL_REGISTRY["claude-haiku-4-5"].get("adaptive_thinking") is not True
 
+    def test_haiku_5_5_has_adaptive_thinking(self):
+        """Haiku 5.5 thinks by default, so it must get adaptive thinking with an
+        explicit effort and the 16k ceiling. A blanket "haiku" exclusion left it
+        at the medium default under max_tokens=4096, where thinking can consume
+        the budget before the JSON is written."""
+        assert MODEL_REGISTRY["claude-haiku-5-5"].get("adaptive_thinking") is True
+        assert MODEL_SPECS["claude-haiku-5-5"].preferred_thinking.value == "low"
+
     def test_inkling_uses_tinker_effort(self):
         """Inkling uses Tinker output_config.effort via Anthropic-compatible adapter."""
         assert MODEL_REGISTRY["inkling"].get("tinker_effort") is True
@@ -123,7 +131,9 @@ class TestModelRegistry:
             "qwen3.5-flash",
             "qwen3-vl-flash",
             "claude-sonnet-5",
+            "claude-sonnet-5-5",
             "claude-haiku-4-5",
+            "claude-haiku-5-5",
             "kimi-k3",
             "kimi-k2.6",
             "kimi-k2.7-code",
@@ -388,6 +398,27 @@ class TestCreateProvider:
         assert isinstance(provider, AnthropicProvider)
         assert provider.thinking == "medium"
         assert provider.adaptive_thinking is True
+
+    def test_haiku_5_5_request_carries_effort_and_16k_ceiling(self):
+        """The create_provider wiring must reach the request: adaptive thinking,
+        an explicit low effort, and max_tokens raised to 16000."""
+        config = MagicMock()
+        config.llm_provider = "anthropic"
+        config.llm_model = "claude-haiku-5-5"
+        config.anthropic_api_key = "test-key"
+
+        with patch("anthropic.Anthropic") as client_cls:
+            provider = create_provider(config, thinking="low")
+            client_cls.return_value.messages.create.return_value = MagicMock(
+                content=[], usage=None, stop_reason="end_turn"
+            )
+            provider.generate(["extract"])
+
+        kwargs = client_cls.return_value.messages.create.call_args.kwargs
+        assert kwargs["model"] == "claude-haiku-5-5"
+        assert kwargs["thinking"] == {"type": "adaptive"}
+        assert kwargs["output_config"] == {"effort": "low"}
+        assert kwargs["max_tokens"] == 16000
 
     def test_create_provider_qwen_thinking_model_gets_flag(self):
         """Test that Qwen 3.7 Plus gets qwen_thinking=True via create_provider."""

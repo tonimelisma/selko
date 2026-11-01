@@ -1,0 +1,236 @@
+{
+  "fixture_name": "meeting_rescheduled_01",
+  "fixture_hash": "c825ad95858186ea3ba36fe8a3ed100acda9a266edd239232d2ce1295afcb014",
+  "code_hash": "3b61b944aad7",
+  "prompt_hash": "0326a7a81e16",
+  "operation": "merge",
+  "provider": "gemini",
+  "model": "gemini-3.5-flash-lite",
+  "thinking": "none",
+  "run_at": "2026-11-01T02:40:08.939451+00:00",
+  "duration_ms": 716,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-11-01T02:40:08.220239+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-11-01T02:40:08.220247+00:00",
+      "duration_ms": 12
+    },
+    "api_call": {
+      "started_at": "2026-11-01T02:40:08.233061+00:00",
+      "duration_ms": 704
+    },
+    "scoring": {
+      "started_at": "2026-11-01T02:40:08.937378+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Meeting rescheduled to new time - simple time change with same location",
+  "difficulty": "easy",
+  "tags": [
+    "merge",
+    "time-update",
+    "reschedule"
+  ],
+  "expected": {
+    "title": "Q1 Planning Meeting",
+    "start_datetime": "2026-03-15T16:00:00",
+    "end_datetime": "2026-03-15T17:00:00",
+    "all_day": false,
+    "location": "Conference Room B",
+    "description_contains": [
+      "quarterly planning",
+      "department heads",
+      "moved to 4pm"
+    ]
+  },
+  "actual": {
+    "title": "Q1 Planning Meeting",
+    "start_datetime": "2026-03-15T16:00:00",
+    "end_datetime": "2026-03-15T17:00:00",
+    "all_day": false,
+    "location": "Conference Room B",
+    "description": "Quarterly planning session with department heads\nQuarterly planning session with department heads - moved to 4pm",
+    "importance": "action_required"
+  },
+  "auto_score": {
+    "title": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "start_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "end_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "all_day": {
+      "match": true
+    },
+    "location": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "description_contains": {
+      "found": [
+        "quarterly planning",
+        "department heads",
+        "moved to 4pm"
+      ],
+      "missing": [],
+      "match": true
+    },
+    "fields_matched": 6,
+    "total_fields": 6,
+    "auto_rating": 5
+  },
+  "tokens": {
+    "prompt_tokens": 392,
+    "completion_tokens": 128,
+    "total_tokens": 520
+  },
+  "cost": 0.0004376,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1225,
+        "text": "You are merging calendar event data from multiple emails.\n\n**Existing Event:**\n- Title: Q1 Planning Meeting\n- Start: 2026-03-15T14:00:00\n- End: 2026-03-15T15:00:00\n- All Day: False\n- Location: Conference Room B\n- Description: Quarterly planning session with department heads\n- Importance: action_required\n\n**New Information (source type: update):**\n- Title: Q1 Planning Meeting\n- Start: 2026-03-15T16:00:00\n- End: 2026-03-15T17:00:00\n- All Day: False\n- Location: Conference Room B\n- Description: Quarterly planning session with department heads - moved to 4pm\n- Importance: action_required\n\n**Merge Rules:**\n1. If source_type is \"cancellation\", prefix title with \"CANCELLED: \" (if not already)\n2. Prefer specific time (e.g., 6-7pm) over all-day\n3. Combine descriptions, keeping all relevant info (append new info)\n4. Use most specific location (longer address usually better)\n5. Keep newer times if they differ (updates)\n6. For importance: keep the highest level (action_required > fyi)\n\nOutput JSON with merged event data:\n{\n    \"title\": \"...\",\n    \"start_datetime\": \"...\",\n    \"end_datetime\": \"...\",\n    \"all_day\": true/false,\n    \"location\": \"...\",\n    \"description\": \"...\",\n    \"importance\": \"action_required\" or \"fyi\"\n}\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "start_datetime": {
+          "type": "string"
+        },
+        "end_datetime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "all_day": {
+          "type": "boolean"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "action_required",
+            "fyi"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "start_datetime",
+        "all_day",
+        "importance"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "start_datetime": {
+          "type": "string"
+        },
+        "end_datetime": {
+          "type": "string",
+          "nullable": true
+        },
+        "all_day": {
+          "type": "boolean"
+        },
+        "location": {
+          "type": "string",
+          "nullable": true
+        },
+        "description": {
+          "type": "string",
+          "nullable": true
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "action_required",
+            "fyi"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "start_datetime",
+        "all_day",
+        "importance"
+      ]
+    },
+    "raw_response_text": "{\n  \"title\": \"Q1 Planning Meeting\",\n  \"start_datetime\": \"2026-03-15T16:00:00\",\n  \"end_datetime\": \"2026-03-15T17:00:00\",\n  \"all_day\": false,\n  \"location\": \"Conference Room B\",\n  \"description\": \"Quarterly planning session with department heads\\nQuarterly planning session with department heads - moved to 4pm\",\n  \"importance\": \"action_required\"\n}",
+    "finish_reason": "FinishReason.STOP",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "3dbf010622fe4c3aaaaed278847a6c0e",
+    "route_role": "primary"
+  },
+  "inference_key": "9a09b704774b49d60984b37344ef70c4ce783426bb38802bee7ff165d83e4798",
+  "score_key": "bc1a8f51b6a45984bd01f14ee122679cf731320c9e8a1a6b7dfec39197755d1b",
+  "identity": {
+    "identity_version": 2,
+    "operation": "merge",
+    "provider": "gemini",
+    "model": "gemini-3.5-flash-lite",
+    "thinking": {
+      "mode": "level",
+      "value": "none"
+    },
+    "request_settings": {
+      "api_surface": "gemini/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "gemini-3.5-flash-lite",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "none"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "0326a7a81e169edaf924fb8a09fe97a184519ff43052c4a3ce59137d4d4545b6",
+    "adapter_contract_hash": "7290a95d479db2e3c5cbf8f212866455a4122a408c9542cc385b4b71b98742d8",
+    "fixture_input_hash": "c825ad95858186ea3ba36fe8a3ed100acda9a266edd239232d2ce1295afcb014"
+  }
+}

@@ -1,0 +1,1786 @@
+{
+  "run_id": "20261101T023929Z-0a9d2b73",
+  "operations": [
+    "extract",
+    "compare",
+    "merge"
+  ],
+  "matrix": [
+    {
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": "low"
+    }
+  ],
+  "provenance": {
+    "git_commit": "46a63d11338b7a0fa0e55d41efe6477e6a187f2d",
+    "event_processing_sha256": "3b61b944aad7f497f768d02cc51e726b757bbf1316635f253a61092cb38b1aad"
+  },
+  "cells": [
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "invitations/baby_shower_04",
+      "inference_key": "f6adf8a47f3182c81891b929d2f2e021167a51bcfe12f85533a594616cd1ec27",
+      "score_key": "fd4c7c1ff7bf4caf5b6faf9dcb34022a073fdab7567eb3202808da0267e949a9",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "invitations/birthday_party_adult_02",
+      "inference_key": "6755fe8d195dcf37e0c36efbbf8cab6f4d60d22b9057391b12af6ec55dc517c2",
+      "score_key": "fb01262d8b7ae711491bf61eac212a1c9df2835dff5a6ca5d34c52943a35e449",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "invitations/birthday_party_kids_01",
+      "inference_key": "4cdcab49802882dfcce5a6ced519cef80db728dd8166acdff7f32907bea90f5f",
+      "score_key": "058c6f3c1e45b272591ec52fcebb6ab7c3d30385c0f252492131945e6248d45a",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "invitations/dinner_party_09",
+      "inference_key": "33ad426d35a93735bcf35058a96245cefc67982d3e33da3018c577c72b61fe80",
+      "score_key": "d4c8eedea74d3209282e65ea9d1e5ba80a42beb2ff470195e658d5f645181f15",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "invitations/engagement_party_10",
+      "inference_key": "2db82b8ca9ec31d461a96e486fdda72536a6ec4a5ad7fca39694122e895f7fa0",
+      "score_key": "174d77f0730430f69f6d7e31fc0da44a5efe1f782c44ebbc8126a5e79d2c9ac3",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "invitations/graduation_party_05",
+      "inference_key": "76b81b4a2296fd0dddf98c69197d3af7317d33925550eecd5c39a6a4ecf2d06e",
+      "score_key": "f85a7bb5d274bc162f33b4fee42c3254f78559fcc5f4954ec49c4197543c6bd7",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "invitations/holiday_party_07",
+      "inference_key": "035b01753182f2a3783919bf5e3d030dda560b823572b400cd9e7d9f987244e4",
+      "score_key": "97d867f6a9c554a20b430e50d14cc6df4990b8211384b213d1729871df4e195b",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "invitations/housewarming_06",
+      "inference_key": "811f212f483f4ecc6a24e496efc8e69253a222fe67a594e3a0067da00ca44526",
+      "score_key": "1ebabbf6fc14e22502f2b66066298ee4980e5a63e9e7c8aca8396197342f6091",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "invitations/retirement_party_08",
+      "inference_key": "95045ddaee4869f69b6e2d8115fbd8eca2c6f8da40ee6295e057e7ebf428896a",
+      "score_key": "2f68be7f4fd097da532ce5b5f70713fccaca36fc71beb0a3be26bfc522f6ba37",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "invitations/wedding_03",
+      "inference_key": "6e30d95d5b13b541d311c112c7654faa0e8f87b374fa01abcc5a989329f6aa07",
+      "score_key": "ecd52ef61e5d19392750ced9d4e229e8dd2b45649d1d26d54e550e32b3799578",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "invitations/ysc_newsletter_multi_event_11",
+      "inference_key": "1adf593e33b73eec7f265ff98f0473765af79d5c5b8ba54db0e653929901366a",
+      "score_key": "aa3a4608f6007bf7d0de71d36e4a6f68ed0ee6f274b3fa25d601e1a446393d05",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "appointments/accountant_meeting_06",
+      "inference_key": "5df49d70c79fb5c539d87e7d7d3381b436608b49732754ceedf72f0ac7c91960",
+      "score_key": "543a4a327559978e361f791f51de4ba4381d2fa78d513059bb4cad30890f1fdf",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "appointments/car_service_03",
+      "inference_key": "29ba94fd5fcbf7cbd61651de4694153f90ce4a159a45fa7efec036b745688b26",
+      "score_key": "b1dc116db90d068df0e0037056d9e6f11128a833cd943b0c2f7735105e98c590",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "appointments/dentist_appointment_02",
+      "inference_key": "b984e68e0c811e93d6afce718d394ecc21be0000c691477d2f3d94da2c287ed0",
+      "score_key": "1a650e7f48958cedcc3e44f9e80f424f9b70093b20f0a982f47af3cbdfa8bc03",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "appointments/doctor_appointment_01",
+      "inference_key": "c11580a117067bf1b1441f93201dbe3d88d026776e25a5017cfe4809d0935110",
+      "score_key": "bbde52b932d37545eb95d0abaf73a006b0be442eb34cc1308586452f40d91329",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "appointments/home_repair_08",
+      "inference_key": "7cb25e3a8bef0d13014bf886e007993f9c75ab28aa12f6523ff5d4537610ce19",
+      "score_key": "8bb4aeb71d9c685148d735c8957b49e88d38dea59314d6d296310c28b56c021b",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "appointments/lawyer_consultation_05",
+      "inference_key": "20fa639acc08962a35ab27a20a86ddc2e08fe06c23edb6419f1efe3768923170",
+      "score_key": "2152e18680658dd4951d7d5e9fc2665813e713c5a4bd335bfcf668500f79cb7d",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "appointments/salon_appointment_04",
+      "inference_key": "4f808a3f13349918dc59a4e1916357740b40ee1d8eace71fa937d6874e2a3d3d",
+      "score_key": "59239e97f3bf0ba37a58d426c187132e6ed6992c79cc6dcfa2fd653ddf7f27bb",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "appointments/vet_appointment_07",
+      "inference_key": "9ffb6c51739eecf006e454126f4882ef360e9dc0021411c8a3016e0f2a99428d",
+      "score_key": "61afe1b641175618760157f9c4778077ea8288b04ea6240e3e440a9c16d74544",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "appointments/winery_reservation_09",
+      "inference_key": "81d30ec2bd4de1944a90d13b693483b28d85337c3a2a9768a903ace470e566e1",
+      "score_key": "34986f0b1d37d8600f2ca13af9eeac42e315e0d521d470d8b75a83d5831b9b6b",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "appointments/winery_reservation_reminder_10",
+      "inference_key": "3ddb6b98f4d265efe601b179a7422d7986fd2dd44871918034dd225d91099fda",
+      "score_key": "e5ab40efc80224758470f9108e9e6a943090fa93fd83fd1c3669971c9ad7f106",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "meetings/all_hands_06",
+      "inference_key": "120ffe6996697bb061007265c1d36ab69c426679c903abf8d76b6dfa96c25663",
+      "score_key": "ef0634a893ab7fb7830d0c28e491d66f70f513b731ea6d9b655d9418abd1b4f2",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "meetings/board_meeting_03",
+      "inference_key": "ad7ce672538abb68a14de5b41d970419d40a7c9fb29930ceebc5dc2362c18b2f",
+      "score_key": "8418c3b65c4b5bc6a1ca29e054a83e1fb5ed1fa5d1c9ec423f50ddb82f2fa4b3",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "meetings/client_call_04",
+      "inference_key": "12776cd10d11d434ede94495fde850e34421bc6563fbaf7690a9a08fe4be8223",
+      "score_key": "660a67150f1884e77113c17d4f3a954fa924020caadc3711a90072388fd3941a",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "meetings/ics_calendar_invite",
+      "inference_key": "670a17f5020d72787bd594129af29bad04e2fea5140a6b2efb50cb48f865b998",
+      "score_key": "1c8cad9b1c6d5c4bde509d95238b852e7b1980a071be84f0bb7aa470b4108578",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "meetings/interview_05",
+      "inference_key": "4636db150ae7264f8b0480281f9e8321d825bd42ee8cf1a6c9a88fc094a794fe",
+      "score_key": "fcd89452d50ae7054ddd2e30b1ce1dd20cd40466182be2633a8dfd083411fbdd",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "meetings/meeting_with_agenda_attachment",
+      "inference_key": "c62951d22a522e7720783f2d670512bfdf69e3b28766df07d819b15371704c59",
+      "score_key": "141e230054e4df4f53ee8041a6a9ff1eaa0ab4d4b89bb94d160d28be16b9a564",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "meetings/one_on_one_01",
+      "inference_key": "e8a62ef1b0353fb38e0776d0936ba30f4bce733d5d6067540187c8487f5694e2",
+      "score_key": "7a4b01f0bebd4be48528df8e49b2ad15d12c0ffe4b8a61e16b36c9c789c61d61",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "meetings/organizer_sent_agenda",
+      "inference_key": "d62a5d56c08e1f1f5642ccda9b5b07f731bcd658dd6fd124eccb150e0d487b52",
+      "score_key": "3b3b6dbc034d29cfbf123cca592621d858d4eae16743729b7405fdfaa81ca035",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "meetings/performance_review_08",
+      "inference_key": "2eb3f80150716ad905d234179fde97b9ebf3a49a208c3bca811bb2b6361c1872",
+      "score_key": "cd044b334d6788b415e180d47ad6c30349695c2ede4ef213906aa19f1d457293",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "meetings/project_kickoff_07",
+      "inference_key": "01796812601e74d180f1be7920899427d6d572ba3819bc2b66a40490ff1803b4",
+      "score_key": "0de1f904f29aab75fea58198a37124ac8c925b99b6b20d465504f937225b1039",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "meetings/team_standup_02",
+      "inference_key": "feb0023615690bbae3034b6d7f6566aa04b2970a914c29c6c302047360210041",
+      "score_key": "2c32110d7cc0185ec3ed1a792dc3bc6319a7d950a7d9bcd8a0162cbeef9c2958",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "travel/airport_transfer_05",
+      "inference_key": "92033ac7c66e0a995c4d1a35ca17515ad6a7ceef5ae2089b7afff8581cd4b345",
+      "score_key": "5eea4168135c02ee5c88132518d46b2cb957de0acbbf7cee6acc7a8db09128bc",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "travel/car_rental_03",
+      "inference_key": "55febcb3872a9efe98f6cfbf332cf6e24eedacacf310f84e70798e0cd94712ae",
+      "score_key": "473daa2b406f9602eb132dab2f3460c02276b66dbf994a8d6019a93974d316cc",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "travel/flight_confirmation_01",
+      "inference_key": "7f537156145bd2afb048317de8bb13387eea07e2629e1f888266a6f1e2cab5f8",
+      "score_key": "ce4b5527810b519d83e992bfe52043fdf839949fef54bf783176cf9819fbf935",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "travel/hotel_reservation_02",
+      "inference_key": "75d992cc93f71816f85b123c26e05abe2bf3da35ce212673c27c34bd53047225",
+      "score_key": "efb3032b68469813498437191e550c610882c020d05f35b85795f7b849f26318",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "travel/train_booking_04",
+      "inference_key": "3a7e4ab6cf89f50c4e7738d99afa7682db912005aa7519ec41a0789ab5fb8db4",
+      "score_key": "51805286422d1cbe7b3650eda109dacc12d0ec37288332305f2b9678fb25f798",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "travel/travel_itinerary_06",
+      "inference_key": "d4f0967b6ca3bed65b1eda37e0e8a18b22275a9ab748583ec98e0c060e4518ae",
+      "score_key": "3077c734808a61307272471ecee04c91bb318374464270332462ded7348e2b72",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "conferences/credential_maintenance_deadlines_07",
+      "inference_key": "7da6cffb73070fa02f7072e371b0e690d1c6160713788a69ba81574ce29a23b3",
+      "score_key": "fb88c7a6d07e6d7907784550047e643ed9074384935a0723952dfd48c14b3928",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "conferences/tech_conference_01",
+      "inference_key": "4d9b417d49bb9e8548d2ed67291a4113548c296e4651c8eadb434a9e5254313d",
+      "score_key": "90f3a8c578126b0158ad005c8811cd40d803c1e09d23d48dc1e05310e3ad3f4b",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "conferences/training_session_04",
+      "inference_key": "ceec8b7fd364643ffbf8402daed814c7c9b245dc25784c2b2ee4b15848fa300d",
+      "score_key": "3582fad3c3fb2dbcfa32b82643df843421502ba1bdfdc0c43bc460e7c422c2c1",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "conferences/training_with_schedule_csv",
+      "inference_key": "eff40008264c309d60e0f6363d1a3cd28f471f317ae8717b56b0fe6e95eb0b07",
+      "score_key": "157d6a6fd0c01fbd4ba992c72b4ada1d915478f87590c4d4ebae669537400055",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "conferences/virtual_summit_05",
+      "inference_key": "d8a28959bec16ade57cb7cc6e2cc5c7cc6f1333f7eb65c8c257b83a4d4389067",
+      "score_key": "f3aa9e2207dcf2d5f69cde48f7f86aeb4a49f349c74341b1c76da29d90bb46e8",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "conferences/webinar_02",
+      "inference_key": "2e380c5b4252f0f0f8d5e09b5c3016d47904626137b580fe30c0bb0f57e3951d",
+      "score_key": "eb5f6bc99cef35fb2eaf017479c9ef247f40e15172b2184979e6c3f1e89f413d",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "conferences/workshop_03",
+      "inference_key": "e13441851d3d068e244392cd1b7e71c95f6e2ead3fc7d127957ae7a66f535b55",
+      "score_key": "e8bfd5ec5b095bec0e86e519c8761f837809032a8025b518c5e2befe9eb984a1",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "school/field_trip_04",
+      "inference_key": "f4afb17adfa33057959bc9ebf32dfa0809f4eb919cba61d72e0d0a92304878b4",
+      "score_key": "cfb81463c456b3db5fa2a1ad113d03d57833487ef12665f5aefd40418d30d627",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "school/government_comment_period_13",
+      "inference_key": "9ba87fca8c7305614a2d9b965a60ac755467a2dc538054de28538a5b9de6ac55",
+      "score_key": "72a706191026039c4ba5298661a4986a4cbd9aa960bbfee23dd5a17cdbb6f37f",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "school/graduation_ceremony_05",
+      "inference_key": "eb9538912738276efc4c2c0e3054caa736207fd69cc7bee6c3c16344f846a58b",
+      "score_key": "43e7b50b3cec1f8124891e321a97cef6b60acde667506100ff8abef80e8d68ca",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "school/parent_teacher_01",
+      "inference_key": "28500b0ada336c76bba84010a6cb4d205ab44c592d94e5d4ca584e7217696408",
+      "score_key": "c98be0fa8f7fe43589187e7fc5a35042f87b061fb853609abbf531b625589cfc",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "school/pdf_calendar_kindercare_dec_02",
+      "inference_key": "eb25f1a2445051862b01bbe224e9dc5d1a3ce2be476b226558a3abd0ec34382d",
+      "score_key": "0f3f80a8702417091591b8e3849227a2fb737d27cddcf89e118a8bb10cf27b9d",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "school/pdf_calendar_kindercare_jan_01",
+      "inference_key": "7017811a8e6fbe9cbb20db42a491f8b21c5c8f488d41d7b20cdd4134b0e659d8",
+      "score_key": "531fb8c9f7507a85e1d42d3404bd07ffbeefae67ae0427cedae614985d2f9e32",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "school/pdf_calendar_personal_fwd_04",
+      "inference_key": "2b5a42559a281c6b97f4499a0b90baeaba98552155587a6c57234957a3bb2b23",
+      "score_key": "6f440b9399a51a6d50bfa62cbfc8f66de96065c1a056f9ab51dc8a5feaf4a833",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "school/pdf_dance_performance_03",
+      "inference_key": "eff6947b664cc88252039e976d33638e8be67895cf69b04c99c0ceaaf7fcbc5c",
+      "score_key": "dfc3f4feecfe7224581da6efecfa3a8b1fb9326bb327a74aace57b7ae04acfbf",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "school/public_hearing_08",
+      "inference_key": "d26ecc4fe2966a4b3594a5dcad0af1ebc8dfeefa5bac5fa4667be8ac0bf4604f",
+      "score_key": "66255e283dd5674a754074bb93de37e5a709326813b9ce53731f1e1317a4ac46",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "school/registration_opens_09",
+      "inference_key": "ba0a94be3a5b82c251c3457ccfab28feb7dbf6e5f81dcbadd246d9569bff43b1",
+      "score_key": "6d49774d353edf79753cff395892cb900f6e4ab23d6bc663eb9a20d336ffee77",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "school/school_digest_author_visit_07",
+      "inference_key": "8592960c771c1bacfe7094f293db3fd38a6f577e18d1e880c791bfe07242fea5",
+      "score_key": "26b3cf97acd10242b2f6c56d865c0c4b6e7cddf34bc187dec1c24feff474ef89",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "school/school_newsletter_multi_event_06",
+      "inference_key": "24118a0c8a9b800b89463a23542f1b73fec7355856bad6de567cbd67029e5a50",
+      "score_key": "6cc6c547779aadeed3b29b835b9f8fcd0d6fc44721ca2a2ac234635aabb203d1",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "school/school_play_02",
+      "inference_key": "745ef549c169428ef42a175a8df26c010a1ef7e9ec3008e018126f95f1f7d224",
+      "score_key": "f167252b1bc15764d85d656245d98982776b2fc23d4fa0f064fbade71b1495da",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "school/sports_game_03",
+      "inference_key": "a659c1195daed5b8d11a3ed1c16eb4b314e31e29e9281b40dcd3bc7857471a9b",
+      "score_key": "8e560eaf8eb8bafae929bee71854113917b16ed8e71f5688aadbb8b24ba50f86",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "school/valentines_exchange_06",
+      "inference_key": "926106c49089be49fca3695ce8704b7454ec7245c44145f1e6bdd9a21c26f2b3",
+      "score_key": "eb3ec994d18d04c17979c04d1ec417087b713394f6cdefc9d2cd5c12cfd18519",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "school/water_day_all_day_01",
+      "inference_key": "6b72ed28f2f3376e56818b50bb937b8bbb332efb8ad4902203336a2f55c07e92",
+      "score_key": "cbc441e47884d1b96d1c2d283035f8c46b7cf8046fabbff8e3c1d65c63f0a5d1",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "recurring/biweekly_one_on_one_03",
+      "inference_key": "5838ed4f2bee644a8caa79892198b6a07457cec82bc3fd1dc7b37ff432798fde",
+      "score_key": "177e9e599a1629818ee5855017dd41819bf64d8bdfccd11d80666165b6754a54",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "recurring/monthly_book_club_02",
+      "inference_key": "0129fb7e498a5ca12934ba9a3c34b5cae603d61f06306a18167ef18caa4861ff",
+      "score_key": "4581700fbeb385ee2dd37acfe734d63015855ebccad752ac72ee3899df89fdf3",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "recurring/quarterly_review_04",
+      "inference_key": "fcdf38ef5114d12f94d8a3ec7b558f27d5677d19edc194dbf4155381a0b2617f",
+      "score_key": "a1e386d3979f4d19113f73dd25f89f1fe508f2f034649fea2d97ac0a00c2c4a2",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "recurring/weekly_team_meeting_01",
+      "inference_key": "b5361476773cb27f2df009245b8bf36691d3c0a7ec9e770a66de2c4e81b7a9e0",
+      "score_key": "1f229896eeca730177509abc81641129e552958152feffe3ef961b43c7ae0faf",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/account_inactivity_notice_14",
+      "inference_key": "6fcdf60d8fe6d5b3ba3989414c2212a57f59a983550c2a9939da004e9182dee2",
+      "score_key": "91ba505d42b97717abaadce2e4b730d8b98b44bb18a27ddcf0133eded1bd437b",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/account_statement_07",
+      "inference_key": "004e53e9ff4b0fee501b53fe880672a8957a934f809699f2d7b7d380cc0fc618",
+      "score_key": "1fac3578e7f238a17eb08db98fd33b36540a51662f8e16b5a3419ca40a01ae5a",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/automatic_invoice_payment_16",
+      "inference_key": "8f721c14abce8e5f35a79ba0ef140679827da6b7506ad47d3f0624620dca878e",
+      "score_key": "2be53c1b8dc1d5877200454341a3228fa56c5f38bb1a08fa2d6606b84f3beafd",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/autopay_scheduled_15",
+      "inference_key": "8f2b6a3035f37dc06c7ed849583ee1cb5b67bfb8dc19383b3600c405c91a59b8",
+      "score_key": "9a425bd6fced5f8b1592197f1753002620d76d2c77c14b781a60c94edfba497b",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/calendar_derived_daily_brief_18",
+      "inference_key": "af571a7ed3141e2ce5638c5c81c121f63cc14a2730cceda08469e8c02e144681",
+      "score_key": "b1d7f75033c947a0ab893cbf4f48e63e90089ac5544fe31c60ae1e2e0f81803c",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/early_direct_deposit_notice_20",
+      "inference_key": "0371fa6481d453901ff8029726f4c8860b9af6f8f31b4b6c39e868954c56c49d",
+      "score_key": "a99789d0d7e962fe652dc91b7d353b3b9e55c6e9252e3ec7ff61a59f76c6da46",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/informed_delivery_digest_19",
+      "inference_key": "9d8d0c78610378ea2fcd662c39f44ff8a381ea98d04373a965469697e49aa7be",
+      "score_key": "e84cb1c81c257eb8a1f355422d9152fc620b1c897b6c41212e9ca49e2c331622",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/malformed_schema_echo_source_01",
+      "inference_key": "191311e6fd32592011c675ac670360bff36cb2dc9ff83768a21785033fb028e9",
+      "score_key": "94da64b08dd77843ba5b5e6acefa664c4d72ae70c5d692bb151267d1115a3856",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/marketing_email_04",
+      "inference_key": "bbb1bdaac8acf95672795f01df4bc704cc2319d9307235b8622a2460fb1e785d",
+      "score_key": "052981364bf78844368b223f1f17559b2c94c2a6f9b9c5dba611abfe4011dd25",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/meeting_digest_past_topics_12",
+      "inference_key": "79a8adf5f8f0086c834da9acd3eca6bfc48440ad711604aad62e7ee923b7af73",
+      "score_key": "e8d73556837c83697f12efbfd83489725fd876d05aa419ed45d84af0002e7458",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/meeting_recap_recording_11",
+      "inference_key": "f042293f64419d1943c4964e963ae0ba4555b04224bee251b38baa9f4990079c",
+      "score_key": "67cccde1c2d67eeefa84ad6308cb929e2263a8c0ccb29e94227b0fb0a622df1b",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/newsletter_01",
+      "inference_key": "c8418b7929dfbf090d6cde26672f418f8af08a6b2f3edb835b9f30235a6c8645",
+      "score_key": "df6cd70df0f2cf77f98b7d021af8c31e5c0f0ebbfc41ae05cb9756f9f5b09b92",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/notetaker_not_admitted_13",
+      "inference_key": "7903659def53fcc369d472bfe6bcd924e7238f9c90691cd8c330e1efbaa66812",
+      "score_key": "fade7d449c6c9ed6a5a6e9b00214099f925fc63a9c470e660935435427be01d5",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/order_pickup_12",
+      "inference_key": "716b6659b0cfea0cc0b65a2f6bd86ddcd1c644c98abff00e61fddd6e31ecc9c0",
+      "score_key": "1dc06e99624cbc47930a8304022ac5a49e4f3c1d3d7c387ff1dbe5267698d472",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/order_receipt_02",
+      "inference_key": "b8de927f1ad3b26695dc07e4ae6de88a061c2182053663cbff6dbaf610d94b3b",
+      "score_key": "5041daeb70e28dc6af574fc899e29274bf9db58ec726b897495f6259865e1550",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/password_reset_06",
+      "inference_key": "f6cc5211ddc15c3d55287850ddc530c2d6435557a5a90c15137870c9d2c15ca9",
+      "score_key": "4b75fdf31627cca30ae1763ed0874b086d849691cdbfc6a1ee19ad3c45042e28",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/pdf_financial_statement_05",
+      "inference_key": "89845ab72d0c679add209d0233ddc7b011e67ba434f168e3c3c47d680a03d8bd",
+      "score_key": "704f1d7ebe48d94dd45a87d0fab84086a0612628413ac1ceb0897949d1f954d1",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/post_visit_survey_17",
+      "inference_key": "bf32c6f30a93880f5743dfb5b35324721940675bfa293eb5f9e448c65cafc4dc",
+      "score_key": "bc625f7c920e21cee12da37975e30c9d74254bc709b8460c0f409940645aaefc",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/promotional_offer_10",
+      "inference_key": "6d5f5a62f1a8c95928924393baaae3c5bdcdf454be34ff6d226abc019aae6cd1",
+      "score_key": "5ace8de3ca24e2896c58fbe77e43203a3d73b4d9a972e3241943a48d96927f97",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/shipping_notification_03",
+      "inference_key": "b7d75d6b686827d2c8ea1241bf1002e4bd3fbe8ce67f5a18be2d881f4cc12f30",
+      "score_key": "504bdf0dd0578312f9f606b635e30b51811256b4a147d325c28a93ae89b980c4",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/social_notification_05",
+      "inference_key": "5a59f12b5a87f48bbaf86e54aa39b89b6856a6bfb16d5c25fb6f1046d72b6137",
+      "score_key": "24ae16f91e7988070f3bd19533e3b3295d6edf42d3489ce744453f3e987d9e95",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/survey_request_09",
+      "inference_key": "1cbbce40517cb0ef9586be83fe78abede8f8d02cafd7dd46461bb759d1b61440",
+      "score_key": "e0228b20c371e450c9f4f592c992626f88adc2d5783b260f6fd249ac0f1d04c7",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "no_events/terms_update_08",
+      "inference_key": "bab5cd5c92fe24191d7e46630fc1451b21abdc867cb880f4b0df9fc2de1dc8cf",
+      "score_key": "cf30f0653670075c015e30a8151c00ab9abd735cad7ce96d766cd573bba4f95b",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "compare",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "class_party_after_parade_is_distinct_27",
+      "inference_key": "3f8a25e4ebe5b6bed439a0b54f2f5e4de7b67c75a36986a7472ed62572587315",
+      "score_key": "eb31daf2251937496f7e1c6e5e30afd622f096f6017f8cc53ddf410e05c3904d",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "compare",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "conference_day1_vs_day2_15",
+      "inference_key": "1477040529dd250a5f0ecfa8fa1db2db881b88000026ec7876f096ce49eb9c2b",
+      "score_key": "069a65ee3d4ab740c7321f81c006691d091bc84137239324a8c048e79c50a285",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "compare",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "costume_parade_vs_vague_parade_26",
+      "inference_key": "48a0ccffbffde7a8a9200c2683d2bf84b2278d30b84f2095ebe5923512b6df5d",
+      "score_key": "f2b151bff3dc74345a23517aba10f5e6406a4776d55493ef073547ed968d70c9",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "compare",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "different_doctor_appointments_12",
+      "inference_key": "feb9428fb7c152868113e25598922813b3cf41b7dbdc4248e56540ecac060e92",
+      "score_key": "d9d3ac24fa279c5c498c459ec9506fd7bbd734bd710c36b3f5e914a022ff958d",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "compare",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "different_events_same_day_09",
+      "inference_key": "253e9e2a709cd55c5c66bf6c673ab33e904ff833722fd75d89f14a98314ed106",
+      "score_key": "feeb16e4e43250245dbf03dd7693b9b7757c8906d775ca9c9dfb0e1e9d2721b5",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "compare",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "different_kids_birthdays_14",
+      "inference_key": "7c6034ad7809b8993fc0d4699a708e82734ecb825bac467fbad1db87412ce3fd",
+      "score_key": "3694c488840aeb400a19c8a55fc078652e517f53d90ebc24d9c4597b95e934b9",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "compare",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "interview_loop_distinct_slots_20",
+      "inference_key": "35cb7d19f58ba09f8fdc6e8aad5745acbd652885d48e0d1427f27e89aa0a17b9",
+      "score_key": "16d065c403ba4b28ee044e9120eee55b8d8d75c805c8ecaafb8abdf52389285d",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "compare",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "reschedule_across_dates_23",
+      "inference_key": "96c31fbcc7798e9eec7a63c294ad53ce6ddf438495714155e9f4c49a7462c4d7",
+      "score_key": "a2352f29709b6eb394c9f389c2a0a8a4a1f3efea30ee8686e83cd736b86c9c46",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "compare",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "same_birthday_party_01",
+      "inference_key": "53d1bfd2fd138501e63ad61fb124f234dfb06b2b30659e8dc38b7c79651dcbd3",
+      "score_key": "b289bc640c108478e982a06564a3fd932ad702912c590378ba6f6aad596679b4",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "compare",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "same_conference_06",
+      "inference_key": "b7bb7dcba0093698494862d0baffc775a9855e0e87ac57aa43120106516cd151",
+      "score_key": "a1605f62975625347d7b9d0c8c3655a12efdd1b80bef67b2f51afb270d091c29",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "compare",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "same_doctor_appointment_02",
+      "inference_key": "643856f9a303088ccb7a2da5e71f64ac5df3e1d833c966dab4cd0ef560294b8b",
+      "score_key": "e926e6751cb4a006d717ce68ec122db4040f63a4dd660779d0e761d6a8a4422d",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "compare",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "same_event_two_agenda_titles_21",
+      "inference_key": "68be56384d9a0c2f599e9300742113cf3a442f8832e8128cc1efd75dee8a3e04",
+      "score_key": "01690ff0dfb463c04063afe99bd054005fba9c5a372b65b28ef6a48c99dcb548",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "compare",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "same_flight_04",
+      "inference_key": "dc6701e1a9c6b81f1c7bbf4673e51235b6fbde3105383c581a400bf2d0fe807a",
+      "score_key": "36e41b684f62b7677dbf7657c4e365c0588c28a048601388ed472392bbc3b74b",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "compare",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "same_location_different_events_11",
+      "inference_key": "f772c3038fbedd6a285fb68165c2950679091459117aa628a81226d8178b0d9f",
+      "score_key": "2c02302e99dc19ff0ed7dd449a7d428e4d080aa009a10b4e60c69f817f133a0e",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "compare",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "same_parent_teacher_08",
+      "inference_key": "691cdb7b5d6c0e8186af287cd2c0eb10089ac688d8ac3bff95391ad4c329b384",
+      "score_key": "fc0e119c1b6fbfb4af606a2cdcc0e54b989e8c89b56f2a7ed1f75830efc0f3cb",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "compare",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "same_school_play_07",
+      "inference_key": "fcf8e22ab6ebb816c6637a0fbc020b5394697625e22a920bf86c392fe49d203f",
+      "score_key": "fddc23a00ac3eaa8f98c9077ded992e33619d3e66ed0e308176087259f9cc742",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "compare",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "same_series_different_level_22",
+      "inference_key": "79f8e1be2fd37cf27113f1e06537d319bc61a1fc558809419581652a51c2d553",
+      "score_key": "d63ec458ef9bcdfef8489fdf5e144855da5fcdab55ccc003565f6fd9723532cf",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "compare",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "same_team_meeting_03",
+      "inference_key": "22e03912476be33286db02de9dc2f0cf777cf646692b40ef2703e48e6f856e0d",
+      "score_key": "b319a698002f3ccaad28ad96d13f80bc04956a03e0444536402168e5deb741c2",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "compare",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "same_wedding_05",
+      "inference_key": "7a361a52b631693aefd771914d9387cfdb6e2601208052f0504bdb509ac9dd07",
+      "score_key": "13c45d5e3610ad040fc237230a017ced531b13c83636bb2f27b314d83efc49ee",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "compare",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "similar_titles_different_dates_10",
+      "inference_key": "d35d458c0e723d5701f3300353f3fd9216f857b8f40e4d2131dabbbdb8e94a84",
+      "score_key": "56586adc0000ff9e6efcf6db8bc6dddf4798f31f0d3bc18d13c61b69a1d6ed56",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "compare",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "team_meeting_vs_kickoff_13",
+      "inference_key": "6fa1bff090c4e0530c0d273cecd8b834c26f0ab5546411c392bc3cb42924cd7b",
+      "score_key": "ccff1b27ddf260fdbd26bcd0c8a9877d8b3aef0fd0c6ffa6f45c383e1de798e5",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "compare",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "text_update_of_an_invite_24",
+      "inference_key": "3c28f28cf3969b699c1b1a69b9b4f2323d5797cd244ef6338d186a2cc2d37110",
+      "score_key": "22b9e1478c348534972b8fe3735da130fbdffea353a6c677d865bffb1efa1b65",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "compare",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "utc_vs_local_same_parade_25",
+      "inference_key": "8d602c59b4f001e724b0a739e147917a694b809250ab27f97ebdfe334b755587",
+      "score_key": "ec313983a01c635bb00d5ddb8e74520607a73a919268175da4988c1298e26cb7",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "merge",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "allday_gets_time_02",
+      "inference_key": "346d9e47720c1e21240097a6208b356ab86400d4cb2544ce27c95dd24c14a2da",
+      "score_key": "f949576234bc535659e9f895eeab49acbc5b43d4c653e0c93565daf60034e377",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "merge",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "cancelled_and_rescheduled_07",
+      "inference_key": "7f38ec4091bab7112b620eef7bcb0c8029737e4ceb7964f16381fa0d751f7ab1",
+      "score_key": "c474e6ea8fb6ae7a7cf59c7161d05e457589f489d9aebdb8f858ec33fd0bff6a",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "merge",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "conference_session_update_12",
+      "inference_key": "e5c06672f6a1e5dd874f512d9b292c9827e581255fe271c52446e58d3f732330",
+      "score_key": "ca2a07ddc9315ee536f559c0f5846f197617e91744a0d2893e0be2231e82b36b",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "merge",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "event_cancelled_06",
+      "inference_key": "4f4fa8513240bdb290d2cf8cb70f3bb20c56425ea8d2b1ce591ccf33bee8c11c",
+      "score_key": "39cd62ef58ed13f38366f8c246776ec998cee3b3ec82cc45ec79f5851e234351",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "merge",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "event_time_extended_03",
+      "inference_key": "e6149fa0f0e23e035bfd32b4446fc5a44396a1212e98f00c80ff13a124f35fd4",
+      "score_key": "1a848913b2943958e5e568ae77652e8337083b6f15adb3899e6b39e38d6db632",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "merge",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "followup_adds_agenda_08",
+      "inference_key": "d811d061382878c35398a2822070126957017ac2f136e34398612d05b8147fb7",
+      "score_key": "8e5763e50f7b3b6c49ebfd61b9689fc3ae082c8dbfb1388e9dac5ca09ec61efc",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "merge",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "inperson_to_virtual_05",
+      "inference_key": "c7e97066e2a5bce7f0e091c81176a53afc4ac18566f06a619d58d766a2b1d012",
+      "score_key": "c0d7ea3739a068f7e185b514f506d41eb0381081d4f10fd7cf7c42a8a4db01df",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "merge",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "meeting_rescheduled_01",
+      "inference_key": "0845313c09f21a697fcfd5fd4e754ef3440b73a363bec02d77ddb43cd864cebc",
+      "score_key": "36e6d058463158da8e554754d917a14747fd4f787bd15f9e1351c7db9b446800",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "merge",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "multiple_fields_change_11",
+      "inference_key": "24b33360500c3511e860be75ab39eb7eaa44e418d6f064f3a0b25b082036e8d8",
+      "score_key": "874db77555cbf54b487db0feac1a35a4274f39725616d1a8ce913f96735ee7eb",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "merge",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "reminder_adds_parking_09",
+      "inference_key": "7d7e99b6f0c26de7d4949658294ca188aa77d6bc08e67cbd1b82a53596ef17aa",
+      "score_key": "04693264a54dc8a29e2dab300af6b4a6e859fa6d8b06dde1053373211ac498d5",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "merge",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "school_event_detailed_14",
+      "inference_key": "d570c2a84276a88b1682bbac0c92b17b64412827c03f10b157965eabbe789cb7",
+      "score_key": "5bd5501ffc605d5faaa9dfd2fa5a97e333cc835e67e5eae9c3e31fb1b1f90f83",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "merge",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "travel_itinerary_update_15",
+      "inference_key": "6b175eeb3ef4de67b4ad300ae1e50d1c3a057a29d5273ae6104e2ec393240e1d",
+      "score_key": "72b26bb0f3001a3bded2a2cc9b9f602d6e05ee82a77f86eac97c8f75b9b0e180",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "merge",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "update_adds_dresscode_10",
+      "inference_key": "7cc976e49423e1edb2bdf81d14545940269f1e40494092b62d29c9a9851011e1",
+      "score_key": "bf7e54f1944b445fa2bd4534879765f9c900dadd29e31760969188fe3c7d9111",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "merge",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "vague_to_specific_location_04",
+      "inference_key": "c0b5ebc621ed349d903bdcb21d35504e415343f490bf17ed30043f33f03b5ed5",
+      "score_key": "305e52eefb057f35661071f7d74a52cd7924e51ff7365944179afad4098a6a13",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    },
+    {
+      "operation": "merge",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "wedding_full_details_13",
+      "inference_key": "7163720bbc88b5e94281e38bae1398c7a0f3d68aa23d0d5b0baa513f62959efa",
+      "score_key": "41cd5a1acb806eca0be24e91a973fb30ac68cd7763095f4abde656f3a78174ff",
+      "state": "MISS",
+      "reason": "no inference artifact"
+    }
+  ],
+  "written_at": "2026-11-01T02:39:29.366866+00:00"
+}
