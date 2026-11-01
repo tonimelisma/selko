@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { _ } from 'svelte-i18n';
 	import { fetchCalendarRecovery } from '$lib/services/integrations.js';
-	import { hasWritableCalendar, needsOutlookCalendarReconnect } from '$lib/calendar-providers.js';
+	import { recoveryActions } from '$lib/calendar-providers.js';
 	import ErrorAlert from './ErrorAlert.svelte';
 
 	let { integrations = [], onauthorize } = $props();
@@ -15,49 +15,26 @@
 	let pollTimer = $state(undefined);
 	let justCaughtUp = $state(false);
 
-	let gmail = $derived(integrations.find((item) => item.provider === 'gmail'));
-	let outlook = $derived(integrations.find((item) => item.provider === 'outlook'));
-	let calendar = $derived(integrations.find((item) => item.provider === 'google_calendar'));
-	let emailConnected = $derived(gmail?.status === 'active' || outlook?.status === 'active');
-	// Either Google Calendar or a calendar-scoped Outlook connection can receive approvals.
-	let calendarConnected = $derived(hasWritableCalendar(integrations));
-	// An active Outlook row without calendar scope gains Outlook Calendar on reconnect.
-	let outlookCalendarUpgrade = $derived(needsOutlookCalendarReconnect(integrations));
-
-	let recoveryProviders = $derived.by(() => {
-		if (!emailConnected) {
-			return ['gmail', 'outlook', ...(!calendarConnected ? ['google_calendar'] : [])];
-		}
-		if (!calendarConnected) {
-			return [
-				'google_calendar',
-				...(outlookCalendarUpgrade ? ['outlook'] : []),
-				...(gmail && gmail.status !== 'active' ? ['gmail'] : []),
-				...(outlook && outlook.status !== 'active' ? ['outlook'] : [])
-			];
-		}
-		return integrations
-			.filter(
-				(item) => item.provider !== 'google_photos' && item.status !== 'active'
-			)
-			.map((item) => item.provider);
-	});
+	// One action per sign-in: a single Google consent covers Gmail and Google
+	// Calendar, and Outlook mail and calendar share one connection.
+	let recoveryPlan = $derived(recoveryActions(integrations));
+	let recoveryProviders = $derived(recoveryPlan.actions);
 
 	let title = $derived(
-		!emailConnected
-			? $_('integrations.reconnectEmailTitle')
-			: !calendarConnected
-				? outlookCalendarUpgrade && !calendar
-					? $_('integrations.connectCalendarTitle')
-					: $_('integrations.reconnectCalendarTitle')
-				: $_('integrations.connectionAttentionTitle')
+		{
+			email: $_('integrations.reconnectEmailTitle'),
+			connectCalendar: $_('integrations.connectCalendarTitle'),
+			reconnectCalendar: $_('integrations.reconnectCalendarTitle'),
+			attention: $_('integrations.connectionAttentionTitle')
+		}[recoveryPlan.title]
 	);
 	let description = $derived(
-		!emailConnected
-			? $_('integrations.reconnectEmailDescription')
-			: !calendarConnected
-				? $_('integrations.reconnectCalendarDescription')
-				: $_('integrations.connectionAttentionDescription')
+		{
+			email: $_('integrations.reconnectEmailDescription'),
+			connectCalendar: $_('integrations.reconnectCalendarDescription'),
+			reconnectCalendar: $_('integrations.reconnectCalendarDescription'),
+			attention: $_('integrations.connectionAttentionDescription')
+		}[recoveryPlan.title]
 	);
 
 	/** @param {import('$lib/types.js').IntegrationRecovery} r */
@@ -135,18 +112,12 @@
 		};
 	});
 
-	/** @param {string} provider */
-	function providerName(provider) {
-		if (provider === 'gmail') return $_('integrations.gmail');
-		if (provider === 'outlook') return $_('integrations.outlook');
-		return $_('integrations.googleCalendar');
-	}
-
-	/** @param {string} provider */
-	function actionLabel(provider) {
-		const integration = integrations.find((item) => item.provider === provider);
-		const verb = integration ? $_('integrations.reconnect') : $_('integrations.connect');
-		return `${verb} ${providerName(provider)}`;
+	/** @param {import('$lib/calendar-providers.js').RecoveryAction} action */
+	function actionLabel(action) {
+		const verb =
+			action.verb === 'reconnect' ? $_('integrations.reconnect') : $_('integrations.connect');
+		const name = action.provider === 'outlook' ? $_('integrations.outlook') : $_('integrations.google');
+		return `${verb} ${name}`;
 	}
 
 	/** @param {string} provider */
@@ -230,18 +201,18 @@
 			</div>
 			<div class="flex shrink-0 flex-wrap gap-2 sm:justify-end">
 				<div class="peer-action-group peer-action-group--intrinsic" data-peer-count={Math.min(recoveryProviders.length, 3)}>
-					{#each recoveryProviders as provider}
+					{#each recoveryProviders as action (action.provider)}
 						<button
 							class="btn btn-primary peer-action shadow-brand"
 							disabled={connectingProvider !== ''}
-							aria-busy={connectingProvider === provider}
-							onclick={() => reconnect(provider)}
+							aria-busy={connectingProvider === action.provider}
+							onclick={() => reconnect(action.provider)}
 						>
-							{#if connectingProvider === provider}
+							{#if connectingProvider === action.provider}
 								<span class="loading loading-spinner loading-sm" aria-hidden="true"></span>
 								{$_('integrations.connecting')}
 							{:else}
-								{actionLabel(provider)}
+								{actionLabel(action)}
 							{/if}
 						</button>
 					{/each}

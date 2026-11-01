@@ -213,7 +213,7 @@ describe('Event Detail Page', () => {
 		render(EventDetailPage);
 
 		await waitFor(() => {
-			expect(screen.getByRole('button', { name: 'Reconnect Google Calendar' })).toBeEnabled();
+			expect(screen.getByRole('button', { name: 'Reconnect Google' })).toBeEnabled();
 		});
 		for (const button of screen.getAllByRole('button', { name: /accept/i })) {
 			expect(button).toBeDisabled();

@@ -108,7 +108,7 @@ describe('Review Queue (App Page)', () => {
 
 		await waitFor(() => {
 			expect(
-				screen.getByRole('heading', { name: 'Reconnect Google Calendar' })
+				screen.getByRole('heading', { name: 'Connect your calendar' })
 			).toBeInTheDocument();
 			expect(screen.getByText('All caught up!')).toBeInTheDocument();
 		});
@@ -164,7 +164,7 @@ describe('Review Queue (App Page)', () => {
 			})
 		).toBeDisabled();
 		expect(screen.getByRole('button', { name: /reject readable suggestion/i })).toBeEnabled();
-		expect(screen.getByRole('button', { name: 'Reconnect Google Calendar' })).toBeEnabled();
+		expect(screen.getByRole('button', { name: 'Reconnect Google' })).toBeEnabled();
 	});
 
 	it('shows empty state when fully connected with no events', async () => {
@@ -371,7 +371,7 @@ describe('Review Queue (App Page)', () => {
 		render(AppPage);
 
 		await waitFor(() => expect(screen.getByText('Outlook Standup')).toBeInTheDocument());
-		expect(screen.queryByRole('heading', { name: 'Reconnect Google Calendar' })).not.toBeInTheDocument();
+		expect(screen.queryByRole('heading', { name: 'Reconnect your calendar' })).not.toBeInTheDocument();
 		expect(screen.queryByRole('heading', { name: 'Connect your calendar' })).not.toBeInTheDocument();
 
 		await user.click(screen.getByRole('button', { name: 'Accept Outlook Standup' }));
@@ -407,7 +407,7 @@ describe('Review Queue (App Page)', () => {
 		await waitFor(() => expect(screen.getByText('Scopeless Sync')).toBeInTheDocument());
 		expect(screen.getByRole('button', { name: /^Accept Scopeless Sync\./ })).toBeDisabled();
 		expect(screen.getByRole('heading', { name: 'Connect your calendar' })).toBeInTheDocument();
-		expect(screen.getByRole('button', { name: 'Connect Google Calendar' })).toBeEnabled();
+		expect(screen.getByRole('button', { name: 'Connect Google' })).toBeEnabled();
 
 		await user.click(screen.getByRole('button', { name: 'Reconnect Outlook' }));
 		expect(mockInitiateOutlookAuth).toHaveBeenCalledTimes(1);

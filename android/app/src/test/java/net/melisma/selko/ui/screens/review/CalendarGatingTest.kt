@@ -54,9 +54,15 @@ class CalendarGatingTest {
         )
     }
 
+    private fun labels(integrations: List<Integration>) =
+        recoveryPlanFor(integrations).actions.map {
+            (if (it.isReconnect) "Reconnect " else "Connect ") +
+                (if (it.signIn == RecoverySignIn.GOOGLE) "Google" else "Outlook")
+        }
+
     @Test
     fun `scoped Outlook alone needs no recovery prompt`() {
-        assertEquals(emptyList<IntegrationProvider>(), recoveryProvidersFor(listOf(scopedOutlook)))
+        assertEquals(emptyList<String>(), labels(listOf(scopedOutlook)))
     }
 
     @Test
@@ -65,28 +71,51 @@ class CalendarGatingTest {
             scopedOutlook,
             row(IntegrationProvider.GOOGLE_CALENDAR, IntegrationStatus.EXPIRED)
         )
-        assertEquals(emptyList<IntegrationProvider>(), recoveryProvidersFor(integrations))
+        assertEquals(emptyList<String>(), labels(integrations))
     }
 
     @Test
     fun `stale Gmail is still prompted when Outlook calendar is writable`() {
         val integrations = listOf(scopedOutlook, row(IntegrationProvider.GMAIL, IntegrationStatus.EXPIRED))
-        assertEquals(listOf(IntegrationProvider.GMAIL), recoveryProvidersFor(integrations))
+        assertEquals(listOf("Reconnect Google"), labels(integrations))
     }
 
     @Test
-    fun `mail-only Outlook offers an Outlook reconnect before Google Calendar`() {
-        assertEquals(
-            listOf(IntegrationProvider.OUTLOOK, IntegrationProvider.GOOGLE_CALENDAR),
-            recoveryProvidersFor(listOf(mailOnlyOutlook))
-        )
+    fun `mail-only Outlook offers an Outlook reconnect before Google`() {
+        assertEquals(listOf("Reconnect Outlook", "Connect Google"), labels(listOf(mailOnlyOutlook)))
+        assertEquals(RecoveryTitle.CONNECT_CALENDAR, recoveryPlanFor(listOf(mailOnlyOutlook)).title)
     }
 
     @Test
-    fun `Gmail without a calendar still prompts Google Calendar only`() {
-        assertEquals(
-            listOf(IntegrationProvider.GOOGLE_CALENDAR),
-            recoveryProvidersFor(listOf(row(IntegrationProvider.GMAIL)))
+    fun `Gmail without a calendar prompts one Google reconnect`() {
+        assertEquals(listOf("Reconnect Google"), labels(listOf(row(IntegrationProvider.GMAIL))))
+    }
+
+    @Test
+    fun `both Google rows expired offer one Google action`() {
+        // Regression: one button per row offered "Reconnect Gmail" and
+        // "Reconnect Google Calendar" for the same Google sign-in.
+        val plan = recoveryPlanFor(
+            listOf(
+                row(IntegrationProvider.GMAIL, IntegrationStatus.EXPIRED),
+                row(IntegrationProvider.GOOGLE_CALENDAR, IntegrationStatus.EXPIRED)
+            )
         )
+        val google = plan.actions.filter { it.signIn == RecoverySignIn.GOOGLE }
+        assertEquals(listOf(RecoveryAction(RecoverySignIn.GOOGLE, isReconnect = true)), google)
+        assertEquals(IntegrationProvider.GMAIL, google.single().authProvider)
+        assertEquals(RecoveryTitle.EMAIL, plan.title)
+    }
+
+    @Test
+    fun `lapsed Google Calendar alone asks to reconnect the calendar`() {
+        val plan = recoveryPlanFor(
+            listOf(
+                row(IntegrationProvider.GMAIL),
+                row(IntegrationProvider.GOOGLE_CALENDAR, IntegrationStatus.REVOKED)
+            )
+        )
+        assertEquals(listOf(RecoveryAction(RecoverySignIn.GOOGLE, isReconnect = true)), plan.actions)
+        assertEquals(RecoveryTitle.RECONNECT_CALENDAR, plan.title)
     }
 }

@@ -47,15 +47,16 @@
     <string name="review_events_rejected">%1$d events rejected</string>
 
     <!-- Connection Recovery -->
-    <string name="recovery_email_title">Reconnect an email account</string>
+    <string name="recovery_email_title">Reconnect your email</string>
     <string name="recovery_email_description">New email suggestions are paused. Your existing suggestions and history are still available.</string>
-    <string name="recovery_calendar_title">Reconnect Google Calendar</string>
+    <string name="recovery_calendar_title">Reconnect your calendar</string>
     <string name="recovery_any_calendar_title">Connect a calendar</string>
     <string name="recovery_calendar_description">You can keep reviewing, editing, and rejecting suggestions. Reconnect before accepting one.</string>
     <string name="recovery_attention_title">A connection needs attention</string>
     <string name="recovery_attention_description">Selko is still working through another connected account. Reconnect this provider when convenient.</string>
     <string name="recovery_connect_provider">Connect %1$s</string>
     <string name="recovery_reconnect_provider">Reconnect %1$s</string>
+    <string name="recovery_google">Google</string>
     <string name="recovery_settings_note">You can also manage connections in Settings.</string>
     <string name="recovery_connect_failed">Couldn’t start authorization. Please try again.</string>
     <string name="recovery_catch_up_starting_title">Starting catch-up…</string>
@@ -67,7 +68,7 @@
     <string name="recovery_catch_up_errors_title">Caught up with %1$d items needing attention</string>
     <string name="recovery_catch_up_errors_description">Most events synced, but %1$d didn’t make it. Review them from Settings.</string>
     <string name="recovery_catch_up_failed_title">Catch-up didn’t finish</string>
-    <string name="recovery_catch_up_failed_description">Reconnect Google Calendar to try again.</string>
+    <string name="recovery_catch_up_failed_description">Reconnect your calendar to try again.</string>
 
     <!-- Event Card -->
     <string name="event_card_accept">Accept</string>
