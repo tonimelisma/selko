@@ -3,7 +3,7 @@
 import logging
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
@@ -1749,6 +1749,159 @@ def find_matching_event(
         baseline=baseline,
         candidate_window=candidate_window,
     ))
+
+
+def _instant(value: Any) -> Optional[datetime]:
+    try:
+        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        return None
+    return parsed if parsed.tzinfo else None
+
+
+def retire_pending_already_on_calendar(
+    supabase_client: Client,
+    user_id: str,
+    arrived: list[dict[str, Any]],
+    gateway_factory: Callable[[], LLMGateway],
+) -> int:
+    """Take events out of New once the calendar entry they duplicate arrives.
+
+    Dedup runs once, when the email is extracted, against whatever the mirror
+    holds at that moment. A confirmation email routinely beats the calendar
+    entry it confirms -- an imported (ICS) calendar is refreshed by Google every
+    few hours -- so the entry arrived after the decision was made and nothing
+    ever looked again. A Supercuts check-in sat in New beside the "Supercuts"
+    entry that reached the mirror 85 minutes later.
+
+    This is the same decision extraction would have made had the entry been
+    there: an exact start-time match is the gate, and the LLM comparison
+    extraction uses decides whether it is the same event. A confirmed event is
+    marked rejected rather than deleted, so History's Undo returns it to New if
+    the comparison was wrong. The update is conditional on ``pending_review``;
+    an event the user approved meanwhile is never touched.
+
+    Only entries this sync pass wrote are considered, so a quiet calendar costs
+    nothing and a pair is compared once, not every pass. Returns how many
+    events were retired.
+    """
+    by_start: dict[datetime, list[dict[str, Any]]] = {}
+    for entry in arrived:
+        if entry.get("deleted_at") or entry.get("status") == "cancelled":
+            continue
+        # Selko's own synced rows already match their Selko event directly.
+        if entry.get("origin") == "selko_created" or not entry.get("provider_event_id"):
+            continue
+        start = _instant(entry.get("start_at"))
+        if start is not None:
+            by_start.setdefault(start, []).append(entry)
+    if not by_start:
+        return 0
+
+    try:
+        pending = (
+            supabase_client.table("events")
+            .select("id,title,start_datetime,end_datetime,location,description")
+            .eq("user_id", user_id)
+            .eq("review_status", "pending_review")
+            .gte("start_datetime", min(by_start).isoformat())
+            .lte("start_datetime", max(by_start).isoformat())
+            .execute()
+            .data
+            or []
+        )
+    except Exception:
+        logger.exception("Could not load pending events to check against the calendar")
+        return 0
+
+    gateway: Optional[LLMGateway] = None
+    user_timezone: Optional[str] = None
+    retired = 0
+    for event in pending:
+        start = _instant(event.get("start_datetime"))
+        entries = by_start.get(start) if start is not None else None
+        if not entries:
+            continue
+        candidates = [
+            {
+                "id": f"gcal:{entry['provider_event_id']}",
+                "title": entry.get("title") or "",
+                "start_datetime": entry.get("start_at"),
+                "end_datetime": entry.get("end_at"),
+                "location": entry.get("location") or "",
+            }
+            for entry in entries
+        ]
+        if gateway is None:
+            gateway = gateway_factory()
+            gateway.for_user(user_id)
+            user_timezone = get_user_timezone(supabase_client, user_id)
+        try:
+            matched_id = event_processing.compare_events(
+                gateway, event, candidates, user_timezone=user_timezone
+            )
+        except Exception as exc:
+            # A missed retirement leaves a duplicate the user can reject.
+            logger.warning("Late calendar comparison failed (%s)", type(exc).__name__)
+            continue
+        matched = next((c for c in candidates if c["id"] == matched_id), None)
+        if matched is None:
+            continue
+
+        result = (
+            supabase_client.table("events")
+            .update({
+                "review_status": "rejected",
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            })
+            .eq("id", event["id"])
+            .eq("user_id", user_id)
+            .eq("review_status", "pending_review")
+            .execute()
+        )
+        if not result.data:
+            continue
+        retired += 1
+        logger.info("Event %s is already on the calendar; removed from New", event["id"])
+        _explain_late_match(supabase_client, event["id"], matched["title"])
+    return retired
+
+
+def _explain_late_match(supabase_client: Client, event_id: str, entry_title: str) -> None:
+    """Say in History why an email's event left New without the user acting.
+
+    Only an email whose sole event this was is relabelled; an email that also
+    produced other events still created those, and "matched" would hide them.
+    """
+    try:
+        sources = (
+            supabase_client.table("event_sources")
+            .select("email_id")
+            .eq("event_id", event_id)
+            .not_.is_("email_id", "null")
+            .execute()
+            .data
+            or []
+        )
+        for source in sources:
+            email = (
+                supabase_client.table("emails")
+                .select("id,processing_outcome,processing_result")
+                .eq("id", source["email_id"])
+                .maybe_single()
+                .execute()
+            )
+            row = getattr(email, "data", None) or {}
+            result = row.get("processing_result") or {}
+            if row.get("processing_outcome") != "event_created" or result.get("num_events") != 1:
+                continue
+            supabase_client.table("emails").update({
+                "processing_outcome": "event_matched",
+                "processing_explanation": f"Already on your calendar as “{entry_title}”.",
+            }).eq("id", row["id"]).execute()
+    except Exception:
+        # The retirement stands; only the History wording is lost.
+        logger.exception("Could not record why event %s left New", event_id)
 
 
 def _latest_pending_change_proposal(

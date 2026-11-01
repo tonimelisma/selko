@@ -285,6 +285,9 @@ def sync_calendar(
         "entries": len(rows),
         "full_resync": full_resync,
         "has_sync_token": next_sync_token is not None,
+        # What this pass wrote, so a caller can act on what is new without
+        # re-reading the table. An unchanged calendar contributes nothing.
+        "arrived": rows,
     }
 
 
@@ -437,7 +440,7 @@ def sync_all_calendars(
     except Exception as exc:
         raise CalendarsError(f"Could not list calendars: {exc}") from exc
 
-    totals = {"calendars": 0, "entries": 0, "failed": 0}
+    totals: dict[str, Any] = {"calendars": 0, "entries": 0, "failed": 0, "arrived": []}
     for calendar in calendars:
         calendar_id = calendar.get("id")
         if not calendar_id:
@@ -457,6 +460,7 @@ def sync_all_calendars(
             )
             totals["calendars"] += 1
             totals["entries"] += summary["entries"]
+            totals["arrived"].extend(summary.get("arrived") or [])
         except Exception:
             totals["failed"] += 1
             logger.exception("Calendar mirror sync failed for one calendar")
