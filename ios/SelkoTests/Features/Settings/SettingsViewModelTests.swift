@@ -445,4 +445,70 @@ struct SettingsViewModelTests {
         #expect(viewModel.googleConnection.state == .notConnected)
         #expect(viewModel.providersToDisconnect.isEmpty)
     }
+
+    // MARK: - Outlook calendar
+
+    @Test
+    func outlookWithCalendarScopeLoadsCalendarsWithoutGoogle() async {
+        let integrationService = MockIntegrationService()
+        integrationService.fetchIntegrationsResult = .success([
+            CalendarCapabilityTests.integration(
+                .outlook, scopes: [CalendarCapabilityTests.outlookCalendarScope]
+            )
+        ])
+        let backendAPI = MockBackendAPI()
+        backendAPI.listCalendarsResult = .success([
+            CalendarInfo(id: "outlook:AAMk", name: "Work", isPrimary: true, isSelected: false, provider: .outlook)
+        ])
+        let viewModel = SettingsViewModel(
+            integrationService: integrationService,
+            backendAPI: backendAPI,
+            calendarSettingsService: MockCalendarSettingsService(),
+            authService: MockAuthService()
+        )
+
+        await viewModel.load()
+
+        #expect(viewModel.hasWritableCalendar)
+        #expect(!viewModel.needsOutlookCalendarReconnect)
+        #expect(backendAPI.listCalendarsCallCount == 1)
+        #expect(viewModel.calendars.map(\.id) == ["outlook:AAMk"])
+        #expect(viewModel.selectedCalendarId == "outlook:AAMk")
+    }
+
+    @Test
+    func outlookWithoutCalendarScopeNeedsReconnectAndSkipsCalendarList() async {
+        let integrationService = MockIntegrationService()
+        integrationService.fetchIntegrationsResult = .success([
+            CalendarCapabilityTests.integration(.outlook, scopes: ["https://graph.microsoft.com/Mail.Read"])
+        ])
+        let backendAPI = MockBackendAPI()
+        let viewModel = SettingsViewModel(
+            integrationService: integrationService,
+            backendAPI: backendAPI,
+            calendarSettingsService: MockCalendarSettingsService(),
+            authService: MockAuthService()
+        )
+
+        await viewModel.load()
+
+        #expect(!viewModel.hasWritableCalendar)
+        #expect(viewModel.needsOutlookCalendarReconnect)
+        #expect(backendAPI.listCalendarsCallCount == 0)
+    }
+
+    @Test
+    func calendarDisplayNameIncludesProvider() {
+        let viewModel = SettingsViewModel(
+            integrationService: MockIntegrationService(),
+            backendAPI: MockBackendAPI(),
+            calendarSettingsService: MockCalendarSettingsService(),
+            authService: MockAuthService()
+        )
+        let outlook = CalendarInfo(id: "outlook:1", name: "Work", isPrimary: false, isSelected: false, provider: .outlook)
+        let google = CalendarInfo(id: "primary", name: "Home", isPrimary: true, isSelected: false)
+
+        #expect(viewModel.calendarDisplayName(outlook) == "Work · Outlook")
+        #expect(viewModel.calendarDisplayName(google) == "Home · Google")
+    }
 }

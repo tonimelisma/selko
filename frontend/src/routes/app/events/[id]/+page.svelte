@@ -9,6 +9,7 @@
 	import { getEmail } from '$lib/services/emails.js';
 	import { fetchAttachments } from '$lib/services/attachments.js';
 	import { fetchIntegrations } from '$lib/services/integrations.js';
+	import { hasWritableCalendar } from '$lib/calendar-providers.js';
 	import {
 		initiateGoogleAuth,
 		initiateOutlookAuth
@@ -37,12 +38,7 @@ import StatusBadge from '$lib/components/StatusBadge.svelte';
 	let sourceExpanded = $state(false);
 	/** @type {any[]} */
 	let integrations = $state([]);
-	let calendarConnected = $derived(
-		integrations.some(
-			(integration) =>
-				integration.provider === 'google_calendar' && integration.status === 'active'
-		)
-	);
+	let calendarConnected = $derived(hasWritableCalendar(integrations));
 	/** @type {{event: any, timer: ReturnType<typeof setTimeout>} | null} */
 	let rejectedUndo = $state(null);
 	let undoingReject = $state(false);

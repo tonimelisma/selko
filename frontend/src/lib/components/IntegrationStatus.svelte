@@ -3,6 +3,7 @@
 	import StatusBadge from './StatusBadge.svelte';
 	import InlineActionError from './InlineActionError.svelte';
 	import { deriveGoogleConnection } from '$lib/google-connection.js';
+	import { hasWritableCalendar } from '$lib/calendar-providers.js';
 
 	let {
 		integrations = [],
@@ -19,14 +20,10 @@
 
 	let gmailIntegration = $derived(integrations.find((i) => i.provider === 'gmail'));
 	let outlookIntegration = $derived(integrations.find((i) => i.provider === 'outlook'));
-	let gcalIntegration = $derived(integrations.find((i) => i.provider === 'google_calendar'));
-
 	let gmailConnected = $derived(gmailIntegration?.status === 'active');
 	let outlookConnected = $derived(outlookIntegration?.status === 'active');
-	let gcalConnected = $derived(gcalIntegration?.status === 'active');
 	let emailConnected = $derived(gmailConnected || outlookConnected);
-	let fullyConnected = $derived(emailConnected && gcalConnected);
-	let partiallyConnected = $derived(emailConnected || gcalConnected);
+	let partiallyConnected = $derived(emailConnected || hasWritableCalendar(integrations));
 
 	let google = $derived(deriveGoogleConnection(integrations));
 

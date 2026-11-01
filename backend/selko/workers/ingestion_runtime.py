@@ -30,6 +30,7 @@ from supabase import Client
 
 from selko.config import Config
 from selko.services import calendar_mirror, events
+from selko.services.calendar_providers import outlook_scopes_allow_calendar
 from selko.services.egress import log_egress_summary
 from selko.services.email_sync_health import (
     EmailSyncHealthEvaluator,
@@ -212,8 +213,8 @@ class IngestionRuntime:
             try:
                 rows = (
                     self.client.table("integrations")
-                    .select("id,user_id")
-                    .eq("provider", "google_calendar")
+                    .select("id,user_id,provider,scopes")
+                    .in_("provider", ["google_calendar", "outlook"])
                     .eq("status", "active")
                     .execute()
                     .data
@@ -222,6 +223,13 @@ class IngestionRuntime:
             except Exception:
                 logger.exception("Could not list calendars to mirror")
                 continue
+            # An Outlook row with a mail-only grant cannot read the calendar;
+            # every pass against it would be a guaranteed 403.
+            rows = [
+                row for row in rows
+                if row.get("provider") == "google_calendar"
+                or outlook_scopes_allow_calendar(row.get("scopes"))
+            ]
             for row in rows:
                 if self._stop_event.is_set():
                     return
@@ -231,6 +239,7 @@ class IngestionRuntime:
                         self.client,
                         row["user_id"],
                         row["id"],
+                        row.get("provider") or "google_calendar",
                     )
                     logger.info(
                         "Calendar mirror synced %d entries across %d calendars (%d failed)",

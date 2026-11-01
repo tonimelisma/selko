@@ -564,6 +564,26 @@ operation, then completes the fenced `calendar_work_items` transition to
 `cancelled`; retries, OAuth parking, quota deferral, and expired locks remain
 item state. Proposal RPCs do not perform provider I/O.
 
+### Calendar providers (Google and Outlook)
+
+Migration `20261031000001` makes Outlook Calendar a second write target.
+Provider identity is carried by ids: Google ids are bare, Outlook ids are
+`outlook:<graph id>` in `user_calendar_settings.target_calendar_id`,
+`events.google_calendar_event_id` and `calendar_entries.provider_event_id`.
+
+| Function / column | Description |
+|----------|-------------|
+| `calendar_work_items.provider` | `google_calendar` or `outlook`, stamped at first claim; NULL until claimed |
+| `calendar_provider_of_id(text)` | Provider that owns a stored calendar or event id |
+| `outlook_scopes_allow_calendar(text[])` | Whether a stored Microsoft grant includes `Calendars.ReadWrite` |
+| `calendar_integration_writable(user, provider)` | Active integration, and for Outlook a calendar grant |
+| `calendar_write_provider(user, event)` | Existing event's calendar, else target calendar's provider, else Google if connected, else writable Outlook |
+| `claim_calendar_work_item(worker, lease, providers[])` | Claims only writable providers in `providers` (NULL = all) |
+| `requeue_calendar_recovery_batch(...)` | Returns OAuth-parked items of the reconnected provider to `pending` and tags them |
+
+`complete_integration_reauthorization` opens a recovery generation for
+`google_calendar`, and for `outlook` only when the grant includes calendar.
+
 ### Usage Summary
 
 | Function | Description |

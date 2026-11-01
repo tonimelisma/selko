@@ -85,7 +85,7 @@ struct EventCardView: View {
                         .disabled(isProcessing || !canApprove)
                         .accessibilityLabel("Accept \(event.title)")
                         .accessibilityHint(
-                            canApprove ? "" : "Reconnect Google Calendar to accept suggestions."
+                            canApprove ? "" : "Reconnect your calendar to accept suggestions."
                         )
                     }
                     if let onEdit {

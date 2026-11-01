@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { _ } from 'svelte-i18n';
 	import { fetchCalendarRecovery } from '$lib/services/integrations.js';
+	import { hasWritableCalendar, needsOutlookCalendarReconnect } from '$lib/calendar-providers.js';
 	import ErrorAlert from './ErrorAlert.svelte';
 
 	let { integrations = [], onauthorize } = $props();
@@ -18,7 +19,10 @@
 	let outlook = $derived(integrations.find((item) => item.provider === 'outlook'));
 	let calendar = $derived(integrations.find((item) => item.provider === 'google_calendar'));
 	let emailConnected = $derived(gmail?.status === 'active' || outlook?.status === 'active');
-	let calendarConnected = $derived(calendar?.status === 'active');
+	// Either Google Calendar or a calendar-scoped Outlook connection can receive approvals.
+	let calendarConnected = $derived(hasWritableCalendar(integrations));
+	// An active Outlook row without calendar scope gains Outlook Calendar on reconnect.
+	let outlookCalendarUpgrade = $derived(needsOutlookCalendarReconnect(integrations));
 
 	let recoveryProviders = $derived.by(() => {
 		if (!emailConnected) {
@@ -27,6 +31,7 @@
 		if (!calendarConnected) {
 			return [
 				'google_calendar',
+				...(outlookCalendarUpgrade ? ['outlook'] : []),
 				...(gmail && gmail.status !== 'active' ? ['gmail'] : []),
 				...(outlook && outlook.status !== 'active' ? ['outlook'] : [])
 			];
@@ -42,7 +47,9 @@
 		!emailConnected
 			? $_('integrations.reconnectEmailTitle')
 			: !calendarConnected
-				? $_('integrations.reconnectCalendarTitle')
+				? outlookCalendarUpgrade && !calendar
+					? $_('integrations.connectCalendarTitle')
+					: $_('integrations.reconnectCalendarTitle')
 				: $_('integrations.connectionAttentionTitle')
 	);
 	let description = $derived(

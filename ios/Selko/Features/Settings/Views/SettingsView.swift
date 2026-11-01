@@ -318,10 +318,12 @@ struct SettingsView: View {
 
     @ViewBuilder
     private var calendarDefaultsSection: some View {
-        let calendarConnected = viewModel.integrations.contains { $0.provider == .googleCalendar && $0.isActive }
-
         Section {
-            if calendarConnected {
+            if viewModel.needsOutlookCalendarReconnect {
+                outlookCalendarReconnectPrompt
+            }
+
+            if viewModel.hasWritableCalendar {
                 if viewModel.calendars.isEmpty {
                     if viewModel.isLoading {
                         HStack {
@@ -338,7 +340,7 @@ struct SettingsView: View {
                     Picker(String(localized: "settings.default_calendar"), selection: $viewModel.selectedCalendarId) {
                         ForEach(viewModel.calendars) { calendar in
                             HStack {
-                                Text(calendar.name)
+                                Text(viewModel.calendarDisplayName(calendar))
                                 if calendar.isPrimary {
                                     Text(String(localized: "settings.primary"))
                                         .foregroundStyle(Color.selkoMuted)
@@ -404,6 +406,28 @@ struct SettingsView: View {
         } footer: {
             Text(String(localized: "settings.date_only_events_hint"))
         }
+    }
+
+    /// Outlook mail is connected, but its consent predates calendar support.
+    /// Reconnecting runs the existing Outlook flow, which now also asks for
+    /// calendar access.
+    private var outlookCalendarReconnectPrompt: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(String(localized: "settings.outlook_calendar_reconnect_title"))
+                .font(SelkoTypography.title)
+                .foregroundStyle(Color.selkoInk)
+            Text(String(localized: "settings.outlook_calendar_reconnect_message"))
+                .font(SelkoTypography.caption)
+                .foregroundStyle(Color.selkoMuted)
+            Button(String(localized: "settings.outlook_calendar_reconnect_button")) {
+                Task { await connectProvider(.outlook) }
+            }
+            .buttonStyle(.selko(.primary))
+            .disabled(authorizer.connectingProvider != nil)
+            .accessibilityIdentifier("outlookCalendarReconnectButton")
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("outlookCalendarReconnectPrompt")
     }
 
     // MARK: - Sender Rules

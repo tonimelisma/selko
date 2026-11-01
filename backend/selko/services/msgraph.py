@@ -42,6 +42,8 @@ def safe_url_template(url: str) -> str:
     value = _TOKEN_QUERY_RE.sub("", url)
     value = re.sub(r"/messages/[^/?]+", "/messages/{message-id}", value)
     value = re.sub(r"/mailFolders/[^/?]+", "/mailFolders/{folder-id}", value)
+    value = re.sub(r"/events/[^/?]+", "/events/{event-id}", value)
+    value = re.sub(r"/calendars/[^/?]+", "/calendars/{calendar-id}", value)
     return value.split("?", 1)[0]
 
 
@@ -78,6 +80,8 @@ def record_graph_failure(
     run_id: str | None = None,
     attempt: int = 1,
     will_retry: bool = False,
+    http_method: str = "GET",
+    graph_surface: str = "outlook_mail",
 ) -> None:
     """Best-effort persistence of a structured, redacted Graph failure."""
     if client is None:
@@ -85,9 +89,9 @@ def record_graph_failure(
     payload = {
         "environment": (config.environment if config else "unknown"),
         "integration_id": integration_id,
-        "graph_surface": "outlook_mail",
+        "graph_surface": graph_surface,
         "operation": operation,
-        "http_method": "GET",
+        "http_method": http_method,
         "safe_url_template": safe_url_template(url),
         "http_status": getattr(error, "status_code", None),
         "graph_error_code": getattr(error, "graph_error_code", None),
@@ -121,17 +125,43 @@ def request_json(
     integration_id: str | None = None,
     run_id: str | None = None,
     operation: str,
+    method: str = "GET",
+    json_body: dict[str, Any] | None = None,
+    graph_surface: str = "outlook_mail",
 ) -> dict[str, Any]:
-    """GET JSON, honoring Graph throttling and recording safe failures."""
+    """Call Graph for JSON, honoring throttling and recording safe failures.
+
+    Only a POST is not idempotent: a 5xx or a dropped connection leaves it
+    unknown whether Graph created the resource, so a POST is retried only on
+    429, which Graph sends before doing any work. The caller reconciles an
+    ambiguous create instead (calendars.py looks the event up by Selko id).
+    """
     request_params = params
+    method = method.upper()
+    retry_unknown_outcome = method != "POST"
+
+    def record(error: BaseException, attempt: int, will_retry: bool = False) -> None:
+        record_graph_failure(
+            client, config, integration_id=integration_id, operation=operation,
+            url=url, error=error, run_id=run_id, attempt=attempt,
+            will_retry=will_retry, http_method=method, graph_surface=graph_surface,
+        )
+
     for attempt in range(1, max_attempts + 1):
         headers, generated_request_id = request_headers(access_token, prefer)
         try:
-            response = requests.get(url, headers=headers, params=request_params, timeout=timeout)
+            if method == "GET":
+                response = requests.get(url, headers=headers, params=request_params, timeout=timeout)
+            else:
+                response = requests.request(
+                    method, url, headers=headers, params=request_params,
+                    json=json_body, timeout=timeout,
+                )
         except requests.RequestException as exc:
             error = GraphRequestError(None, "Microsoft Graph transport failure", failure_class="transport", client_request_id=generated_request_id, safe_url_template=safe_url_template(url))
-            record_graph_failure(client, config, integration_id=integration_id, operation=operation, url=url, error=error, run_id=run_id, attempt=attempt, will_retry=attempt < max_attempts)
-            if attempt < max_attempts:
+            will_retry = retry_unknown_outcome and attempt < max_attempts
+            record(error, attempt, will_retry)
+            if will_retry:
                 sleep(min(30.0, 2 ** (attempt - 1)))
                 continue
             raise error from exc
@@ -142,16 +172,18 @@ def request_json(
         record_egress(
             GRAPH,
             operation,
-            request_bytes=len(url),
+            request_bytes=len(url) + (len(str(json_body)) if json_body else 0),
             response_bytes=len(response.content or b""),
         )
 
         if response.status_code < 400:
+            if response.status_code == 204 or not response.content:
+                return {}
             try:
                 return response.json()
             except ValueError as exc:
                 error = GraphRequestError(response.status_code, "Microsoft Graph returned invalid JSON", failure_class="server", client_request_id=generated_request_id, safe_url_template=safe_url_template(url))
-                record_graph_failure(client, config, integration_id=integration_id, operation=operation, url=url, error=error, run_id=run_id, attempt=attempt)
+                record(error, attempt)
                 raise error from exc
 
         try:
@@ -174,8 +206,10 @@ def request_json(
             failure_class=failure_class,
             safe_url_template=safe_url_template(url),
         )
-        should_retry = response.status_code == 429 or response.status_code >= 500
-        record_graph_failure(client, config, integration_id=integration_id, operation=operation, url=url, error=error, run_id=run_id, attempt=attempt, will_retry=should_retry and attempt < max_attempts)
+        should_retry = response.status_code == 429 or (
+            response.status_code >= 500 and retry_unknown_outcome
+        )
+        record(error, attempt, should_retry and attempt < max_attempts)
         if should_retry and attempt < max_attempts:
             sleep(float(retry_after if retry_after is not None else min(30, 2 ** (attempt - 1))))
             continue

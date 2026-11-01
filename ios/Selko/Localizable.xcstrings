@@ -1129,7 +1129,73 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Connect Google Calendar to configure calendar defaults."
+            "value": "Connect Google Calendar or Outlook to configure calendar defaults."
+          }
+        }
+      }
+    },
+    "settings.calendar_name_provider %@ %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ · %2$@"
+          }
+        }
+      }
+    },
+    "settings.calendar_provider_google": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Google"
+          }
+        }
+      }
+    },
+    "settings.calendar_provider_outlook": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Outlook"
+          }
+        }
+      }
+    },
+    "settings.outlook_calendar_reconnect_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add Outlook Calendar"
+          }
+        }
+      }
+    },
+    "settings.outlook_calendar_reconnect_message": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reconnect Outlook to let Selko add approved events to your Outlook calendar."
+          }
+        }
+      }
+    },
+    "settings.outlook_calendar_reconnect_button": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reconnect Outlook"
           }
         }
       }

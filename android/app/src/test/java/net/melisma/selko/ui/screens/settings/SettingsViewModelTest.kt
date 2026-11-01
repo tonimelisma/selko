@@ -466,4 +466,97 @@ class SettingsViewModelTest {
         assertEquals(listOf(outlook), viewModel.uiState.value.integrations)
         assertFalse(viewModel.uiState.value.isDisconnecting)
     }
+
+    // ---- Writable-calendar gating (Google Calendar or calendar-scoped Outlook) ----
+
+    private val outlookCalendarScope = "https://graph.microsoft.com/Calendars.ReadWrite"
+
+    private fun outlook(scopes: List<String>) = Integration(
+        id = "integration-outlook",
+        userId = "user-1",
+        provider = IntegrationProvider.OUTLOOK,
+        status = IntegrationStatus.ACTIVE,
+        providerEmail = "me@outlook.com",
+        scopes = scopes
+    )
+
+    @Test
+    fun `calendars are not requested without a writable calendar`() = runTest {
+        coEvery { integrationRepository.fetchIntegrations() } returns
+            IntegrationResult.Success(listOf(gmailIntegration, outlook(listOf("Mail.Read"))))
+
+        viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        coVerify(exactly = 0) { backendApiClient.listCalendars() }
+        assertFalse(viewModel.uiState.value.hasWritableCalendar)
+        assertTrue(viewModel.uiState.value.needsOutlookCalendarReconnect)
+    }
+
+    @Test
+    fun `calendar-scoped Outlook loads Outlook calendars into the picker`() = runTest {
+        val work = BackendApiClient.Calendar(
+            id = "outlook:AAMk-work",
+            name = "Work",
+            is_primary = true,
+            is_selected = true,
+            provider = BackendApiClient.Calendar.PROVIDER_OUTLOOK
+        )
+        coEvery { integrationRepository.fetchIntegrations() } returns
+            IntegrationResult.Success(listOf(outlook(listOf("Mail.Read", outlookCalendarScope))))
+        coEvery { backendApiClient.listCalendars() } returns Result.success(listOf(work))
+
+        viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        coVerify(exactly = 1) { backendApiClient.listCalendars() }
+        val state = viewModel.uiState.value
+        assertTrue(state.hasWritableCalendar)
+        assertFalse(state.needsOutlookCalendarReconnect)
+        assertEquals(listOf(work), state.calendars)
+    }
+
+    @Test
+    fun `selecting an Outlook calendar stores its opaque id unchanged`() = runTest {
+        coEvery { integrationRepository.fetchIntegrations() } returns
+            IntegrationResult.Success(listOf(outlook(listOf(outlookCalendarScope))))
+        coEvery {
+            calendarSettingsRepository.updateSettings(
+                targetCalendarId = any(),
+                defaultInvitees = any(),
+                allDayDisplayMode = any(),
+                allDayCustomStart = any(),
+                allDayCustomEnd = any()
+            )
+        } returns RepositoryResult.Success(CalendarSettings(userId = "user-1"))
+
+        viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.onCalendarSelected("outlook:AAMk=/x+y")
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        coVerify {
+            calendarSettingsRepository.updateSettings(
+                targetCalendarId = "outlook:AAMk=/x+y",
+                defaultInvitees = any(),
+                allDayDisplayMode = any(),
+                allDayCustomStart = any(),
+                allDayCustomEnd = any()
+            )
+        }
+    }
+
+    @Test
+    fun `Google Calendar still loads calendars`() = runTest {
+        val calendar = gmailIntegration.copy(id = "integration-2", provider = IntegrationProvider.GOOGLE_CALENDAR)
+        coEvery { integrationRepository.fetchIntegrations() } returns
+            IntegrationResult.Success(listOf(gmailIntegration, calendar))
+
+        viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        coVerify(exactly = 1) { backendApiClient.listCalendars() }
+        assertFalse(viewModel.uiState.value.needsOutlookCalendarReconnect)
+    }
 }

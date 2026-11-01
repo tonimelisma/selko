@@ -1,4 +1,8 @@
-"""Calendars service for Google Calendar integration."""
+"""Calendars service: worker-owned writes to Google Calendar and Outlook Calendar.
+
+Provider I/O goes through `calendar_providers`, whose adapters both speak
+Google Calendar's event shape, so everything below is written once.
+"""
 
 import logging
 from dataclasses import dataclass
@@ -11,6 +15,13 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from supabase import Client
 
+from selko.services import calendar_providers as providers
+from selko.services.calendar_providers import (
+    CalendarEventNotFound,
+    CalendarProviderUnavailable,
+    GoogleCalendarAdapter,
+    OutlookCalendarAdapter,
+)
 from selko.services.google_errors import (
     INSUFFICIENT_SCOPE_REASONS,
     RATE_LIMIT_REASONS,
@@ -63,7 +74,32 @@ class CalendarAuthRequiredError(CalendarsError):
     branch on exception type instead of matching the message text.
     """
 
-    pass
+    def __init__(self, message: str, provider: str = providers.GOOGLE) -> None:
+        super().__init__(message)
+        self.provider = provider
+
+
+def _classification(
+    code: str, retryable: bool, circuit: bool, message: str, exc: Exception
+) -> CalendarFailureClassification:
+    return CalendarFailureClassification(
+        code=code,
+        retryable=retryable,
+        counts_toward_circuit_breaker=circuit,
+        user_message=message,
+        operator_detail=str(exc),
+    )
+
+
+def _graph_status(exc: Exception) -> Optional[int]:
+    """HTTP status of a Microsoft Graph failure, or None for anything else."""
+    from selko.services.msgraph import GraphRequestError
+    from selko.services.outlook import GraphHttpError
+
+    for candidate in (exc, exc.__cause__):
+        if isinstance(candidate, (GraphRequestError, GraphHttpError)):
+            return candidate.status_code
+    return None
 
 
 def classify_calendar_error(exc: Exception) -> CalendarFailureClassification:
@@ -74,82 +110,46 @@ def classify_calendar_error(exc: Exception) -> CalendarFailureClassification:
     returned ``code``/flags, never on ``str(exc)``.
     """
     if isinstance(exc, CalendarAuthRequiredError):
-        return CalendarFailureClassification(
-            code="oauth_required",
-            retryable=False,
-            counts_toward_circuit_breaker=False,
-            user_message="Google Calendar needs to be reconnected.",
-            operator_detail=str(exc),
-        )
+        name = providers.DISPLAY_NAMES.get(exc.provider, "Your calendar")
+        return _classification("oauth_required", False, False, f"{name} needs to be reconnected.", exc)
+
+    graph_status = _graph_status(exc)
+    if graph_status is not None or isinstance(exc, (CalendarProviderUnavailable,)):
+        name = providers.DISPLAY_NAMES[providers.OUTLOOK]
+        if isinstance(exc, CalendarProviderUnavailable) or graph_status == 401:
+            return _classification("oauth_required", False, False, f"{name} needs to be reconnected.", exc)
+        if graph_status == 403:
+            # Graph answers 403 ErrorAccessDenied when the grant lacks
+            # Calendars.ReadWrite -- a consent problem, not a provider fault.
+            return _classification("oauth_scope_required", False, False, f"{name} needs additional permission.", exc)
+        if graph_status == 429:
+            return _classification("rate_limited", True, True, f"{name} is temporarily busy; retrying.", exc)
+        if graph_status >= 500 or graph_status == 0:
+            return _classification("provider_transient", True, True, f"{name} is temporarily unavailable; retrying.", exc)
+        if graph_status == 400:
+            return _classification("invalid_event", True, False, f"This event couldn't be synced to {name}.", exc)
+        return _classification("unknown", True, True, f"This event couldn't be synced to {name}.", exc)
 
     if isinstance(exc, HttpError):
         status = getattr(exc.resp, "status", None)
         reason = google_error_reason(exc)
 
         if status == 401:
-            return CalendarFailureClassification(
-                code="oauth_required",
-                retryable=False,
-                counts_toward_circuit_breaker=False,
-                user_message="Google Calendar needs to be reconnected.",
-                operator_detail=str(exc),
-            )
+            return _classification("oauth_required", False, False, "Google Calendar needs to be reconnected.", exc)
         if status == 403 and reason in INSUFFICIENT_SCOPE_REASONS:
-            return CalendarFailureClassification(
-                code="oauth_scope_required",
-                retryable=False,
-                counts_toward_circuit_breaker=False,
-                user_message="Google Calendar needs additional permission.",
-                operator_detail=str(exc),
-            )
+            return _classification("oauth_scope_required", False, False, "Google Calendar needs additional permission.", exc)
         if status == 403 and reason in RATE_LIMIT_REASONS:
-            return CalendarFailureClassification(
-                code="rate_limited",
-                retryable=True,
-                counts_toward_circuit_breaker=True,
-                user_message="Google Calendar is temporarily busy; retrying.",
-                operator_detail=str(exc),
-            )
+            return _classification("rate_limited", True, True, "Google Calendar is temporarily busy; retrying.", exc)
         if status == 429:
-            return CalendarFailureClassification(
-                code="rate_limited",
-                retryable=True,
-                counts_toward_circuit_breaker=True,
-                user_message="Google Calendar is temporarily busy; retrying.",
-                operator_detail=str(exc),
-            )
+            return _classification("rate_limited", True, True, "Google Calendar is temporarily busy; retrying.", exc)
         if status == 403:
-            return CalendarFailureClassification(
-                code="permission_denied",
-                retryable=True,
-                counts_toward_circuit_breaker=False,
-                user_message="Selko doesn't have permission to write to this calendar.",
-                operator_detail=str(exc),
-            )
+            return _classification("permission_denied", True, False, "Selko doesn't have permission to write to this calendar.", exc)
         if status in (500, 502, 503, 504):
-            return CalendarFailureClassification(
-                code="provider_transient",
-                retryable=True,
-                counts_toward_circuit_breaker=True,
-                user_message="Google Calendar is temporarily unavailable; retrying.",
-                operator_detail=str(exc),
-            )
+            return _classification("provider_transient", True, True, "Google Calendar is temporarily unavailable; retrying.", exc)
         if status == 400:
-            return CalendarFailureClassification(
-                code="invalid_event",
-                retryable=True,
-                counts_toward_circuit_breaker=False,
-                user_message="This event couldn't be synced to Google Calendar.",
-                operator_detail=str(exc),
-            )
+            return _classification("invalid_event", True, False, "This event couldn't be synced to Google Calendar.", exc)
 
-    return CalendarFailureClassification(
-        code="unknown",
-        retryable=True,
-        counts_toward_circuit_breaker=True,
-        user_message="This event couldn't be synced to Google Calendar.",
-        operator_detail=str(exc),
-    )
+    return _classification("unknown", True, True, "This event couldn't be synced to your calendar.", exc)
 
 
 async def requeue_calendar_recovery_batch(
@@ -231,6 +231,80 @@ class CalendarDivergedError(CalendarsError):
         self.google_event_url = google_event_url
 
 
+def _user_integrations(supabase_client: Client, user_id: str) -> list[dict[str, Any]]:
+    """The user's integration rows, for deciding which calendars are writable."""
+    try:
+        result = (
+            supabase_client.table("integrations")
+            .select("id,provider,status,scopes")
+            .eq("user_id", user_id)
+            .execute()
+        )
+    except Exception as exc:
+        logger.warning("Could not read integrations for user %s: %s", user_id, exc)
+        return []
+    rows = getattr(result, "data", None)
+    return [row for row in rows if isinstance(row, dict)] if isinstance(rows, list) else []
+
+
+def calendar_adapter(
+    supabase_client: Client,
+    user_id: str,
+    provider: str,
+    *,
+    time_zone: str = "UTC",
+) -> providers.CalendarAdapter:
+    """Build the adapter for one provider, or raise CalendarAuthRequiredError."""
+    if provider == providers.OUTLOOK:
+        from selko.config import load_config
+        from selko.services.integrations import get_provider_integration
+        from selko.services.outlook import OutlookError, get_access_token
+
+        config = load_config()
+        row = get_provider_integration(supabase_client, providers.OUTLOOK, user_id=user_id) or {}
+        if not providers.outlook_scopes_allow_calendar(row.get("scopes")):
+            raise CalendarAuthRequiredError(
+                "Outlook is connected without calendar permission", provider=providers.OUTLOOK
+            )
+        try:
+            token = get_access_token(supabase_client, config, user_id)
+        except OutlookError as exc:
+            raise CalendarAuthRequiredError(str(exc), provider=providers.OUTLOOK) from exc
+        if not token:
+            raise CalendarAuthRequiredError(
+                "No Outlook Calendar credentials found", provider=providers.OUTLOOK
+            )
+        return OutlookCalendarAdapter(
+            token,
+            client=supabase_client,
+            config=config,
+            integration_id=row.get("id"),
+            time_zone=time_zone,
+        )
+
+    creds = get_credentials(supabase_client, user_id, "google_calendar")
+    if not creds:
+        raise CalendarAuthRequiredError("No Google Calendar credentials found")
+    return GoogleCalendarAdapter(build("calendar", "v3", credentials=creds))
+
+
+def calendar_id_for(provider: str, target_calendar_id: Optional[str]) -> str:
+    """The target calendar when it belongs to `provider`, else its default."""
+    if target_calendar_id and providers.provider_of_id(target_calendar_id) == provider:
+        return target_calendar_id
+    return "primary"
+
+
+def target_provider(
+    supabase_client: Client, user_id: str, settings: dict[str, Any]
+) -> str:
+    """Where a new event is written: the target calendar's provider, else a default."""
+    target = settings.get("target_calendar_id")
+    if target:
+        return providers.provider_of_id(target)
+    return providers.resolve_target_provider(None, _user_integrations(supabase_client, user_id))
+
+
 def fetch_calendar_events_for_date_range(
     supabase_client: Client,
     user_id: str,
@@ -238,10 +312,11 @@ def fetch_calendar_events_for_date_range(
     time_max: str,
     user_timezone: Optional[str] = None,
 ) -> list[dict[str, Any]]:
-    """Fetch user's Google Calendar events for a date range.
+    """Fetch the user's target-calendar events for a date range.
 
     Used for deduplication: check if an event already exists on the user's
-    calendar before creating a new one.
+    calendar before creating a new one. Outlook entries arrive translated into
+    Google's shape with qualified ids, so callers need no provider branch.
 
     Args:
         supabase_client: Authenticated Supabase client.
@@ -251,78 +326,41 @@ def fetch_calendar_events_for_date_range(
         user_timezone: IANA timezone for GCal response projection.
 
     Returns:
-        List of Google Calendar event dicts. Empty list on any error.
+        List of Google-shaped event dicts. Empty list on any error.
     """
     try:
-        creds = get_credentials(supabase_client, user_id, "google_calendar")
-        if not creds:
-            logger.debug("No Google Calendar credentials for GCal read-back")
+        settings = get_calendar_settings(supabase_client, user_id, include_name=False)
+        provider = target_provider(supabase_client, user_id, settings)
+        tz = user_timezone or settings.get("timezone") or "America/New_York"
+        try:
+            adapter = calendar_adapter(supabase_client, user_id, provider, time_zone=tz)
+        except CalendarAuthRequiredError:
+            logger.debug("No %s credentials for calendar read-back", provider)
             return []
 
-        settings = get_calendar_settings(supabase_client, user_id)
-        calendar_id = settings.get("target_calendar_id") or "primary"
-        tz = user_timezone or settings.get("timezone") or "America/New_York"
-
-        service = build("calendar", "v3", credentials=creds)
-
-        result = service.events().list(
-            calendarId=calendar_id,
-            timeMin=time_min,
-            timeMax=time_max,
-            singleEvents=True,
-            maxResults=50,
-            timeZone=tz,
-        ).execute()
-
-        return result.get("items", [])
+        return adapter.list_events(
+            calendar_id_for(provider, settings.get("target_calendar_id")),
+            time_min=time_min,
+            time_max=time_max,
+            time_zone=tz,
+            max_results=50,
+        )
 
     except Exception as e:
-        logger.warning(f"GCal read-back failed for user {user_id}: {e}")
+        logger.warning(f"Calendar read-back failed for user {user_id}: {e}")
         return []
 
 
-def list_calendars(
-    supabase_client: Client, user_id: str
+def list_provider_calendars(
+    supabase_client: Client, user_id: str, provider: str
 ) -> list[dict[str, Any]]:
-    """List all Google Calendars for user.
-
-    Args:
-        supabase_client: Authenticated Supabase client.
-        user_id: UUID of user.
-
-    Returns:
-        List of calendar dicts with id, name, is_primary, is_selected.
+    """Every calendar one provider exposes, as {id, summary, primary, can_write}.
 
     Raises:
         CalendarsError: If listing fails.
     """
     try:
-        # Get user's Google credentials
-        creds = get_credentials(supabase_client, user_id, "google_calendar")
-        if not creds:
-            raise CalendarsError("No Google Calendar credentials found")
-
-        # Build Calendar API client
-        service = build("calendar", "v3", credentials=creds)
-
-        # List calendars
-        calendar_list = service.calendarList().list().execute()
-
-        # Get user's target calendar setting
-        settings = get_calendar_settings(supabase_client, user_id)
-        target_calendar_id = settings.get("target_calendar_id")
-
-        calendars = []
-        for cal in calendar_list.get("items", []):
-            calendars.append({
-                "id": cal["id"],
-                "name": cal["summary"],
-                "is_primary": cal.get("primary", False),
-                "is_selected": cal["id"] == target_calendar_id if target_calendar_id else cal.get("primary", False),
-            })
-
-        return calendars
-
+        return calendar_adapter(supabase_client, user_id, provider).list_calendars()
     except Exception as e:
         if isinstance(e, HttpError) and getattr(e.resp, "status", None) == 401:
             update_integration_status(
@@ -334,6 +372,68 @@ def list_calendars(
         raise CalendarsError(f"Failed to list calendars: {e}") from e
 
 
+def list_calendars(
+    supabase_client: Client, user_id: str
+) -> list[dict[str, Any]]:
+    """List the calendars Selko can write to, across every connected provider.
+
+    Args:
+        supabase_client: Authenticated Supabase client.
+        user_id: UUID of user.
+
+    Returns:
+        List of calendar dicts with id, name, is_primary, is_selected, provider.
+        Outlook ids are qualified (`outlook:<id>`) and are stored as-is in
+        `target_calendar_id`.
+
+    Raises:
+        CalendarsError: If no provider could be listed.
+    """
+    integrations = _user_integrations(supabase_client, user_id)
+    # With no writable provider recorded, try Google: that is the historical
+    # behaviour, and it yields the "connect Calendar" error callers map to 404.
+    candidates = providers.writable_providers(integrations) or [providers.GOOGLE]
+
+    try:
+        target_calendar_id = get_calendar_settings(
+            supabase_client, user_id, include_name=False
+        ).get("target_calendar_id")
+    except Exception as e:
+        logger.warning(f"Failed to read target calendar: {e}")
+        target_calendar_id = None
+    if not isinstance(target_calendar_id, str):
+        target_calendar_id = None
+    default_provider = providers.resolve_target_provider(target_calendar_id, integrations)
+
+    calendars: list[dict[str, Any]] = []
+    errors: list[CalendarsError] = []
+    for provider in candidates:
+        try:
+            listed = list_provider_calendars(supabase_client, user_id, provider)
+        except CalendarsError as e:
+            errors.append(e)
+            logger.warning("Could not list %s calendars: %s", provider, e)
+            continue
+        for cal in listed:
+            if not cal.get("can_write", True):
+                continue
+            if target_calendar_id:
+                selected = cal["id"] == target_calendar_id
+            else:
+                selected = provider == default_provider and cal.get("primary", False)
+            calendars.append({
+                "id": cal["id"],
+                "name": cal["summary"],
+                "is_primary": cal.get("primary", False),
+                "is_selected": selected,
+                "provider": provider,
+            })
+
+    if errors and not calendars:
+        raise errors[0]
+    return calendars
+
+
 _DEFAULT_ALL_DAY_SETTINGS: dict[str, Any] = {
     "all_day_display_mode": "all_day",
     "all_day_custom_start": None,
@@ -342,13 +442,17 @@ _DEFAULT_ALL_DAY_SETTINGS: dict[str, Any] = {
 
 
 def get_calendar_settings(
-    supabase_client: Client, user_id: str
+    supabase_client: Client, user_id: str, *, include_name: bool = True
 ) -> dict[str, Any]:
     """Get target calendar and default invitees.
 
     Args:
         supabase_client: Authenticated Supabase client.
         user_id: UUID of user.
+        include_name: Resolve the target calendar's display name. That lists
+            every connected provider's calendars, so provider writes and
+            read-backs pass False rather than spend a round trip per provider
+            on a name nothing reads.
 
     Returns:
         Dict with target_calendar_id, target_calendar_name, default_invitees,
@@ -371,7 +475,7 @@ def get_calendar_settings(
 
     # Get calendar name if target is set
     calendar_name = None
-    if settings.get("target_calendar_id"):
+    if include_name and settings.get("target_calendar_id"):
         try:
             calendars = list_calendars(supabase_client, user_id)
             for cal in calendars:
@@ -617,28 +721,24 @@ def _log_sync(
         logger.warning(f"Failed to log sync operation: {e}")
 
 
-def _find_calendar_event_by_selko_id(
-    service: Any,
-    calendar_id: str,
-    event_id: str,
-) -> str | None:
-    """Find a previously created event after an ambiguous insert failure."""
-    result = service.events().list(
-        calendarId=calendar_id,
-        privateExtendedProperty=f"selko_event_id={event_id}",
-        showDeleted=False,
-        maxResults=2,
-    ).execute()
-    items = result.get("items", []) if isinstance(result, dict) else []
-    if len(items) > 1:
-        logger.warning(
-            "Found multiple Google Calendar events for Selko event %s", event_id
-        )
-    for item in items:
-        google_event_id = item.get("id")
-        if google_event_id:
-            return google_event_id
-    return None
+def _write_provider(
+    supabase_client: Client,
+    user_id: str,
+    event: dict[str, Any],
+    settings: dict[str, Any],
+    provider: Optional[str],
+) -> str:
+    """Which calendar a write goes to (SQL twin: `calendar_write_provider`).
+
+    An event already in a calendar stays there; otherwise the worker's
+    stamped provider wins, then the target calendar's.
+    """
+    existing = event.get("google_calendar_event_id")
+    if existing:
+        return providers.provider_of_id(existing)
+    if provider:
+        return provider
+    return target_provider(supabase_client, user_id, settings)
 
 
 def sync_event_to_calendar(
@@ -648,15 +748,16 @@ def sync_event_to_calendar(
     *,
     expected_provider_revision: str | None = None,
     force_overwrite: bool = False,
+    provider: str | None = None,
 ) -> str:
-    """Write event to Google Calendar with invitees (idempotent).
+    """Write event to the user's calendar with invitees (idempotent).
 
-    If the event has already been synced (has google_calendar_event_id):
+    If the event has already been synced (has a provider event id):
     - Tries to update the existing calendar event
     - If the calendar event was deleted (404), creates a new one
 
     If the event hasn't been synced yet:
-    - Creates a new calendar event
+    - Creates a new calendar event in the target calendar
 
     All operations are logged to calendar_sync_log for audit trail.
 
@@ -664,13 +765,15 @@ def sync_event_to_calendar(
         supabase_client: Authenticated Supabase client.
         user_id: UUID of user.
         event_id: UUID of event to sync.
+        provider: The provider the claimed work item was stamped with.
 
     Returns:
-        Google Calendar event ID.
+        Provider event id, qualified for Outlook.
 
     Raises:
         CalendarsError: If sync fails.
     """
+    provider_name = providers.GOOGLE
     try:
         # Fetch event
         event_result = supabase_client.table("events").select("*").eq(
@@ -678,55 +781,49 @@ def sync_event_to_calendar(
         ).single().execute()
         event = event_result.data
 
-        # Get credentials and settings
-        creds = get_credentials(supabase_client, user_id, "google_calendar")
-        if not creds:
-            raise CalendarAuthRequiredError("No Google Calendar credentials found")
-
-        settings = get_calendar_settings(supabase_client, user_id)
-        calendar_id = settings.get("target_calendar_id") or "primary"
-
-        # Build Calendar API client
-        service = build("calendar", "v3", credentials=creds)
+        settings = get_calendar_settings(supabase_client, user_id, include_name=False)
+        provider_name = _write_provider(supabase_client, user_id, event, settings, provider)
+        adapter = calendar_adapter(
+            supabase_client, user_id, provider_name,
+            time_zone=settings.get("timezone") or "America/New_York",
+        )
+        calendar_id = calendar_id_for(provider_name, settings.get("target_calendar_id"))
 
         # Build the event body
         calendar_event = _build_calendar_event_body(event, settings)
 
-        existing_google_id = event.get("google_calendar_event_id")
+        existing_event_id = event.get("google_calendar_event_id")
 
-        if existing_google_id:
+        if existing_event_id:
             if expected_provider_revision and not force_overwrite:
-                observed = service.events().get(
-                    calendarId=calendar_id, eventId=existing_google_id
-                ).execute()
-                observed_revision = observed.get("etag") or observed.get("updated")
-                if observed_revision != expected_provider_revision:
-                    raise CalendarDivergedError(
-                        "Google Calendar changed after Selko queued this write.",
-                        changed_fields=["provider_revision"],
-                        google_event_url=observed.get("htmlLink"),
-                    )
+                try:
+                    observed = adapter.get_event(calendar_id, existing_event_id)
+                except CalendarEventNotFound:
+                    observed = None
+                if observed is not None:
+                    observed_revision = observed.get("etag") or observed.get("updated")
+                    if observed_revision != expected_provider_revision:
+                        raise CalendarDivergedError(
+                            "The calendar changed after Selko queued this write.",
+                            changed_fields=["provider_revision"],
+                            google_event_url=observed.get("htmlLink"),
+                        )
             # Event was previously synced - try to update or recreate
-            google_event_id, action = _update_or_recreate_calendar_event(
-                service, calendar_id, existing_google_id, calendar_event
+            provider_event_id, action = _update_or_recreate_calendar_event(
+                adapter, calendar_id, existing_event_id, calendar_event
             )
         else:
-            # Reconcile an ambiguous earlier insert before creating. Google may
-            # have accepted the original insert even when its response timed
-            # out or the subsequent database update failed.
-            recovered_google_id = _find_calendar_event_by_selko_id(
-                service, calendar_id, event_id
-            )
-            if recovered_google_id:
-                google_event_id, action = _update_or_recreate_calendar_event(
-                    service, calendar_id, recovered_google_id, calendar_event
+            # Reconcile an ambiguous earlier insert before creating. The
+            # provider may have accepted the original insert even when its
+            # response timed out or the subsequent database update failed.
+            recovered_id = adapter.find_event_by_selko_id(calendar_id, event_id)
+            if recovered_id:
+                provider_event_id, action = _update_or_recreate_calendar_event(
+                    adapter, calendar_id, recovered_id, calendar_event
                 )
             else:
-                created_event = service.events().insert(
-                    calendarId=calendar_id,
-                    body=calendar_event
-                ).execute()
-                google_event_id = created_event["id"]
+                created_event = adapter.insert_event(calendar_id, calendar_event)
+                provider_event_id = created_event["id"]
                 action = "created"
 
         # Log the sync operation
@@ -734,31 +831,33 @@ def sync_event_to_calendar(
             supabase_client,
             user_id,
             event_id,
-            google_event_id,
+            provider_event_id,
             action,
             calendar_event,
         )
 
-        logger.info(f"Synced event {event_id} to calendar {calendar_id} ({action})")
-        return google_event_id
+        logger.info(f"Synced event {event_id} to {provider_name} calendar ({action})")
+        return provider_event_id
 
     except Exception as e:
         classification = classify_calendar_error(e)
 
-        if classification.code in ("oauth_required", "oauth_scope_required"):
+        # Only Google's row is calendar-only. The Outlook row also carries mail,
+        # whose own sync owns its status: expiring it over a calendar consent
+        # problem would silently stop the user's Outlook mail as well.
+        if (
+            classification.code in ("oauth_required", "oauth_scope_required")
+            and provider_name == providers.GOOGLE
+        ):
             update_integration_status(
                 supabase_client,
                 "google_calendar",
                 "expired",
                 user_id=user_id,
             )
-            # Leave status/attempt bookkeeping to the caller: an OAuth-blocked
-            # sync isn't a real attempt against the user's calendar, so it
-            # must not be dead-lettered or count toward the shared circuit
-            # breaker. Only tag the classification here for observability.
-            update_payload: dict[str, Any] = {}
-        else:
-            update_payload = {}
+        # Leave status/attempt bookkeeping to the caller: an OAuth-blocked
+        # sync isn't a real attempt against the user's calendar, so it must
+        # not be dead-lettered or count toward the shared circuit breaker.
 
         raise CalendarsError(
             f"Failed to sync event to calendar: {e}", classification=classification
@@ -766,36 +865,32 @@ def sync_event_to_calendar(
 
 
 def _update_or_recreate_calendar_event(
-    service,
+    adapter: providers.CalendarAdapter,
     calendar_id: str,
-    existing_google_id: str,
+    existing_event_id: str,
     calendar_event: dict[str, Any],
 ) -> tuple[str, str]:
     """Update existing calendar event or recreate if deleted.
 
     Args:
-        service: Google Calendar API service.
+        adapter: Calendar provider adapter.
         calendar_id: Target calendar ID.
-        existing_google_id: Existing Google Calendar event ID.
+        existing_event_id: Existing provider event ID.
         calendar_event: New event body to sync.
 
     Returns:
-        Tuple of (google_event_id, action) where action is 'updated' or 'created'.
+        Tuple of (event_id, action) where action is 'updated' or 'created'.
     """
     try:
-        # Try to get the existing event
-        existing_event = service.events().get(
-            calendarId=calendar_id,
-            eventId=existing_google_id
-        ).execute()
-
-        # Event exists - update it
         # Merge our data into the existing event to preserve user edits
+        existing_event = adapter.get_event(calendar_id, existing_event_id)
         existing_event["summary"] = calendar_event.get("summary")
         existing_event["location"] = calendar_event.get("location")
         existing_event["description"] = calendar_event.get("description")
         existing_event["start"] = calendar_event.get("start")
         existing_event["end"] = calendar_event.get("end")
+        if calendar_event.get("recurrence"):
+            existing_event["recurrence"] = calendar_event["recurrence"]
 
         # Preserve or update extended properties
         if "extendedProperties" not in existing_event:
@@ -810,123 +905,14 @@ def _update_or_recreate_calendar_event(
         if "attendees" in calendar_event:
             existing_event["attendees"] = calendar_event["attendees"]
 
-        service.events().update(
-            calendarId=calendar_id,
-            eventId=existing_google_id,
-            body=existing_event
-        ).execute()
+        adapter.update_event(calendar_id, existing_event_id, existing_event)
+        return existing_event_id, "updated"
 
-        return existing_google_id, "updated"
-
-    except HttpError as e:
-        if e.resp.status == 404:
-            # Event was deleted from calendar - recreate it
-            logger.info(f"Calendar event {existing_google_id} was deleted, recreating...")
-            created_event = service.events().insert(
-                calendarId=calendar_id,
-                body=calendar_event
-            ).execute()
-            return created_event["id"], "created"
-        else:
-            # Other error - re-raise
-            raise
-
-
-def update_calendar_event(
-    supabase_client: Client, user_id: str, event_id: str
-) -> None:
-    """Update existing calendar event.
-
-    Args:
-        supabase_client: Authenticated Supabase client.
-        user_id: UUID of user.
-        event_id: UUID of event to update.
-
-    Raises:
-        CalendarsError: If update fails.
-    """
-    try:
-        # Fetch event
-        event_result = supabase_client.table("events").select("*").eq(
-            "id", event_id
-        ).single().execute()
-        event = event_result.data
-
-        google_event_id = event.get("google_calendar_event_id")
-        if not google_event_id:
-            raise CalendarsError("Event not synced to calendar yet")
-
-        # Get credentials and settings
-        creds = get_credentials(supabase_client, user_id, "google_calendar")
-        if not creds:
-            raise CalendarsError("No Google Calendar credentials found")
-
-        settings = get_calendar_settings(supabase_client, user_id)
-        calendar_id = settings.get("target_calendar_id") or "primary"
-
-        # Build Calendar API client
-        service = build("calendar", "v3", credentials=creds)
-
-        # Fetch existing event
-        existing_event = service.events().get(
-            calendarId=calendar_id,
-            eventId=google_event_id
-        ).execute()
-
-        # Update fields
-        description = event.get("description", "") or ""
-        attribution = event.get("source_attribution", "") or ""
-        if attribution:
-            description = f"{description}\n\n{attribution}" if description else attribution
-
-        existing_event["summary"] = event.get("title")
-        existing_event["location"] = event.get("location")
-        existing_event["description"] = description
-
-        # Update dates
-        start_dt = event.get("start_datetime")
-        end_dt = event.get("end_datetime")
-        user_tz = settings.get("timezone", "America/New_York")
-
-        from selko.services.civil_time import gcal_all_day_fields, gcal_timed_fields
-
-        if event.get("all_day"):
-            if start_dt:
-                start_fields, end_fields = gcal_all_day_fields(start_dt, end_dt, user_tz)
-                existing_event["start"] = start_fields
-                existing_event["end"] = end_fields
-        else:
-            if start_dt:
-                fields = gcal_timed_fields(start_dt, user_tz)
-                if fields:
-                    existing_event["start"] = fields
-            if end_dt:
-                fields = gcal_timed_fields(end_dt, user_tz)
-                if fields:
-                    existing_event["end"] = fields
-
-        # Update event
-        service.events().update(
-            calendarId=calendar_id,
-            eventId=google_event_id,
-            body=existing_event
-        ).execute()
-
-        # Log the update
-        calendar_event = _build_calendar_event_body(event, settings)
-        _log_sync(
-            supabase_client,
-            user_id,
-            event_id,
-            google_event_id,
-            "updated",
-            calendar_event,
-        )
-
-        logger.info(f"Updated calendar event for {event_id}")
-
-    except Exception as e:
-        raise CalendarsError(f"Failed to update calendar event: {e}") from e
+    except CalendarEventNotFound:
+        # Event was deleted from calendar - recreate it
+        logger.info(f"Calendar event {existing_event_id} was deleted, recreating...")
+        created_event = adapter.insert_event(calendar_id, calendar_event)
+        return created_event["id"], "created"
 
 
 def cancel_event_to_calendar(
@@ -941,67 +927,61 @@ def cancel_event_to_calendar(
     """Apply a queued cancellation or remote deletion.
 
     Provider I/O is worker-owned. The local ``cancel_queued`` -> ``cancelled``
-    transition is completed by the worker with an owner/generation fence.
+    transition is completed by the worker with an owner/generation fence. The
+    cancellation always goes to the calendar the event lives in, which its
+    qualified id names.
     """
     try:
         event_result = supabase_client.table("events").select("*").eq(
             "id", event_id
         ).single().execute()
         event = event_result.data or {}
-        google_event_id = event.get("google_calendar_event_id")
-        if not google_event_id:
+        provider_event_id = event.get("google_calendar_event_id")
+        if not provider_event_id:
             logger.info("Event %s has no remote calendar copy; cancellation is local-only", event_id)
             return
 
-        service, calendar_id = _calendar_service_for_user(supabase_client, user_id)
+        adapter, calendar_id = _calendar_service_for_event(
+            supabase_client, user_id, provider_event_id
+        )
         try:
-            existing_event = service.events().get(
-                calendarId=calendar_id,
-                eventId=google_event_id,
-            ).execute()
+            existing_event = adapter.get_event(calendar_id, provider_event_id)
             observed_revision = existing_event.get("etag") or existing_event.get("updated")
             if expected_provider_revision and not force_overwrite and observed_revision != expected_provider_revision:
                 raise CalendarDivergedError(
-                    "Google Calendar changed after Selko queued this cancellation.",
+                    "The calendar changed after Selko queued this cancellation.",
                     changed_fields=["provider_revision"],
                     google_event_url=existing_event.get("htmlLink"),
                 )
             if delete_remote:
-                service.events().delete(
-                    calendarId=calendar_id,
-                    eventId=google_event_id,
-                ).execute()
+                adapter.delete_event(calendar_id, provider_event_id)
                 action = "deleted"
             else:
                 title = str(event.get("title") or existing_event.get("summary") or "")
                 if not title.startswith("CANCELLED: "):
                     existing_event["summary"] = f"CANCELLED: {title}"
-                service.events().update(
-                    calendarId=calendar_id,
-                    eventId=google_event_id,
-                    body=existing_event,
-                ).execute()
+                adapter.update_event(calendar_id, provider_event_id, existing_event)
                 action = "cancelled"
-        except HttpError as exc:
-            if getattr(exc.resp, "status", None) == 404:
-                logger.info("Calendar event %s already deleted", google_event_id)
-                action = "deleted" if delete_remote else "cancelled"
-            else:
-                raise
+        except CalendarEventNotFound:
+            logger.info("Calendar event %s already deleted", provider_event_id)
+            action = "deleted" if delete_remote else "cancelled"
         _log_sync(
             supabase_client,
             user_id,
             event_id,
-            google_event_id,
+            provider_event_id,
             action,
-            {"deleted_google_event_id": google_event_id}
-            if delete_remote else {"cancelled_google_event_id": google_event_id},
+            {"deleted_google_event_id": provider_event_id}
+            if delete_remote else {"cancelled_google_event_id": provider_event_id},
         )
         logger.info("Applied cancellation to calendar event %s", event_id)
     except CalendarsError:
         raise
     except Exception as exc:
-        raise CalendarsError(f"Failed to cancel event in calendar: {exc}") from exc
+        raise CalendarsError(
+            f"Failed to cancel event in calendar: {exc}",
+            classification=classify_calendar_error(exc),
+        ) from exc
 
 
 def _strip_selko_footer(description: str | None) -> str:
@@ -1128,32 +1108,30 @@ def get_latest_sync_snapshot(
     return snap if isinstance(snap, dict) else None
 
 
-def _calendar_service_for_user(
-    supabase_client: Client, user_id: str
-) -> tuple[Any, str]:
-    """Build Calendar API client and resolve target calendar id."""
-    creds = get_credentials(supabase_client, user_id, "google_calendar")
-    if not creds:
-        raise CalendarsError("No Google Calendar credentials found")
-    settings = get_calendar_settings(supabase_client, user_id)
-    calendar_id = settings.get("target_calendar_id") or "primary"
-    service = build("calendar", "v3", credentials=creds)
-    return service, calendar_id
+def _calendar_service_for_event(
+    supabase_client: Client, user_id: str, provider_event_id: str
+) -> tuple[providers.CalendarAdapter, str]:
+    """Adapter and calendar id for the calendar an existing event lives in."""
+    provider = providers.provider_of_id(provider_event_id)
+    settings = get_calendar_settings(supabase_client, user_id, include_name=False)
+    adapter = calendar_adapter(
+        supabase_client, user_id, provider,
+        time_zone=settings.get("timezone") or "America/New_York",
+    )
+    return adapter, calendar_id_for(provider, settings.get("target_calendar_id"))
 
 
 def get_calendar_event(
     supabase_client: Client, user_id: str, google_event_id: str
 ) -> dict[str, Any] | None:
-    """Fetch a live Google Calendar event. Returns None if missing (404)."""
+    """Fetch a live calendar event by its stored id. Returns None if missing (404)."""
     try:
-        service, calendar_id = _calendar_service_for_user(supabase_client, user_id)
-        return service.events().get(
-            calendarId=calendar_id, eventId=google_event_id
-        ).execute()
-    except HttpError as e:
-        if e.resp.status == 404:
-            return None
-        raise CalendarsError(f"Failed to fetch calendar event: {e}") from e
+        adapter, calendar_id = _calendar_service_for_event(
+            supabase_client, user_id, google_event_id
+        )
+        return adapter.get_event(calendar_id, google_event_id)
+    except CalendarEventNotFound:
+        return None
     except CalendarsError:
         raise
     except Exception as e:

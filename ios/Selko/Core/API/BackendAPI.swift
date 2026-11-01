@@ -65,12 +65,40 @@ struct CalendarInfo: Codable, Identifiable {
     let name: String
     let isPrimary: Bool
     let isSelected: Bool
+    /// Which calendar provider owns this calendar. Older backends omit the
+    /// field; every calendar they list is Google Calendar.
+    let provider: IntegrationProvider
 
     enum CodingKeys: String, CodingKey {
         case id
         case name
         case isPrimary = "is_primary"
         case isSelected = "is_selected"
+        case provider
+    }
+
+    init(
+        id: String,
+        name: String,
+        isPrimary: Bool,
+        isSelected: Bool,
+        provider: IntegrationProvider = .googleCalendar
+    ) {
+        self.id = id
+        self.name = name
+        self.isPrimary = isPrimary
+        self.isSelected = isSelected
+        self.provider = provider
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        isPrimary = try container.decode(Bool.self, forKey: .isPrimary)
+        isSelected = try container.decode(Bool.self, forKey: .isSelected)
+        let rawProvider = try container.decodeIfPresent(String.self, forKey: .provider)
+        provider = rawProvider.flatMap(IntegrationProvider.init(rawValue:)) ?? .googleCalendar
     }
 }
 

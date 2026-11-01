@@ -91,5 +91,5 @@ inputs = [
 [lanes.android]
 gate = "mobile"
 description = "Android unit tests"
-command = "./gradlew -p android testDebugUnitTest"
+command = "./android/gradlew -p android testDebugUnitTest"
 inputs = ["android/**/*.kt", "android/**/*.kts"]

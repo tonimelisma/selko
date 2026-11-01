@@ -13,6 +13,8 @@ import net.melisma.selko.data.api.BackendApiClient
 import net.melisma.selko.data.model.Integration
 import net.melisma.selko.data.model.IntegrationProvider
 import net.melisma.selko.data.model.IntegrationStatus
+import net.melisma.selko.data.model.hasWritableCalendar
+import net.melisma.selko.data.model.needsOutlookCalendarReconnect
 import net.melisma.selko.data.model.EmailFolderPreference
 import net.melisma.selko.data.model.SenderRule
 import net.melisma.selko.data.repository.AuthRepository
@@ -52,7 +54,15 @@ data class SettingsUiState(
     val folderLoadErrors: Map<IntegrationProvider, String> = emptyMap(),
     val updatingFolderIds: Set<String> = emptySet(),
     val folderUpdateErrors: Map<String, FolderUpdateFailure> = emptyMap()
-)
+) {
+    /** Google Calendar or a calendar-scoped Outlook connection exists. */
+    val hasWritableCalendar: Boolean
+        get() = integrations.hasWritableCalendar()
+
+    /** Outlook is connected for mail only; reconnecting grants Outlook Calendar. */
+    val needsOutlookCalendarReconnect: Boolean
+        get() = integrations.needsOutlookCalendarReconnect()
+}
 
 class SettingsViewModel(
     application: Application,
@@ -96,14 +106,17 @@ class SettingsViewModel(
                 }
             }
 
-            // Load calendars
-            try {
-                val calendarsResult = backendApiClient.listCalendars()
-                calendarsResult.onSuccess { calendars ->
-                    _uiState.update { it.copy(calendars = calendars) }
+            // Load calendars only when some connection can receive event writes
+            // (Google Calendar, or Outlook with Calendars.ReadWrite).
+            if (_uiState.value.hasWritableCalendar) {
+                try {
+                    val calendarsResult = backendApiClient.listCalendars()
+                    calendarsResult.onSuccess { calendars ->
+                        _uiState.update { it.copy(calendars = calendars) }
+                    }
+                } catch (e: Exception) {
+                    // A transient failure leaves the picker empty; the prompt explains why.
                 }
-            } catch (e: Exception) {
-                // Calendars may not be available if not connected
             }
 
             // Load calendar settings

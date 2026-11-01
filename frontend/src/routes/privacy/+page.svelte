@@ -41,8 +41,9 @@
 					attachments.
 				</li>
 				<li>
-					<strong>Your calendar:</strong> when you connect Google Calendar, Selko creates,
-					updates and cancels the events you approve.
+					<strong>Your calendar:</strong> when you connect Google Calendar or Outlook, Selko
+					reads your calendar to recognise events you already have, and creates, updates and
+					cancels the events you approve.
 				</li>
 				<li>
 					<strong>Connection tokens:</strong> the OAuth tokens Google or Microsoft issue so Selko
@@ -105,7 +106,10 @@
 					<strong>Anthropic:</strong> the AI model that extracts events from email content.
 				</li>
 				<li><strong>Google:</strong> Gmail and Google Calendar for the accounts you connect.</li>
-				<li><strong>Microsoft:</strong> Outlook mail for the accounts you connect.</li>
+				<li>
+					<strong>Microsoft:</strong> Outlook mail and Outlook Calendar for the accounts you
+					connect.
+				</li>
 			</ul>
 			<p class="mt-3">
 				We may also disclose data if the law requires it, or to a successor if Selko is

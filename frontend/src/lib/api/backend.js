@@ -337,11 +337,13 @@ export async function updateEmailFolder(provider, folderId, isIncluded) {
  * @property {string} name - Calendar name
  * @property {boolean} is_primary - Whether this is the primary calendar
  * @property {boolean} is_selected - Whether this is the currently selected target
+ * @property {'google_calendar' | 'outlook'} [provider] - Provider that owns the calendar.
+ *   Outlook ids are opaque `outlook:`-prefixed strings; store them unchanged.
  */
 
 /**
- * List user's Google Calendars
- * Requires server-side Google Calendar API credentials
+ * List calendars from every calendar-capable connected provider
+ * (Google Calendar and calendar-scoped Outlook).
  * @returns {Promise<{data: Calendar[] | null, error: ApiError | null}>}
  */
 export async function listCalendars() {

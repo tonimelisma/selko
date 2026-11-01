@@ -158,3 +158,40 @@ def test_a_met_precondition_lets_the_lane_run(probe_file, tmp_path):
     )
     result = _run(lanes, tmp_path)
     assert result.returncode == 0, result.stdout
+
+
+def _lock_dir_for(checkout: Path) -> str:
+    """Ask the runner where a checkout's lane locks live."""
+    probe = (
+        "import importlib.util, sys;"
+        "spec = importlib.util.spec_from_file_location('vl', sys.argv[1]);"
+        "m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m);"
+        "print(m._lock_dir())"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", probe, str(checkout / "scripts" / "verify-lanes.py")],
+        capture_output=True, text=True, check=True,
+        env={"PATH": "/usr/bin:/bin:/usr/local/bin:/opt/homebrew/bin"},
+    )
+    return result.stdout.strip()
+
+
+def test_every_worktree_shares_one_lock(tmp_path):
+    """The database, simulator and port a lane uses belong to the machine.
+
+    Locks lived in each checkout's .verify/, so two sessions in two worktrees
+    each started `supabase db reset` under the other's integration suite and
+    both runs reported failures that meant nothing.
+    """
+    git = ["git", "-c", "user.email=t@example.com", "-c", "user.name=t"]
+    main = tmp_path / "main"
+    (main / "scripts").mkdir(parents=True)
+    (main / "scripts" / "verify-lanes.py").write_text(RUNNER.read_text())
+    subprocess.run(["git", "init", "-q", str(main)], check=True)
+    subprocess.run([*git, "-C", str(main), "add", "."], check=True)
+    subprocess.run([*git, "-C", str(main), "commit", "-qm", "init"], check=True)
+    other = tmp_path / "other"
+    subprocess.run(["git", "-C", str(main), "worktree", "add", "-q", str(other)], check=True)
+
+    assert _lock_dir_for(main) == _lock_dir_for(other)
+    assert _lock_dir_for(main).endswith("selko-verify-locks")

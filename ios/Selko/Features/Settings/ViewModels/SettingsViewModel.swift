@@ -73,9 +73,9 @@ final class SettingsViewModel {
                 allDayCustomEnd = end
             }
 
-            // Try to load calendars if Google Calendar is connected
-            let calendarConnected = integrations.contains { $0.provider == .googleCalendar && $0.isActive }
-            if calendarConnected {
+            // Load calendars when any writable calendar (Google Calendar or
+            // calendar-capable Outlook) is connected.
+            if hasWritableCalendar {
                 do {
                     calendars = try await backendAPI.listCalendars()
                     if selectedCalendarId.isEmpty, let primary = calendars.first(where: { $0.isPrimary }) {
@@ -264,6 +264,31 @@ final class SettingsViewModel {
 
     func integration(for provider: IntegrationProvider) -> Integration? {
         integrations.first { $0.provider == provider }
+    }
+
+    var hasWritableCalendar: Bool {
+        integrations.hasWritableCalendar
+    }
+
+    var needsOutlookCalendarReconnect: Bool {
+        integrations.needsOutlookCalendarReconnect
+    }
+
+    /// Picker label for a calendar: its name plus the provider that owns it,
+    /// so a Google and an Outlook calendar with the same name stay distinct.
+    func calendarDisplayName(_ calendar: CalendarInfo) -> String {
+        String(
+            format: String(localized: "settings.calendar_name_provider %@ %@"),
+            calendar.name,
+            calendarProviderName(calendar.provider)
+        )
+    }
+
+    func calendarProviderName(_ provider: IntegrationProvider) -> String {
+        switch provider {
+        case .outlook: return String(localized: "settings.calendar_provider_outlook")
+        default: return String(localized: "settings.calendar_provider_google")
+        }
     }
 
     var googleConnection: GoogleConnection {

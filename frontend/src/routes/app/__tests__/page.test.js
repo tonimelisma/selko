@@ -341,6 +341,79 @@ describe('Review Queue (App Page)', () => {
 		expect(mockSyncEventToCalendar).not.toHaveBeenCalled();
 	});
 
+	it('lets an Outlook-only user with calendar scope accept suggestions', async () => {
+		const user = userEvent.setup();
+
+		mockFetchIntegrations.mockResolvedValue({
+			data: [
+				{
+					id: 'o1',
+					provider: 'outlook',
+					status: 'active',
+					scopes: ['offline_access', 'Mail.Read', 'https://graph.microsoft.com/Calendars.ReadWrite']
+				}
+			],
+			error: null
+		});
+		mockFetchPendingEventsWithSources.mockResolvedValue({
+			data: [
+				{
+					id: 'evt-outlook',
+					title: 'Outlook Standup',
+					start_datetime: '2024-01-20T14:00:00Z',
+					status: 'pending_review',
+					event_sources: []
+				}
+			],
+			error: null
+		});
+
+		render(AppPage);
+
+		await waitFor(() => expect(screen.getByText('Outlook Standup')).toBeInTheDocument());
+		expect(screen.queryByRole('heading', { name: 'Reconnect Google Calendar' })).not.toBeInTheDocument();
+		expect(screen.queryByRole('heading', { name: 'Connect your calendar' })).not.toBeInTheDocument();
+
+		await user.click(screen.getByRole('button', { name: 'Accept Outlook Standup' }));
+
+		await waitFor(() => {
+			expect(mockUpdateEventStatus).toHaveBeenCalledWith('evt-outlook', 'approved');
+		});
+	});
+
+	it('pauses acceptance and offers an Outlook reconnect when Outlook lacks calendar scope', async () => {
+		const user = userEvent.setup();
+		mockInitiateOutlookAuth.mockResolvedValue(undefined);
+
+		mockFetchIntegrations.mockResolvedValue({
+			data: [{ id: 'o1', provider: 'outlook', status: 'active', scopes: ['Mail.Read'] }],
+			error: null
+		});
+		mockFetchPendingEventsWithSources.mockResolvedValue({
+			data: [
+				{
+					id: 'evt-noscope',
+					title: 'Scopeless Sync',
+					start_datetime: '2024-01-20T14:00:00Z',
+					status: 'pending_review',
+					event_sources: []
+				}
+			],
+			error: null
+		});
+
+		render(AppPage);
+
+		await waitFor(() => expect(screen.getByText('Scopeless Sync')).toBeInTheDocument());
+		expect(screen.getByRole('button', { name: /^Accept Scopeless Sync\./ })).toBeDisabled();
+		expect(screen.getByRole('heading', { name: 'Connect your calendar' })).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Connect Google Calendar' })).toBeEnabled();
+
+		await user.click(screen.getByRole('button', { name: 'Reconnect Outlook' }));
+		expect(mockInitiateOutlookAuth).toHaveBeenCalledTimes(1);
+		expect(mockInitiateGoogleAuth).not.toHaveBeenCalled();
+	});
+
 	it('removes event from list on reject', async () => {
 		const user = userEvent.setup();
 

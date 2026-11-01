@@ -107,7 +107,8 @@ EXPECTED_CHECK_DOMAINS: dict[tuple[str, str], set[str]] = {
     ("event_repair_audit", "action"): {"merge_duplicate_group", "merge_source", "cancel_event", "resolve_proposal"},
     ("events", "review_status"): {"pending_review", "active", "rejected", "cancelled"},
     ("events", "importance"): {"action_required", "fyi"},
-    ("graph_api_failures", "graph_surface"): {"outlook_mail", "onedrive"},
+    ("graph_api_failures", "graph_surface"): {"outlook_mail", "outlook_calendar", "onedrive"},
+    ("calendar_work_items", "provider"): {"google_calendar", "outlook"},
     ("integration_recoveries", "reason"): {"initial_connection", "reauthorization"},
     ("integration_recoveries", "status"): {
         "pending", "processing", "waiting", "completed", "completed_with_errors",
@@ -420,6 +421,8 @@ def _function_arguments(context: ContractContext) -> dict[str, tuple[Any, ...]]:
         "set_event_review_status": (context.event_id, "active", context.user_id),
         "claim_calendar_work": ("schema-contract-worker", 60),
         "claim_calendar_work_item": ("schema-contract-worker", 60),
+        "calendar_integration_writable": (context.user_id, "outlook"),
+        "calendar_write_provider": (context.user_id, context.event_id),
         "complete_calendar_work": (context.event_id, worker, 1, "schema-contract-google", None),
         "defer_calendar_work": (context.event_id, worker, 1, now + timedelta(minutes=5), "probe"),
         "enqueue_calendar_work": (

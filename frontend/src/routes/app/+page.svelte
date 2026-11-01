@@ -29,6 +29,7 @@
 	import ConfirmModal from '$lib/components/ConfirmModal.svelte';
 	import InlineActionError from '$lib/components/InlineActionError.svelte';
 	import { resolveEventSender } from '$lib/event-sender.js';
+	import { hasWritableCalendar } from '$lib/calendar-providers.js';
 	import * as liveUpdates from '$lib/live-updates.js';
 	import {
 		createLaneOrder,
@@ -78,10 +79,8 @@
 	let rejectedUndo = $state(null);
 	let undoingReject = $state(false);
 
-	let gcalIntegration = $derived(
-		integrationsList.find((i) => i.provider === 'google_calendar')
-	);
-	let calendarConnected = $derived(gcalIntegration?.status === 'active');
+	// Google Calendar or a calendar-scoped Outlook connection can receive approvals.
+	let calendarConnected = $derived(hasWritableCalendar(integrationsList));
 	let firstRun = $derived(integrationsList.length === 0);
 
 	let newEvents = $derived(events.filter(isNewReviewEvent));

@@ -223,4 +223,38 @@ describe('Event Detail Page', () => {
 		}
 		expect(screen.getByLabelText(/title/i)).toBeEnabled();
 	});
+
+	it('enables acceptance for an Outlook-only user with calendar scope', async () => {
+		mockFetchIntegrations.mockResolvedValue({
+			data: [
+				{ id: 'outlook', provider: 'outlook', status: 'active', scopes: ['Mail.Read', 'Calendars.ReadWrite'] }
+			],
+			error: null
+		});
+
+		render(EventDetailPage);
+
+		await waitFor(() => {
+			const acceptButtons = screen.getAllByRole('button', { name: 'Accept Team Meeting' });
+			expect(acceptButtons.length).toBeGreaterThan(0);
+			for (const button of acceptButtons) expect(button).toBeEnabled();
+		});
+		expect(screen.queryByRole('button', { name: 'Reconnect Outlook' })).not.toBeInTheDocument();
+	});
+
+	it('disables acceptance when Outlook lacks calendar scope', async () => {
+		mockFetchIntegrations.mockResolvedValue({
+			data: [{ id: 'outlook', provider: 'outlook', status: 'active', scopes: ['Mail.Read'] }],
+			error: null
+		});
+
+		render(EventDetailPage);
+
+		await waitFor(() => {
+			expect(screen.getByRole('button', { name: 'Reconnect Outlook' })).toBeEnabled();
+		});
+		for (const button of screen.getAllByRole('button', { name: /^accept/i })) {
+			expect(button).toBeDisabled();
+		}
+	});
 });

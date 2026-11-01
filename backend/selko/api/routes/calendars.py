@@ -1,6 +1,6 @@
 """Calendar API endpoints.
 
-These endpoints require server-side secrets (Google Calendar API credentials).
+These endpoints require server-side secrets (Google and Microsoft OAuth).
 For calendar settings, use Supabase client from frontend.
 """
 
@@ -29,15 +29,13 @@ async def list_calendars(
     service_client: Annotated[Client, Depends(get_service_role_client)],
     user: CurrentUser = Depends(get_current_user),
 ) -> list[CalendarListResponse]:
-    """List all user's Google Calendars.
-
-    Fetches calendars from Google Calendar API.
+    """List the calendars Selko can write to, across Google and Outlook.
 
     Returns:
-        List of calendars with id, name, is_primary, is_selected.
+        List of calendars with id, name, is_primary, is_selected, provider.
 
     Raises:
-        404: No Google Calendar integration found.
+        404: No calendar integration found.
         500: Failed to fetch calendars.
     """
     try:
@@ -49,16 +47,17 @@ async def list_calendars(
                 name=cal["name"],
                 is_primary=cal["is_primary"],
                 is_selected=cal["is_selected"],
+                provider=cal.get("provider", "google_calendar"),
             )
             for cal in calendars_data
         ]
 
     except Exception as e:
         logger.error(f"Failed to list calendars: {e}")
-        if "No Google Calendar credentials" in str(e):
+        if "No Google Calendar credentials" in str(e) or "No Outlook Calendar credentials" in str(e):
             raise HTTPException(
                 status_code=404,
-                detail=error_detail(ErrorCode.CREDENTIALS_NOT_FOUND, "No Google Calendar integration found. Connect Calendar first."),
+                detail=error_detail(ErrorCode.CREDENTIALS_NOT_FOUND, "No calendar integration found. Connect a calendar first."),
             )
         raise HTTPException(
             status_code=500,

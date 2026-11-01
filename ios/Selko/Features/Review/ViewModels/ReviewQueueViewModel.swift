@@ -39,8 +39,10 @@ final class ReviewQueueViewModel {
     var gmailConnected: Bool {
         integrations.contains { $0.provider == .gmail && $0.isActive }
     }
+    /// Any writable calendar: an active Google Calendar or a calendar-capable
+    /// Outlook integration.
     var calendarConnected: Bool {
-        integrations.contains { $0.provider == .googleCalendar && $0.isActive }
+        integrations.hasWritableCalendar
     }
     var isConnected: Bool { emailConnected && calendarConnected }
     var hasConnectionIssue: Bool {
@@ -352,7 +354,7 @@ final class ReviewQueueViewModel {
     @discardableResult
     private func ensureCalendarConnected() -> Bool {
         guard calendarConnected else {
-            errorMessage = String(localized: "Reconnect Google Calendar to accept suggestions.")
+            errorMessage = String(localized: "Reconnect your calendar to accept suggestions.")
             return false
         }
         return true
