@@ -29,12 +29,14 @@ from typing import Any
 from supabase import Client
 
 from selko.config import Config
-from selko.services import calendar_mirror
+from selko.services import calendar_mirror, events
 from selko.services.egress import log_egress_summary
 from selko.services.email_sync_health import (
     EmailSyncHealthEvaluator,
     ResendOperationalNotifier,
 )
+from selko.services.llm_gateway import create_llm_gateway
+from selko.services.llm_logging import LLMLoggingService
 from selko.workers.email_ingestion import EmailIngestionWorker
 
 logger = logging.getLogger(__name__)
@@ -246,9 +248,24 @@ class IngestionRuntime:
                             summary["failed"],
                             summary["failed"] + summary["calendars"],
                         )
+                    if summary.get("arrived"):
+                        await asyncio.to_thread(
+                            events.retire_pending_already_on_calendar,
+                            self.client,
+                            row["user_id"],
+                            summary["arrived"],
+                            self._gateway,
+                        )
                 except Exception:
                     # One user's expired token must not stop the others.
                     logger.exception("Calendar mirror sync failed for one integration")
+
+    def _gateway(self):
+        return create_llm_gateway(
+            self.config,
+            logging_service=LLMLoggingService(self.client),
+            quota_service=None,
+        )
 
     async def _watchdog(self) -> None:
         """Respawn any task that exits while the runtime is not stopping.
