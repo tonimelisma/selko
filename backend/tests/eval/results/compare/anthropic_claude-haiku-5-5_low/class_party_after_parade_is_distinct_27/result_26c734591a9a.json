@@ -1,29 +1,29 @@
 {
   "fixture_name": "class_party_after_parade_is_distinct_27",
   "fixture_hash": "1d382d4ec389626b644e23ca5ca436a23422b332074efb050a36e66f9ccf9848",
-  "code_hash": "3b61b944aad7",
+  "code_hash": "23e8bc9980aa",
   "prompt_hash": "26c734591a9a",
   "operation": "compare",
   "provider": "anthropic",
   "model": "claude-haiku-5-5",
   "thinking": "low",
-  "run_at": "2026-11-01T02:40:21.008759+00:00",
-  "duration_ms": 1544,
+  "run_at": "2026-11-01T04:08:44.544084+00:00",
+  "duration_ms": 2053,
   "timing": {
     "fixture_load": {
-      "started_at": "2026-11-01T02:40:19.459817+00:00",
+      "started_at": "2026-11-01T04:08:42.487334+00:00",
       "duration_ms": 0
     },
     "gateway_create": {
-      "started_at": "2026-11-01T02:40:19.459822+00:00",
-      "duration_ms": 6
+      "started_at": "2026-11-01T04:08:42.487501+00:00",
+      "duration_ms": 12
     },
     "api_call": {
-      "started_at": "2026-11-01T02:40:19.466056+00:00",
-      "duration_ms": 1538
+      "started_at": "2026-11-01T04:08:42.499595+00:00",
+      "duration_ms": 2041
     },
     "scoring": {
-      "started_at": "2026-11-01T02:40:21.004769+00:00",
+      "started_at": "2026-11-01T04:08:44.541289+00:00",
       "duration_ms": 0
     }
   },
@@ -40,19 +40,19 @@
     "matched_event_id": null
   },
   "actual": {
-    "matched_event_id": "event-001"
+    "matched_event_id": null
   },
   "auto_score": {
-    "correct": false,
+    "correct": true,
     "expected": null,
-    "actual": "event-001"
+    "actual": null
   },
   "tokens": {
     "prompt_tokens": 747,
-    "completion_tokens": 232,
-    "total_tokens": 979
+    "completion_tokens": 354,
+    "total_tokens": 1101
   },
-  "cost": 0.0001907,
+  "cost": 0.0002517,
   "trace": {
     "content_parts": [
       {
@@ -105,15 +105,15 @@
         "reasoning"
       ]
     },
-    "raw_response_text": "{\"matched_event_id\": \"event-001\", \"reasoning\": \"The new event is Ms. Rivera's 1st grade class Halloween party, which features a costume parade followed directly by a class party. Existing event-001 is a Halloween Parade on the same date, 08:00-09:00. The new event's description says the party follows the costume parade, so the parade portion of the new event overlaps with event-001 in time and subject. However, the new event is a distinct classroom party (08:45-10:30, Classroom 202) rather than the parade itself, so the match is uncertain. event-001 is the closest candidate, but the events are not clearly the same real-world event; the time overlap and parade reference are the main signals for flagging it.\"}",
+    "raw_response_text": "{\"matched_event_id\": null, \"reasoning\": \"The new event is a specific class Halloween party (Ms. Rivera's 1st grade, Classroom 202, 8:45-10:30am). Its description says the party directly follows the costume parade, so the parade is a separate activity. event-001 (Halloween Parade, 8:00-9:00am, no location) is a different event with a different title and time window. event-002 (preschool pumpkin patch, 2:00-3:00pm) and event-003 (Trick or Treat Street, 4:00-6:00pm downtown) are clearly different events.\"}",
     "finish_reason": "end_turn",
     "retry_count": 0,
     "error_traceback": null,
-    "correlation_id": "3c6f40194bf1427696535c1243eb3cfd",
+    "correlation_id": "44a91bd7d1174359a97b0a0ce0347820",
     "route_role": "primary"
   },
-  "inference_key": "3f8a25e4ebe5b6bed439a0b54f2f5e4de7b67c75a36986a7472ed62572587315",
-  "score_key": "eb31daf2251937496f7e1c6e5e30afd622f096f6017f8cc53ddf410e05c3904d",
+  "inference_key": "ea33b4152dd4d6e4044030f02e657565e7f1670640887f0a0144a56a2ef8b2e8",
+  "score_key": "851cf7c9f00a123c16a4de115531d437df0e45c3f86684014a5830a934d06a5d",
   "identity": {
     "identity_version": 2,
     "operation": "compare",
@@ -137,7 +137,7 @@
       "top_p": null
     },
     "prompt_contract_hash": "26c734591a9a2f602b175c5e7f03455199cca7eb847d43a054d339700ba5d2bb",
-    "adapter_contract_hash": "853277a8daf01bb6dff0cf2b0332682d532c648421bec5a11cf77d1d0cee152d",
+    "adapter_contract_hash": "d3cff82711b897f93c4044d5f12effe2e04dcdd511f069e9a2ac48452c725455",
     "fixture_input_hash": "1d382d4ec389626b644e23ca5ca436a23422b332074efb050a36e66f9ccf9848"
   }
 }

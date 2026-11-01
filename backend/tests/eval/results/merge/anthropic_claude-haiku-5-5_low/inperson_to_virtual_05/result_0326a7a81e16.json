@@ -1,29 +1,29 @@
 {
   "fixture_name": "inperson_to_virtual_05",
   "fixture_hash": "ad3b909583a3d861837ef51bda7c9de495429bac35615eea34b8ed82dc2b3a1e",
-  "code_hash": "3b61b944aad7",
+  "code_hash": "23e8bc9980aa",
   "prompt_hash": "0326a7a81e16",
   "operation": "merge",
   "provider": "anthropic",
   "model": "claude-haiku-5-5",
   "thinking": "low",
-  "run_at": "2026-11-01T02:40:29.039242+00:00",
-  "duration_ms": 1999,
+  "run_at": "2026-11-01T04:08:53.316166+00:00",
+  "duration_ms": 2378,
   "timing": {
     "fixture_load": {
-      "started_at": "2026-11-01T02:40:27.037056+00:00",
+      "started_at": "2026-11-01T04:08:50.934327+00:00",
       "duration_ms": 0
     },
     "gateway_create": {
-      "started_at": "2026-11-01T02:40:27.037064+00:00",
+      "started_at": "2026-11-01T04:08:50.934338+00:00",
       "duration_ms": 6
     },
     "api_call": {
-      "started_at": "2026-11-01T02:40:27.043558+00:00",
-      "duration_ms": 1993
+      "started_at": "2026-11-01T04:08:50.941064+00:00",
+      "duration_ms": 2372
     },
     "scoring": {
-      "started_at": "2026-11-01T02:40:29.036773+00:00",
+      "started_at": "2026-11-01T04:08:53.313394+00:00",
       "duration_ms": 0
     }
   },
@@ -93,10 +93,10 @@
   },
   "tokens": {
     "prompt_tokens": 775,
-    "completion_tokens": 390,
-    "total_tokens": 1165
+    "completion_tokens": 512,
+    "total_tokens": 1287
   },
-  "cost": 0.0002725,
+  "cost": 0.0003335,
   "trace": {
     "content_parts": [
       {
@@ -219,15 +219,15 @@
         "importance"
       ]
     },
-    "raw_response_text": "{\"title\": \"Client Presentation (Virtual)\", \"start_datetime\": \"2026-03-25T10:00:00\", \"end_datetime\": \"2026-03-25T11:30:00\", \"all_day\": false, \"location\": \"Zoom: https://zoom.us/j/123456789\", \"description\": \"Q1 results presentation for ABC Corp. Meeting moved to Zoom. Client requested virtual format. Same agenda.\", \"importance\": \"action_required\"}",
+    "raw_response_text": "{\n    \"title\": \"Client Presentation (Virtual)\",\n    \"start_datetime\": \"2026-03-25T10:00:00\",\n    \"end_datetime\": \"2026-03-25T11:30:00\",\n    \"all_day\": false,\n    \"location\": \"Zoom: https://zoom.us/j/123456789\",\n    \"description\": \"Q1 results presentation for ABC Corp. Meeting moved to Zoom. Client requested virtual format. Same agenda.\",\n    \"importance\": \"action_required\"\n}",
     "finish_reason": "end_turn",
     "retry_count": 0,
     "error_traceback": null,
-    "correlation_id": "52f4f2cff3a74c32b982e291a17adc0e",
+    "correlation_id": "6a632006c699407fa1674678eb4fbef8",
     "route_role": "primary"
   },
-  "inference_key": "c7e97066e2a5bce7f0e091c81176a53afc4ac18566f06a619d58d766a2b1d012",
-  "score_key": "c0d7ea3739a068f7e185b514f506d41eb0381081d4f10fd7cf7c42a8a4db01df",
+  "inference_key": "1dd8c81ce490557e01bb258fab1ec37bf10bcf07056a4b72e955517437ecac42",
+  "score_key": "33b0ab12230d66b9b24434de08234a7024fa81e4f03d3697ed068d290dcf1177",
   "identity": {
     "identity_version": 2,
     "operation": "merge",
@@ -251,7 +251,7 @@
       "top_p": null
     },
     "prompt_contract_hash": "0326a7a81e169edaf924fb8a09fe97a184519ff43052c4a3ce59137d4d4545b6",
-    "adapter_contract_hash": "853277a8daf01bb6dff0cf2b0332682d532c648421bec5a11cf77d1d0cee152d",
+    "adapter_contract_hash": "d3cff82711b897f93c4044d5f12effe2e04dcdd511f069e9a2ac48452c725455",
     "fixture_input_hash": "ad3b909583a3d861837ef51bda7c9de495429bac35615eea34b8ed82dc2b3a1e"
   }
 }

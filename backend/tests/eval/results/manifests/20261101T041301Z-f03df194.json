@@ -1,0 +1,34 @@
+{
+  "run_id": "20261101T041301Z-f03df194",
+  "operations": [
+    "extract"
+  ],
+  "matrix": [
+    {
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": "low"
+    }
+  ],
+  "provenance": {
+    "git_commit": "bef4435b633d504542962945d6d48e01fa0aa675",
+    "event_processing_sha256": "23e8bc9980aafa28c2b852b7d666c359d45d389289cd4f547500020e0302a689"
+  },
+  "cells": [
+    {
+      "operation": "extract",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "fixture_name": "conferences/credential_maintenance_deadlines_07",
+      "inference_key": "69dfa06468abedb24da07ea72cba693a314273fced1d85679334de2a9fa9ef95",
+      "score_key": "3a5eac2ccd03216b48f5d96a42e3f5e896c27e34cbc9376fe98217530446a1b5",
+      "state": "HIT",
+      "reason": "execution completed"
+    }
+  ],
+  "written_at": "2026-11-01T04:13:01.223702+00:00"
+}

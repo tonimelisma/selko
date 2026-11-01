@@ -1,0 +1,20 @@
+{
+  "fixture_name": "utc_vs_local_same_parade_25",
+  "operation": "compare",
+  "expected": {
+    "matched_event_id": "event-001"
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": "event-001",
+    "actual": "event-001"
+  },
+  "identity": {
+    "scoring_version": 2,
+    "inference_key": "6c52349384b4c1e72c6dabbe7a2338a765610612f119df83b80cfe74c0cf1757",
+    "expected_output_hash": "fb532ed7006bb0d85ca6e45563073776f4a8eb69fdaee303177c9bdfb53c1b51",
+    "scorer_hash": "34e3b48d9b9902d1f4fee602c48478bc8d2139938715a7417e4baec0709c5298"
+  },
+  "score_key": "eb0d80bebd4c8fa08319f20ade4a8f9fc70572051c6cec8926da46a02850ca2c",
+  "stored_at": "2026-11-01T04:08:57.980697+00:00"
+}

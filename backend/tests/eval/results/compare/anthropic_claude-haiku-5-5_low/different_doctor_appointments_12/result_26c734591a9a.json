@@ -1,29 +1,29 @@
 {
   "fixture_name": "different_doctor_appointments_12",
   "fixture_hash": "c75fb0b0362b1caabaaac19630c291b5f8ca23be165c5a77a7af5cfc9c0618b3",
-  "code_hash": "3b61b944aad7",
+  "code_hash": "23e8bc9980aa",
   "prompt_hash": "26c734591a9a",
   "operation": "compare",
   "provider": "anthropic",
   "model": "claude-haiku-5-5",
   "thinking": "low",
-  "run_at": "2026-11-01T02:40:21.327752+00:00",
-  "duration_ms": 1252,
+  "run_at": "2026-11-01T04:08:44.211308+00:00",
+  "duration_ms": 1116,
   "timing": {
     "fixture_load": {
-      "started_at": "2026-11-01T02:40:20.071866+00:00",
+      "started_at": "2026-11-01T04:08:43.090975+00:00",
       "duration_ms": 0
     },
     "gateway_create": {
-      "started_at": "2026-11-01T02:40:20.071877+00:00",
-      "duration_ms": 9
+      "started_at": "2026-11-01T04:08:43.090984+00:00",
+      "duration_ms": 8
     },
     "api_call": {
-      "started_at": "2026-11-01T02:40:20.081352+00:00",
-      "duration_ms": 1243
+      "started_at": "2026-11-01T04:08:43.099621+00:00",
+      "duration_ms": 1108
     },
     "scoring": {
-      "started_at": "2026-11-01T02:40:21.324599+00:00",
+      "started_at": "2026-11-01T04:08:44.207807+00:00",
       "duration_ms": 0
     }
   },
@@ -47,10 +47,10 @@
   },
   "tokens": {
     "prompt_tokens": 639,
-    "completion_tokens": 158,
-    "total_tokens": 797
+    "completion_tokens": 143,
+    "total_tokens": 782
   },
-  "cost": 0.0001429,
+  "cost": 0.0001354,
   "trace": {
     "content_parts": [
       {
@@ -103,15 +103,15 @@
         "reasoning"
       ]
     },
-    "raw_response_text": "{\"matched_event_id\": null, \"reasoning\": \"The new event is a Dermatology Appointment on 2026-06-04 at 14:00-14:30 at Skin Health Clinic. None of the existing events match: event-001 is a dentist visit on June 2, event-002 is an eye exam on June 5, and event-003 is a team lunch on June 4 at a different time (12:00-13:00) and location with a different purpose. No existing event refers to the same real-world appointment.\"}",
+    "raw_response_text": "{\"matched_event_id\": null, \"reasoning\": \"The new event is a Dermatology Appointment on 2026-06-04 at 14:00-14:30 at Skin Health Clinic. None of the existing events match: event-001 is a dentist appointment on June 2, event-002 is an eye exam on June 5, and event-003 is a team lunch at a different time and location on June 4. No existing event refers to the same real-world appointment.\"}",
     "finish_reason": "end_turn",
     "retry_count": 0,
     "error_traceback": null,
-    "correlation_id": "d83d65847266433aa2460ade51eb7d04",
+    "correlation_id": "1d7a079d996d425d8e03cd3fbac231b2",
     "route_role": "primary"
   },
-  "inference_key": "feb9428fb7c152868113e25598922813b3cf41b7dbdc4248e56540ecac060e92",
-  "score_key": "d9d3ac24fa279c5c498c459ec9506fd7bbd734bd710c36b3f5e914a022ff958d",
+  "inference_key": "e6ad0093f2c1ac2e06e6f65b8d969717bfc7dacfe7a37a9d66bd5fd89e1aa837",
+  "score_key": "3d42fd65acfa09d2fb128646f520c5e3294001e43b86325ef7c3f2cf1d68b550",
   "identity": {
     "identity_version": 2,
     "operation": "compare",
@@ -135,7 +135,7 @@
       "top_p": null
     },
     "prompt_contract_hash": "26c734591a9a2f602b175c5e7f03455199cca7eb847d43a054d339700ba5d2bb",
-    "adapter_contract_hash": "853277a8daf01bb6dff0cf2b0332682d532c648421bec5a11cf77d1d0cee152d",
+    "adapter_contract_hash": "d3cff82711b897f93c4044d5f12effe2e04dcdd511f069e9a2ac48452c725455",
     "fixture_input_hash": "c75fb0b0362b1caabaaac19630c291b5f8ca23be165c5a77a7af5cfc9c0618b3"
   }
 }

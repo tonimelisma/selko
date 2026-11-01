@@ -1,0 +1,55 @@
+{
+  "fixture_name": "school/government_comment_period_13",
+  "operation": "extract",
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Public Comment Period - Safety Element",
+        "start_datetime": "2026-02-09",
+        "end_datetime": "2026-03-11",
+        "all_day": true,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "start_datetime": {
+          "expected_date": "2026-02-09",
+          "actual_date": "2026-02-09",
+          "match": true,
+          "allday_relaxed": true
+        },
+        "end_datetime": {
+          "expected_date": "2026-03-11",
+          "actual_date": "2026-03-11",
+          "day_difference": 0,
+          "match": true,
+          "allday_relaxed": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true,
+          "allday_relaxed": false
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      }
+    ],
+    "extra_events": [],
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "replicate": 205,
+  "inference_key": "33e5d54d4bf42865c149372ba97aa662241c0fa21d15cf57e23dc00519a12fd7"
+}

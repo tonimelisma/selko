@@ -1,29 +1,29 @@
 {
   "fixture_name": "reschedule_across_dates_23",
   "fixture_hash": "f3159d7baa6aa50028e2278f1e072420f7d5410a82f0f17d009398eab68cf6e5",
-  "code_hash": "3b61b944aad7",
+  "code_hash": "23e8bc9980aa",
   "prompt_hash": "26c734591a9a",
   "operation": "compare",
   "provider": "anthropic",
   "model": "claude-haiku-5-5",
   "thinking": "low",
-  "run_at": "2026-11-01T02:40:22.774641+00:00",
-  "duration_ms": 1715,
+  "run_at": "2026-11-01T04:08:46.365717+00:00",
+  "duration_ms": 2121,
   "timing": {
     "fixture_load": {
-      "started_at": "2026-11-01T02:40:21.054924+00:00",
+      "started_at": "2026-11-01T04:08:44.239613+00:00",
       "duration_ms": 0
     },
     "gateway_create": {
-      "started_at": "2026-11-01T02:40:21.054929+00:00",
-      "duration_ms": 7
+      "started_at": "2026-11-01T04:08:44.239620+00:00",
+      "duration_ms": 6
     },
     "api_call": {
-      "started_at": "2026-11-01T02:40:21.062435+00:00",
-      "duration_ms": 1708
+      "started_at": "2026-11-01T04:08:44.246217+00:00",
+      "duration_ms": 2115
     },
     "scoring": {
-      "started_at": "2026-11-01T02:40:22.770785+00:00",
+      "started_at": "2026-11-01T04:08:46.361954+00:00",
       "duration_ms": 0
     }
   },
@@ -48,10 +48,10 @@
   },
   "tokens": {
     "prompt_tokens": 526,
-    "completion_tokens": 287,
-    "total_tokens": 813
+    "completion_tokens": 387,
+    "total_tokens": 913
   },
-  "cost": 0.0001961,
+  "cost": 0.0002461,
   "trace": {
     "content_parts": [
       {
@@ -104,15 +104,15 @@
         "reasoning"
       ]
     },
-    "raw_response_text": "{\"matched_event_id\": \"event-001\", \"reasoning\": \"The new event is titled 'Quarterly Planning' with the same time (17:00-18:00) and location (Video call) as event-001. Its description says it was rescheduled from the 4th with the same agenda, which identifies it as the same meeting moved to a new date. Event-002 is a different meeting ('Quarterly Budget Review') at a different time, with a description marking it as separate.\"}",
+    "raw_response_text": "{\"matched_event_id\": \"event-001\", \"reasoning\": \"The new event is titled 'Quarterly Planning', has the same location (Video call), and states it was rescheduled from the 4th with the same agenda. Event-001 is the 'Quarterly Planning' session on 2026-09-04 at the same 17:00-18:00 time, so the new event is the same meeting moved to 09-11. Event-002 is a different meeting (Quarterly Budget Review, 19:00-20:00, separate finance review).\"}",
     "finish_reason": "end_turn",
     "retry_count": 0,
     "error_traceback": null,
-    "correlation_id": "125950b73d404422ab4704ab6419f18e",
+    "correlation_id": "708cd56acecf4974a8ec8f1ecac41b9b",
     "route_role": "primary"
   },
-  "inference_key": "96c31fbcc7798e9eec7a63c294ad53ce6ddf438495714155e9f4c49a7462c4d7",
-  "score_key": "a2352f29709b6eb394c9f389c2a0a8a4a1f3efea30ee8686e83cd736b86c9c46",
+  "inference_key": "ca1a10b0e79a319059ae5b803d31b72e4b9c2c08c60349b5c4fa49940e8eb5e9",
+  "score_key": "1710893eb6ec39f3467361687814e57192fab3825438bd338ad4905979a8d696",
   "identity": {
     "identity_version": 2,
     "operation": "compare",
@@ -136,7 +136,7 @@
       "top_p": null
     },
     "prompt_contract_hash": "26c734591a9a2f602b175c5e7f03455199cca7eb847d43a054d339700ba5d2bb",
-    "adapter_contract_hash": "853277a8daf01bb6dff0cf2b0332682d532c648421bec5a11cf77d1d0cee152d",
+    "adapter_contract_hash": "d3cff82711b897f93c4044d5f12effe2e04dcdd511f069e9a2ac48452c725455",
     "fixture_input_hash": "f3159d7baa6aa50028e2278f1e072420f7d5410a82f0f17d009398eab68cf6e5"
   }
 }

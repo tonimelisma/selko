@@ -1,0 +1,56 @@
+{
+  "fixture_name": "meetings/organizer_sent_agenda",
+  "operation": "extract",
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Q3 Planning Meeting",
+        "start_datetime": "2026-08-04T10:00:00",
+        "end_datetime": "2026-08-04T11:00:00",
+        "location": "Conference Room Cedar",
+        "all_day": false,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      }
+    ],
+    "extra_events": [],
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 2,
+    "inference_key": "b1b832386494f55d87768541c16e13a7e3bf039657e7e39136a1531f1805153b",
+    "expected_output_hash": "39ed4a89ab10d3fa9202a69a694c4ad6575ea87d10eb5ede85a250580b257617",
+    "scorer_hash": "a4bebf9e53234c7487f4d65ea503fd0e35febe52e584ee52eda52f5faf46ec14"
+  },
+  "score_key": "8907a2a3f6426952add72fb4221b130caef13fe97e74739e6e8c46bf54a7088c",
+  "stored_at": "2026-11-01T04:08:13.172776+00:00"
+}

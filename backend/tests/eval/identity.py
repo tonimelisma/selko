@@ -235,7 +235,11 @@ def compute_prompt_contract_hash(operation: OperationName | str) -> str:
     if operation == "extract":
         parts.append(_normalized_source(event_processing._build_prompt))
         parts.append(_normalized_source(event_processing.extract_calendar_events))
-        for helper_name in ("_build_content_parts", "_get_attachment_size_limit"):
+        for helper_name in (
+            "_build_content_parts",
+            "_build_email_context",
+            "_get_attachment_size_limit",
+        ):
             helper = getattr(event_processing, helper_name, None)
             if helper is not None:
                 parts.append(_normalized_source(helper))

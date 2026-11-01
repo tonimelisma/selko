@@ -1,29 +1,29 @@
 {
   "fixture_name": "event_cancelled_06",
   "fixture_hash": "df8a096891d240fd2289dea1b179ed7dc0035ef97307a3ca27c73f250c3d6d16",
-  "code_hash": "3b61b944aad7",
+  "code_hash": "23e8bc9980aa",
   "prompt_hash": "0326a7a81e16",
   "operation": "merge",
   "provider": "anthropic",
   "model": "claude-haiku-5-5",
   "thinking": "low",
-  "run_at": "2026-11-01T02:40:27.482970+00:00",
-  "duration_ms": 1058,
+  "run_at": "2026-11-01T04:08:51.246522+00:00",
+  "duration_ms": 922,
   "timing": {
     "fixture_load": {
-      "started_at": "2026-11-01T02:40:26.420827+00:00",
+      "started_at": "2026-11-01T04:08:50.322123+00:00",
       "duration_ms": 0
     },
     "gateway_create": {
-      "started_at": "2026-11-01T02:40:26.420835+00:00",
-      "duration_ms": 5
+      "started_at": "2026-11-01T04:08:50.322131+00:00",
+      "duration_ms": 6
     },
     "api_call": {
-      "started_at": "2026-11-01T02:40:26.426657+00:00",
-      "duration_ms": 1053
+      "started_at": "2026-11-01T04:08:50.328220+00:00",
+      "duration_ms": 916
     },
     "scoring": {
-      "started_at": "2026-11-01T02:40:27.480273+00:00",
+      "started_at": "2026-11-01T04:08:51.244364+00:00",
       "duration_ms": 0
     }
   },
@@ -51,7 +51,7 @@
     "end_datetime": "2026-04-18T15:00:00",
     "all_day": false,
     "location": "Conference Room A",
-    "description": "Bi-weekly sprint review and retrospective. Meeting cancelled due to team offsite. Will reschedule next week.",
+    "description": "Bi-weekly sprint review and retrospective\n\nMeeting cancelled due to team offsite. Will reschedule next week.",
     "importance": "action_required"
   },
   "auto_score": {
@@ -90,10 +90,10 @@
   },
   "tokens": {
     "prompt_tokens": 751,
-    "completion_tokens": 137,
-    "total_tokens": 888
+    "completion_tokens": 140,
+    "total_tokens": 891
   },
-  "cost": 0.00014360000000000002,
+  "cost": 0.00014510000000000003,
   "trace": {
     "content_parts": [
       {
@@ -216,15 +216,15 @@
         "importance"
       ]
     },
-    "raw_response_text": "{\"title\": \"CANCELLED: Sprint Review\", \"start_datetime\": \"2026-04-18T14:00:00\", \"end_datetime\": \"2026-04-18T15:00:00\", \"all_day\": false, \"location\": \"Conference Room A\", \"description\": \"Bi-weekly sprint review and retrospective. Meeting cancelled due to team offsite. Will reschedule next week.\", \"importance\": \"action_required\"}",
+    "raw_response_text": "{\"title\": \"CANCELLED: Sprint Review\", \"start_datetime\": \"2026-04-18T14:00:00\", \"end_datetime\": \"2026-04-18T15:00:00\", \"all_day\": false, \"location\": \"Conference Room A\", \"description\": \"Bi-weekly sprint review and retrospective\\n\\nMeeting cancelled due to team offsite. Will reschedule next week.\", \"importance\": \"action_required\"}",
     "finish_reason": "end_turn",
     "retry_count": 0,
     "error_traceback": null,
-    "correlation_id": "70692bd1b6044b6692c01fa959fbfe6b",
+    "correlation_id": "d5c0cec644c8443c9f946e72073b00af",
     "route_role": "primary"
   },
-  "inference_key": "4f4fa8513240bdb290d2cf8cb70f3bb20c56425ea8d2b1ce591ccf33bee8c11c",
-  "score_key": "39cd62ef58ed13f38366f8c246776ec998cee3b3ec82cc45ec79f5851e234351",
+  "inference_key": "5ab67be4fc27141d5121992f82ed03a540a4b31a8255518c351ff03bb4d0d086",
+  "score_key": "082e1a801e73b75965ae0f61cde8407316bde947eae4a08581216fa02233a25c",
   "identity": {
     "identity_version": 2,
     "operation": "merge",
@@ -248,7 +248,7 @@
       "top_p": null
     },
     "prompt_contract_hash": "0326a7a81e169edaf924fb8a09fe97a184519ff43052c4a3ce59137d4d4545b6",
-    "adapter_contract_hash": "853277a8daf01bb6dff0cf2b0332682d532c648421bec5a11cf77d1d0cee152d",
+    "adapter_contract_hash": "d3cff82711b897f93c4044d5f12effe2e04dcdd511f069e9a2ac48452c725455",
     "fixture_input_hash": "df8a096891d240fd2289dea1b179ed7dc0035ef97307a3ca27c73f250c3d6d16"
   }
 }
