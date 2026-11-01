@@ -110,6 +110,7 @@ class LLMFailureKind(StrEnum):
     INVALID_JSON = "invalid_json"
     INVALID_SCHEMA = "invalid_schema"
     TRUNCATED = "truncated"
+    REFUSAL = "refusal"
     PERMANENT_PROVIDER = "permanent_provider"
 
 
@@ -164,12 +165,15 @@ class LLMValidatedCallError(LLMGatewayError):
 
 
 # Failure kinds that skip remaining primary retries and go straight to fallback.
+# A refusal is a safeguard decision: retrying the same model on the same input
+# would only be declined again.
 _IMMEDIATE_FALLBACK_KINDS = frozenset(
     {
         LLMFailureKind.EMPTY,
         LLMFailureKind.INVALID_JSON,
         LLMFailureKind.INVALID_SCHEMA,
         LLMFailureKind.TRUNCATED,
+        LLMFailureKind.REFUSAL,
     }
 )
 
@@ -632,7 +636,14 @@ class LLMGateway:
                             route.provider, "_last_sanitized_schema", None
                         )
 
-                    # Protocol checks before caller validator.
+                    # Protocol checks before caller validator. A refusal has
+                    # empty content, so it must be told apart from EMPTY first.
+                    if response.finish_reason == "refusal":
+                        raise LLMValidationError(
+                            LLMFailureKind.REFUSAL,
+                            f"Provider declined the request "
+                            f"(category={response.refusal_category})",
+                        )
                     if response.text is None or not str(response.text).strip():
                         raise LLMValidationError(
                             LLMFailureKind.EMPTY, "Empty LLM response"
@@ -972,6 +983,7 @@ class LLMGateway:
             LLMFailureKind.INVALID_JSON,
             LLMFailureKind.INVALID_SCHEMA,
             LLMFailureKind.TRUNCATED,
+            LLMFailureKind.REFUSAL,
         ):
             return LLMErrorType.INVALID_RESPONSE
         if kind == LLMFailureKind.PERMANENT_PROVIDER:

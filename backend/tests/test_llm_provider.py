@@ -420,6 +420,26 @@ class TestCreateProvider:
         assert kwargs["output_config"] == {"effort": "low"}
         assert kwargs["max_tokens"] == 16000
 
+    def test_anthropic_client_leaves_retries_to_the_gateway(self):
+        """SDK retries stacked on gateway retries multiplied each attempt."""
+        with patch("anthropic.Anthropic") as client_cls:
+            AnthropicProvider(api_key="k", model="claude-haiku-5-5")
+
+        assert client_cls.call_args.kwargs["max_retries"] == 0
+
+    def test_anthropic_refusal_carries_its_category(self):
+        with patch("anthropic.Anthropic") as client_cls:
+            provider = AnthropicProvider(
+                api_key="k", model="claude-haiku-5-5", adaptive_thinking=True
+            )
+            refusal = MagicMock(content=[], usage=None, stop_reason="refusal")
+            refusal.stop_details.category = "general_harms"
+            client_cls.return_value.messages.create.return_value = refusal
+            response = provider.generate(["extract"])
+
+        assert response.finish_reason == "refusal"
+        assert response.refusal_category == "general_harms"
+
     def test_create_provider_qwen_thinking_model_gets_flag(self):
         """Test that Qwen 3.7 Plus gets qwen_thinking=True via create_provider."""
         config = MagicMock()

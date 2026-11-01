@@ -43,6 +43,9 @@ class LLMResponse:
     prompt_tokens: Optional[int] = None
     completion_tokens: Optional[int] = None
     finish_reason: Optional[str] = None
+    # Set when the provider's safeguards declined the request (Anthropic
+    # stop_reason "refusal"); the category may legitimately be None.
+    refusal_category: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -1196,7 +1199,9 @@ class AnthropicProvider(LLMProvider):
         self.thinking = thinking
         self.adaptive_thinking = adaptive_thinking
         self.tinker_effort = tinker_effort
-        client_kwargs: dict[str, Any] = {"api_key": api_key}
+        # LLMGateway owns retries and backoff; SDK retries on top of them
+        # turned one gateway attempt into up to three HTTP requests.
+        client_kwargs: dict[str, Any] = {"api_key": api_key, "max_retries": 0}
         if base_url:
             client_kwargs["base_url"] = base_url
         self.client = anthropic.Anthropic(**client_kwargs)
@@ -1305,12 +1310,18 @@ class AnthropicProvider(LLMProvider):
 
         # Extract finish reason
         finish_reason = getattr(response, "stop_reason", None)
+        refusal_category = None
+        if finish_reason == "refusal":
+            # Branch on stop_reason; stop_details is informational and may be None.
+            stop_details = getattr(response, "stop_details", None)
+            refusal_category = getattr(stop_details, "category", None)
 
         return LLMResponse(
             text=text,
             prompt_tokens=prompt_tokens,
             completion_tokens=completion_tokens,
             finish_reason=finish_reason,
+            refusal_category=refusal_category,
         )
 
 

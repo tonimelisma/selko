@@ -335,3 +335,42 @@ class TestCallValidatedRouting:
             c.kwargs["model"] for c in mock_logging_service.log_success.call_args_list
         ]
         assert success_models == ["f-model"]
+
+
+class TestRefusalRouting:
+    """A safeguard refusal is its own failure kind, never an empty response."""
+
+    def _refusal(self) -> LLMResponse:
+        return LLMResponse(text="", finish_reason="refusal", refusal_category="general_harms")
+
+    def test_refusal_is_not_retried_on_the_same_model(self):
+        primary = _make_provider("anthropic", "claude-haiku-5-5", [self._refusal()])
+        gateway = LLMGateway(primary, primary_max_attempts=3)
+
+        with patch("selko.services.llm_gateway.time.sleep") as sleep:
+            with pytest.raises(LLMValidatedCallError) as exc:
+                gateway.call_validated(
+                    operation=LLMOperationType.EXTRACT_EVENTS,
+                    contents=["email"],
+                    validator=_identity_validator,
+                )
+
+        assert exc.value.kind == LLMFailureKind.REFUSAL
+        assert "general_harms" in str(exc.value)
+        assert primary.generate.call_count == 1
+        sleep.assert_not_called()
+
+    def test_refusal_goes_to_a_configured_fallback(self):
+        primary = _make_provider("anthropic", "claude-haiku-5-5", [self._refusal()])
+        fallback = _make_provider("fallback", "f-model", [_ok_payload()])
+        gateway = LLMGateway(primary, fallback_provider=fallback, primary_max_attempts=3)
+
+        result = gateway.call_validated(
+            operation=LLMOperationType.EXTRACT_EVENTS,
+            contents=["email"],
+            validator=_identity_validator,
+        )
+
+        assert result == {"ok": True}
+        assert primary.generate.call_count == 1
+        assert fallback.generate.call_count == 1
