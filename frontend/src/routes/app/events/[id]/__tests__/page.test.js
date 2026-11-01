@@ -239,7 +239,7 @@ describe('Event Detail Page', () => {
 			expect(acceptButtons.length).toBeGreaterThan(0);
 			for (const button of acceptButtons) expect(button).toBeEnabled();
 		});
-		expect(screen.queryByRole('button', { name: 'Reconnect Outlook' })).not.toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: 'Connect Outlook Calendar' })).not.toBeInTheDocument();
 	});
 
 	it('disables acceptance when Outlook lacks calendar scope', async () => {
@@ -251,7 +251,7 @@ describe('Event Detail Page', () => {
 		render(EventDetailPage);
 
 		await waitFor(() => {
-			expect(screen.getByRole('button', { name: 'Reconnect Outlook' })).toBeEnabled();
+			expect(screen.getByRole('button', { name: 'Connect Outlook Calendar' })).toBeEnabled();
 		});
 		for (const button of screen.getAllByRole('button', { name: /^accept/i })) {
 			expect(button).toBeDisabled();

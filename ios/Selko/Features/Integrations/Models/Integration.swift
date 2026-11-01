@@ -126,77 +126,137 @@ extension Array where Element == Integration {
         contains { $0.provider == .outlook && $0.isActive && !$0.canWriteCalendar }
     }
 
-    /// What the reconnect banner offers: one action per sign-in, not per row.
-    /// Gmail and Google Calendar are separate rows but one Google consent
-    /// grants both, so offering both only duplicated the same flow. Outlook
-    /// mail and Outlook Calendar share one row.
-    var recoveryPlan: RecoveryPlan {
+    /// What the connection banner asks for, written from the user's side:
+    /// name the account that stopped working and what it stopped doing, then
+    /// offer the one sign-in that fixes it. `nil` when nothing needs the user.
+    ///
+    /// A lapsed sign-in comes first, because it is the account the user
+    /// already chose. Offering a different provider beside it made the banner
+    /// a menu of equal-looking buttons for a problem with one answer;
+    /// switching providers stays in Settings.
+    var recoveryPlan: RecoveryPlan? {
         let rows = filter { $0.provider != .googlePhotos }
-        let googleRows = rows.filter { $0.provider == .gmail || $0.provider == .googleCalendar }
+        let gmail = rows.first { $0.provider == .gmail }
+        let googleCalendar = rows.first { $0.provider == .googleCalendar }
         let outlook = rows.first { $0.provider == .outlook }
-        let emailConnected = rows.contains {
-            ($0.provider == .gmail || $0.provider == .outlook) && $0.isActive
-        }
-        let calendarConnected = rows.hasWritableCalendar
+        let calendarWritable = rows.hasWritableCalendar
 
-        // A lapsed Gmail always matters. A lapsed Google Calendar matters only
-        // when no calendar is writable; with Outlook Calendar working it is not
-        // a reason to prompt.
-        var wantsGoogle = rows.contains { $0.provider == .gmail && !$0.isActive }
-        var wantsOutlook = outlook.map { !$0.isActive } ?? false
-        if !emailConnected {
-            wantsGoogle = true
-            wantsOutlook = true
-        } else if !calendarConnected {
-            wantsGoogle = true
-            if let outlook, !outlook.canWriteCalendar { wantsOutlook = true }
+        // A lapsed Google Calendar is not worth a prompt while Outlook Calendar works.
+        let googleMailLost = gmail.map { !$0.isActive } ?? false
+        let googleCalendarLost = (googleCalendar.map { !$0.isActive } ?? false) && !calendarWritable
+        let outlookLost = outlook.map { !$0.isActive } ?? false
+
+        if googleMailLost || googleCalendarLost, outlookLost {
+            return RecoveryPlan(kind: .accounts, actions: [
+                RecoveryAction(signIn: .google, verb: .reconnect),
+                RecoveryAction(signIn: .outlook, verb: .reconnect)
+            ])
+        }
+        if outlookLost, let outlook {
+            let hadCalendar = outlook.scopes.contains { $0.lowercased().hasSuffix("calendars.readwrite") }
+            return RecoveryPlan(
+                kind: .signedOut(.outlook, RecoveryPlan.Lost(mail: true, calendar: hadCalendar && !calendarWritable)),
+                actions: [RecoveryAction(signIn: .outlook, verb: .reconnect)]
+            )
+        }
+        if googleMailLost || googleCalendarLost {
+            return RecoveryPlan(
+                kind: .signedOut(.google, RecoveryPlan.Lost(mail: googleMailLost, calendar: googleCalendarLost)),
+                actions: [RecoveryAction(signIn: .google, verb: .reconnect)]
+            )
         }
 
-        let google = wantsGoogle
-            ? [RecoveryAction(signIn: .google, isReconnect: !googleRows.isEmpty)] : []
-        let outlookAction = wantsOutlook
-            ? [RecoveryAction(signIn: .outlook, isReconnect: outlook != nil)] : []
-        // An Outlook account that only lacks calendar consent is the shortest
-        // fix, so it is offered first.
-        let outlookFirst = emailConnected && !calendarConnected
-            && outlook?.isActive == true && outlook?.canWriteCalendar == false
-        let actions = outlookFirst ? outlookAction + google : google + outlookAction
-
-        let title: RecoveryPlan.Title
-        if !emailConnected {
-            title = .email
-        } else if !calendarConnected {
-            let hadCalendar = rows.contains { $0.provider == .googleCalendar }
-                || (outlook?.scopes.contains { $0.lowercased().hasSuffix("calendars.readwrite") } ?? false)
-            title = hadCalendar ? .reconnectCalendar : .connectCalendar
-        } else {
-            title = .attention
+        let gmailActive = gmail?.isActive == true
+        let outlookActive = outlook?.isActive == true
+        if !gmailActive && !outlookActive {
+            // Two equal choices are right here: Selko cannot know which mail the user has.
+            return RecoveryPlan(kind: .connectEmail, actions: [
+                RecoveryAction(signIn: .google, verb: .connectEmail),
+                RecoveryAction(signIn: .outlook, verb: .connectEmail)
+            ])
         }
-        return RecoveryPlan(title: title, actions: actions)
+        if !calendarWritable {
+            // Offer the calendar of the account the user already signed in with.
+            return RecoveryPlan(kind: .connectCalendar, actions: [
+                RecoveryAction(signIn: gmailActive ? .google : .outlook, verb: .connectCalendar)
+            ])
+        }
+        return nil
     }
 }
 
-/// One sign-in the reconnect banner can offer.
+/// One sign-in the connection banner can offer.
 struct RecoveryAction: Equatable {
     enum SignIn: Equatable { case google, outlook }
+    enum Verb: Equatable { case reconnect, connectEmail, connectCalendar }
 
     let signIn: SignIn
-    let isReconnect: Bool
+    let verb: Verb
 
     /// Gmail stands in for the combined Google consent, which grants Gmail
     /// and Google Calendar together (`/integrations/google/auth`).
     var authProvider: IntegrationProvider { signIn == .google ? .gmail : .outlook }
 
     var label: String {
-        "\(isReconnect ? "Reconnect" : "Connect") \(signIn == .google ? "Google" : "Outlook")"
+        switch (verb, signIn) {
+        case (.reconnect, .google): "Reconnect Google"
+        case (.reconnect, .outlook): "Reconnect Outlook"
+        case (.connectEmail, .google): "Connect Gmail"
+        case (.connectEmail, .outlook): "Connect Outlook"
+        case (.connectCalendar, .google): "Connect Google Calendar"
+        case (.connectCalendar, .outlook): "Connect Outlook Calendar"
+        }
     }
 }
 
 struct RecoveryPlan: Equatable {
-    enum Title: Equatable { case email, connectCalendar, reconnectCalendar, attention }
+    /// What a lapsed sign-in stopped doing.
+    struct Lost: Equatable {
+        let mail: Bool
+        let calendar: Bool
+    }
 
-    let title: Title
+    enum Kind: Equatable {
+        case signedOut(RecoveryAction.SignIn, Lost)
+        case accounts
+        case connectEmail
+        case connectCalendar
+    }
+
+    let kind: Kind
     let actions: [RecoveryAction]
+
+    var title: String {
+        switch kind {
+        case .signedOut(.google, _): "Reconnect your Google account"
+        case .signedOut(.outlook, _): "Reconnect your Outlook account"
+        case .accounts: "Reconnect your accounts"
+        case .connectEmail: "Connect your email"
+        case .connectCalendar: "Connect a calendar"
+        }
+    }
+
+    var message: String {
+        switch kind {
+        case let .signedOut(signIn, lost):
+            let mail = signIn == .google ? "Gmail" : "mail"
+            let calendar = signIn == .google ? "Google Calendar" : "Outlook Calendar"
+            let account = signIn == .google ? "Google" : "Outlook"
+            if lost.mail && lost.calendar {
+                return "Selko lost access to \(account), so it can’t read new \(mail) or add events to \(calendar). Sign in again to pick up where it left off."
+            }
+            if lost.mail {
+                return "Selko lost access to \(account), so it can’t read new \(mail). Sign in again to pick up where it left off."
+            }
+            return "Selko lost access to \(calendar). You can keep reviewing suggestions, and accept them once you sign in again."
+        case .accounts:
+            return "Selko lost access to Google and Outlook, so it can’t read new email or update your calendar."
+        case .connectEmail:
+            return "Selko finds events in your email. Connect the account you use to get started."
+        case .connectCalendar:
+            return "Selko needs a calendar to add events to. You can review suggestions now and accept them once a calendar is connected."
+        }
+    }
 }
 
 extension Integration {
