@@ -6,8 +6,13 @@ invite the user had already accepted therefore had no row anywhere Selko could
 look, and "do we already know this?" degraded into an LLM text comparison.
 
 This module keeps a durable, incrementally-synced projection instead. It is
-read-only with respect to the provider: nothing here writes to Google Calendar,
+read-only with respect to the provider: nothing here writes to a calendar,
 which remains owned by `calendar_work_items`.
+
+Google Calendar and Outlook Calendar are mirrored through the same code: the
+Outlook adapter in `calendar_providers` returns calendarView delta pages in
+the shape Google's incremental list returns, with qualified ids, so
+`entry_row` and identity indexing never branch on the provider.
 """
 
 from __future__ import annotations
@@ -20,8 +25,10 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from supabase import Client
 
+from selko.services import calendar_providers as providers
+from selko.services.calendar_providers import CalendarSyncTokenExpired, GoogleCalendarAdapter
 from selko.services.integrations import get_credentials
-from selko.services.calendars import CalendarsError, list_calendars
+from selko.services.calendars import CalendarsError, calendar_adapter, list_provider_calendars
 from selko.services.event_identity import hints_from_calendar_event
 
 logger = logging.getLogger(__name__)
@@ -30,10 +37,6 @@ logger = logging.getLogger(__name__)
 #: near an extracted date, so all history is unbounded and pointless.
 WINDOW_BEHIND = timedelta(days=90)
 WINDOW_AHEAD = timedelta(days=365)
-
-#: Google returns 410 when a sync token has expired and a full resync is needed.
-_SYNC_TOKEN_EXPIRED = 410
-
 
 def rolling_window(now: datetime | None = None) -> tuple[datetime, datetime]:
     reference = now or datetime.now(timezone.utc)
@@ -145,25 +148,23 @@ def fetch_page(
     window: tuple[datetime, datetime],
     page_token: str | None = None,
 ) -> dict[str, Any]:
-    """One page of events, incremental when a sync token is available.
+    """One Google page of events, incremental when a sync token is available.
 
     `timeMin`/`timeMax` may not be combined with `syncToken`; Google keeps the
     window from the request that issued the token.
     """
-    params: dict[str, Any] = {
-        "calendarId": calendar_id,
-        "singleEvents": True,
-        "maxResults": 250,
-        "showDeleted": True,
-    }
-    if page_token:
-        params["pageToken"] = page_token
-    if sync_token:
-        params["syncToken"] = sync_token
-    else:
-        params["timeMin"] = window[0].isoformat()
-        params["timeMax"] = window[1].isoformat()
-    return service.events().list(**params).execute()
+    return GoogleCalendarAdapter(service).mirror_page(
+        calendar_id, sync_token=sync_token, window=window, page_token=page_token
+    )
+
+
+def _mirror_adapter(supabase_client: Client, user_id: str, provider: str) -> Any:
+    if provider == providers.OUTLOOK:
+        return calendar_adapter(supabase_client, user_id, provider)
+    credentials = get_credentials(supabase_client, user_id, "google_calendar")
+    if not credentials:
+        raise CalendarsError("No Google Calendar credentials found")
+    return GoogleCalendarAdapter(build("calendar", "v3", credentials=credentials))
 
 
 def sync_calendar(
@@ -173,14 +174,13 @@ def sync_calendar(
     calendar_id: str = "primary",
     *,
     now: datetime | None = None,
+    provider: str = providers.GOOGLE,
 ) -> dict[str, Any]:
     """Bring `calendar_entries` up to date for one calendar.
 
     Returns a content-free summary: counts and whether a full resync happened.
     """
-    credentials = get_credentials(supabase_client, user_id, "google_calendar")
-    if not credentials:
-        raise CalendarsError("No Google Calendar credentials found")
+    adapter = _mirror_adapter(supabase_client, user_id, provider)
 
     window = rolling_window(now)
 
@@ -194,7 +194,6 @@ def sync_calendar(
     )
     sync_token = (getattr(state, "data", None) or {}).get("sync_token")
 
-    service = build("calendar", "v3", credentials=credentials)
     full_resync = sync_token is None
     rows: list[dict[str, Any]] = []
     page_token: str | None = None
@@ -202,22 +201,21 @@ def sync_calendar(
 
     while True:
         try:
-            page = fetch_page(
-                service,
+            page = adapter.mirror_page(
                 calendar_id,
                 sync_token=sync_token,
                 window=window,
                 page_token=page_token,
             )
+        except CalendarSyncTokenExpired:
+            # The cursor aged out. Drop it and take one full window read.
+            logger.info("Calendar sync token expired; performing a full resync")
+            sync_token = None
+            page_token = None
+            full_resync = True
+            rows = []
+            continue
         except HttpError as exc:
-            if getattr(exc, "resp", None) is not None and exc.resp.status == _SYNC_TOKEN_EXPIRED:
-                # The cursor aged out. Drop it and take one full window read.
-                logger.info("Calendar sync token expired; performing a full resync")
-                sync_token = None
-                page_token = None
-                full_resync = True
-                rows = []
-                continue
             raise CalendarsError(f"Calendar mirror sync failed: {exc}") from exc
 
         for entry in page.get("items", []):
@@ -421,7 +419,10 @@ def _index_unhinted_entries(
 
 
 def sync_all_calendars(
-    supabase_client: Client, user_id: str, integration_id: str
+    supabase_client: Client,
+    user_id: str,
+    integration_id: str,
+    provider: str = providers.GOOGLE,
 ) -> dict[str, Any]:
     """Mirror every calendar the account can see, not only the write target.
 
@@ -436,7 +437,7 @@ def sync_all_calendars(
     stop the rest, so each is attempted independently.
     """
     try:
-        calendars = list_calendars(supabase_client, user_id)
+        calendars = list_provider_calendars(supabase_client, user_id, provider)
     except Exception as exc:
         raise CalendarsError(f"Could not list calendars: {exc}") from exc
 
@@ -456,7 +457,8 @@ def sync_all_calendars(
             continue
         try:
             summary = sync_calendar(
-                supabase_client, user_id, integration_id, calendar_id
+                supabase_client, user_id, integration_id, calendar_id,
+                provider=provider,
             )
             totals["calendars"] += 1
             totals["entries"] += summary["entries"]

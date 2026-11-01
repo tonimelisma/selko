@@ -1,6 +1,8 @@
 """Microsoft Graph service for Outlook email ingestion.
 
 This module owns the Microsoft OAuth flow and the Inbox delta-sync helpers.
+One Microsoft consent covers both Outlook mail and Outlook Calendar; the
+calendar side lives in `calendar_providers.OutlookCalendarAdapter`.
 Parsed messages intentionally use the same provider-agnostic shape as Gmail
 messages so the downstream email and event-processing pipeline is shared.
 """
@@ -31,7 +33,10 @@ logger = logging.getLogger(__name__)
 
 GRAPH = "https://graph.microsoft.com/v1.0"
 AUTHORITY = "https://login.microsoftonline.com/common"
-SCOPES = ["Mail.Read", "User.Read"]
+MAIL_SCOPES = ["Mail.Read", "User.Read"]
+# Requested on every new consent, so connecting Outlook also connects its
+# calendar -- the Outlook twin of the combined Google consent.
+SCOPES = [*MAIL_SCOPES, "Calendars.ReadWrite"]
 RESYNC_REQUIRED = "__outlook_resync_required__"
 
 # Graph v1.0 does not reliably include wellKnownName in mail-folder list
@@ -154,6 +159,19 @@ def _parse_expiry(value: str | None) -> datetime | None:
     return parsed.astimezone(timezone.utc)
 
 
+def refresh_scopes(granted: list[str] | None) -> list[str]:
+    """Scopes to request when refreshing a stored Outlook grant.
+
+    A refresh may only ask for what the user consented to. Every Outlook user
+    who connected before calendar support holds a mail-only grant; refreshing
+    it with `Calendars.ReadWrite` fails as consent_required/invalid_grant,
+    which marks the integration expired and stops their mail ingestion too.
+    """
+    from selko.services.calendar_providers import outlook_scopes_allow_calendar
+
+    return SCOPES if outlook_scopes_allow_calendar(granted) else MAIL_SCOPES
+
+
 def get_access_token(
     client: Client,
     config: Config,
@@ -185,7 +203,7 @@ def get_access_token(
     try:
         refreshed = _msal_app(config).acquire_token_by_refresh_token(
             refresh_token,
-            scopes=SCOPES,
+            scopes=refresh_scopes(row.get("scopes")),
         )
     except Exception as exc:
         raise OutlookError(f"Outlook token refresh failed: {exc}") from exc

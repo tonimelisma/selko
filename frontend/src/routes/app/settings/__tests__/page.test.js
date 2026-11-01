@@ -49,6 +49,7 @@ const mockGetCalendarSettings = vi.fn();
 const mockUpdateCalendarSettings = vi.fn();
 const mockListCalendars = vi.fn();
 const mockInitiateGoogleAuth = vi.fn();
+const mockInitiateOutlookAuth = vi.fn();
 
 vi.mock('$lib/supabase.js', () => ({
 	supabase: {
@@ -70,7 +71,7 @@ vi.mock('$lib/services/calendar-settings.js', () => ({
 vi.mock('$lib/api/backend.js', () => ({
 	listCalendars: (...args) => mockListCalendars(...args),
 	initiateGoogleAuth: (...args) => mockInitiateGoogleAuth(...args),
-	initiateOutlookAuth: vi.fn()
+	initiateOutlookAuth: (...args) => mockInitiateOutlookAuth(...args)
 }));
 
 const mockFetchSenderRules = vi.fn();
@@ -187,8 +188,143 @@ describe('Settings Page', () => {
 		render(SettingsPage);
 
 		await waitFor(() => {
-			expect(screen.getByText(/Connect Google Calendar to configure/)).toBeInTheDocument();
+			expect(screen.getByText(/Connect Google Calendar or Outlook to configure/)).toBeInTheDocument();
 		});
+		expect(mockListCalendars).not.toHaveBeenCalled();
+	});
+
+	it('loads Outlook calendars for an Outlook-only user with calendar scope', async () => {
+		mockFetchIntegrations.mockResolvedValue({
+			data: [
+				{
+					id: 'o1',
+					provider: 'outlook',
+					status: 'active',
+					provider_email: 'me@outlook.com',
+					scopes: ['offline_access', 'Mail.Read', 'https://graph.microsoft.com/Calendars.ReadWrite']
+				}
+			],
+			error: null
+		});
+		mockListCalendars.mockResolvedValue({
+			data: [
+				{ id: 'outlook:AAA', name: 'Calendar', is_primary: true, is_selected: false, provider: 'outlook' },
+				{ id: 'outlook:BBB', name: 'Work', is_primary: false, is_selected: false, provider: 'outlook' }
+			],
+			error: null
+		});
+
+		render(SettingsPage);
+
+		const select = await screen.findByLabelText(/target calendar/i);
+		expect(mockListCalendars).toHaveBeenCalledTimes(1);
+		expect(within(select).getByRole('option', { name: 'Calendar · Outlook (Primary)' })).toBeInTheDocument();
+		expect(within(select).getByRole('option', { name: 'Work · Outlook' })).toBeInTheDocument();
+		expect(select.querySelector('optgroup')).toBeNull();
+		expect(select).toHaveValue('outlook:AAA');
+		expect(screen.queryByTestId('outlook-calendar-reconnect')).not.toBeInTheDocument();
+
+		await userEvent.selectOptions(select, 'outlook:BBB');
+		await waitFor(() => {
+			expect(mockUpdateCalendarSettings).toHaveBeenCalledWith({ target_calendar_id: 'outlook:BBB' });
+		});
+	});
+
+	it('groups calendars by provider with provider labels when both are connected', async () => {
+		mockFetchIntegrations.mockResolvedValue({
+			data: [
+				{ id: 'g1', provider: 'google_calendar', status: 'active', provider_email: 'me@gmail.com' },
+				{
+					id: 'o1',
+					provider: 'outlook',
+					status: 'active',
+					provider_email: 'me@outlook.com',
+					scopes: ['Calendars.ReadWrite']
+				}
+			],
+			error: null
+		});
+		mockGetCalendarSettings.mockResolvedValue({
+			data: { target_calendar_id: 'outlook:WORK' },
+			error: null
+		});
+		mockListCalendars.mockResolvedValue({
+			data: [
+				{ id: 'primary', name: 'Personal', is_primary: true, is_selected: false, provider: 'google_calendar' },
+				{ id: 'outlook:WORK', name: 'Work', is_primary: true, is_selected: true, provider: 'outlook' }
+			],
+			error: null
+		});
+
+		render(SettingsPage);
+
+		const select = await screen.findByLabelText(/target calendar/i);
+		const groups = select.querySelectorAll('optgroup');
+		expect([...groups].map((g) => g.getAttribute('label'))).toEqual(['Google', 'Outlook']);
+		expect(within(groups[0]).getByRole('option', { name: 'Personal · Google (Primary)' })).toBeInTheDocument();
+		expect(within(groups[1]).getByRole('option', { name: 'Work · Outlook (Primary)' })).toBeInTheDocument();
+		expect(select).toHaveValue('outlook:WORK');
+	});
+
+	it('prompts to reconnect Outlook when it lacks calendar scope', async () => {
+		mockInitiateOutlookAuth.mockResolvedValue(undefined);
+		mockFetchIntegrations.mockResolvedValue({
+			data: [
+				{
+					id: 'o1',
+					provider: 'outlook',
+					status: 'active',
+					provider_email: 'me@outlook.com',
+					scopes: ['offline_access', 'Mail.Read']
+				}
+			],
+			error: null
+		});
+
+		render(SettingsPage);
+
+		const prompt = await screen.findByTestId('outlook-calendar-reconnect');
+		expect(prompt).toHaveTextContent('Reconnect Outlook to add events to your Outlook calendar.');
+		expect(mockListCalendars).not.toHaveBeenCalled();
+		expect(screen.queryByText(/Connect Google Calendar or Outlook to configure/)).not.toBeInTheDocument();
+
+		await userEvent.click(within(prompt).getByRole('button', { name: 'Reconnect Outlook' }));
+		expect(mockInitiateOutlookAuth).toHaveBeenCalledTimes(1);
+		expect(mockInitiateGoogleAuth).not.toHaveBeenCalled();
+	});
+
+	it('shows an error when the Outlook reconnect cannot start', async () => {
+		mockInitiateOutlookAuth.mockRejectedValue(new Error('Outlook unavailable'));
+		mockFetchIntegrations.mockResolvedValue({
+			data: [{ id: 'o1', provider: 'outlook', status: 'active', scopes: [] }],
+			error: null
+		});
+
+		render(SettingsPage);
+
+		const prompt = await screen.findByTestId('outlook-calendar-reconnect');
+		await userEvent.click(within(prompt).getByRole('button', { name: 'Reconnect Outlook' }));
+		expect(await screen.findByText('Outlook unavailable')).toBeInTheDocument();
+		expect(within(prompt).getByRole('button', { name: 'Reconnect Outlook' })).toBeEnabled();
+	});
+
+	it('shows the Outlook calendar prompt alongside Google calendars', async () => {
+		mockFetchIntegrations.mockResolvedValue({
+			data: [
+				{ id: 'g1', provider: 'google_calendar', status: 'active' },
+				{ id: 'o1', provider: 'outlook', status: 'active', scopes: ['Mail.Read'] }
+			],
+			error: null
+		});
+		mockListCalendars.mockResolvedValue({
+			data: [{ id: 'primary', name: 'Personal', is_primary: true, provider: 'google_calendar' }],
+			error: null
+		});
+
+		render(SettingsPage);
+
+		expect(await screen.findByLabelText(/target calendar/i)).toBeInTheDocument();
+		expect(screen.getByTestId('outlook-calendar-reconnect')).toBeInTheDocument();
 	});
 
 	it('shows Automation Rules section', async () => {

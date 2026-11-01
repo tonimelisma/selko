@@ -21,8 +21,16 @@ struct ConnectionRecoveryView: View {
         }
     }
 
+    /// Google Calendar or a calendar-capable Outlook account. When Outlook can
+    /// write events, the user is never prompted to connect Google Calendar.
     private var calendarConnected: Bool {
-        integrations.contains { $0.provider == .googleCalendar && $0.isActive }
+        integrations.hasWritableCalendar
+    }
+
+    /// Outlook is connected for mail but lacks calendar consent; reconnecting
+    /// it is an alternative to connecting Google Calendar.
+    private var outlookCalendarReconnect: Bool {
+        integrations.needsOutlookCalendarReconnect
     }
 
     private var recoveryProviders: [IntegrationProvider] {
@@ -35,7 +43,9 @@ struct ConnectionRecoveryView: View {
                     ($0.provider == .gmail || $0.provider == .outlook) && !$0.isActive
                 }
                 .map(\.provider)
-            providers = [.googleCalendar] + inactiveEmailProviders
+            providers = [.googleCalendar]
+                + (outlookCalendarReconnect ? [.outlook] : [])
+                + inactiveEmailProviders
         } else {
             providers = integrations.filter { !$0.isActive }.map(\.provider)
         }
@@ -92,7 +102,9 @@ struct ConnectionRecoveryView: View {
 
     private var title: String {
         if !emailConnected { return "Reconnect an email account" }
-        if !calendarConnected { return "Reconnect Google Calendar" }
+        if !calendarConnected {
+            return outlookCalendarReconnect ? "Connect a calendar" : "Reconnect Google Calendar"
+        }
         return "A connection needs attention"
     }
 
@@ -199,9 +211,9 @@ struct ConnectionRecoveryView: View {
     }
 
     private func buttonLabel(for provider: IntegrationProvider) -> String {
-        let verb = integrations.contains(where: { $0.provider == provider && !$0.isActive })
-            ? "Reconnect"
-            : "Connect"
+        let needsReconnect = integrations.contains(where: { $0.provider == provider && !$0.isActive })
+            || (provider == .outlook && outlookCalendarReconnect)
+        let verb = needsReconnect ? "Reconnect" : "Connect"
         return "\(verb) \(providerName(provider))"
     }
 

@@ -218,7 +218,7 @@ def test_the_mirror_hands_back_what_each_pass_wrote():
         return {"entries": 1, "full_resync": False, "has_sync_token": True,
                 "arrived": [{"provider_event_id": calendar_id}]}
 
-    with patch.object(calendar_mirror, "list_calendars",
+    with patch.object(calendar_mirror, "list_provider_calendars",
                       return_value=[{"id": "me@example.com"}, {"id": "imported@example.com"}]), \
             patch.object(calendar_mirror, "sync_calendar", side_effect=fake_sync):
         totals = calendar_mirror.sync_all_calendars(MagicMock(), "u1", "i1")

@@ -2339,13 +2339,20 @@ async def claim_approved_event_for_sync(
     pool,
     worker_id: str,
     lock_duration_seconds: int = 300,
+    providers: list[str] | None = None,
 ) -> Optional[dict[str, Any]]:
-    """Claim one authoritative calendar work item and return its event view."""
+    """Claim one authoritative calendar work item and return its event view.
+
+    Args:
+        providers: Calendar providers the worker may write to right now (those
+            whose circuit is closed). None claims for every provider.
+    """
     try:
         item_row = await pool.fetchrow(
-            "SELECT * FROM public.claim_calendar_work_item($1, $2)",
+            "SELECT * FROM public.claim_calendar_work_item($1, $2, $3)",
             worker_id,
             lock_duration_seconds,
+            providers,
         )
         if item_row:
             from selko.services.pg import _normalize_pg_row
@@ -2359,6 +2366,8 @@ async def claim_approved_event_for_sync(
             event = _normalize_pg_row(dict(event_row))
             event["calendar_work_item_id"] = str(item["id"])
             event["calendar_work_item_action"] = item["action"]
+            # Stamped by the claim: the calendar this item writes to.
+            event["calendar_work_item_provider"] = item.get("provider")
             # Delivery state lives on the work item now that events.status is
             # gone. Callers that used to read event["status"] read this.
             event["calendar_work_item_status"] = item["status"]

@@ -6,6 +6,7 @@
 	import { supabase } from '$lib/supabase.js';
 	import { fetchIntegrations, disconnectIntegrations } from '$lib/services/integrations.js';
 	import { GOOGLE_PROVIDERS } from '$lib/google-connection.js';
+	import { hasWritableCalendar, needsOutlookCalendarReconnect } from '$lib/calendar-providers.js';
 	import { getCalendarSettings, updateCalendarSettings } from '$lib/services/calendar-settings.js';
 	import {
 		listCalendars,
@@ -42,6 +43,59 @@
 	let calendarListError = $state('');
 	let allDaySaveError = $state('');
 	let folderLoadError = $state('');
+	let isReconnectingOutlook = $state(false);
+	let outlookReconnectError = $state('');
+	let showOutlookCalendarPrompt = $derived(needsOutlookCalendarReconnect(integrationsList));
+
+	/**
+	 * Calendars grouped by provider, Google first. Grouping is only shown
+	 * when calendars from more than one provider are listed.
+	 */
+	let calendarGroups = $derived.by(() => {
+		/** @type {Array<{ provider: string, label: string, calendars: any[] }>} */
+		const groups = [];
+		for (const provider of ['google_calendar', 'outlook']) {
+			const items = calendars.filter((c) => (c.provider ?? 'google_calendar') === provider);
+			if (items.length > 0) {
+				groups.push({ provider, label: calendarProviderLabel(provider), calendars: items });
+			}
+		}
+		const known = new Set(['google_calendar', 'outlook']);
+		const other = calendars.filter((c) => c.provider && !known.has(c.provider));
+		if (other.length > 0) groups.push({ provider: 'other', label: '', calendars: other });
+		return groups;
+	});
+	let groupCalendarsByProvider = $derived(calendarGroups.length > 1);
+
+	/** @param {string | undefined} provider */
+	function calendarProviderLabel(provider) {
+		if (provider === 'outlook') return $_('settings.calendarProviderOutlook');
+		if (provider === 'google_calendar' || !provider) return $_('settings.calendarProviderGoogle');
+		return '';
+	}
+
+	/** @param {any} calendar */
+	function calendarOptionLabel(calendar) {
+		const providerLabel = calendarProviderLabel(calendar.provider);
+		const name = providerLabel
+			? $_('settings.calendarOptionLabel', { values: { name: calendar.name, provider: providerLabel } })
+			: calendar.name;
+		return calendar.is_primary ? `${name} ${$_('settings.calendarPrimary')}` : name;
+	}
+
+	async function handleOutlookCalendarReconnect() {
+		if (isReconnectingOutlook) return;
+		isReconnectingOutlook = true;
+		outlookReconnectError = '';
+		try {
+			await handleAuthorize('outlook');
+		} catch (error) {
+			outlookReconnectError =
+				error instanceof Error && error.message ? error.message : $_('integrations.connectFailed');
+			isReconnectingOutlook = false;
+		}
+		// On success the page navigates to Microsoft; leave the spinner until unload.
+	}
 	/** @type {{gmail: any[], outlook: any[]}} */
 	let emailFolders = $state({ gmail: [], outlook: [] });
 	let updatingFolderIds = $state(new Set());
@@ -124,11 +178,9 @@
 		isLoading = false;
 		await loadEmailFolders();
 
-		// Load calendars if Google Calendar is connected
-		const gcal = integrationsList.find(
-			(i) => i.provider === 'google_calendar' && i.status === 'active'
-		);
-		if (gcal) {
+		// Load calendars when any provider can receive calendar writes
+		// (Google Calendar, or Outlook granted calendar scope).
+		if (hasWritableCalendar(integrationsList)) {
 			await loadCalendars();
 		}
 	}
@@ -392,11 +444,19 @@
 							value={selectedCalendar}
 							onchange={handleCalendarChange}
 						>
-							{#each calendars as calendar}
-								<option value={calendar.id}>
-									{calendar.name}{calendar.is_primary ? ' ' + $_('settings.calendarPrimary') : ''}
-								</option>
-							{/each}
+							{#if groupCalendarsByProvider}
+								{#each calendarGroups as group (group.provider)}
+									<optgroup label={group.label}>
+										{#each group.calendars as calendar (calendar.id)}
+											<option value={calendar.id}>{calendarOptionLabel(calendar)}</option>
+										{/each}
+									</optgroup>
+								{/each}
+							{:else}
+								{#each calendars as calendar (calendar.id)}
+									<option value={calendar.id}>{calendarOptionLabel(calendar)}</option>
+								{/each}
+							{/if}
 						</select>
 						<label class="label" for="target-calendar">
 							<span class="label-text-alt text-base-content/60">
@@ -404,13 +464,33 @@
 							</span>
 						</label>
 					</div>
-				{:else}
+				{:else if !showOutlookCalendarPrompt}
 					<p class="text-base-content/60">
 						{$_('settings.connectCalendarPrompt')}
 					</p>
 				{/if}
 				<InlineActionError message={calendarListError} onretry={loadCalendars} />
 				<InlineActionError message={calendarError} />
+
+				{#if showOutlookCalendarPrompt}
+					<div class="warm-card flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between" data-testid="outlook-calendar-reconnect">
+						<p class="text-sm text-base-content/70">{$_('settings.outlookCalendarReconnectPrompt')}</p>
+						<button
+							class="btn btn-primary shrink-0 shadow-brand"
+							disabled={isReconnectingOutlook}
+							aria-busy={isReconnectingOutlook}
+							onclick={handleOutlookCalendarReconnect}
+						>
+							{#if isReconnectingOutlook}
+								<span class="loading loading-spinner loading-sm" aria-hidden="true"></span>
+								{$_('integrations.connecting')}
+							{:else}
+								{$_('settings.reconnectOutlook')}
+							{/if}
+						</button>
+					</div>
+					<InlineActionError message={outlookReconnectError} onretry={handleOutlookCalendarReconnect} />
+				{/if}
 
 				<div class="warm-card p-4">
 					<label class="label" for="all-day-display-mode">

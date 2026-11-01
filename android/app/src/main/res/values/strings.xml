@@ -42,7 +42,7 @@
     <string name="review_error_reject">Failed to reject event</string>
     <string name="review_error_ignore_rule">Failed to create ignore rule</string>
     <string name="review_error_auto_approve_rule">Failed to create auto-approve rule</string>
-    <string name="review_calendar_reconnect_required">Reconnect Google Calendar to accept suggestions.</string>
+    <string name="review_calendar_reconnect_required">Reconnect a calendar to accept suggestions.</string>
     <string name="review_event_rejected">Event rejected</string>
     <string name="review_events_rejected">%1$d events rejected</string>
 
@@ -50,6 +50,7 @@
     <string name="recovery_email_title">Reconnect an email account</string>
     <string name="recovery_email_description">New email suggestions are paused. Your existing suggestions and history are still available.</string>
     <string name="recovery_calendar_title">Reconnect Google Calendar</string>
+    <string name="recovery_any_calendar_title">Connect a calendar</string>
     <string name="recovery_calendar_description">You can keep reviewing, editing, and rejecting suggestions. Reconnect before accepting one.</string>
     <string name="recovery_attention_title">A connection needs attention</string>
     <string name="recovery_attention_description">Selko is still working through another connected account. Reconnect this provider when convenient.</string>
@@ -180,7 +181,10 @@
     <string name="settings_target_calendar">Target Calendar</string>
     <string name="settings_select_calendar">Select a calendar</string>
     <string name="settings_primary_label">(Primary)</string>
-    <string name="settings_connect_calendar_prompt">Connect Google Calendar to configure calendar defaults.</string>
+    <string name="settings_connect_calendar_prompt">Connect Google Calendar or Outlook to configure calendar defaults.</string>
+    <string name="settings_calendar_with_provider">%1$s · %2$s</string>
+    <string name="settings_outlook_calendar_reconnect_prompt">Reconnect Outlook to let Selko add events to your Outlook calendar.</string>
+    <string name="settings_outlook_calendar_reconnect">Reconnect Outlook</string>
     <string name="settings_default_invitees">Default Invitees</string>
     <string name="settings_default_invitees_placeholder">email1@example.com, email2@example.com</string>
     <string name="settings_save">Save</string>

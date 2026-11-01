@@ -110,7 +110,7 @@ struct EventDetailView: View {
                             .accessibilityHint(
                                 viewModel.calendarConnected
                                     ? ""
-                                    : "Reconnect Google Calendar to accept suggestions."
+                                    : "Reconnect your calendar to accept suggestions."
                             )
                             .accessibilityIdentifier("approveButton")
                         }

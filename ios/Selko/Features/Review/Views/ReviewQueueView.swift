@@ -180,7 +180,7 @@ struct ReviewQueueView: View {
             .accessibilityHint(
                 viewModel.calendarConnected
                     ? ""
-                    : "Reconnect Google Calendar to accept suggestions."
+                    : "Reconnect your calendar to accept suggestions."
             )
             .padding(.horizontal, SelkoMetrics.screenGutter)
             .padding(.vertical, 8)

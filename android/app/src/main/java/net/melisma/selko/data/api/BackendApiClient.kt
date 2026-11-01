@@ -220,13 +220,27 @@ class BackendApiClient(
     // Calendar Operations
     // ============================================================================
 
+    /**
+     * A writable calendar from `GET /calendars`. [provider] is `"google_calendar"`
+     * or `"outlook"`; older backends omit it and only ever return Google calendars.
+     * Outlook ids are opaque (`outlook:` prefixed) and are stored unchanged.
+     */
     @Serializable
     data class Calendar(
         val id: String,
         val name: String,
         val is_primary: Boolean,
-        val is_selected: Boolean
-    )
+        val is_selected: Boolean,
+        val provider: String = PROVIDER_GOOGLE_CALENDAR
+    ) {
+        val isOutlook: Boolean
+            get() = provider == PROVIDER_OUTLOOK
+
+        companion object {
+            const val PROVIDER_GOOGLE_CALENDAR = "google_calendar"
+            const val PROVIDER_OUTLOOK = "outlook"
+        }
+    }
 
     suspend fun listCalendars(): Result<List<Calendar>> {
         return try {

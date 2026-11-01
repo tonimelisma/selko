@@ -56,9 +56,7 @@ final class EventDetailViewModel {
         if let integrationService {
             do {
                 integrations = try await integrationService.fetchIntegrations()
-                calendarConnected = integrations.contains {
-                    $0.provider == .googleCalendar && $0.isActive
-                }
+                calendarConnected = integrations.hasWritableCalendar
             } catch {
                 calendarConnected = false
                 errorMessage = error.localizedDescription
@@ -79,7 +77,7 @@ final class EventDetailViewModel {
     func approve() async {
         guard !isActing else { return }
         guard calendarConnected else {
-            errorMessage = String(localized: "Reconnect Google Calendar to accept suggestions.")
+            errorMessage = String(localized: "Reconnect your calendar to accept suggestions.")
             return
         }
         isActing = true

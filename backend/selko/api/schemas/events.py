@@ -68,12 +68,15 @@ class SenderRuleResponse(BaseModel):
 
 
 class CalendarListResponse(BaseModel):
-    """Available Google Calendar."""
+    """A calendar Selko can write to, from any connected provider."""
 
+    # Opaque: Outlook ids are qualified ("outlook:<id>"). Clients store it
+    # unchanged in user_calendar_settings.target_calendar_id.
     id: str
     name: str
     is_primary: bool
     is_selected: bool  # True if this is the target calendar
+    provider: Literal["google_calendar", "outlook"] = "google_calendar"
 
 
 class CalendarSettingsRequest(BaseModel):

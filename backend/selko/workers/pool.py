@@ -19,6 +19,7 @@ import time
 from typing import Any, Optional
 
 from selko.config import Config, load_config
+from selko.services import calendar_providers
 from selko.services.auth import get_service_client
 from selko.services.calendars import (
     CalendarsError,
@@ -315,10 +316,17 @@ class WorkerPool:
 
         client = self._get_client()
 
-        # 1. Try approved events - requires Google Calendar (sole writer is worker)
-        # C4: acquire the calendar executor slot BEFORE claiming so a claimed
-        # event never waits in a queue holding its lease.
-        if circuit_breaker.is_available("google_calendar"):
+        # 1. Try approved events - the worker is the sole calendar writer.
+        # Each provider has its own circuit, and the claim only hands out work
+        # for providers whose circuit is closed: a Graph outage must not stop
+        # Google writes. C4: acquire the calendar executor slot BEFORE claiming
+        # so a claimed event never waits in a queue holding its lease.
+        available_providers = [
+            provider
+            for provider, breaker in calendar_providers.BREAKER_KEYS.items()
+            if circuit_breaker.is_available(breaker)
+        ]
+        if available_providers:
             try:
                 if await _try_acquire(self._calendar_semaphore):
                     try:
@@ -327,6 +335,7 @@ class WorkerPool:
                             lock_duration_seconds=getattr(
                                 self.config, "llm_claim_lease_seconds", 900
                             ),
+                            providers=available_providers,
                         )
                     except BaseException:
                         self._calendar_semaphore.release()
@@ -382,7 +391,7 @@ class WorkerPool:
         return False
 
     async def _process_integration_recovery(self, client: Any, worker_id: str) -> bool:
-        """Advance one pending/waiting google_calendar OAuth recovery generation.
+        """Advance one pending/waiting calendar OAuth recovery generation.
 
         The actual retry of a parked event happens for free through the
         normal approved-event claim path once its integration is active
@@ -519,7 +528,7 @@ class WorkerPool:
         worker_id: str,
         event: dict[str, Any],
     ) -> None:
-        """Sync an approved event to Google Calendar.
+        """Sync an approved event to the user's calendar.
 
         Args:
             client: Supabase client.
@@ -536,6 +545,10 @@ class WorkerPool:
 
         logger.info(f"{worker_id}: Syncing event {event_id}: {title}")
         is_cancellation = event.get("calendar_work_item_action") == "cancel"
+        breaker = calendar_providers.BREAKER_KEYS.get(
+            event.get("calendar_work_item_provider") or calendar_providers.GOOGLE,
+            calendar_providers.BREAKER_KEYS[calendar_providers.GOOGLE],
+        )
 
         try:
             quota_result = QuotaService(client).check_and_increment(
@@ -559,11 +572,11 @@ class WorkerPool:
                 )
                 await complete_event_sync(self.pg_pool, lease, google_event_id)
                 logger.info(f"{worker_id}: Completed event sync {event_id}")
-            circuit_breaker.record_success("google_calendar")
+            circuit_breaker.record_success(breaker)
 
         except asyncio.TimeoutError:
             error_msg = f"Event {'cancellation' if is_cancellation else 'sync'} timed out after {self.config.event_sync_timeout}s"
-            circuit_breaker.record_failure("google_calendar")
+            circuit_breaker.record_failure(breaker)
             logger.error(f"{worker_id}: {error_msg} for event {event_id}")
             try:
                 await fail_event_sync(self.pg_pool, lease, error_msg)
@@ -573,7 +586,7 @@ class WorkerPool:
         except Exception as e:
             classification = getattr(e, "classification", None) or classify_calendar_error(e)
             if classification.counts_toward_circuit_breaker:
-                circuit_breaker.record_failure("google_calendar")
+                circuit_breaker.record_failure(breaker)
             logger.error(
                 f"{worker_id}: Event {event_id} sync failed "
                 f"({classification.code}): {e}",
