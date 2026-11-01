@@ -90,6 +90,10 @@
 				{$_('auth.noAccount')}
 				<a href="/register" class="link link-primary">{$_('auth.signUp')}</a>
 			</p>
+
+			<p class="text-center text-xs mt-4">
+				<a href="/privacy" class="link text-base-content/60">{$_('auth.privacyPolicy')}</a>
+			</p>
 		</div>
 	</div>
 </div>

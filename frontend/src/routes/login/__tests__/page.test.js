@@ -44,6 +44,13 @@ describe('Login Page', () => {
 		expect(registerLink).toHaveAttribute('href', '/register');
 	});
 
+	it('links to the privacy policy', () => {
+		render(LoginPage);
+
+		const privacyLink = screen.getByRole('link', { name: /privacy policy/i });
+		expect(privacyLink).toHaveAttribute('href', '/privacy');
+	});
+
 	it('submits credentials to Supabase on form submission', async () => {
 		const user = userEvent.setup();
 		mockSignInWithPassword.mockResolvedValue({

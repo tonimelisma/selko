@@ -132,6 +132,10 @@
 					<a href="/login" class="link link-primary">{$_('auth.logIn')}</a>
 				</p>
 			{/if}
+
+			<p class="text-center text-xs mt-4">
+				<a href="/privacy" class="link text-base-content/60">{$_('auth.privacyPolicy')}</a>
+			</p>
 		</div>
 	</div>
 </div>
