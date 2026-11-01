@@ -289,7 +289,7 @@ def test_every_calendar_is_mirrored_not_only_the_write_target():
         calendar_mirror.sync_calendar = original_sync
 
     assert seen == ["me@example.com", "work@example.com", "shared@example.com"]
-    assert totals == {"calendars": 3, "entries": 3, "failed": 0}
+    assert totals == {"calendars": 3, "entries": 3, "failed": 0, "arrived": []}
 
 
 def test_one_failing_calendar_does_not_stop_the_others():
@@ -313,7 +313,7 @@ def test_one_failing_calendar_does_not_stop_the_others():
         calendar_mirror.list_calendars = original_list
         calendar_mirror.sync_calendar = original_sync
 
-    assert totals == {"calendars": 2, "entries": 4, "failed": 1}
+    assert totals == {"calendars": 2, "entries": 4, "failed": 1, "arrived": []}
 
 
 def test_the_primary_alias_is_never_mirrored_alongside_its_real_id():
