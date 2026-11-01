@@ -34,7 +34,8 @@
     "hasAccount": "Already have an account?",
     "checkEmail": "Check your email to confirm your account.",
     "passwordMismatch": "Passwords do not match",
-    "passwordTooShort": "Password must be at least 6 characters"
+    "passwordTooShort": "Password must be at least 6 characters",
+    "privacyPolicy": "Privacy Policy"
   },
   "nav": {
     "review": "Review",
