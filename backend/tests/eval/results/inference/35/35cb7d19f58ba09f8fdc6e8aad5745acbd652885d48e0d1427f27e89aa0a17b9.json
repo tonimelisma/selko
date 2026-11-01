@@ -1,0 +1,142 @@
+{
+  "fixture_name": "interview_loop_distinct_slots_20",
+  "operation": "compare",
+  "provider": "anthropic",
+  "model": "claude-haiku-5-5",
+  "thinking": {
+    "mode": "level",
+    "value": "low"
+  },
+  "run_at": "2026-11-01T02:40:22.352317+00:00",
+  "duration_ms": 1556,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-11-01T02:40:20.788283+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-11-01T02:40:20.788291+00:00",
+      "duration_ms": 7
+    },
+    "api_call": {
+      "started_at": "2026-11-01T02:40:20.796199+00:00",
+      "duration_ms": 1549
+    },
+    "scoring": {
+      "started_at": "2026-11-01T02:40:22.345254+00:00",
+      "duration_ms": 0
+    }
+  },
+  "tokens": {
+    "prompt_tokens": 613,
+    "completion_tokens": 176,
+    "total_tokens": 789
+  },
+  "cost": 0.00014930000000000002,
+  "actual": {
+    "matched_event_id": null
+  },
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1199,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Northwind PM Interview 3\n- Start: 2026-09-09T18:00:00\n- End: 2026-09-09T18:45:00\n- Location: Video call\n- Description: Product management round with the hiring panel.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Northwind Behavioral Interview\n   - Start: 2026-09-09T17:00:00\n   - End: 2026-09-09T17:45:00\n   - Location: Video call\n   - Description: Behavioral round.\n\n2. Event ID: event-002\n   - Title: Northwind PM Interview 2\n   - Start: 2026-09-09T23:00:00\n   - End: 2026-09-09T23:45:00\n   - Location: Video call\n   - Description: Second product management round.\n\n3. Event ID: event-003\n   - Title: Northwind XFN or PM Interview 5\n   - Start: 2026-09-09T21:30:00\n   - End: 2026-09-09T22:15:00\n   - Location: Video call\n   - Description: Cross-functional round.\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "raw_response_text": "{\"matched_event_id\": null, \"reasoning\": \"The new event is 'Northwind PM Interview 3' at 18:00-18:45 on 2026-09-09. Event-001 is a behavioral interview at 17:00-17:45, a different round and time. Event-002 is 'PM Interview 2' at 23:00-23:45, a different round and time. Event-003 is 'XFN or PM Interview 5' at 21:30-22:15, a different round and time. None refers to the same real-world interview, so there is no duplicate.\"}",
+    "finish_reason": "end_turn",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "f750e2962b2c4c6fafb0bdd44eed7c71",
+    "route_role": "primary"
+  },
+  "category": null,
+  "description": "Interview loop: several sessions with the same company on one day at different times. Each is a distinct event and must NOT be merged. Anonymized from production 2026-09-09, where one confirmation email produced five events across two days.",
+  "difficulty": "hard",
+  "tags": [
+    "dedup",
+    "no-match",
+    "professional",
+    "production-derived"
+  ],
+  "input_summary": {},
+  "fixture_input_hash": "e18308c3ae1188e1e990b528759eddc563013515cce36705785e20b8c62af627",
+  "code_provenance": {
+    "git_commit": "46a63d11338b7a0fa0e55d41efe6477e6a187f2d",
+    "event_processing_sha256": "3b61b944aad7f497f768d02cc51e726b757bbf1316635f253a61092cb38b1aad"
+  },
+  "raw_response": null,
+  "identity": {
+    "identity_version": 2,
+    "operation": "compare",
+    "provider": "anthropic",
+    "model": "claude-haiku-5-5",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "anthropic/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "claude-haiku-5-5",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "26c734591a9a2f602b175c5e7f03455199cca7eb847d43a054d339700ba5d2bb",
+    "adapter_contract_hash": "853277a8daf01bb6dff0cf2b0332682d532c648421bec5a11cf77d1d0cee152d",
+    "fixture_input_hash": "e18308c3ae1188e1e990b528759eddc563013515cce36705785e20b8c62af627"
+  },
+  "inference_key": "35cb7d19f58ba09f8fdc6e8aad5745acbd652885d48e0d1427f27e89aa0a17b9",
+  "stored_at": "2026-11-01T02:40:22.375139+00:00"
+}

@@ -10,17 +10,23 @@ immediate fallback for empty/invalid/schema-echo/truncated output, and two
 fallback attempts for transient failures only. Fallback must be a different
 provider.
 
-Production defaults (eval-backed Jul 2026; see
-`backend/tests/eval/reports/2026-07-25-expanded-matrix-results.md`):
+Production defaults (eval-backed Oct 2026: Haiku 5.5 extract 76 pass / 12
+partial / 0 fail vs gemini-3.5-flash-lite 69 / 16 / 3; compare 21/23 each;
+merge 5.0 each; about half the cost). Sonnet 5.5 scored 78 / 9 / 1 and 22/23
+at roughly 17x Haiku's cost, so it is registered but not the default:
 
 ```dotenv
-LLM_PROVIDER=gemini
-LLM_MODEL=gemini-3.5-flash-lite
-LLM_THINKING=minimal
-LLM_FALLBACK_PROVIDER=qwen
-LLM_FALLBACK_MODEL=qwen3.7-flash
-LLM_FALLBACK_THINKING=low
+LLM_PROVIDER=anthropic
+LLM_MODEL=claude-haiku-5-5
+LLM_THINKING=low
+LLM_FALLBACK_PROVIDER=gemini
+LLM_FALLBACK_MODEL=gemini-3.5-flash-lite
+LLM_FALLBACK_THINKING=minimal
 ```
+
+Every provider that can receive email content must be named in the public
+privacy policy (`frontend/src/routes/privacy/+page.svelte`). Changing the
+primary or fallback provider is a privacy-policy change too.
 
 > **Photo-library status:** Google Photos/OneDrive library ingestion is dormant while photo ingestion is parked; see [`docs/backlog.md`](backlog.md). The multimodal/image-processing material below describes the active email-attachment pipeline and remains applicable to email attachments.
 
@@ -28,10 +34,10 @@ LLM_FALLBACK_THINKING=low
 
 | Provider | Env Var Key | Model ID | Preferred thinking |
 |----------|-------------|----------|--------------------|
-| Gemini | `GEMINI_API_KEY` | `gemini-3.5-flash-lite` (default), `gemini-3.6-flash`, … | minimal |
-| Qwen | `ALIBABA_API_KEY` | `qwen3.7-flash` (fallback default), `qwen3.7-plus`, … | low budget |
+| Gemini | `GEMINI_API_KEY` | `gemini-3.5-flash-lite` (fallback default), `gemini-3.6-flash`, … | minimal |
+| Qwen | `ALIBABA_API_KEY` | `qwen3.7-flash`, `qwen3.7-plus`, … | low budget |
 | OpenAI | `OPENAI_API_KEY` | `gpt-5.6-luna`, `gpt-5.6-terra`, … | low |
-| Anthropic | `ANTHROPIC_API_KEY` | `claude-sonnet-5`, `claude-haiku-4-5` | adaptive low |
+| Anthropic | `ANTHROPIC_API_KEY` | `claude-haiku-5-5` (default), `claude-sonnet-5-5`, `claude-sonnet-5`, `claude-haiku-4-5` | adaptive low |
 | Moonshot | `MOONSHOT_API_KEY` | `kimi-k3`, `kimi-k2.5`, `kimi-k2.6`, `kimi-k2.7-code` | effort / thinking toggle |
 | Z.AI | `ZAI_API_KEY` | `glm-5.2`, … | toggle |
 | xAI | `XAI_API_KEY` | `grok-4.5`, … | low |

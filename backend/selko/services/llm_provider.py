@@ -199,6 +199,31 @@ MODEL_SPECS: dict[str, ModelSpec] = {
         pricing=Pricing(1.00, 5.00, estimated=True),
         pricing_as_of=_AS_OF,
     ),
+    # Same price as Sonnet 5. Omitting thinking runs adaptive, so no "none" level.
+    "claude-sonnet-5-5": ModelSpec(
+        provider="anthropic",
+        model="claude-sonnet-5-5",
+        vision=True,
+        structured_output="prompt_json",
+        preferred_thinking=_ADAPTIVE_LOW,
+        supported_thinking=(_ADAPTIVE_LOW, _EFFORT_MEDIUM),
+        request_api="anthropic_native",
+        pricing=Pricing(2.00, 10.00),
+        pricing_as_of=date(2026, 10, 31),
+    ),
+    # Thinking is on by default and cannot be skipped by omission, so there is
+    # no "none" level: omitting the param runs adaptive at the medium default.
+    "claude-haiku-5-5": ModelSpec(
+        provider="anthropic",
+        model="claude-haiku-5-5",
+        vision=True,
+        structured_output="prompt_json",
+        preferred_thinking=_ADAPTIVE_LOW,
+        supported_thinking=(_ADAPTIVE_LOW, _EFFORT_MEDIUM),
+        request_api="anthropic_native",
+        pricing=Pricing(0.10, 0.50),
+        pricing_as_of=date(2026, 10, 31),
+    ),
     # --- Qwen ---
     "qwen3.7-plus": ModelSpec(
         provider="qwen",
@@ -514,8 +539,8 @@ def _spec_to_registry_entry(spec: ModelSpec) -> dict[str, Any]:
             entry["reasoning"] = True
         elif "k2.7" not in spec.model:
             entry["moonshot_thinking"] = True
-    # Adaptive thinking is Sonnet/Opus (4.6+); Haiku rejects it.
-    if spec.provider == "anthropic" and "haiku" not in spec.model:
+    # Adaptive thinking is Sonnet/Opus 4.6+ and Haiku 5.5+; Haiku 4.5 rejects it.
+    if spec.provider == "anthropic" and "haiku-4" not in spec.model:
         entry["adaptive_thinking"] = True
     if spec.provider == "tinker":
         entry["tinker_effort"] = True

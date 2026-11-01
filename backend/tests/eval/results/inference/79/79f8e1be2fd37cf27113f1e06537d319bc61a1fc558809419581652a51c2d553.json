@@ -1,0 +1,142 @@
+{
+  "fixture_name": "same_series_different_level_22",
+  "operation": "compare",
+  "provider": "anthropic",
+  "model": "claude-haiku-5-5",
+  "thinking": {
+    "mode": "level",
+    "value": "low"
+  },
+  "run_at": "2026-11-01T02:40:23.868387+00:00",
+  "duration_ms": 957,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-11-01T02:40:22.907694+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-11-01T02:40:22.907699+00:00",
+      "duration_ms": 6
+    },
+    "api_call": {
+      "started_at": "2026-11-01T02:40:22.913825+00:00",
+      "duration_ms": 951
+    },
+    "scoring": {
+      "started_at": "2026-11-01T02:40:23.865286+00:00",
+      "duration_ms": 0
+    }
+  },
+  "tokens": {
+    "prompt_tokens": 536,
+    "completion_tokens": 143,
+    "total_tokens": 679
+  },
+  "cost": 0.0001251,
+  "actual": {
+    "matched_event_id": null
+  },
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1013,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Swedish: Advanced\n- Start: 2026-08-27T18:00:00\n- End: 2026-08-27T19:30:00\n- Location: Community Center room 3\n- Description: Advanced conversation class.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Swedish: Beginner 1A\n   - Start: 2026-08-27T16:00:00\n   - End: 2026-08-27T17:30:00\n   - Location: Community Center room 3\n   - Description: Beginner class, first term.\n\n2. Event ID: event-002\n   - Title: Swedish: Intermediate 1A\n   - Start: 2026-08-27T17:00:00\n   - End: 2026-08-27T18:30:00\n   - Location: Community Center room 2\n   - Description: Intermediate class, first term.\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "raw_response_text": "{\"matched_event_id\": null, \"reasoning\": \"The new event is 'Swedish: Advanced' from 18:00-19:30 in room 3. Event-001 is 'Beginner 1A' at 16:00-17:30 and event-002 is 'Intermediate 1A' at 17:00-18:30 in room 2. Different course levels, different times, and different descriptions mean these are distinct classes, not the same real-world event.\"}",
+    "finish_reason": "end_turn",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "ac422d7033ec4ca69b7cd049ee4683f5",
+    "route_role": "primary"
+  },
+  "category": null,
+  "description": "Class series where several levels run on the same day. Similar titles, genuinely different classes -- must NOT merge. Anonymized from production 2026-08-27 (language courses at Intermediate vs Advanced).",
+  "difficulty": "medium",
+  "tags": [
+    "dedup",
+    "no-match",
+    "classes",
+    "production-derived"
+  ],
+  "input_summary": {},
+  "fixture_input_hash": "bbd147d5369bc3a4afebe40f88606da39b90162d1fb0efd7de17c962eaf10c1d",
+  "code_provenance": {
+    "git_commit": "46a63d11338b7a0fa0e55d41efe6477e6a187f2d",
+    "event_processing_sha256": "3b61b944aad7f497f768d02cc51e726b757bbf1316635f253a61092cb38b1aad"
+  },
+  "raw_response": null,
+  "identity": {
+    "identity_version": 2,
+    "operation": "compare",
+    "provider": "anthropic",
+    "model": "claude-haiku-5-5",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "anthropic/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "claude-haiku-5-5",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "26c734591a9a2f602b175c5e7f03455199cca7eb847d43a054d339700ba5d2bb",
+    "adapter_contract_hash": "853277a8daf01bb6dff0cf2b0332682d532c648421bec5a11cf77d1d0cee152d",
+    "fixture_input_hash": "bbd147d5369bc3a4afebe40f88606da39b90162d1fb0efd7de17c962eaf10c1d"
+  },
+  "inference_key": "79f8e1be2fd37cf27113f1e06537d319bc61a1fc558809419581652a51c2d553",
+  "stored_at": "2026-11-01T02:40:23.894084+00:00"
+}

@@ -1,0 +1,57 @@
+{
+  "fixture_name": "invitations/retirement_party_08",
+  "operation": "extract",
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Bob Williams' Retirement Celebration",
+        "start_datetime": "2026-02-26T12:00:00",
+        "end_datetime": "2026-02-26T14:00:00",
+        "location": "Ocean View Restaurant, 500 Harbor Boulevard, San Diego, CA 92101",
+        "description": "Retirement luncheon celebrating Bob Williams' 35 years of service",
+        "all_day": false,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      }
+    ],
+    "extra_events": [],
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 2,
+    "inference_key": "be2cdfdcb888354f26f4d282fe389dfd84c966e818cf67da4e33d085f7b30294",
+    "expected_output_hash": "681f09c5df7299215d2c05cb9b57591679df84f239c0a82d022e70826e763bba",
+    "scorer_hash": "a4bebf9e53234c7487f4d65ea503fd0e35febe52e584ee52eda52f5faf46ec14"
+  },
+  "score_key": "d5021c173ee3e25135ed6758cf0d9958cc468422ffeb2507eb31141ec5125210",
+  "stored_at": "2026-11-01T02:44:01.993674+00:00"
+}

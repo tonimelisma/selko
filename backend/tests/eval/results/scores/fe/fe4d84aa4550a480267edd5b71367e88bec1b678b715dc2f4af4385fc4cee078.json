@@ -1,0 +1,23 @@
+{
+  "fixture_name": "no_events/informed_delivery_digest_19",
+  "operation": "extract",
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 2,
+    "inference_key": "f7494963ae26bca381525edcbe0e2ba3be831c032d1ef22d6b52ed8c27ae7ccf",
+    "expected_output_hash": "17d9c6dd1f1fdc362e8af3956f555cfc40dbf07c82265fd452a7ecdac52382a7",
+    "scorer_hash": "a4bebf9e53234c7487f4d65ea503fd0e35febe52e584ee52eda52f5faf46ec14"
+  },
+  "score_key": "fe4d84aa4550a480267edd5b71367e88bec1b678b715dc2f4af4385fc4cee078",
+  "stored_at": "2026-11-01T02:39:59.000987+00:00"
+}

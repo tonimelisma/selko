@@ -1,0 +1,59 @@
+{
+  "fixture_name": "followup_adds_agenda_08",
+  "operation": "merge",
+  "expected": {
+    "title": "Board Meeting",
+    "start_datetime": "2026-05-05T09:00:00",
+    "end_datetime": "2026-05-05T12:00:00",
+    "all_day": false,
+    "location": "Executive Boardroom",
+    "description_contains": [
+      "quarterly",
+      "financial review",
+      "product roadmap",
+      "breakfast provided"
+    ]
+  },
+  "auto_score": {
+    "title": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "start_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "end_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "all_day": {
+      "match": true
+    },
+    "location": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "description_contains": {
+      "found": [
+        "quarterly",
+        "financial review",
+        "product roadmap",
+        "breakfast provided"
+      ],
+      "missing": [],
+      "match": true
+    },
+    "fields_matched": 6,
+    "total_fields": 6,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 2,
+    "inference_key": "cd948ae6d136135cb9c304117f8e0acbeef1fa5dbd93819171d76773af88b5c5",
+    "expected_output_hash": "1b3a6160de1597e4a2edd507e5b66db8845ffd8b057b64b8464cb33a073ce3b2",
+    "scorer_hash": "6b0c50845803d5938429b012b60ed0906d2cf92060436a8519290b174a564677"
+  },
+  "score_key": "2fd4cbcaa87b0a7679ff930fd8cf8afe676fc1bb802e0eb105b1d8ab3f27e9c2",
+  "stored_at": "2026-11-01T02:44:47.567708+00:00"
+}

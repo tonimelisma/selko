@@ -1,0 +1,141 @@
+{
+  "fixture_name": "same_school_play_07",
+  "operation": "compare",
+  "provider": "anthropic",
+  "model": "claude-sonnet-5-5",
+  "thinking": {
+    "mode": "level",
+    "value": "low"
+  },
+  "run_at": "2026-11-01T02:44:42.468501+00:00",
+  "duration_ms": 2418,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-11-01T02:44:40.044097+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-11-01T02:44:40.044106+00:00",
+      "duration_ms": 10
+    },
+    "api_call": {
+      "started_at": "2026-11-01T02:44:40.054385+00:00",
+      "duration_ms": 2408
+    },
+    "scoring": {
+      "started_at": "2026-11-01T02:44:42.463071+00:00",
+      "duration_ms": 0
+    }
+  },
+  "tokens": {
+    "prompt_tokens": 666,
+    "completion_tokens": 210,
+    "total_tokens": 876
+  },
+  "cost": 0.003432,
+  "actual": {
+    "matched_event_id": "event-001"
+  },
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1294,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Spring Musical: The Wizard of Oz\n- Start: 2026-04-25T19:00:00\n- End: 2026-04-25T21:00:00\n- Location: Lincoln Elementary Auditorium\n- Description: Your child's class is performing! Tickets available at the door, $5 per person.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: School Play - Wizard of Oz\n   - Start: 2026-04-25T19:00:00\n   - End: 2026-04-25T21:00:00\n   - Location: Lincoln Elementary\n   - Description: Annual spring performance by 3rd and 4th graders\n\n2. Event ID: event-002\n   - Title: PTA Meeting\n   - Start: 2026-04-24T18:30:00\n   - End: 2026-04-24T20:00:00\n   - Location: Lincoln Elementary Library\n   - Description: Monthly PTA meeting - all parents welcome\n\n3. Event ID: event-003\n   - Title: Soccer Practice\n   - Start: 2026-04-25T16:00:00\n   - End: 2026-04-25T17:30:00\n   - Location: Community Field\n   - Description: Regular Friday practice\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "raw_response_text": "{\"matched_event_id\": \"event-001\", \"reasoning\": \"The new event and event-001 describe the same real-world event: the Wizard of Oz school play at Lincoln Elementary. They have identical start and end times (2026-04-25 19:00-21:00), and the locations are consistent (Lincoln Elementary Auditorium vs. Lincoln Elementary). The titles differ in wording only, and the descriptions are compatible (a spring performance by 3rd and 4th graders vs. a class performing). Event-002 is a PTA meeting on a different day, and event-003 is soccer practice at a different time and place, so neither matches.\"}",
+    "finish_reason": "end_turn",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "27fd698c90aa4b79b2ee4a24081e7dc9",
+    "route_role": "primary"
+  },
+  "category": null,
+  "description": "Same school play from newsletter mention vs direct invite - harder to match",
+  "difficulty": "hard",
+  "tags": [
+    "dedup",
+    "match",
+    "school"
+  ],
+  "input_summary": {},
+  "fixture_input_hash": "f84b738555c565b856f3fd0386b44efe7e866b682ed5d8109383ff49b6648c61",
+  "code_provenance": {
+    "git_commit": "46a63d11338b7a0fa0e55d41efe6477e6a187f2d",
+    "event_processing_sha256": "3b61b944aad7f497f768d02cc51e726b757bbf1316635f253a61092cb38b1aad"
+  },
+  "raw_response": null,
+  "identity": {
+    "identity_version": 2,
+    "operation": "compare",
+    "provider": "anthropic",
+    "model": "claude-sonnet-5-5",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "anthropic/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "claude-sonnet-5-5",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "26c734591a9a2f602b175c5e7f03455199cca7eb847d43a054d339700ba5d2bb",
+    "adapter_contract_hash": "853277a8daf01bb6dff0cf2b0332682d532c648421bec5a11cf77d1d0cee152d",
+    "fixture_input_hash": "f84b738555c565b856f3fd0386b44efe7e866b682ed5d8109383ff49b6648c61"
+  },
+  "inference_key": "0c88a91f66f0159687e3d7b42738ebf70e90dbe7f63efd2215b7c0cc3a8b0b3b",
+  "stored_at": "2026-11-01T02:44:42.497496+00:00"
+}
