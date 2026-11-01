@@ -1,0 +1,57 @@
+{
+  "fixture_name": "vague_to_specific_location_04",
+  "operation": "merge",
+  "expected": {
+    "title": "Team Dinner",
+    "start_datetime": "2026-05-22T19:00:00",
+    "end_datetime": "2026-05-22T21:00:00",
+    "all_day": false,
+    "location": "Pasta Bella, 456 Main St",
+    "description_contains": [
+      "team celebration",
+      "reservation confirmed",
+      "8 people"
+    ]
+  },
+  "auto_score": {
+    "title": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "start_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "end_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "all_day": {
+      "match": true
+    },
+    "location": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "description_contains": {
+      "found": [
+        "team celebration",
+        "reservation confirmed",
+        "8 people"
+      ],
+      "missing": [],
+      "match": true
+    },
+    "fields_matched": 6,
+    "total_fields": 6,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 2,
+    "inference_key": "c0b5ebc621ed349d903bdcb21d35504e415343f490bf17ed30043f33f03b5ed5",
+    "expected_output_hash": "772f7bd0f4cb532c23be84fa07af9f68121b645a3b980eb6dee140982c74a28f",
+    "scorer_hash": "6b0c50845803d5938429b012b60ed0906d2cf92060436a8519290b174a564677"
+  },
+  "score_key": "305e52eefb057f35661071f7d74a52cd7924e51ff7365944179afad4098a6a13",
+  "stored_at": "2026-11-01T02:40:29.488064+00:00"
+}

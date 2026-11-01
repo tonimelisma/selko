@@ -1,0 +1,57 @@
+{
+  "fixture_name": "appointments/salon_appointment_04",
+  "operation": "extract",
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Hair Appointment - Style Studio",
+        "start_datetime": "2026-02-12T15:30:00",
+        "end_datetime": "2026-02-12T17:30:00",
+        "location": "Style Studio Salon, 890 University Avenue, Palo Alto, CA 94301",
+        "description": "Haircut and color with Amanda Torres",
+        "all_day": false,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      }
+    ],
+    "extra_events": [],
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 2,
+    "inference_key": "9cf896a64b5930077d79beecb12c66077dd74362f21ad484cf66a9d83cada814",
+    "expected_output_hash": "ad0aef612c59cae9e707ca2bca2a1ab3a1ba33b7978f350c9755584a08c6495c",
+    "scorer_hash": "a4bebf9e53234c7487f4d65ea503fd0e35febe52e584ee52eda52f5faf46ec14"
+  },
+  "score_key": "4abd4cafba0592f40f28244e786dcf2e738e851cde72982b84de98cdce9be2fb",
+  "stored_at": "2026-11-01T02:39:45.887062+00:00"
+}

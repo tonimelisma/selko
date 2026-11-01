@@ -1,0 +1,141 @@
+{
+  "fixture_name": "same_birthday_party_01",
+  "fixture_hash": "9f9962120694719025f73b9df0067541c2e6a50cb9d908894cb740ac5d4c68f2",
+  "code_hash": "3b61b944aad7",
+  "prompt_hash": "26c734591a9a",
+  "operation": "compare",
+  "provider": "anthropic",
+  "model": "claude-sonnet-5-5",
+  "thinking": "low",
+  "run_at": "2026-11-01T02:44:39.992024+00:00",
+  "duration_ms": 2025,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-11-01T02:44:37.961600+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-11-01T02:44:37.961608+00:00",
+      "duration_ms": 6
+    },
+    "api_call": {
+      "started_at": "2026-11-01T02:44:37.968467+00:00",
+      "duration_ms": 2019
+    },
+    "scoring": {
+      "started_at": "2026-11-01T02:44:39.988006+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Same birthday party with slightly different wording - should match",
+  "difficulty": "easy",
+  "tags": [
+    "dedup",
+    "match",
+    "birthday"
+  ],
+  "expected": {
+    "matched_event_id": "event-001"
+  },
+  "actual": {
+    "matched_event_id": "event-001"
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": "event-001",
+    "actual": "event-001"
+  },
+  "tokens": {
+    "prompt_tokens": 669,
+    "completion_tokens": 157,
+    "total_tokens": 826
+  },
+  "cost": 0.002908,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1263,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Emily's 7th Birthday Party\n- Start: 2026-03-15T14:00:00\n- End: 2026-03-15T17:00:00\n- Location: Adventure Zone, 123 Main St\n- Description: Come celebrate Emily turning 7! Pizza, cake, and fun activities. Please RSVP by March 10th.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Emily's Birthday Celebration\n   - Start: 2026-03-15T14:00:00\n   - End: 2026-03-15T17:00:00\n   - Location: Adventure Zone\n   - Description: Join us for Emily's 7th birthday! Pizza, cake, games.\n\n2. Event ID: event-002\n   - Title: Team Standup\n   - Start: 2026-03-15T09:00:00\n   - End: 2026-03-15T09:30:00\n   - Location: Office\n   - Description: Daily standup meeting\n\n3. Event ID: event-003\n   - Title: Dentist Appointment\n   - Start: 2026-03-14T10:00:00\n   - End: 2026-03-14T11:00:00\n   - Location: Bright Smiles Dental\n   - Description: Regular checkup\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "raw_response_text": "{\"matched_event_id\": \"event-001\", \"reasoning\": \"The new event and event-001 both describe Emily's 7th birthday party on 2026-03-15 from 14:00 to 17:00 at Adventure Zone. The titles and descriptions differ only in wording (both mention pizza, cake, and activities or games), and the new event adds the full address and an RSVP date. Event-002 (Team Standup) and event-003 (Dentist Appointment) are unrelated.\"}",
+    "finish_reason": "end_turn",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "06f7feaee6d14fc0ba40beb192d94b28",
+    "route_role": "primary"
+  },
+  "inference_key": "e9bbaee397090d0ad995cf547e3a7ae7a2c9c8568fdf8d583af027a27d103a7a",
+  "score_key": "1e48d78e4bf6615e83af6167f233cc85e4d828366da8edcfcca8b5e4f601bae4",
+  "identity": {
+    "identity_version": 2,
+    "operation": "compare",
+    "provider": "anthropic",
+    "model": "claude-sonnet-5-5",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "anthropic/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "claude-sonnet-5-5",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "26c734591a9a2f602b175c5e7f03455199cca7eb847d43a054d339700ba5d2bb",
+    "adapter_contract_hash": "853277a8daf01bb6dff0cf2b0332682d532c648421bec5a11cf77d1d0cee152d",
+    "fixture_input_hash": "9f9962120694719025f73b9df0067541c2e6a50cb9d908894cb740ac5d4c68f2"
+  }
+}

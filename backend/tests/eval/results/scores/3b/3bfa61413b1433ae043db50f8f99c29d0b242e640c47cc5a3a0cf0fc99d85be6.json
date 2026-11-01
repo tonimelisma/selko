@@ -1,0 +1,138 @@
+{
+  "fixture_name": "school/pdf_calendar_kindercare_dec_02",
+  "operation": "extract",
+  "expected": {
+    "events_found": true,
+    "event_count": 19,
+    "events": [
+      {
+        "title": "Mad about Plaid! Day",
+        "start_datetime": "2025-12-01",
+        "all_day": true,
+        "importance": "fyi"
+      },
+      {
+        "title": "Write a Letter to Santa Day",
+        "start_datetime": "2025-12-03",
+        "all_day": true,
+        "importance": "fyi"
+      },
+      {
+        "title": "Pajama Day",
+        "start_datetime": "2025-12-05",
+        "all_day": true,
+        "importance": "fyi"
+      },
+      {
+        "title": "Wear a Santa Hat Day",
+        "start_datetime": "2025-12-09",
+        "all_day": true,
+        "importance": "fyi"
+      },
+      {
+        "title": "Candy Cane Day",
+        "start_datetime": "2025-12-11",
+        "all_day": true,
+        "importance": "fyi"
+      },
+      {
+        "title": "Pajama Day",
+        "start_datetime": "2025-12-12",
+        "all_day": true,
+        "importance": "fyi"
+      },
+      {
+        "title": "Ugly Sweater Day",
+        "start_datetime": "2025-12-15",
+        "all_day": true,
+        "importance": "fyi"
+      },
+      {
+        "title": "Rudolf Day",
+        "start_datetime": "2025-12-17",
+        "all_day": true,
+        "importance": "fyi"
+      },
+      {
+        "title": "Movie Day - The Grinch",
+        "start_datetime": "2025-12-19",
+        "all_day": true,
+        "importance": "fyi"
+      },
+      {
+        "title": "Pajama Day",
+        "start_datetime": "2025-12-22",
+        "all_day": true,
+        "importance": "fyi"
+      },
+      {
+        "title": "Pajama Day",
+        "start_datetime": "2025-12-23",
+        "all_day": true,
+        "importance": "fyi"
+      },
+      {
+        "title": "Christmas Party - Half Day",
+        "start_datetime": "2025-12-24",
+        "all_day": true,
+        "importance": "action_required"
+      },
+      {
+        "title": "KinderCare Closed - Christmas Day",
+        "start_datetime": "2025-12-25",
+        "all_day": true,
+        "importance": "action_required"
+      },
+      {
+        "title": "Happy Birthday to Ms Noella",
+        "start_datetime": "2025-12-26",
+        "all_day": true,
+        "importance": "fyi"
+      },
+      {
+        "title": "Pajama Day",
+        "start_datetime": "2025-12-29",
+        "all_day": true,
+        "importance": "fyi"
+      },
+      {
+        "title": "Pajama Day",
+        "start_datetime": "2025-12-30",
+        "all_day": true,
+        "importance": "fyi"
+      },
+      {
+        "title": "New Year's Eve - Early Close at 3pm",
+        "start_datetime": "2025-12-31",
+        "all_day": true,
+        "importance": "action_required"
+      },
+      {
+        "title": "KinderCare Closed - New Year's Day",
+        "start_datetime": "2026-01-01",
+        "all_day": true,
+        "importance": "action_required"
+      },
+      {
+        "title": "Pajama Day",
+        "start_datetime": "2026-01-02",
+        "all_day": true,
+        "importance": "fyi"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": false,
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "identity": {
+    "scoring_version": 2,
+    "inference_key": "c8672193531e2b89c1218b9190557dfdd8cbc368fb227fa029387a2038c9fa7c",
+    "expected_output_hash": "6918a1b58ce755934bb872894265cf11c78e6ec574d28be0781dc78b33161019",
+    "scorer_hash": "a4bebf9e53234c7487f4d65ea503fd0e35febe52e584ee52eda52f5faf46ec14"
+  },
+  "score_key": "3bfa61413b1433ae043db50f8f99c29d0b242e640c47cc5a3a0cf0fc99d85be6",
+  "stored_at": "2026-11-01T02:39:53.851771+00:00"
+}

@@ -1,0 +1,23 @@
+{
+  "fixture_name": "no_events/account_inactivity_notice_14",
+  "operation": "extract",
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 2,
+    "inference_key": "3d405eb95a934c6ab9e250a8ea2fe2e780d482e7d3d730caab7faf4f6f54f643",
+    "expected_output_hash": "17d9c6dd1f1fdc362e8af3956f555cfc40dbf07c82265fd452a7ecdac52382a7",
+    "scorer_hash": "a4bebf9e53234c7487f4d65ea503fd0e35febe52e584ee52eda52f5faf46ec14"
+  },
+  "score_key": "1c58442b132249c7ee263c10dea4a707bc585208f93b3473f28f7d89e4adab66",
+  "stored_at": "2026-11-01T02:39:58.235677+00:00"
+}

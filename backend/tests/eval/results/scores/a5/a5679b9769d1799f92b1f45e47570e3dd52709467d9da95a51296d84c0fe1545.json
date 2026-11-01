@@ -1,0 +1,20 @@
+{
+  "fixture_name": "reschedule_across_dates_23",
+  "operation": "compare",
+  "expected": {
+    "matched_event_id": "event-001"
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": "event-001",
+    "actual": "event-001"
+  },
+  "identity": {
+    "scoring_version": 2,
+    "inference_key": "c1d30dfcd6372d1df7188d1f36b8d1d25b576bf3fff56a8a3a713650e1a59e4b",
+    "expected_output_hash": "fb532ed7006bb0d85ca6e45563073776f4a8eb69fdaee303177c9bdfb53c1b51",
+    "scorer_hash": "34e3b48d9b9902d1f4fee602c48478bc8d2139938715a7417e4baec0709c5298"
+  },
+  "score_key": "a5679b9769d1799f92b1f45e47570e3dd52709467d9da95a51296d84c0fe1545",
+  "stored_at": "2026-11-01T02:44:39.687209+00:00"
+}

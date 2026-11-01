@@ -1,0 +1,142 @@
+{
+  "fixture_name": "text_update_of_an_invite_24",
+  "operation": "compare",
+  "provider": "anthropic",
+  "model": "claude-haiku-5-5",
+  "thinking": {
+    "mode": "level",
+    "value": "low"
+  },
+  "run_at": "2026-11-01T02:40:25.040196+00:00",
+  "duration_ms": 931,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-11-01T02:40:24.103696+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-11-01T02:40:24.103703+00:00",
+      "duration_ms": 6
+    },
+    "api_call": {
+      "started_at": "2026-11-01T02:40:24.110194+00:00",
+      "duration_ms": 925
+    },
+    "scoring": {
+      "started_at": "2026-11-01T02:40:25.035996+00:00",
+      "duration_ms": 0
+    }
+  },
+  "tokens": {
+    "prompt_tokens": 523,
+    "completion_tokens": 138,
+    "total_tokens": 661
+  },
+  "cost": 0.00012130000000000001,
+  "actual": {
+    "matched_event_id": "event-001"
+  },
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 973,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Design Review\n- Start: 2026-09-15T14:00:00\n- End: 2026-09-15T15:00:00\n- Location: Room 4B (moved from Room 2)\n- Description: Note the room change for tomorrow's review.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Design Review\n   - Start: 2026-09-15T14:00:00\n   - End: 2026-09-15T15:00:00\n   - Location: Room 2\n   - Description: Invitation: design review.\n\n2. Event ID: event-002\n   - Title: Design Systems Guild\n   - Start: 2026-09-15T16:00:00\n   - End: 2026-09-15T17:00:00\n   - Location: Room 2\n   - Description: Monthly guild meeting.\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "raw_response_text": "{\"matched_event_id\": \"event-001\", \"reasoning\": \"The new event and event-001 share the same title (Design Review), date, and time (14:00-15:00 on 2026-09-15). The only difference is the location, which the new event describes as a room change from Room 2 to Room 4B, so it is an update to the same real-world meeting. event-002 is a different event (Design Systems Guild at 16:00-17:00).\"}",
+    "finish_reason": "end_turn",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "ab2e119c4d1b4095ab5af81cdfa220d6",
+    "route_role": "primary"
+  },
+  "category": null,
+  "description": "S4: a plain-text follow-up updates an event that was created from an ICS invite. Same event, new location. Must match rather than create a second entry.",
+  "difficulty": "medium",
+  "tags": [
+    "dedup",
+    "match",
+    "update",
+    "production-derived"
+  ],
+  "input_summary": {},
+  "fixture_input_hash": "8d81645c6d14cf566ff78cac7ccdb3c0bed6496d67314862f30ede5dc1df96db",
+  "code_provenance": {
+    "git_commit": "46a63d11338b7a0fa0e55d41efe6477e6a187f2d",
+    "event_processing_sha256": "3b61b944aad7f497f768d02cc51e726b757bbf1316635f253a61092cb38b1aad"
+  },
+  "raw_response": null,
+  "identity": {
+    "identity_version": 2,
+    "operation": "compare",
+    "provider": "anthropic",
+    "model": "claude-haiku-5-5",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "anthropic/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "claude-haiku-5-5",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "26c734591a9a2f602b175c5e7f03455199cca7eb847d43a054d339700ba5d2bb",
+    "adapter_contract_hash": "853277a8daf01bb6dff0cf2b0332682d532c648421bec5a11cf77d1d0cee152d",
+    "fixture_input_hash": "8d81645c6d14cf566ff78cac7ccdb3c0bed6496d67314862f30ede5dc1df96db"
+  },
+  "inference_key": "3c28f28cf3969b699c1b1a69b9b4f2323d5797cd244ef6338d186a2cc2d37110",
+  "stored_at": "2026-11-01T02:40:25.067708+00:00"
+}

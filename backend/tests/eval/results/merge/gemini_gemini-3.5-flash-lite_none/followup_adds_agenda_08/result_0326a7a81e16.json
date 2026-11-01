@@ -1,0 +1,238 @@
+{
+  "fixture_name": "followup_adds_agenda_08",
+  "fixture_hash": "74bbbf85152ae7e22e247dea4a8de0a38d33f88dc2a3b1b82831676b3a5ab4d7",
+  "code_hash": "3b61b944aad7",
+  "prompt_hash": "0326a7a81e16",
+  "operation": "merge",
+  "provider": "gemini",
+  "model": "gemini-3.5-flash-lite",
+  "thinking": "none",
+  "run_at": "2026-11-01T02:40:08.710019+00:00",
+  "duration_ms": 892,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-11-01T02:40:07.815055+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-11-01T02:40:07.815061+00:00",
+      "duration_ms": 11
+    },
+    "api_call": {
+      "started_at": "2026-11-01T02:40:07.826542+00:00",
+      "duration_ms": 881
+    },
+    "scoring": {
+      "started_at": "2026-11-01T02:40:08.708133+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Follow-up email adds agenda details to existing meeting",
+  "difficulty": "easy",
+  "tags": [
+    "merge",
+    "description-enrichment",
+    "agenda"
+  ],
+  "expected": {
+    "title": "Board Meeting",
+    "start_datetime": "2026-05-05T09:00:00",
+    "end_datetime": "2026-05-05T12:00:00",
+    "all_day": false,
+    "location": "Executive Boardroom",
+    "description_contains": [
+      "quarterly",
+      "financial review",
+      "product roadmap",
+      "breakfast provided"
+    ]
+  },
+  "actual": {
+    "title": "Board Meeting",
+    "start_datetime": "2026-05-05T09:00:00",
+    "end_datetime": "2026-05-05T12:00:00",
+    "all_day": false,
+    "location": "Executive Boardroom",
+    "description": "Quarterly board meeting. Agenda: 1) Financial review 2) Product roadmap 3) Hiring plans 4) Q2 goals. Breakfast provided.",
+    "importance": "action_required"
+  },
+  "auto_score": {
+    "title": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "start_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "end_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "all_day": {
+      "match": true
+    },
+    "location": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "description_contains": {
+      "found": [
+        "quarterly",
+        "financial review",
+        "product roadmap",
+        "breakfast provided"
+      ],
+      "missing": [],
+      "match": true
+    },
+    "fields_matched": 6,
+    "total_fields": 6,
+    "auto_rating": 5
+  },
+  "tokens": {
+    "prompt_tokens": 400,
+    "completion_tokens": 135,
+    "total_tokens": 535
+  },
+  "cost": 0.0004575,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1224,
+        "text": "You are merging calendar event data from multiple emails.\n\n**Existing Event:**\n- Title: Board Meeting\n- Start: 2026-05-05T09:00:00\n- End: 2026-05-05T12:00:00\n- All Day: False\n- Location: Executive Boardroom\n- Description: Quarterly board meeting\n- Importance: action_required\n\n**New Information (source type: update):**\n- Title: Board Meeting\n- Start: 2026-05-05T09:00:00\n- End: 2026-05-05T12:00:00\n- All Day: False\n- Location: Executive Boardroom\n- Description: Agenda: 1) Financial review 2) Product roadmap 3) Hiring plans 4) Q2 goals. Breakfast provided.\n- Importance: action_required\n\n**Merge Rules:**\n1. If source_type is \"cancellation\", prefix title with \"CANCELLED: \" (if not already)\n2. Prefer specific time (e.g., 6-7pm) over all-day\n3. Combine descriptions, keeping all relevant info (append new info)\n4. Use most specific location (longer address usually better)\n5. Keep newer times if they differ (updates)\n6. For importance: keep the highest level (action_required > fyi)\n\nOutput JSON with merged event data:\n{\n    \"title\": \"...\",\n    \"start_datetime\": \"...\",\n    \"end_datetime\": \"...\",\n    \"all_day\": true/false,\n    \"location\": \"...\",\n    \"description\": \"...\",\n    \"importance\": \"action_required\" or \"fyi\"\n}\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "start_datetime": {
+          "type": "string"
+        },
+        "end_datetime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "all_day": {
+          "type": "boolean"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "action_required",
+            "fyi"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "start_datetime",
+        "all_day",
+        "importance"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "start_datetime": {
+          "type": "string"
+        },
+        "end_datetime": {
+          "type": "string",
+          "nullable": true
+        },
+        "all_day": {
+          "type": "boolean"
+        },
+        "location": {
+          "type": "string",
+          "nullable": true
+        },
+        "description": {
+          "type": "string",
+          "nullable": true
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "action_required",
+            "fyi"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "start_datetime",
+        "all_day",
+        "importance"
+      ]
+    },
+    "raw_response_text": "{\n  \"title\": \"Board Meeting\",\n  \"start_datetime\": \"2026-05-05T09:00:00\",\n  \"end_datetime\": \"2026-05-05T12:00:00\",\n  \"all_day\": false,\n  \"location\": \"Executive Boardroom\",\n  \"description\": \"Quarterly board meeting. Agenda: 1) Financial review 2) Product roadmap 3) Hiring plans 4) Q2 goals. Breakfast provided.\",\n  \"importance\": \"action_required\"\n}",
+    "finish_reason": "FinishReason.STOP",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "f1177582ab4a4898bfff275b1ed5a964",
+    "route_role": "primary"
+  },
+  "inference_key": "9be2cc89703f558c9528738284c275c00de487fa5b9d3507a4bea231f7fdb671",
+  "score_key": "61b3ccbad5549ff045e29e63f4bbb667e51ea33db2244c5d3e82d792743fc695",
+  "identity": {
+    "identity_version": 2,
+    "operation": "merge",
+    "provider": "gemini",
+    "model": "gemini-3.5-flash-lite",
+    "thinking": {
+      "mode": "level",
+      "value": "none"
+    },
+    "request_settings": {
+      "api_surface": "gemini/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "gemini-3.5-flash-lite",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "none"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "0326a7a81e169edaf924fb8a09fe97a184519ff43052c4a3ce59137d4d4545b6",
+    "adapter_contract_hash": "7290a95d479db2e3c5cbf8f212866455a4122a408c9542cc385b4b71b98742d8",
+    "fixture_input_hash": "74bbbf85152ae7e22e247dea4a8de0a38d33f88dc2a3b1b82831676b3a5ab4d7"
+  }
+}

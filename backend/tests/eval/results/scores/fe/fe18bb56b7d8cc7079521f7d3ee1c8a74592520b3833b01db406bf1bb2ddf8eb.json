@@ -1,0 +1,20 @@
+{
+  "fixture_name": "same_event_two_agenda_titles_21",
+  "operation": "compare",
+  "expected": {
+    "matched_event_id": "event-001"
+  },
+  "auto_score": {
+    "correct": false,
+    "expected": "event-001",
+    "actual": null
+  },
+  "identity": {
+    "scoring_version": 2,
+    "inference_key": "4f639169dee5eae6718dd5ac698b95c11cd4004a89c96854f8fd5e69d4c915ac",
+    "expected_output_hash": "fb532ed7006bb0d85ca6e45563073776f4a8eb69fdaee303177c9bdfb53c1b51",
+    "scorer_hash": "34e3b48d9b9902d1f4fee602c48478bc8d2139938715a7417e4baec0709c5298"
+  },
+  "score_key": "fe18bb56b7d8cc7079521f7d3ee1c8a74592520b3833b01db406bf1bb2ddf8eb",
+  "stored_at": "2026-11-01T02:44:40.910250+00:00"
+}

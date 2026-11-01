@@ -1,0 +1,20 @@
+{
+  "fixture_name": "class_party_after_parade_is_distinct_27",
+  "operation": "compare",
+  "expected": {
+    "matched_event_id": null
+  },
+  "auto_score": {
+    "correct": false,
+    "expected": null,
+    "actual": "event-001"
+  },
+  "identity": {
+    "scoring_version": 2,
+    "inference_key": "3f8a25e4ebe5b6bed439a0b54f2f5e4de7b67c75a36986a7472ed62572587315",
+    "expected_output_hash": "4486b03d387fa4a0aa0f782ea4e16cb28dc9732fa759705666a69458617a92bf",
+    "scorer_hash": "34e3b48d9b9902d1f4fee602c48478bc8d2139938715a7417e4baec0709c5298"
+  },
+  "score_key": "eb31daf2251937496f7e1c6e5e30afd622f096f6017f8cc53ddf410e05c3904d",
+  "stored_at": "2026-11-01T02:40:21.048082+00:00"
+}

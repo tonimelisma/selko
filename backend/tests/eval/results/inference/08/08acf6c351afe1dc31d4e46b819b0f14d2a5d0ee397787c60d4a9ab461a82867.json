@@ -1,0 +1,200 @@
+{
+  "fixture_name": "wedding_full_details_13",
+  "operation": "merge",
+  "provider": "gemini",
+  "model": "gemini-3.5-flash-lite",
+  "thinking": {
+    "mode": "level",
+    "value": "none"
+  },
+  "run_at": "2026-11-01T02:40:10.564933+00:00",
+  "duration_ms": 915,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-11-01T02:40:09.646151+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-11-01T02:40:09.646160+00:00",
+      "duration_ms": 12
+    },
+    "api_call": {
+      "started_at": "2026-11-01T02:40:09.658820+00:00",
+      "duration_ms": 903
+    },
+    "scoring": {
+      "started_at": "2026-11-01T02:40:10.562048+00:00",
+      "duration_ms": 0
+    }
+  },
+  "tokens": {
+    "prompt_tokens": 432,
+    "completion_tokens": 169,
+    "total_tokens": 601
+  },
+  "cost": 0.0005521,
+  "actual": {
+    "title": "Sarah & Michael's Wedding",
+    "start_datetime": "2026-07-25T16:00:00",
+    "end_datetime": "2026-07-25T22:00:00",
+    "all_day": false,
+    "location": "Seaside Resort - Garden Pavilion, 123 Ocean Drive",
+    "description": "Save the date! Wedding celebration for Sarah and Michael\n\nCeremony at 4pm, reception follows at 5:30pm. Cocktail attire. RSVP by June 15. Hotel block available under 'Chen-Anderson wedding'.",
+    "importance": "action_required"
+  },
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1342,
+        "text": "You are merging calendar event data from multiple emails.\n\n**Existing Event:**\n- Title: Sarah & Michael's Wedding\n- Start: 2026-07-25T00:00:00\n- End: 2026-07-25T23:59:59\n- All Day: True\n- Location: Seaside Resort\n- Description: Save the date! Wedding celebration for Sarah and Michael\n- Importance: action_required\n\n**New Information (source type: update):**\n- Title: Sarah & Michael's Wedding\n- Start: 2026-07-25T16:00:00\n- End: 2026-07-25T22:00:00\n- All Day: False\n- Location: Seaside Resort - Garden Pavilion, 123 Ocean Drive\n- Description: Ceremony at 4pm, reception follows at 5:30pm. Cocktail attire. RSVP by June 15. Hotel block available under 'Chen-Anderson wedding'.\n- Importance: action_required\n\n**Merge Rules:**\n1. If source_type is \"cancellation\", prefix title with \"CANCELLED: \" (if not already)\n2. Prefer specific time (e.g., 6-7pm) over all-day\n3. Combine descriptions, keeping all relevant info (append new info)\n4. Use most specific location (longer address usually better)\n5. Keep newer times if they differ (updates)\n6. For importance: keep the highest level (action_required > fyi)\n\nOutput JSON with merged event data:\n{\n    \"title\": \"...\",\n    \"start_datetime\": \"...\",\n    \"end_datetime\": \"...\",\n    \"all_day\": true/false,\n    \"location\": \"...\",\n    \"description\": \"...\",\n    \"importance\": \"action_required\" or \"fyi\"\n}\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "start_datetime": {
+          "type": "string"
+        },
+        "end_datetime": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "all_day": {
+          "type": "boolean"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "action_required",
+            "fyi"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "start_datetime",
+        "all_day",
+        "importance"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "start_datetime": {
+          "type": "string"
+        },
+        "end_datetime": {
+          "type": "string",
+          "nullable": true
+        },
+        "all_day": {
+          "type": "boolean"
+        },
+        "location": {
+          "type": "string",
+          "nullable": true
+        },
+        "description": {
+          "type": "string",
+          "nullable": true
+        },
+        "importance": {
+          "type": "string",
+          "enum": [
+            "action_required",
+            "fyi"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "start_datetime",
+        "all_day",
+        "importance"
+      ]
+    },
+    "raw_response_text": "{\n  \"title\": \"Sarah & Michael's Wedding\",\n  \"start_datetime\": \"2026-07-25T16:00:00\",\n  \"end_datetime\": \"2026-07-25T22:00:00\",\n  \"all_day\": false,\n  \"location\": \"Seaside Resort - Garden Pavilion, 123 Ocean Drive\",\n  \"description\": \"Save the date! Wedding celebration for Sarah and Michael\\n\\nCeremony at 4pm, reception follows at 5:30pm. Cocktail attire. RSVP by June 15. Hotel block available under 'Chen-Anderson wedding'.\",\n  \"importance\": \"action_required\"\n}",
+    "finish_reason": "FinishReason.STOP",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "c7cfb4a5edc14f7186acd86791431a8b",
+    "route_role": "primary"
+  },
+  "category": null,
+  "description": "Wedding: save-the-date has basic info, formal invitation adds full venue details and schedule",
+  "difficulty": "medium",
+  "tags": [
+    "merge",
+    "description-enrichment",
+    "wedding",
+    "social"
+  ],
+  "input_summary": {},
+  "fixture_input_hash": "c9c85466d2553ea243cffca30a4a2ac3d7bcc4fd4f4e6359be6835370827cee4",
+  "code_provenance": {
+    "git_commit": "46a63d11338b7a0fa0e55d41efe6477e6a187f2d",
+    "event_processing_sha256": "3b61b944aad7f497f768d02cc51e726b757bbf1316635f253a61092cb38b1aad"
+  },
+  "raw_response": null,
+  "identity": {
+    "identity_version": 2,
+    "operation": "merge",
+    "provider": "gemini",
+    "model": "gemini-3.5-flash-lite",
+    "thinking": {
+      "mode": "level",
+      "value": "none"
+    },
+    "request_settings": {
+      "api_surface": "gemini/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "gemini-3.5-flash-lite",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "none"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "0326a7a81e169edaf924fb8a09fe97a184519ff43052c4a3ce59137d4d4545b6",
+    "adapter_contract_hash": "7290a95d479db2e3c5cbf8f212866455a4122a408c9542cc385b4b71b98742d8",
+    "fixture_input_hash": "c9c85466d2553ea243cffca30a4a2ac3d7bcc4fd4f4e6359be6835370827cee4"
+  },
+  "inference_key": "08acf6c351afe1dc31d4e46b819b0f14d2a5d0ee397787c60d4a9ab461a82867",
+  "stored_at": "2026-11-01T02:40:10.600242+00:00"
+}

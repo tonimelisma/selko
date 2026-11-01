@@ -1,0 +1,141 @@
+{
+  "fixture_name": "conference_day1_vs_day2_15",
+  "operation": "compare",
+  "provider": "anthropic",
+  "model": "claude-haiku-5-5",
+  "thinking": {
+    "mode": "level",
+    "value": "low"
+  },
+  "run_at": "2026-11-01T02:40:20.748763+00:00",
+  "duration_ms": 1080,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-11-01T02:40:19.665018+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-11-01T02:40:19.665035+00:00",
+      "duration_ms": 8
+    },
+    "api_call": {
+      "started_at": "2026-11-01T02:40:19.673679+00:00",
+      "duration_ms": 1072
+    },
+    "scoring": {
+      "started_at": "2026-11-01T02:40:20.745839+00:00",
+      "duration_ms": 0
+    }
+  },
+  "tokens": {
+    "prompt_tokens": 667,
+    "completion_tokens": 147,
+    "total_tokens": 814
+  },
+  "cost": 0.0001402,
+  "actual": {
+    "matched_event_id": null
+  },
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1293,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: DevOps Summit - Day 2\n- Start: 2026-10-16T09:00:00\n- End: 2026-10-16T18:00:00\n- Location: Convention Center, Hall B\n- Description: Second day of DevOps Summit. Featured talks on Kubernetes and CI/CD pipelines.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: DevOps Summit - Day 1\n   - Start: 2026-10-15T09:00:00\n   - End: 2026-10-15T18:00:00\n   - Location: Convention Center, Hall B\n   - Description: Opening day of DevOps Summit with keynote speakers\n\n2. Event ID: event-002\n   - Title: Flight Home\n   - Start: 2026-10-17T14:30:00\n   - End: 2026-10-17T17:15:00\n   - Location: Airport\n   - Description: Return flight after conference\n\n3. Event ID: event-003\n   - Title: Networking Dinner\n   - Start: 2026-10-16T19:00:00\n   - End: 2026-10-16T22:00:00\n   - Location: The Waterfront Restaurant\n   - Description: Evening networking event for DevOps Summit attendees\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "raw_response_text": "{\"matched_event_id\": null, \"reasoning\": \"The new event is 'DevOps Summit - Day 2' on 2026-10-16 (09:00-18:00, Convention Center Hall B). event-001 is Day 1 on 2026-10-15, a different day and session. event-002 is an unrelated flight home. event-003 is a networking dinner on the same date at a different location and time. No existing event refers to the same real-world session as the new event.\"}",
+    "finish_reason": "end_turn",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "e599ece95a584b8c8280f69c0f8cffa8",
+    "route_role": "primary"
+  },
+  "category": null,
+  "description": "Conference day 1 vs day 2 - multi-day event different days - should NOT match",
+  "difficulty": "hard",
+  "tags": [
+    "dedup",
+    "no-match",
+    "conference"
+  ],
+  "input_summary": {},
+  "fixture_input_hash": "f440ae936c53c8dd8171ba156648ab79b0ad95140e054aa61b89ad4aea2db2d2",
+  "code_provenance": {
+    "git_commit": "46a63d11338b7a0fa0e55d41efe6477e6a187f2d",
+    "event_processing_sha256": "3b61b944aad7f497f768d02cc51e726b757bbf1316635f253a61092cb38b1aad"
+  },
+  "raw_response": null,
+  "identity": {
+    "identity_version": 2,
+    "operation": "compare",
+    "provider": "anthropic",
+    "model": "claude-haiku-5-5",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "anthropic/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "claude-haiku-5-5",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "26c734591a9a2f602b175c5e7f03455199cca7eb847d43a054d339700ba5d2bb",
+    "adapter_contract_hash": "853277a8daf01bb6dff0cf2b0332682d532c648421bec5a11cf77d1d0cee152d",
+    "fixture_input_hash": "f440ae936c53c8dd8171ba156648ab79b0ad95140e054aa61b89ad4aea2db2d2"
+  },
+  "inference_key": "1477040529dd250a5f0ecfa8fa1db2db881b88000026ec7876f096ce49eb9c2b",
+  "stored_at": "2026-11-01T02:40:20.778697+00:00"
+}

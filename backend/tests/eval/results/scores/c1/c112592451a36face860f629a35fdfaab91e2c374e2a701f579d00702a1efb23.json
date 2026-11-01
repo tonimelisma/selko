@@ -1,0 +1,61 @@
+{
+  "fixture_name": "conference_session_update_12",
+  "operation": "merge",
+  "expected": {
+    "title": "DevCon 2026: Keynote - Future of AI",
+    "start_datetime": "2026-09-12T09:00:00",
+    "end_datetime": "2026-09-12T10:30:00",
+    "all_day": false,
+    "location": "Convention Center - Main Hall A",
+    "description_contains": [
+      "AI trends",
+      "Dr. Jane Chen",
+      "TechCorp",
+      "Q&A",
+      "coffee"
+    ]
+  },
+  "auto_score": {
+    "title": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "start_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "end_datetime": {
+      "difference_minutes": 0.0,
+      "match": true
+    },
+    "all_day": {
+      "match": true
+    },
+    "location": {
+      "similarity": 1.0,
+      "match": true
+    },
+    "description_contains": {
+      "found": [
+        "AI trends",
+        "Dr. Jane Chen",
+        "TechCorp",
+        "Q&A",
+        "coffee"
+      ],
+      "missing": [],
+      "match": true
+    },
+    "fields_matched": 6,
+    "total_fields": 6,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 2,
+    "inference_key": "c88f83de9239f9b251d8d19181fdccc416c2a1e6e2538f11f6f1c93d330007c4",
+    "expected_output_hash": "15bcdea3ffaa3130e4a96f45ee2196bcc74e7fb0a1c941e29346919b96f549f2",
+    "scorer_hash": "6b0c50845803d5938429b012b60ed0906d2cf92060436a8519290b174a564677"
+  },
+  "score_key": "c112592451a36face860f629a35fdfaab91e2c374e2a701f579d00702a1efb23",
+  "stored_at": "2026-11-01T02:44:46.896522+00:00"
+}

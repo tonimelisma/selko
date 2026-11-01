@@ -1,0 +1,141 @@
+{
+  "fixture_name": "team_meeting_vs_kickoff_13",
+  "fixture_hash": "53299ac61b7858b0f9881b6c004a5b1fa1b00cfff6151a81ca943907c1200b41",
+  "code_hash": "3b61b944aad7",
+  "prompt_hash": "26c734591a9a",
+  "operation": "compare",
+  "provider": "anthropic",
+  "model": "claude-haiku-5-5",
+  "thinking": "low",
+  "run_at": "2026-11-01T02:40:25.103117+00:00",
+  "duration_ms": 1118,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-11-01T02:40:23.981522+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-11-01T02:40:23.981527+00:00",
+      "duration_ms": 6
+    },
+    "api_call": {
+      "started_at": "2026-11-01T02:40:23.987991+00:00",
+      "duration_ms": 1112
+    },
+    "scoring": {
+      "started_at": "2026-11-01T02:40:25.100128+00:00",
+      "duration_ms": 0
+    }
+  },
+  "description": "Regular team meeting vs project kickoff same morning - should NOT match",
+  "difficulty": "hard",
+  "tags": [
+    "dedup",
+    "no-match",
+    "work"
+  ],
+  "expected": {
+    "matched_event_id": null
+  },
+  "actual": {
+    "matched_event_id": null
+  },
+  "auto_score": {
+    "correct": true,
+    "expected": null,
+    "actual": null
+  },
+  "tokens": {
+    "prompt_tokens": 636,
+    "completion_tokens": 183,
+    "total_tokens": 819
+  },
+  "cost": 0.0001551,
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 1221,
+        "text": "You are comparing calendar events to detect duplicates.\n\n**New Event:**\n- Title: Phoenix Project Kickoff\n- Start: 2026-07-08T10:00:00\n- End: 2026-07-08T12:00:00\n- Location: Large Conference Room\n- Description: Initial kickoff for Phoenix redesign project. All stakeholders required.\n\n**Existing Events (same date):**\n\n1. Event ID: event-001\n   - Title: Weekly Team Sync\n   - Start: 2026-07-08T09:00:00\n   - End: 2026-07-08T09:30:00\n   - Location: Conference Room B\n   - Description: Regular Tuesday morning team standup\n\n2. Event ID: event-002\n   - Title: 1:1 with Manager\n   - Start: 2026-07-08T14:00:00\n   - End: 2026-07-08T14:30:00\n   - Location: Manager's Office\n   - Description: Bi-weekly check-in\n\n3. Event ID: event-003\n   - Title: Code Review\n   - Start: 2026-07-08T15:00:00\n   - End: 2026-07-08T16:00:00\n   - Location: Dev Room\n   - Description: Review PRs for authentication module\n\n**Question:** Is the new event the same as any of the existing events?\n\nConsider events the same if they refer to the same real-world event, even if:\n- Wording is slightly different\n- One has more details than the other\n- Time changed slightly (updates)\n\nReturn the matching Event ID (or null if no match) and brief reasoning.\n"
+      }
+    ],
+    "json_schema_input": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "json_schema_sanitized": {
+      "type": "object",
+      "properties": {
+        "matched_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasoning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "matched_event_id",
+        "reasoning"
+      ]
+    },
+    "raw_response_text": "{\"matched_event_id\": null, \"reasoning\": \"The new event, Phoenix Project Kickoff (10:00-12:00, Large Conference Room), does not match any existing event. Event-001 (Weekly Team Sync, 09:00-09:30) is a different meeting with a different title, time, and location. Event-002 (1:1 with Manager, 14:00-14:30) and event-003 (Code Review, 15:00-16:00) also differ in title, time, location, and purpose. No existing event overlaps with the same title, time window, or purpose.\"}",
+    "finish_reason": "end_turn",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "b2ea65a26365444585d51074ddbb8395",
+    "route_role": "primary"
+  },
+  "inference_key": "6fa1bff090c4e0530c0d273cecd8b834c26f0ab5546411c392bc3cb42924cd7b",
+  "score_key": "ccff1b27ddf260fdbd26bcd0c8a9877d8b3aef0fd0c6ffa6f45c383e1de798e5",
+  "identity": {
+    "identity_version": 2,
+    "operation": "compare",
+    "provider": "anthropic",
+    "model": "claude-haiku-5-5",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "anthropic/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "claude-haiku-5-5",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "26c734591a9a2f602b175c5e7f03455199cca7eb847d43a054d339700ba5d2bb",
+    "adapter_contract_hash": "853277a8daf01bb6dff0cf2b0332682d532c648421bec5a11cf77d1d0cee152d",
+    "fixture_input_hash": "53299ac61b7858b0f9881b6c004a5b1fa1b00cfff6151a81ca943907c1200b41"
+  }
+}
