@@ -50,42 +50,85 @@ import org.koin.compose.koinInject
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-internal fun recoveryProvidersFor(
-    integrations: List<Integration>
-): List<IntegrationProvider> {
-    val emailConnected = integrations.any {
+/** One sign-in the reconnect banner can offer. */
+internal enum class RecoverySignIn { GOOGLE, OUTLOOK }
+
+internal data class RecoveryAction(val signIn: RecoverySignIn, val isReconnect: Boolean) {
+    /**
+     * Gmail stands in for the combined Google consent, which grants Gmail and
+     * Google Calendar together (`/integrations/google/auth`).
+     */
+    val authProvider: IntegrationProvider
+        get() = if (signIn == RecoverySignIn.GOOGLE) IntegrationProvider.GMAIL else IntegrationProvider.OUTLOOK
+}
+
+internal enum class RecoveryTitle { EMAIL, CONNECT_CALENDAR, RECONNECT_CALENDAR, ATTENTION }
+
+internal data class RecoveryPlan(val title: RecoveryTitle, val actions: List<RecoveryAction>)
+
+/**
+ * What the reconnect banner offers: one action per sign-in, not per row.
+ *
+ * Gmail and Google Calendar are separate rows but one Google consent grants
+ * both, so offering both only duplicated the same flow. Outlook mail and
+ * Outlook Calendar share one row.
+ */
+internal fun recoveryPlanFor(integrations: List<Integration>): RecoveryPlan {
+    val rows = integrations.filter { it.provider != IntegrationProvider.GOOGLE_PHOTOS }
+    val googleRows = rows.filter {
+        it.provider == IntegrationProvider.GMAIL || it.provider == IntegrationProvider.GOOGLE_CALENDAR
+    }
+    val outlook = rows.firstOrNull { it.provider == IntegrationProvider.OUTLOOK }
+    val emailConnected = rows.any {
         it.provider in setOf(IntegrationProvider.GMAIL, IntegrationProvider.OUTLOOK) &&
             it.status == IntegrationStatus.ACTIVE
     }
-    val calendarConnected = integrations.hasWritableCalendar()
-    return when {
-        !emailConnected -> buildList {
-            add(IntegrationProvider.GMAIL)
-            add(IntegrationProvider.OUTLOOK)
-            if (!calendarConnected) add(IntegrationProvider.GOOGLE_CALENDAR)
+    val calendarConnected = rows.hasWritableCalendar()
+    val outlookNeedsCalendar = outlook != null && outlook.status == IntegrationStatus.ACTIVE &&
+        rows.needsOutlookCalendarReconnect()
+
+    // A lapsed Gmail always matters. A lapsed Google Calendar matters only when
+    // no calendar is writable; with Outlook Calendar working it is not a reason
+    // to prompt.
+    var wantsGoogle = rows.any {
+        it.provider == IntegrationProvider.GMAIL && it.status != IntegrationStatus.ACTIVE
+    }
+    var wantsOutlook = outlook != null && outlook.status != IntegrationStatus.ACTIVE
+    if (!emailConnected) {
+        wantsGoogle = true
+        wantsOutlook = true
+    } else if (!calendarConnected) {
+        wantsGoogle = true
+        if (outlook != null && (outlook.status != IntegrationStatus.ACTIVE || outlookNeedsCalendar)) {
+            wantsOutlook = true
         }
-        !calendarConnected -> buildList {
-            // An Outlook connection without the calendar scope is fixed by
-            // reconnecting Outlook; offer that first, Google Calendar second.
-            if (integrations.needsOutlookCalendarReconnect()) add(IntegrationProvider.OUTLOOK)
-            add(IntegrationProvider.GOOGLE_CALENDAR)
-            integrations
-                .filter {
-                    it.provider in setOf(IntegrationProvider.GMAIL, IntegrationProvider.OUTLOOK) &&
-                        it.status != IntegrationStatus.ACTIVE
-                }
-                .mapTo(this) { it.provider }
+    }
+
+    val google = if (wantsGoogle) {
+        listOf(RecoveryAction(RecoverySignIn.GOOGLE, isReconnect = googleRows.isNotEmpty()))
+    } else {
+        emptyList()
+    }
+    val outlookAction = if (wantsOutlook) {
+        listOf(RecoveryAction(RecoverySignIn.OUTLOOK, isReconnect = outlook != null))
+    } else {
+        emptyList()
+    }
+    // An Outlook account that only lacks calendar consent is the shortest fix,
+    // so it is offered first.
+    val outlookFirst = emailConnected && !calendarConnected && outlookNeedsCalendar
+    val actions = if (outlookFirst) outlookAction + google else google + outlookAction
+
+    val title = when {
+        !emailConnected -> RecoveryTitle.EMAIL
+        !calendarConnected -> {
+            val hadCalendar = rows.any { it.provider == IntegrationProvider.GOOGLE_CALENDAR } ||
+                outlook?.scopes.orEmpty().any { it.lowercase().endsWith("calendars.readwrite") }
+            if (hadCalendar) RecoveryTitle.RECONNECT_CALENDAR else RecoveryTitle.CONNECT_CALENDAR
         }
-        else -> integrations
-            .filter {
-                it.provider != IntegrationProvider.GOOGLE_PHOTOS &&
-                    it.status != IntegrationStatus.ACTIVE &&
-                    // A calendar is already writable (e.g. via Outlook), so a
-                    // stale Google Calendar row is not a reason to prompt.
-                    it.provider != IntegrationProvider.GOOGLE_CALENDAR
-            }
-            .map { it.provider }
-    }.distinct()
+        else -> RecoveryTitle.ATTENTION
+    }
+    return RecoveryPlan(title, actions)
 }
 
 internal data class CatchUpDisplay(
@@ -182,28 +225,22 @@ fun ConnectionRecoveryContent(
         }
     }
 
-    val emailConnected = integrations.any {
-        it.provider in setOf(IntegrationProvider.GMAIL, IntegrationProvider.OUTLOOK) &&
-            it.status == IntegrationStatus.ACTIVE
-    }
-    val calendarConnected = integrations.hasWritableCalendar()
-    val outlookCalendarReconnect = !calendarConnected &&
-        integrations.needsOutlookCalendarReconnect()
-    val recoveryProviders = recoveryProvidersFor(integrations)
+    val plan = recoveryPlanFor(integrations)
     val catchUp = rememberCatchUpDisplay(recovery, justCaughtUp)
 
-    if (catchUp == null && recoveryProviders.isEmpty()) return
+    if (catchUp == null && plan.actions.isEmpty()) return
 
-    val title = when {
-        !emailConnected -> stringResource(R.string.recovery_email_title)
-        outlookCalendarReconnect -> stringResource(R.string.recovery_any_calendar_title)
-        !calendarConnected -> stringResource(R.string.recovery_calendar_title)
-        else -> stringResource(R.string.recovery_attention_title)
+    val title = when (plan.title) {
+        RecoveryTitle.EMAIL -> stringResource(R.string.recovery_email_title)
+        RecoveryTitle.CONNECT_CALENDAR -> stringResource(R.string.recovery_any_calendar_title)
+        RecoveryTitle.RECONNECT_CALENDAR -> stringResource(R.string.recovery_calendar_title)
+        RecoveryTitle.ATTENTION -> stringResource(R.string.recovery_attention_title)
     }
-    val description = when {
-        !emailConnected -> stringResource(R.string.recovery_email_description)
-        !calendarConnected -> stringResource(R.string.recovery_calendar_description)
-        else -> stringResource(R.string.recovery_attention_description)
+    val description = when (plan.title) {
+        RecoveryTitle.EMAIL -> stringResource(R.string.recovery_email_description)
+        RecoveryTitle.CONNECT_CALENDAR,
+        RecoveryTitle.RECONNECT_CALENDAR -> stringResource(R.string.recovery_calendar_description)
+        RecoveryTitle.ATTENTION -> stringResource(R.string.recovery_attention_description)
     }
 
     Column(modifier = modifier.fillMaxWidth()) {
@@ -239,7 +276,7 @@ fun ConnectionRecoveryContent(
             }
         }
 
-        if (recoveryProviders.isNotEmpty()) {
+        if (plan.actions.isNotEmpty()) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
@@ -280,20 +317,13 @@ fun ConnectionRecoveryContent(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    recoveryProviders.forEachIndexed { index, provider ->
-                        val integration = integrations.find { it.provider == provider }
-                        val reconnecting = integration != null && (
-                            integration.status != IntegrationStatus.ACTIVE ||
-                                (provider == IntegrationProvider.OUTLOOK && outlookCalendarReconnect)
-                            )
-                        val providerName = when (provider) {
-                            IntegrationProvider.GMAIL -> stringResource(R.string.settings_gmail)
-                            IntegrationProvider.OUTLOOK -> stringResource(R.string.settings_outlook)
-                            IntegrationProvider.GOOGLE_CALENDAR ->
-                                stringResource(R.string.settings_google_calendar)
-                            IntegrationProvider.GOOGLE_PHOTOS -> return@forEachIndexed
+                    plan.actions.forEachIndexed { index, action ->
+                        val provider = action.authProvider
+                        val providerName = when (action.signIn) {
+                            RecoverySignIn.GOOGLE -> stringResource(R.string.recovery_google)
+                            RecoverySignIn.OUTLOOK -> stringResource(R.string.settings_outlook)
                         }
-                        val label = if (reconnecting) {
+                        val label = if (action.isReconnect) {
                             stringResource(R.string.recovery_reconnect_provider, providerName)
                         } else {
                             stringResource(R.string.recovery_connect_provider, providerName)
@@ -328,7 +358,7 @@ fun ConnectionRecoveryContent(
                             enabled = connectingProvider == null,
                             loading = connectingProvider == provider
                         )
-                        if (index != recoveryProviders.lastIndex) {
+                        if (index != plan.actions.lastIndex) {
                             Spacer(modifier = Modifier.height(8.dp))
                         }
                     }

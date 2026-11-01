@@ -72,4 +72,53 @@ struct CalendarCapabilityTests {
         #expect(outlookInfo.provider == .outlook)
         #expect(outlookInfo.id == "outlook:AAMk")
     }
+
+    // MARK: - Reconnect banner: one action per sign-in
+
+    @Test
+    func bothGoogleRowsExpiredOfferOneGoogleAction() {
+        // Regression: one button per row offered "Reconnect Gmail" and
+        // "Reconnect Google Calendar" for the same Google sign-in.
+        let plan = [
+            Self.integration(.gmail, status: .expired),
+            Self.integration(.googleCalendar, status: .expired),
+        ].recoveryPlan
+
+        let google = plan.actions.filter { $0.signIn == .google }
+        #expect(google == [RecoveryAction(signIn: .google, isReconnect: true)])
+        #expect(google.first?.label == "Reconnect Google")
+        #expect(google.first?.authProvider == .gmail)
+        #expect(plan.title == .email)
+    }
+
+    @Test
+    func lapsedGoogleCalendarAloneOffersOnlyGoogle() {
+        let plan = [
+            Self.integration(.gmail),
+            Self.integration(.googleCalendar, status: .revoked),
+        ].recoveryPlan
+
+        #expect(plan.actions == [RecoveryAction(signIn: .google, isReconnect: true)])
+        #expect(plan.title == .reconnectCalendar)
+    }
+
+    @Test
+    func outlookWithoutCalendarOffersConnectGoogleOrReconnectOutlook() {
+        let plan = [Self.integration(.outlook, scopes: ["Mail.Read"])].recoveryPlan
+
+        #expect(plan.actions.map(\.label) == ["Reconnect Outlook", "Connect Google"])
+        #expect(plan.title == .connectCalendar)
+    }
+
+    @Test
+    func everythingHealthyOffersNothing() {
+        let plan = [
+            Self.integration(.gmail),
+            Self.integration(.googleCalendar),
+            Self.integration(.googlePhotos, status: .expired),
+        ].recoveryPlan
+
+        #expect(plan.actions.isEmpty)
+        #expect(plan.title == .attention)
+    }
 }
