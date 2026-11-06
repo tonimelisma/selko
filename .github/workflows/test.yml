@@ -151,7 +151,7 @@ jobs:
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v3
         with:
-          version: latest
+          version: 2.118.0  # pinned: v3 changed db push to target the local stack by default
 
       - name: Link to Staging Supabase
         run: supabase link --project-ref lxmysergoeaegxlyfzwk
@@ -269,7 +269,7 @@ jobs:
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v3
         with:
-          version: latest
+          version: 2.118.0  # pinned: v3 changed db push to target the local stack by default
 
       - name: Link to Staging Supabase
         run: supabase link --project-ref lxmysergoeaegxlyfzwk
@@ -350,7 +350,7 @@ jobs:
         if: inputs.staging_action == 'deploy'
         uses: astral-sh/setup-uv@v8.3.2
         with:
-          version: latest
+          version: 2.118.0  # pinned: v3 changed db push to target the local stack by default
 
       - name: Set up Python
         if: inputs.staging_action == 'deploy'
@@ -389,7 +389,7 @@ jobs:
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v3
         with:
-          version: latest
+          version: 2.118.0  # pinned: v3 changed db push to target the local stack by default
 
       - name: Link to Production Supabase
         run: supabase link --project-ref khahcozfbnpykspvatrg
