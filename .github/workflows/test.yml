@@ -350,7 +350,7 @@ jobs:
         if: inputs.staging_action == 'deploy'
         uses: astral-sh/setup-uv@v8.3.2
         with:
-          version: 2.118.0  # pinned: v3 changed db push to target the local stack by default
+          version: latest
 
       - name: Set up Python
         if: inputs.staging_action == 'deploy'
