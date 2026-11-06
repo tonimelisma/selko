@@ -1,0 +1,419 @@
+{
+  "fixture_name": "invitations/ysc_newsletter_multi_event_11",
+  "operation": "extract",
+  "provider": "anthropic",
+  "model": "claude-haiku-5-5",
+  "thinking": {
+    "mode": "level",
+    "value": "low"
+  },
+  "run_at": "2026-11-06T06:42:45.820563+00:00",
+  "duration_ms": 6328,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-11-06T06:42:39.485602+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-11-06T06:42:39.485615+00:00",
+      "duration_ms": 6
+    },
+    "api_call": {
+      "started_at": "2026-11-06T06:42:39.491861+00:00",
+      "duration_ms": 6322
+    },
+    "scoring": {
+      "started_at": "2026-11-06T06:42:45.814453+00:00",
+      "duration_ms": 0
+    }
+  },
+  "tokens": {
+    "prompt_tokens": 4467,
+    "completion_tokens": 1582,
+    "total_tokens": 6049
+  },
+  "cost": 0.0012377,
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "YSC Happy Hour Above the City at the Transamerica Building",
+        "start_datetime": "2026-02-19T17:30:00",
+        "end_datetime": null,
+        "all_day": false,
+        "location": "Transamerica Building, 48th Floor",
+        "description": "Evening Happy Hour with exclusive access to a 48th-floor bar with views of San Francisco. Hosted by Polina and Mary. Timed entry required: guests must be checked in at a designated arrival time (5:30 PM, 6:00 PM or 6:30 PM) due to building security. Registration is by invitation only and must be coordinated directly through Mary in advance. RSVP on Partiful: https://partiful.com/e/g1hU5HXmUnfJwxpW8u8M?c=fLU6roGc",
+        "importance": "action_required",
+        "recurrence_rule": null
+      },
+      {
+        "title": "YSC Happy Hour at The Royal Cuckoo",
+        "start_datetime": "2026-03-19T17:30:00",
+        "end_datetime": null,
+        "all_day": false,
+        "location": "The Royal Cuckoo, San Francisco",
+        "description": "YSC Happy Hour at one of SF's most unique cocktail bars. Includes exclusive drink specials, a cozy vintage atmosphere, some of the best Aquavit in town (courtesy of owner Paul's Danish roots), and live music.",
+        "importance": "action_required",
+        "recurrence_rule": null
+      },
+      {
+        "title": "YSC Bus Trip to Wine Country (save the date)",
+        "start_datetime": "2026-03-28T00:00:00",
+        "end_datetime": null,
+        "all_day": true,
+        "location": null,
+        "description": "Bus trip to wine country. Save the date; details coming soon.",
+        "importance": "action_required",
+        "recurrence_rule": null
+      },
+      {
+        "title": "Joint YSC-SSCC Easter Luncheon (save the date)",
+        "start_datetime": "2026-04-04T00:00:00",
+        "end_datetime": null,
+        "all_day": true,
+        "location": null,
+        "description": "Traditional Scandinavian Luncheon hosted jointly by the YSC and SSCC. Save the date; more info to follow. Members who want to help organize can fill out the form linked in the newsletter.",
+        "importance": "action_required",
+        "recurrence_rule": null
+      },
+      {
+        "title": "Joint YSC-SSCC Kids Easter & Crafts (save the date)",
+        "start_datetime": "2026-04-05T00:00:00",
+        "end_datetime": null,
+        "all_day": true,
+        "location": "Scandinavian School and Cultural Center",
+        "description": "Kids and family friendly event. Save the date; more info to follow.",
+        "importance": "action_required",
+        "recurrence_rule": null
+      }
+    ],
+    "booking_confirmed": false
+  },
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 4502,
+        "text": "Selko turns the user's email into calendar events. You read one email, with its attachments, and report every event in it that the user would put on their personal calendar.\n\nThe user message gives the email in <email_context> (today's date, the user's timezone, subject, sender, date sent) and <email_body>, with any attachments before it.\n\n<what_to_extract>\nExtract every event the email states with an explicit date: meetings, appointments, parties, performances, conferences, closures, early dismissals, half days, deadlines, and informational items such as themed dress-up days or staff birthdays.\n\nFor each event give:\n- title: a clear, descriptive name\n- start_datetime and end_datetime (end only if stated)\n- all_day: true or false\n- location: the physical address, room, venue or meeting link stated in the email. If none is stated, use null. Do not infer a location from the organization's name or the kind of event.\n- description: every relevant detail from the email\n- importance: action_required or fyi (see below)\n- recurrence_rule: an RFC 5545 RRULE for a recurring event (for example RRULE:FREQ=WEEKLY;BYDAY=MO), otherwise null\n\nA multi-day event (a three-day conference, say) is one event spanning the whole period, not one event per day. A venue or attraction that opens for a season (a skating rink, a pumpkin patch, an exhibition, a holiday market) is not a multi-day event, because nobody attends it from the first day to the last: extract the opening day as the event, all day unless an opening time is stated, and put the closing date in the description. RSVP deadlines, early-bird deadlines and registration cutoffs belong in the main event's description, not in events of their own. Only extract events whose dates are stated explicitly; do not infer a date from a holiday, the surrounding context or the subject line. Read dates relative to today's date. For PDFs and images, extract events from calendar grids, flyers and schedules.\n</what_to_extract>\n\n<times>\nWrite start_datetime and end_datetime as naive local ISO times in the user's timezone, such as 2026-09-13T10:00:00, with no Z and no numeric offset; the system applies the timezone. When the email names no time zone, write each time exactly as the email states it; do not convert it based on where the event is. When an email lists both an event time (or doors or show time) and setup, vendor or cleanup windows, use the event time and put the other windows in the description. For example, \"Event Time: 10:00 AM \u2013 2:00 PM\" with \"Vendor Set-Up: 7:00 AM \u2013 9:00 AM\" is 10:00 to 14:00, not 7:00 to 15:00.\n</times>\n\n<importance>\naction_required: the user has to act or change their schedule. Closures, early dismissals, half days, deadlines, appointments, meetings, conferences, registration deadlines, performances to attend, invitations such as birthday parties.\nfyi: nice to know, no action needed. Themed dress-up days such as pajama day or hat day, staff birthdays, spirit weeks, movie days, classroom activities the child takes part in without a parent. Extract these too; mark them fyi.\n</importance>\n\n<not_events>\nAn event is something the user would attend, take part in or prepare for. If the email is purely transactional (receipts, shipping, payments) or administrative (password resets, terms updates, account statements) and has no such event, set events_found to false and return an empty events list.\n\nThird-party automated calendar-derived briefs, relationship digests and reminder summaries that only restate entries already on the recipient's calendar are not new event sources. Return events_found false for them unless the email communicates a genuine organizer-issued change, cancellation, or new action beyond the existing calendar data. This exclusion does NOT apply to organizer-sent meeting invitations, preparation requests, or attached agendas: extract those events when the recipient is expected to attend or prepare and the date is explicit.\n</not_events>\n\n<cancellations>\nSet cancellation_detected to true only when the email is an organizer's or provider's cancellation of an existing calendar event. Keep it false for RSVP declines, counter-proposals, subscription or account cancellations, and other uses of the word cancel. A cancellation may carry no usable event details; still set cancellation_detected to true, so the system records it rather than creating a new event.\n</cancellations>\n\nIf the email contains no events, set events_found to false and return an empty events list."
+      },
+      {
+        "type": "text",
+        "length": 5098,
+        "text": "<email_context>\nToday's date: 2026-02-17\nUser's timezone (local wall clock): America/New_York\nSubject: Welcome New YSC Board Members\nFrom: YSC <info@ysc.org>\nDate sent: 2026-02-17T03:54:48Z\n</email_context>\n\n<email_body>\nFour new members joined the YSC board\n\nNewsletter, February 16, 2026\n\nWelcome New Board Members\n\nOn February 1st we had our annual meeting at the Swedish American Hall. You can read more about the meeting below, but I would really like to thank Jeanette Flodell for having been our president for the past three years. Even though being president is somewhat of a marathon, Jeanette did an amazing sprint towards the finish line by being in charge of, and putting together, an amazing 75 year anniversary party back in October. Thank you Jeanette!!!\n\nI would also like to welcome four new people to the board, Anne Buike, Christopher Tevren, Elsa Putur and Polina Pribytkova. Thank you all so much for stepping up and wanting to help run the club. We've already put a number of new exciting events on the calendar, so save the dates, for those that are still being worked out.\n\nFinally I'd like to remind everyone that the whole Clear Lake Cabin is available for rent for only $100 per night during the winter. I spent this long weekend up there with a number of friends and it's a great and different experience to visit the cabin in the winter. We now have three bedrooms with beds for 8 people, and with a fire in the fireplace you get some truly Scandinavian hygge. There's also plenty of things to do and explore around the lake, so check it out, you can't find a better deal!\n\nPeter Nordstr\u00f6m (your new/old president)\nPs. On Friday Jan 30 we had a fun Full moon hike. Great to see so many people joining on short notice.\n\nAnnual Meeting at Swedish American Hall - Feb 1, 2026\n\nBefore we dove into the official business, the afternoon kicked off at 1:00 PM with a social hour. About 40 people showed up and it was fantastic to see so many familiar faces and welcome several newcomers over drinks and mingling. Whether it was catching up on Tahoe ski conditions or sharing stories from the holidays, that first moment of \u2026\n\nUpcoming Events\n\nHappy Hour Above the City in the Transamerica Building\n\nFebruary 19\n\nJoin Polina and Mary for a truly special YSC Happy Hour experience, one you won\u2019t want to miss. This February, we\u2019re heading inside the iconic Transamerica Building for exclusive access to a 48th-floor bar with breathtaking views of San Francisco.\n\nWhen: Thursday, February 19, 5:30 PM\nWhat: Evening Happy Hour (timed entry required)\nWhere: Transamerica Building \u2013 48th Floor\n\nThis event is by registration only and must be coordinated directly through Mary in advance! Due to building security, all guests must be checked in at a designated arrival time to gain access upstairs.\nAvailable arrival time slots:\n\u2022 5:30 PM\n\u2022 6:00 PM\n\u2022 6:30 PM\nIf you\u2019re interested in attending, you must RSVP on partiful under the following link, where you can also read more details: https://partiful.com/e/g1hU5HXmUnfJwxpW8u8M?c=fLU6roGc\n\nMarch 19th: YSC Happy Hour at The Royal Cuckoo\n\nYSC Happy Hour at The Royal Cuckoo \u2013 Join us on Thursday, March 19th, from 5:30 PM at one of SF\u2019s most unique cocktail bars. Enjoy exclusive drink specials, a cozy vintage atmosphere, and some of the best Aquavit in town, courtesy of owner Paul\u2019s Danish roots. Great drinks, great vibes, and great company and live music\u2014don\u2019t miss it!\n\nMarch 28th: YSC Bus Trip to Wine Country (save the date)\n\nBus trip to wine country, details coming soon.\n\nApril 4th: Joint YSC-SSCC Easter Luncheon (Save the date)\n\nCome join the YSC and SSCC for a traditional Scandinavian Luncheon. More info to follow. If you would like to help out organizing this event, please fill out this form.\n\nApril 5th: Joint YSC-SSCC Kids Easter & Crafts (save the date)\n\nKids and family friendly event at the Scandinavian School and Cultural Center\n\nTahoe cabin reservations\n\nThe Tahoe winter reservations have now been open for a while, and we are seeing a lot of bookings come in. To make the system as fair as possible for everyone, we want to kindly remind everyone about the booking rules:\n\n- Single membership allows you to make reservations for ONE room, ONE stay at a time. Once your stay is over, you can then make your next reservation.\n- Family membership allows reservations for TWO rooms, ONE stay at a time, i.e. on the same dates.\n- We do not allow multiple reservations for different dates. Once your current reservation is over, you can go online and book your next one.\n- IMPORTANT: You do need to make sure that you include the correct # of people that will stay in each room in the reservation. If you need to add extra people to the reservation, email info@ysc.org, and let us know what the adjustment should be. Note that there is a max # of individuals allowed per room, as outlined in the room descriptions on the reservation page.\n\nPlease email tahoe@ysc.org if you have any questions about the cabin or the reservation system.\n\nYoung Scandinavians Club\nPO Box 640610\nSan Francisco, CA 94164\n</email_body>"
+      }
+    ],
+    "json_schema_input": {
+      "$defs": {
+        "CalendarEvent": {
+          "description": "A single calendar event extracted from an email.",
+          "properties": {
+            "title": {
+              "description": "The event title or name",
+              "title": "Title",
+              "type": "string"
+            },
+            "start_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Local wall-clock start in the user's timezone as naive ISO 8601 (e.g. 2026-09-13T10:00:00). Do not include Z or numeric offsets.",
+              "title": "Start Datetime"
+            },
+            "end_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Local wall-clock end in the user's timezone as naive ISO 8601 (e.g. 2026-09-13T14:00:00). Do not include Z or numeric offsets.",
+              "title": "End Datetime"
+            },
+            "all_day": {
+              "default": false,
+              "description": "Whether this is an all-day event",
+              "title": "All Day",
+              "type": "boolean"
+            },
+            "location": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event location or venue",
+              "title": "Location"
+            },
+            "description": {
+              "description": "Detailed description of the event with all relevant information",
+              "title": "Description",
+              "type": "string"
+            },
+            "importance": {
+              "default": "action_required",
+              "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+              "enum": [
+                "action_required",
+                "fyi"
+              ],
+              "title": "Importance",
+              "type": "string"
+            },
+            "recurrence_rule": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "RFC 5545 RRULE for recurring events (e.g., 'RRULE:FREQ=WEEKLY;BYDAY=MO'). Null for one-time events.",
+              "title": "Recurrence Rule"
+            }
+          },
+          "required": [
+            "title",
+            "description"
+          ],
+          "title": "CalendarEvent",
+          "type": "object"
+        }
+      },
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "title": "Events Found",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "$ref": "#/$defs/CalendarEvent"
+          },
+          "title": "Events",
+          "type": "array"
+        },
+        "cancellation_detected": {
+          "default": false,
+          "description": "Whether the email explicitly cancels an existing event. Set true only for an organizer/provider cancellation, never for an RSVP decline or a generic account cancellation.",
+          "title": "Cancellation Detected",
+          "type": "boolean"
+        },
+        "booking_confirmed": {
+          "default": false,
+          "description": "Whether the email is a ticket purchase receipt, a completed registration or booking confirmation, or an accepted RSVP. False for invitations, announcements, newsletters and 'tickets on sale' notices.",
+          "title": "Booking Confirmed",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "events_found"
+      ],
+      "title": "EventExtractionResponse",
+      "type": "object"
+    },
+    "json_schema_sanitized": {
+      "$defs": {
+        "CalendarEvent": {
+          "description": "A single calendar event extracted from an email.",
+          "properties": {
+            "title": {
+              "description": "The event title or name",
+              "title": "Title",
+              "type": "string"
+            },
+            "start_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Local wall-clock start in the user's timezone as naive ISO 8601 (e.g. 2026-09-13T10:00:00). Do not include Z or numeric offsets.",
+              "title": "Start Datetime"
+            },
+            "end_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Local wall-clock end in the user's timezone as naive ISO 8601 (e.g. 2026-09-13T14:00:00). Do not include Z or numeric offsets.",
+              "title": "End Datetime"
+            },
+            "all_day": {
+              "default": false,
+              "description": "Whether this is an all-day event",
+              "title": "All Day",
+              "type": "boolean"
+            },
+            "location": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event location or venue",
+              "title": "Location"
+            },
+            "description": {
+              "description": "Detailed description of the event with all relevant information",
+              "title": "Description",
+              "type": "string"
+            },
+            "importance": {
+              "default": "action_required",
+              "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+              "enum": [
+                "action_required",
+                "fyi"
+              ],
+              "title": "Importance",
+              "type": "string"
+            },
+            "recurrence_rule": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "RFC 5545 RRULE for recurring events (e.g., 'RRULE:FREQ=WEEKLY;BYDAY=MO'). Null for one-time events.",
+              "title": "Recurrence Rule"
+            }
+          },
+          "required": [
+            "title",
+            "description"
+          ],
+          "title": "CalendarEvent",
+          "type": "object"
+        }
+      },
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "title": "Events Found",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "$ref": "#/$defs/CalendarEvent"
+          },
+          "title": "Events",
+          "type": "array"
+        },
+        "cancellation_detected": {
+          "default": false,
+          "description": "Whether the email explicitly cancels an existing event. Set true only for an organizer/provider cancellation, never for an RSVP decline or a generic account cancellation.",
+          "title": "Cancellation Detected",
+          "type": "boolean"
+        },
+        "booking_confirmed": {
+          "default": false,
+          "description": "Whether the email is a ticket purchase receipt, a completed registration or booking confirmation, or an accepted RSVP. False for invitations, announcements, newsletters and 'tickets on sale' notices.",
+          "title": "Booking Confirmed",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "events_found"
+      ],
+      "title": "EventExtractionResponse",
+      "type": "object"
+    },
+    "raw_response_text": "{\"events_found\": true, \"events\": [{\"title\": \"YSC Happy Hour Above the City at the Transamerica Building\", \"start_datetime\": \"2026-02-19T17:30:00\", \"end_datetime\": null, \"all_day\": false, \"location\": \"Transamerica Building, 48th Floor\", \"description\": \"Evening Happy Hour with exclusive access to a 48th-floor bar with views of San Francisco. Hosted by Polina and Mary. Timed entry required: guests must be checked in at a designated arrival time (5:30 PM, 6:00 PM or 6:30 PM) due to building security. Registration is by invitation only and must be coordinated directly through Mary in advance. RSVP on Partiful: https://partiful.com/e/g1hU5HXmUnfJwxpW8u8M?c=fLU6roGc\", \"importance\": \"action_required\", \"recurrence_rule\": null}, {\"title\": \"YSC Happy Hour at The Royal Cuckoo\", \"start_datetime\": \"2026-03-19T17:30:00\", \"end_datetime\": null, \"all_day\": false, \"location\": \"The Royal Cuckoo, San Francisco\", \"description\": \"YSC Happy Hour at one of SF's most unique cocktail bars. Includes exclusive drink specials, a cozy vintage atmosphere, some of the best Aquavit in town (courtesy of owner Paul's Danish roots), and live music.\", \"importance\": \"action_required\", \"recurrence_rule\": null}, {\"title\": \"YSC Bus Trip to Wine Country (save the date)\", \"start_datetime\": \"2026-03-28T00:00:00\", \"end_datetime\": null, \"all_day\": true, \"location\": null, \"description\": \"Bus trip to wine country. Save the date; details coming soon.\", \"importance\": \"action_required\", \"recurrence_rule\": null}, {\"title\": \"Joint YSC-SSCC Easter Luncheon (save the date)\", \"start_datetime\": \"2026-04-04T00:00:00\", \"end_datetime\": null, \"all_day\": true, \"location\": null, \"description\": \"Traditional Scandinavian Luncheon hosted jointly by the YSC and SSCC. Save the date; more info to follow. Members who want to help organize can fill out the form linked in the newsletter.\", \"importance\": \"action_required\", \"recurrence_rule\": null}, {\"title\": \"Joint YSC-SSCC Kids Easter & Crafts (save the date)\", \"start_datetime\": \"2026-04-05T00:00:00\", \"end_datetime\": null, \"all_day\": true, \"location\": \"Scandinavian School and Cultural Center\", \"description\": \"Kids and family friendly event. Save the date; more info to follow.\", \"importance\": \"action_required\", \"recurrence_rule\": null}], \"cancellation_detected\": false, \"booking_confirmed\": false}",
+    "finish_reason": "end_turn",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "e06065736b6c4c6fbe571d73806b81f8",
+    "route_role": "primary"
+  },
+  "category": "invitations",
+  "description": "YSC community newsletter with 5 events buried in board updates, cabin rental info, and booking rules",
+  "difficulty": "hard",
+  "tags": [
+    "multi-event",
+    "newsletter",
+    "community",
+    "real-world"
+  ],
+  "input_summary": {
+    "subject": "Welcome New YSC Board Members",
+    "from": "info@ysc.org",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "fixture_input_hash": "6f3cc09932242e600e95861491aa9ef68917245e5925146e5053a852e49a5107",
+  "code_provenance": {
+    "git_commit": "c2a2296cf8c513b4664045b89ab4dafcd6b31ebb",
+    "event_processing_sha256": "963373a9cde1851f8039d4b8107acf7c05d1985a1c7106014ae134aea65bf646"
+  },
+  "raw_response": null,
+  "identity": {
+    "identity_version": 2,
+    "operation": "extract",
+    "provider": "anthropic",
+    "model": "claude-haiku-5-5",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "anthropic/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "claude-haiku-5-5",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "323e57b9e4a5785d7db82244d5b020cdac4c23df1da4f1327b5cc8efa72b8c42",
+    "adapter_contract_hash": "d3cff82711b897f93c4044d5f12effe2e04dcdd511f069e9a2ac48452c725455",
+    "fixture_input_hash": "6f3cc09932242e600e95861491aa9ef68917245e5925146e5053a852e49a5107"
+  },
+  "inference_key": "d6ea37a6932545418d3e0ae606eae79c8d84e184dd4d668b5a85fd44591764ab",
+  "stored_at": "2026-11-06T06:42:45.855612+00:00"
+}

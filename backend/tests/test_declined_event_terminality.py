@@ -143,3 +143,98 @@ def test_a_declined_adopted_event_is_matched_not_adopted_again(declined):
     assert not match.is_gcal, "a declined Selko row already owns this provider event"
     assert match.match_id == "event-declined"
     assert match.baseline["review_status"] == declined
+
+
+def _booking_extraction():
+    extraction = _extraction()
+    extraction.booking_confirmed = True
+    return extraction
+
+
+def test_a_booking_for_a_rejected_event_reopens_it_for_review():
+    """Regression: a ticket receipt for a play the user had rejected.
+
+    The user dismissed a school play in a triage pass, then bought tickets three
+    weeks later. The receipt matched the rejected event and was recorded as
+    provenance, so the play never reached the calendar. Buying tickets reverses
+    the user's own decision: the event goes back to the New lane -- and only
+    there; it is not approved on their behalf.
+    """
+    baseline = {"title": "Team Meeting", "review_status": "rejected"}
+    match = EventMatch(match_id="event-rejected", baseline=baseline)
+    client, gateway = MagicMock(), MagicMock()
+
+    with patch("selko.services.events.find_matching_event", return_value=match), \
+         patch("selko.services.events.event_processing.propose_event_update") as propose:
+        num_new, num_updated = save_extracted_events(
+            client, gateway, "user-1", "email-1", _booking_extraction()
+        )
+
+    assert (num_new, num_updated) == (0, 1)
+    decision = client._extraction_decisions[0]
+    assert decision["action"] == "update"
+    assert decision["event_id"] == "event-rejected"
+    assert decision["intent"] == "apply"
+    assert decision["fields"] == {"review_status": "pending_review"}, (
+        "only the lane changes; nothing is queued for the calendar"
+    )
+    assert "calendar_action" not in decision["fields"]
+    change_set = decision["source"]["change_set"]
+    assert change_set["changes"] == [{
+        "field": "review_status",
+        "before": "rejected",
+        "after": "pending_review",
+        "reason": "booking confirmed after the user declined",
+    }]
+    assert decision["source"]["event_snapshot_before"] == baseline
+    propose.assert_not_called()
+
+
+def test_a_booking_never_revives_an_organizer_cancelled_event():
+    """Cancelled is the organizer's word, not the user's: a receipt cannot undo it."""
+    match = EventMatch(
+        match_id="event-cancelled",
+        baseline={"title": "Team Meeting", "review_status": "cancelled"},
+    )
+    client, gateway = MagicMock(), MagicMock()
+
+    with patch("selko.services.events.find_matching_event", return_value=match):
+        assert save_extracted_events(
+            client, gateway, "user-1", "email-1", _booking_extraction()
+        ) == (0, 0)
+
+    assert client._extraction_decisions[0]["intent"] == "record_only"
+
+
+def test_an_announcement_for_a_rejected_event_leaves_it_rejected():
+    """The other half: a newsletter repeating the event must not nag again."""
+    extraction = _extraction()
+    assert extraction.booking_confirmed is False
+    match = EventMatch(
+        match_id="event-rejected",
+        baseline={"title": "Team Meeting", "review_status": "rejected"},
+    )
+    client, gateway = MagicMock(), MagicMock()
+
+    with patch("selko.services.events.find_matching_event", return_value=match):
+        save_extracted_events(client, gateway, "user-1", "email-1", extraction)
+
+    assert client._extraction_decisions[0]["intent"] == "record_only"
+
+
+def test_extraction_carries_booking_confirmed_from_the_llm_response():
+    """The flag must reach save_extracted_events, not stop at the LLM response."""
+    from selko.api.schemas.calendar import EventExtractionResponse
+    from selko.services import event_processing
+
+    llm_result = EventExtractionResponse(
+        events_found=True, events=_extraction().events, booking_confirmed=True
+    )
+    gateway = MagicMock()
+    gateway.call_validated.return_value = llm_result
+
+    extraction = event_processing.extract_calendar_events(
+        gateway, "body", {"provider_message_id": "m", "from_email": "a@b.c"}
+    )
+
+    assert extraction.booking_confirmed is True

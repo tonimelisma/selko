@@ -1,0 +1,56 @@
+{
+  "fixture_name": "meetings/meeting_with_agenda_attachment",
+  "operation": "extract",
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Quarterly Planning Meeting",
+        "start_datetime": "2026-03-10T09:00:00",
+        "end_datetime": "2026-03-10T12:00:00",
+        "location": "Main Conference Room, Building A",
+        "all_day": false,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "start_datetime": {
+          "difference_minutes": 540.0,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": true,
+          "match": false
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "extra_events": [],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "identity": {
+    "scoring_version": 2,
+    "inference_key": "27bfb9ae7250c27a50f3235d2ac0817f0383080c7f5581544166c6f68a4f2b1e",
+    "expected_output_hash": "ff8f9a64a22100337f71bcb502cfb0f58055f75b29f09d5a0d12a2b22ee61efe",
+    "scorer_hash": "f0daed45ca53c930922c8347e6a33a61f9970abd740009802f0b7a48737bb153"
+  },
+  "score_key": "5adee7afa2745bc0efe2d213fa0a07b79ff17c9ad27ef647e2d7e0f5e273b45b",
+  "stored_at": "2026-11-06T06:42:45.839739+00:00"
+}

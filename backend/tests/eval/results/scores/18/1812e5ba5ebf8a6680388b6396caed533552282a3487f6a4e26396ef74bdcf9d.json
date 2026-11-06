@@ -1,0 +1,57 @@
+{
+  "fixture_name": "meetings/project_kickoff_07",
+  "operation": "extract",
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Project Phoenix Kickoff",
+        "start_datetime": "2026-02-18T10:00:00",
+        "end_datetime": "2026-02-18T11:30:00",
+        "location": "Innovation Lab (3rd floor)",
+        "description": "Project kickoff meeting with team introductions and planning",
+        "all_day": false,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      }
+    ],
+    "extra_events": [],
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 2,
+    "inference_key": "38977b81ef801e8bc6b76adc79b66dbe0b995d6dc53c5dcb8ff5129ace46a68d",
+    "expected_output_hash": "fcbb07f0b5bebda02ed19ba85840c1314409c2fefa358944a3df389e47949fd5",
+    "scorer_hash": "f0daed45ca53c930922c8347e6a33a61f9970abd740009802f0b7a48737bb153"
+  },
+  "score_key": "1812e5ba5ebf8a6680388b6396caed533552282a3487f6a4e26396ef74bdcf9d",
+  "stored_at": "2026-11-06T06:42:46.947947+00:00"
+}

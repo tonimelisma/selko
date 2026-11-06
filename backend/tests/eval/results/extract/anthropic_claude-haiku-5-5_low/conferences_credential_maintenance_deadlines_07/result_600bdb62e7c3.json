@@ -7,23 +7,23 @@
   "provider": "anthropic",
   "model": "claude-haiku-5-5",
   "thinking": "low",
-  "run_at": "2026-11-01T04:13:23.232361+00:00",
-  "duration_ms": 4689,
+  "run_at": "2026-11-06T06:45:22.687769+00:00",
+  "duration_ms": 2888,
   "timing": {
     "fixture_load": {
-      "started_at": "2026-11-01T04:13:17.411364+00:00",
+      "started_at": "2026-11-06T06:45:18.856142+00:00",
       "duration_ms": 0
     },
     "gateway_create": {
-      "started_at": "2026-11-01T04:13:18.533744+00:00",
-      "duration_ms": 761
+      "started_at": "2026-11-06T06:45:19.791788+00:00",
+      "duration_ms": 551
     },
     "api_call": {
-      "started_at": "2026-11-01T04:13:19.295711+00:00",
-      "duration_ms": 3928
+      "started_at": "2026-11-06T06:45:20.343128+00:00",
+      "duration_ms": 2337
     },
     "scoring": {
-      "started_at": "2026-11-01T04:13:23.224096+00:00",
+      "started_at": "2026-11-06T06:45:22.680781+00:00",
       "duration_ms": 0
     }
   },
@@ -78,127 +78,19 @@
     ]
   },
   "actual": {
-    "events_found": true,
-    "events": [
-      {
-        "title": "Credential maintenance due: Analytics Integration Certificate",
-        "start_datetime": "2026-08-21T00:00:00",
-        "end_datetime": null,
-        "all_day": true,
-        "location": null,
-        "description": "Automated maintenance reminder from Cloud Platform Credentials. The Analytics Integration Certificate requires maintenance by August 21, 2026. Complete the rotation before the due date to avoid an interruption. Open Credential Manager to complete the maintenance.",
-        "importance": "action_required",
-        "recurrence_rule": null
-      },
-      {
-        "title": "Credential maintenance due: Billing API Certificate",
-        "start_datetime": "2026-12-04T00:00:00",
-        "end_datetime": null,
-        "all_day": true,
-        "location": null,
-        "description": "Automated maintenance reminder from Cloud Platform Credentials. The Billing API Certificate requires maintenance by December 4, 2026. Complete the rotation before the due date to avoid an interruption. Open Credential Manager to complete the maintenance.",
-        "importance": "action_required",
-        "recurrence_rule": null
-      },
-      {
-        "title": "Credential maintenance due: Customer Portal Certificate",
-        "start_datetime": "2027-04-16T00:00:00",
-        "end_datetime": null,
-        "all_day": true,
-        "location": null,
-        "description": "Automated maintenance reminder from Cloud Platform Credentials. The Customer Portal Certificate requires maintenance by April 16, 2027. Complete the rotation before the due date to avoid an interruption. Open Credential Manager to complete the maintenance.",
-        "importance": "action_required",
-        "recurrence_rule": null
-      }
-    ]
+    "events_found": false,
+    "events": [],
+    "error": "'CalendarEventExtraction' object has no attribute 'booking_confirmed'"
   },
   "auto_score": {
-    "events_found_match": true,
-    "event_count_match": true,
-    "event_scores": [
-      {
-        "start_datetime": {
-          "expected_date": "2026-08-21",
-          "actual_date": "2026-08-21",
-          "match": true,
-          "allday_relaxed": true
-        },
-        "end_datetime": {
-          "match": true,
-          "allday_relaxed": true
-        },
-        "all_day": {
-          "expected": true,
-          "actual": true,
-          "match": true,
-          "allday_relaxed": false
-        },
-        "importance": {
-          "expected": "action_required",
-          "actual": "action_required",
-          "match": true
-        },
-        "overall_match": true
-      },
-      {
-        "start_datetime": {
-          "expected_date": "2026-12-04",
-          "actual_date": "2026-12-04",
-          "match": true,
-          "allday_relaxed": true
-        },
-        "end_datetime": {
-          "match": true,
-          "allday_relaxed": true
-        },
-        "all_day": {
-          "expected": true,
-          "actual": true,
-          "match": true,
-          "allday_relaxed": false
-        },
-        "importance": {
-          "expected": "action_required",
-          "actual": "action_required",
-          "match": true
-        },
-        "overall_match": true
-      },
-      {
-        "start_datetime": {
-          "expected_date": "2027-04-16",
-          "actual_date": "2027-04-16",
-          "match": true,
-          "allday_relaxed": true
-        },
-        "end_datetime": {
-          "match": true,
-          "allday_relaxed": true
-        },
-        "all_day": {
-          "expected": true,
-          "actual": true,
-          "match": true,
-          "allday_relaxed": false
-        },
-        "importance": {
-          "expected": "action_required",
-          "actual": "action_required",
-          "match": true
-        },
-        "overall_match": true
-      }
-    ],
-    "extra_events": [],
-    "all_events_match": true,
-    "auto_rating": 5
+    "error": "'CalendarEventExtraction' object has no attribute 'booking_confirmed'"
   },
   "tokens": {
     "prompt_tokens": 2659,
-    "completion_tokens": 941,
-    "total_tokens": 3600
+    "completion_tokens": 378,
+    "total_tokens": 3037
   },
-  "cost": 0.0007364000000000001,
+  "cost": 0.00045490000000000005,
   "trace": {
     "content_parts": [
       {
@@ -456,15 +348,15 @@
       "title": "EventExtractionResponse",
       "type": "object"
     },
-    "raw_response_text": "{\"events_found\": true, \"events\": [{\"title\": \"Credential maintenance due: Analytics Integration Certificate\", \"start_datetime\": \"2026-08-21T00:00:00\", \"end_datetime\": null, \"all_day\": true, \"location\": null, \"description\": \"Automated maintenance reminder from Cloud Platform Credentials. The Analytics Integration Certificate requires maintenance by August 21, 2026. Complete the rotation before the due date to avoid an interruption. Open Credential Manager to complete the maintenance.\", \"importance\": \"action_required\", \"recurrence_rule\": null}, {\"title\": \"Credential maintenance due: Billing API Certificate\", \"start_datetime\": \"2026-12-04T00:00:00\", \"end_datetime\": null, \"all_day\": true, \"location\": null, \"description\": \"Automated maintenance reminder from Cloud Platform Credentials. The Billing API Certificate requires maintenance by December 4, 2026. Complete the rotation before the due date to avoid an interruption. Open Credential Manager to complete the maintenance.\", \"importance\": \"action_required\", \"recurrence_rule\": null}, {\"title\": \"Credential maintenance due: Customer Portal Certificate\", \"start_datetime\": \"2027-04-16T00:00:00\", \"end_datetime\": null, \"all_day\": true, \"location\": null, \"description\": \"Automated maintenance reminder from Cloud Platform Credentials. The Customer Portal Certificate requires maintenance by April 16, 2027. Complete the rotation before the due date to avoid an interruption. Open Credential Manager to complete the maintenance.\", \"importance\": \"action_required\", \"recurrence_rule\": null}], \"cancellation_detected\": false}",
+    "raw_response_text": "{\"events_found\": false, \"events\": [], \"cancellation_detected\": false}",
     "finish_reason": "end_turn",
     "retry_count": 0,
     "error_traceback": null,
-    "correlation_id": "8662b17fd9b24538a1833f5e57136cd9",
+    "correlation_id": "740f9c377f98453d8980287baf39f5b4",
     "route_role": "primary"
   },
   "inference_key": "69dfa06468abedb24da07ea72cba693a314273fced1d85679334de2a9fa9ef95",
-  "score_key": "3a5eac2ccd03216b48f5d96a42e3f5e896c27e34cbc9376fe98217530446a1b5",
+  "score_key": "a34698fbbd884127b93ed06bffe999c351a8ac4592bcc6fbb459eeffdb6f9597",
   "identity": {
     "identity_version": 2,
     "operation": "extract",

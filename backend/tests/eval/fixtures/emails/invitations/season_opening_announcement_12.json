@@ -1,0 +1,48 @@
+{
+  "name": "season_opening_announcement_12",
+  "category": "invitations",
+  "description": "Seasonal attraction announcement: 'opens Nov 20, runs through Jan 18' is an opening day, not a two-month event",
+  "difficulty": "medium",
+  "tags": [
+    "production-regression",
+    "season",
+    "opening-day",
+    "all-day",
+    "date-range"
+  ],
+  "provenance": {
+    "failure_class": "season_run_extracted_as_multi_week_event",
+    "anonymization_notes": "Town, park, rink name, street address, phone number, sender and tracking links were replaced. Dates, wording structure and the run-through phrasing are preserved."
+  },
+  "input": {
+    "provider_message_id": "eval-prod-failure-021",
+    "thread_id": "thread-prod-failure-021",
+    "subject": "A Little Winter Magic is on its Way! Riverside on Ice",
+    "from_email": "news@riverside-on-ice.example",
+    "from_name": "Riverside on Ice",
+    "to_emails": [
+      "recipient@example.com"
+    ],
+    "date_sent": "2026-11-02T21:01:42Z",
+    "snippet": "Riverside on Ice returns November 20. Tickets are on sale now.",
+    "body_text": "Riverside on Ice returns November 20. Tickets are on sale now.\n\nOpening November 20\n\nLet the Winter Magic Begin! Riverside on Ice returns for another season of skating, sliding, and making memories in the heart of downtown in Commons Park and runs through January 18, 2027.\n\nBook Tickets »\n\nMake Their Day Unforgettable!\n\nLace up and celebrate! Our Birthday Party Package has everything you need for a celebration on ice, starting at $450.\n\nReserve Your Party »\n\nBeyond Birthdays!\n\nRiverside on Ice is available for:\n\n  * Team outings and group celebrations\n\n  * Client appreciation events\n\n  * Holiday parties and seasonal gatherings\n\nRent the Rink »\n\nVISIT RIVERSIDE\n\nRIVERSIDE DOWNTOWN ASSOCIATION\n\nCITY OF RIVERSIDE\n\nFollow us for rink updates, theme nights & special events!\n\nOur mailing address is:\nRiverside on Ice\n\n100 Commons Drive\n\nRiverside, CA 90000\n\nCopyright © 2026, Riverside on Ice. All rights reserved.\n\nQuestions? Call (555) 010-7669\n\nWant to change how you receive these emails?\n\nYou can update your preferences or unsubscribe",
+    "attachments": []
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "booking_confirmed": false,
+    "events": [
+      {
+        "title": "Riverside on Ice opens",
+        "start_datetime": "2026-11-20T00:00:00",
+        "end_datetime": "2026-11-20T23:59:59",
+        "location": "Commons Park, downtown Riverside",
+        "description": "Skating rink opening day; the season runs through January 18, 2027. Tickets on sale.",
+        "all_day": true,
+        "importance": "fyi"
+      }
+    ]
+  },
+  "notes": "Hand-written expected. Production extracted one all-day event from 2026-11-20 to 2027-01-18; with the user's 8-9am all-day policy it reached Google Calendar as one continuous 8:00 Nov 20 -> 9:00 Jan 18 block. The user attends a rink on a day, not for the season: the event is the opening day, and the run-through date belongs in the description. 'Tickets are on sale now' is an announcement, not the user's purchase, so booking_confirmed is false."
+}

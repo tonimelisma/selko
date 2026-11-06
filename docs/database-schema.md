@@ -203,7 +203,11 @@ Per-user calendar defaults and all-day materialization preference.
 | `updated_at` | timestamptz | Auto-updated |
 
 LLM extractions keep `all_day: true` in `event_sources.extracted_data`. The
-display mode materializes the `events` row before dedup/persist.
+display mode materializes the `events` row before dedup/persist. It applies to
+single-day events only: a span covering several days stays all-day under every
+mode, because stretching a per-day window from the first day's start to the last
+day's end makes one continuous block (a skating season became an 8:00 Nov 20 →
+9:00 Jan 18 event).
 
 **RLS Policies:** Users manage own calendar settings only.
 

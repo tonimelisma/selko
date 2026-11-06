@@ -1,0 +1,57 @@
+{
+  "fixture_name": "meetings/interview_05",
+  "operation": "extract",
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Interview - InnovateTech Senior Software Engineer",
+        "start_datetime": "2026-02-12T13:00:00",
+        "end_datetime": "2026-02-12T15:00:00",
+        "location": "InnovateTech Headquarters, 500 Innovation Drive, Building A, San Jose, CA 95110",
+        "description": "On-site interview for Senior Software Engineer position",
+        "all_day": false,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "start_datetime": {
+          "difference_minutes": 180.0,
+          "match": false
+        },
+        "end_datetime": {
+          "difference_minutes": 180.0,
+          "match": false
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": false
+      }
+    ],
+    "extra_events": [],
+    "all_events_match": false,
+    "auto_rating": 3
+  },
+  "identity": {
+    "scoring_version": 2,
+    "inference_key": "a17f0054df94d2277e51e1ad8bf574d81e0dac78002322e5a4f36cd30f0c06f0",
+    "expected_output_hash": "11b3a65f3bfeb7598124c82ddb6c4c8c9275eceb303c9136353fb439bcea3983",
+    "scorer_hash": "f0daed45ca53c930922c8347e6a33a61f9970abd740009802f0b7a48737bb153"
+  },
+  "score_key": "3d91ca2ba9536f8e0a17a65a5145dda8c62a3184411117d5d6eb595a2fdae890",
+  "stored_at": "2026-11-06T06:42:46.172166+00:00"
+}
