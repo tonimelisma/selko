@@ -1,0 +1,66 @@
+{
+  "fixture_name": "invitations/season_opening_announcement_12",
+  "operation": "extract",
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "booking_confirmed": false,
+    "events": [
+      {
+        "title": "Riverside on Ice opens",
+        "start_datetime": "2026-11-20T00:00:00",
+        "end_datetime": "2026-11-20T23:59:59",
+        "location": "Commons Park, downtown Riverside",
+        "description": "Skating rink opening day; the season runs through January 18, 2027. Tickets on sale.",
+        "all_day": true,
+        "importance": "fyi"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "start_datetime": {
+          "expected_date": "2026-11-20",
+          "actual_date": "2026-11-20",
+          "match": true,
+          "allday_relaxed": true
+        },
+        "end_datetime": {
+          "match": true,
+          "allday_relaxed": true
+        },
+        "all_day": {
+          "expected": true,
+          "actual": true,
+          "match": true,
+          "allday_relaxed": false
+        },
+        "importance": {
+          "expected": "fyi",
+          "actual": "fyi",
+          "match": true
+        },
+        "overall_match": true
+      }
+    ],
+    "extra_events": [],
+    "all_events_match": true,
+    "booking_confirmed": {
+      "expected": false,
+      "actual": false,
+      "match": true
+    },
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 2,
+    "inference_key": "a43a24df9ce6470c94260934b2c6b437110ac42dbf609a5632cc94481d4919cb",
+    "expected_output_hash": "931323bf19eb5dfd747c6106f2e91e8afea11b32bc70f59e729baa72088121ac",
+    "scorer_hash": "f0daed45ca53c930922c8347e6a33a61f9970abd740009802f0b7a48737bb153"
+  },
+  "score_key": "65b20b6d546286688f547237b784f7841e506980e2544de9251afd0346dca368",
+  "stored_at": "2026-11-06T06:42:41.557109+00:00"
+}

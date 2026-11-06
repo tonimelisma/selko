@@ -81,6 +81,19 @@ class EventExtractionResponse(BaseModel):
             "decline or a generic account cancellation."
         ),
     )
+    # Email-level, like cancellation_detected. Read only when the email matches
+    # an event the user declined: a confirmation reopens it for review, anything
+    # else leaves the decline standing. A per-event field was measured and
+    # rejected: it made surveys and marketing mail produce events.
+    booking_confirmed: bool = Field(
+        default=False,
+        description=(
+            "Whether the email is a ticket purchase receipt, a completed "
+            "registration or booking confirmation, or an accepted RSVP. False "
+            "for invitations, announcements, newsletters and 'tickets on sale' "
+            "notices."
+        ),
+    )
 
     model_config = {"json_schema_extra": {"title": "EventExtractionResponse"}}
 
@@ -104,6 +117,7 @@ class CalendarEventExtraction(BaseModel):
         default_factory=list, description="List of extracted calendar events"
     )
     cancellation_detected: bool = Field(default=False)
+    booking_confirmed: bool = Field(default=False)
     raw_reasoning: Optional[str] = Field(
         None, description="Optional LLM reasoning process (for debugging)"
     )

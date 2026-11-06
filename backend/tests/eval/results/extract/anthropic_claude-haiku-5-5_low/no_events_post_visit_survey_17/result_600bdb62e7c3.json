@@ -7,23 +7,23 @@
   "provider": "anthropic",
   "model": "claude-haiku-5-5",
   "thinking": "low",
-  "run_at": "2026-11-01T04:08:41.169207+00:00",
-  "duration_ms": 1601,
+  "run_at": "2026-11-06T06:35:36.849165+00:00",
+  "duration_ms": 2589,
   "timing": {
     "fixture_load": {
-      "started_at": "2026-11-01T04:08:39.560813+00:00",
+      "started_at": "2026-11-06T06:35:33.270967+00:00",
       "duration_ms": 0
     },
     "gateway_create": {
-      "started_at": "2026-11-01T04:08:39.560827+00:00",
-      "duration_ms": 6
+      "started_at": "2026-11-06T06:35:34.252706+00:00",
+      "duration_ms": 592
     },
     "api_call": {
-      "started_at": "2026-11-01T04:08:39.567516+00:00",
-      "duration_ms": 1595
+      "started_at": "2026-11-06T06:35:34.845636+00:00",
+      "duration_ms": 1997
     },
     "scoring": {
-      "started_at": "2026-11-01T04:08:41.163414+00:00",
+      "started_at": "2026-11-06T06:35:36.843299+00:00",
       "duration_ms": 0
     }
   },
@@ -62,10 +62,10 @@
   },
   "tokens": {
     "prompt_tokens": 2610,
-    "completion_tokens": 220,
-    "total_tokens": 2830
+    "completion_tokens": 284,
+    "total_tokens": 2894
   },
-  "cost": 0.000371,
+  "cost": 0.000403,
   "trace": {
     "content_parts": [
       {
@@ -327,11 +327,11 @@
     "finish_reason": "end_turn",
     "retry_count": 0,
     "error_traceback": null,
-    "correlation_id": "81e3bad931354ed0a9d321acd7996a93",
+    "correlation_id": "4a8b88e0b09647bdb27011b0dc7976a4",
     "route_role": "primary"
   },
   "inference_key": "86a04d6e602ceb07138116a2dbcfe0d11ed28f696cbcfa7edafc5241c8b15817",
-  "score_key": "0d417963ef52cae227f561a604f8c9e782a66e1fa64e00e29e8433822ff86081",
+  "score_key": "108decd4f40c30a5b2d8e0d00b5f6765a5655b794024845c756b88bf1fb3130f",
   "identity": {
     "identity_version": 2,
     "operation": "extract",

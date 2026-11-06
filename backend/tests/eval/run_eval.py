@@ -671,6 +671,19 @@ def auto_score_result(expected: dict, actual: dict) -> dict[str, Any]:
     else:
         scores["all_events_match"] = not expected_events and not actual_events
 
+    # booking_confirmed gates when the fixture states it: it decides whether an
+    # email about an event the user declined reopens it for review, so a wrong
+    # value either nags with every newsletter or swallows a ticket purchase.
+    if "booking_confirmed" in expected:
+        actual_booking = bool(actual.get("booking_confirmed", False))
+        scores["booking_confirmed"] = {
+            "expected": expected["booking_confirmed"],
+            "actual": actual_booking,
+            "match": bool(expected["booking_confirmed"]) == actual_booking,
+        }
+        if not scores["booking_confirmed"]["match"]:
+            scores["all_events_match"] = False
+
     # Rating: extras don't penalize, event_count_match is informational
     if scores["events_found_match"] and scores.get("all_events_match"):
         scores["auto_rating"] = 5
@@ -1241,6 +1254,7 @@ def _run_extract_eval_locked(
                 }
                 for e in extraction.events
             ],
+            "booking_confirmed": extraction.booking_confirmed,
         }
         error = None
     except Exception as e:
