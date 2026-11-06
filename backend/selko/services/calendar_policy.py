@@ -166,6 +166,12 @@ def materialize_all_day_event(
     Timed source events and ``all_day`` policy mode are returned unchanged
     (aside from a deep copy). Timed preset/custom modes set ``all_day=false``
     and rewrite start/end to the chosen civil window in ``timezone_name``.
+
+    A span covering more than one day stays all-day under every mode. The
+    window is a per-day shape ("8 to 9 in the morning"); stretched from the
+    first day's start to the last day's end it becomes one continuous block,
+    which is how a skating season announced as "opens Nov 20, runs through
+    Jan 18" became a two-month 8:00 -> 9:00 event on the user's calendar.
     """
     event = deepcopy(source_event)
 
@@ -179,10 +185,12 @@ def materialize_all_day_event(
         return event
 
     last_date = _last_covered_date(start_date, event.get("end_datetime"))
+    if last_date > start_date:
+        return event
     start_clock, end_clock = _window_for_policy(policy)
 
     start_naive = datetime.combine(start_date, start_clock)
-    end_naive = datetime.combine(last_date, end_clock)
+    end_naive = datetime.combine(start_date, end_clock)
 
     event["all_day"] = False
     event["start_datetime"] = to_storage_iso(

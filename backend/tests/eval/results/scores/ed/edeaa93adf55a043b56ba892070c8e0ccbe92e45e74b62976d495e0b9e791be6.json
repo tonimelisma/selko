@@ -1,0 +1,57 @@
+{
+  "fixture_name": "conferences/tech_conference_01",
+  "operation": "extract",
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "TechSummit 2026",
+        "start_datetime": "2026-03-18T08:00:00",
+        "end_datetime": "2026-03-20T16:00:00",
+        "location": "Moscone Center, 747 Howard Street, San Francisco, CA 94103",
+        "description": "3-day technology conference",
+        "all_day": false,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      }
+    ],
+    "extra_events": [],
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 2,
+    "inference_key": "f436b9f48ccf00d9e22627e5a0414fa9aa24c86b6065e062796fa0134241815a",
+    "expected_output_hash": "a0440cfc8868aef2a606b845f19da71ce8c98577ec5c321a53cc5286c00e6c95",
+    "scorer_hash": "f0daed45ca53c930922c8347e6a33a61f9970abd740009802f0b7a48737bb153"
+  },
+  "score_key": "edeaa93adf55a043b56ba892070c8e0ccbe92e45e74b62976d495e0b9e791be6",
+  "stored_at": "2026-11-06T06:42:51.258108+00:00"
+}

@@ -7,23 +7,23 @@
   "provider": "anthropic",
   "model": "claude-haiku-5-5",
   "thinking": "low",
-  "run_at": "2026-11-01T04:08:28.667434+00:00",
-  "duration_ms": 7156,
+  "run_at": "2026-11-06T06:28:06.574840+00:00",
+  "duration_ms": 7795,
   "timing": {
     "fixture_load": {
-      "started_at": "2026-11-01T04:08:21.499661+00:00",
+      "started_at": "2026-11-06T06:27:57.752397+00:00",
       "duration_ms": 0
     },
     "gateway_create": {
-      "started_at": "2026-11-01T04:08:21.500063+00:00",
-      "duration_ms": 6
+      "started_at": "2026-11-06T06:27:58.768293+00:00",
+      "duration_ms": 612
     },
     "api_call": {
-      "started_at": "2026-11-01T04:08:21.506072+00:00",
-      "duration_ms": 7150
+      "started_at": "2026-11-06T06:27:59.381194+00:00",
+      "duration_ms": 7183
     },
     "scoring": {
-      "started_at": "2026-11-01T04:08:28.657049+00:00",
+      "started_at": "2026-11-06T06:28:06.564949+00:00",
       "duration_ms": 0
     }
   },
@@ -91,9 +91,10 @@
         "end_datetime": "2025-12-11T16:15:00",
         "all_day": false,
         "location": "111 N Wiget Lane, Walnut Creek, CA",
-        "description": "Winter Dance Performance from Studio 8 Dance. Pre-Ballet performance, 3:55-4:15pm on Thursday, December 11, 2025. Performances take place during the last 20 minutes of the dancer's class. Venue per the attached flyer; the email lists the studio address as 3233 Danville Blvd, Alamo, CA 94507.",
+        "description": "Pre-Ballet performance at Studio 8 Dance's Winter Dance Performance, Thursday, December 11, 2025. Performances take place in the last 20 minutes of each dancer's class. Flyer lists 3:55-4:15pm. The email gives the studio address as 3233 Danville Blvd, Alamo, CA 94507, but the flyer's venue is 111 N Wiget Lane, Walnut Creek, CA; the flyer is cited for venue details. Email is from info@studio8dance.com.",
         "importance": "action_required",
-        "recurrence_rule": null
+        "recurrence_rule": null,
+        "user_committed": false
       },
       {
         "title": "Winter Dance Performance: Jazz Ballet Tap",
@@ -101,19 +102,21 @@
         "end_datetime": "2025-12-11T17:00:00",
         "all_day": false,
         "location": "111 N Wiget Lane, Walnut Creek, CA",
-        "description": "Winter Dance Performance from Studio 8 Dance. Jazz ballet tap performance, 4:40-5:00pm on Thursday, December 11, 2025. Performances take place during the last 20 minutes of the dancer's class. Venue per the attached flyer; the email lists the studio address as 3233 Danville Blvd, Alamo, CA 94507.",
+        "description": "Jazz ballet tap performance at Studio 8 Dance's Winter Dance Performance, Thursday, December 11, 2025. Performances take place in the last 20 minutes of each dancer's class. Flyer lists 4:40-5:00pm. The email gives the studio address as 3233 Danville Blvd, Alamo, CA 94507, but the flyer's venue is 111 N Wiget Lane, Walnut Creek, CA; the flyer is cited for venue details. Email is from info@studio8dance.com.",
         "importance": "action_required",
-        "recurrence_rule": null
+        "recurrence_rule": null,
+        "user_committed": false
       },
       {
         "title": "Winter Dance Performance: Jr Hip Hop",
         "start_datetime": "2025-12-11T17:25:00",
-        "end_datetime": null,
+        "end_datetime": "2025-12-11T17:45:00",
         "all_day": false,
         "location": "111 N Wiget Lane, Walnut Creek, CA",
-        "description": "Winter Dance Performance from Studio 8 Dance. Jr Hip Hop performance, starting 5:25pm on Thursday, December 11, 2025. The flyer's listed end time (4:45pm) is earlier than the start time, so it appears to be a typo; confirm the end time with the studio. Performances take place during the last 20 minutes of the dancer's class. Venue per the attached flyer; the email lists the studio address as 3233 Danville Blvd, Alamo, CA 94507.",
+        "description": "Jr Hip Hop performance at Studio 8 Dance's Winter Dance Performance, Thursday, December 11, 2025. Performances take place in the last 20 minutes of each dancer's class. The flyer lists this as 5:25-4:45pm, which appears to be a typo; the end time is entered as 5:45pm here and should be confirmed with the studio. The email gives the studio address as 3233 Danville Blvd, Alamo, CA 94507, but the flyer's venue is 111 N Wiget Lane, Walnut Creek, CA; the flyer is cited for venue details. Email is from info@studio8dance.com.",
         "importance": "action_required",
-        "recurrence_rule": null
+        "recurrence_rule": null,
+        "user_committed": false
       },
       {
         "title": "Winter Dance Performance: Hip Hop",
@@ -121,9 +124,10 @@
         "end_datetime": "2025-12-11T18:30:00",
         "all_day": false,
         "location": "111 N Wiget Lane, Walnut Creek, CA",
-        "description": "Winter Dance Performance from Studio 8 Dance. Hip Hop performance, 6:10-6:30pm on Thursday, December 11, 2025. Performances take place during the last 20 minutes of the dancer's class. Venue per the attached flyer; the email lists the studio address as 3233 Danville Blvd, Alamo, CA 94507.",
+        "description": "Hip Hop performance at Studio 8 Dance's Winter Dance Performance, Thursday, December 11, 2025. Performances take place in the last 20 minutes of each dancer's class. Flyer lists 6:10-6:30pm. The email gives the studio address as 3233 Danville Blvd, Alamo, CA 94507, but the flyer's venue is 111 N Wiget Lane, Walnut Creek, CA; the flyer is cited for venue details. Email is from info@studio8dance.com.",
         "importance": "action_required",
-        "recurrence_rule": null
+        "recurrence_rule": null,
+        "user_committed": false
       }
     ]
   },
@@ -169,7 +173,7 @@
           "match": true
         },
         "end_datetime": {
-          "difference_minutes": null,
+          "difference_minutes": 0.0,
           "match": true
         },
         "importance": {
@@ -202,10 +206,10 @@
   },
   "tokens": {
     "prompt_tokens": 4371,
-    "completion_tokens": 1605,
-    "total_tokens": 5976
+    "completion_tokens": 1793,
+    "total_tokens": 6164
   },
-  "cost": 0.0012396,
+  "cost": 0.0013335999999999999,
   "trace": {
     "content_parts": [
       {
@@ -468,15 +472,15 @@
       "title": "EventExtractionResponse",
       "type": "object"
     },
-    "raw_response_text": "{\"events_found\": true, \"cancellation_detected\": false, \"events\": [{\"title\": \"Winter Dance Performance: Pre-Ballet\", \"start_datetime\": \"2025-12-11T15:55:00\", \"end_datetime\": \"2025-12-11T16:15:00\", \"all_day\": false, \"location\": \"111 N Wiget Lane, Walnut Creek, CA\", \"description\": \"Winter Dance Performance from Studio 8 Dance. Pre-Ballet performance, 3:55-4:15pm on Thursday, December 11, 2025. Performances take place during the last 20 minutes of the dancer's class. Venue per the attached flyer; the email lists the studio address as 3233 Danville Blvd, Alamo, CA 94507.\", \"importance\": \"action_required\", \"recurrence_rule\": null}, {\"title\": \"Winter Dance Performance: Jazz Ballet Tap\", \"start_datetime\": \"2025-12-11T16:40:00\", \"end_datetime\": \"2025-12-11T17:00:00\", \"all_day\": false, \"location\": \"111 N Wiget Lane, Walnut Creek, CA\", \"description\": \"Winter Dance Performance from Studio 8 Dance. Jazz ballet tap performance, 4:40-5:00pm on Thursday, December 11, 2025. Performances take place during the last 20 minutes of the dancer's class. Venue per the attached flyer; the email lists the studio address as 3233 Danville Blvd, Alamo, CA 94507.\", \"importance\": \"action_required\", \"recurrence_rule\": null}, {\"title\": \"Winter Dance Performance: Jr Hip Hop\", \"start_datetime\": \"2025-12-11T17:25:00\", \"end_datetime\": null, \"all_day\": false, \"location\": \"111 N Wiget Lane, Walnut Creek, CA\", \"description\": \"Winter Dance Performance from Studio 8 Dance. Jr Hip Hop performance, starting 5:25pm on Thursday, December 11, 2025. The flyer's listed end time (4:45pm) is earlier than the start time, so it appears to be a typo; confirm the end time with the studio. Performances take place during the last 20 minutes of the dancer's class. Venue per the attached flyer; the email lists the studio address as 3233 Danville Blvd, Alamo, CA 94507.\", \"importance\": \"action_required\", \"recurrence_rule\": null}, {\"title\": \"Winter Dance Performance: Hip Hop\", \"start_datetime\": \"2025-12-11T18:10:00\", \"end_datetime\": \"2025-12-11T18:30:00\", \"all_day\": false, \"location\": \"111 N Wiget Lane, Walnut Creek, CA\", \"description\": \"Winter Dance Performance from Studio 8 Dance. Hip Hop performance, 6:10-6:30pm on Thursday, December 11, 2025. Performances take place during the last 20 minutes of the dancer's class. Venue per the attached flyer; the email lists the studio address as 3233 Danville Blvd, Alamo, CA 94507.\", \"importance\": \"action_required\", \"recurrence_rule\": null}]}",
+    "raw_response_text": "{\"events_found\": true, \"events\": [{\"title\": \"Winter Dance Performance: Pre-Ballet\", \"start_datetime\": \"2025-12-11T15:55:00\", \"end_datetime\": \"2025-12-11T16:15:00\", \"all_day\": false, \"location\": \"111 N Wiget Lane, Walnut Creek, CA\", \"description\": \"Pre-Ballet performance at Studio 8 Dance's Winter Dance Performance, Thursday, December 11, 2025. Performances take place in the last 20 minutes of each dancer's class. Flyer lists 3:55-4:15pm. The email gives the studio address as 3233 Danville Blvd, Alamo, CA 94507, but the flyer's venue is 111 N Wiget Lane, Walnut Creek, CA; the flyer is cited for venue details. Email is from info@studio8dance.com.\", \"importance\": \"action_required\", \"recurrence_rule\": null}, {\"title\": \"Winter Dance Performance: Jazz Ballet Tap\", \"start_datetime\": \"2025-12-11T16:40:00\", \"end_datetime\": \"2025-12-11T17:00:00\", \"all_day\": false, \"location\": \"111 N Wiget Lane, Walnut Creek, CA\", \"description\": \"Jazz ballet tap performance at Studio 8 Dance's Winter Dance Performance, Thursday, December 11, 2025. Performances take place in the last 20 minutes of each dancer's class. Flyer lists 4:40-5:00pm. The email gives the studio address as 3233 Danville Blvd, Alamo, CA 94507, but the flyer's venue is 111 N Wiget Lane, Walnut Creek, CA; the flyer is cited for venue details. Email is from info@studio8dance.com.\", \"importance\": \"action_required\", \"recurrence_rule\": null}, {\"title\": \"Winter Dance Performance: Jr Hip Hop\", \"start_datetime\": \"2025-12-11T17:25:00\", \"end_datetime\": \"2025-12-11T17:45:00\", \"all_day\": false, \"location\": \"111 N Wiget Lane, Walnut Creek, CA\", \"description\": \"Jr Hip Hop performance at Studio 8 Dance's Winter Dance Performance, Thursday, December 11, 2025. Performances take place in the last 20 minutes of each dancer's class. The flyer lists this as 5:25-4:45pm, which appears to be a typo; the end time is entered as 5:45pm here and should be confirmed with the studio. The email gives the studio address as 3233 Danville Blvd, Alamo, CA 94507, but the flyer's venue is 111 N Wiget Lane, Walnut Creek, CA; the flyer is cited for venue details. Email is from info@studio8dance.com.\", \"importance\": \"action_required\", \"recurrence_rule\": null}, {\"title\": \"Winter Dance Performance: Hip Hop\", \"start_datetime\": \"2025-12-11T18:10:00\", \"end_datetime\": \"2025-12-11T18:30:00\", \"all_day\": false, \"location\": \"111 N Wiget Lane, Walnut Creek, CA\", \"description\": \"Hip Hop performance at Studio 8 Dance's Winter Dance Performance, Thursday, December 11, 2025. Performances take place in the last 20 minutes of each dancer's class. Flyer lists 6:10-6:30pm. The email gives the studio address as 3233 Danville Blvd, Alamo, CA 94507, but the flyer's venue is 111 N Wiget Lane, Walnut Creek, CA; the flyer is cited for venue details. Email is from info@studio8dance.com.\", \"importance\": \"action_required\", \"recurrence_rule\": null}], \"cancellation_detected\": false}",
     "finish_reason": "end_turn",
     "retry_count": 0,
     "error_traceback": null,
-    "correlation_id": "71054a16a36a4dc382eb04cbaa13d1d6",
+    "correlation_id": "52b373316286448c8caa8b48a8c25eb7",
     "route_role": "primary"
   },
   "inference_key": "5c1fbf081cb3483de5b59d3143b4a98efabdb5709ca586dcf4e343307d025a98",
-  "score_key": "85ad95d1dcef0705ae70de7f18a0e5d13e9becf11b28180dc3abddd09b3d028c",
+  "score_key": "4a5c831c67ddb7ffbd0639b58c28cbba73c9f16d981c74cdd55a1b41eb842d19",
   "identity": {
     "identity_version": 2,
     "operation": "extract",

@@ -155,11 +155,11 @@ For each event give:
 - importance: action_required or fyi (see below)
 - recurrence_rule: an RFC 5545 RRULE for a recurring event (for example RRULE:FREQ=WEEKLY;BYDAY=MO), otherwise null
 
-A multi-day event (a three-day conference, say) is one event spanning the whole period, not one event per day. RSVP deadlines, early-bird deadlines and registration cutoffs belong in the main event's description, not in events of their own. Only extract events whose dates are stated explicitly; do not infer a date from a holiday, the surrounding context or the subject line. Read dates relative to today's date. For PDFs and images, extract events from calendar grids, flyers and schedules.
+A multi-day event (a three-day conference, say) is one event spanning the whole period, not one event per day. A venue or attraction that opens for a season (a skating rink, a pumpkin patch, an exhibition, a holiday market) is not a multi-day event, because nobody attends it from the first day to the last: extract the opening day as the event, all day unless an opening time is stated, and put the closing date in the description. RSVP deadlines, early-bird deadlines and registration cutoffs belong in the main event's description, not in events of their own. Only extract events whose dates are stated explicitly; do not infer a date from a holiday, the surrounding context or the subject line. Read dates relative to today's date. For PDFs and images, extract events from calendar grids, flyers and schedules.
 </what_to_extract>
 
 <times>
-Write start_datetime and end_datetime as naive local ISO times in the user's timezone, such as 2026-09-13T10:00:00, with no Z and no numeric offset; the system applies the timezone. When an email lists both an event time (or doors or show time) and setup, vendor or cleanup windows, use the event time and put the other windows in the description. For example, "Event Time: 10:00 AM – 2:00 PM" with "Vendor Set-Up: 7:00 AM – 9:00 AM" is 10:00 to 14:00, not 7:00 to 15:00.
+Write start_datetime and end_datetime as naive local ISO times in the user's timezone, such as 2026-09-13T10:00:00, with no Z and no numeric offset; the system applies the timezone. When the email names no time zone, write each time exactly as the email states it; do not convert it based on where the event is. When an email lists both an event time (or doors or show time) and setup, vendor or cleanup windows, use the event time and put the other windows in the description. For example, "Event Time: 10:00 AM – 2:00 PM" with "Vendor Set-Up: 7:00 AM – 9:00 AM" is 10:00 to 14:00, not 7:00 to 15:00.
 </times>
 
 <importance>
@@ -351,6 +351,7 @@ def extract_calendar_events(
             events_found=llm_result.events_found,
             events=llm_result.events,
             cancellation_detected=llm_result.cancellation_detected,
+            booking_confirmed=llm_result.booking_confirmed,
         )
         return result
 

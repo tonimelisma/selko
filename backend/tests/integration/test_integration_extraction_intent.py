@@ -279,6 +279,63 @@ async def test_record_only_leaves_a_declined_event_untouched(pg_pool, temp_user,
     ) == 1
 
 
+async def test_a_booking_reopens_a_rejected_event_into_the_new_lane(pg_pool, temp_user):
+    """Regression: a ticket receipt for a play the user had rejected.
+
+    The decision is the one ``save_extracted_events`` actually builds, sent
+    through the real commit: the event returns to pending_review, an applied
+    proposal records why, and nothing is queued for the calendar.
+    """
+    from unittest.mock import MagicMock, patch
+
+    from selko.api.schemas.calendar import CalendarEvent, CalendarEventExtraction
+    from selko.services.events import EventMatch, save_extracted_events
+
+    user_id, _, _ = temp_user
+    email_id, worker, generation = await _claim_email(pg_pool, user_id)
+    event_id = await _event(pg_pool, user_id, "rejected")
+
+    future = datetime.now() + timedelta(days=30)
+    extraction = CalendarEventExtraction(
+        email_message_id="receipt",
+        sender_email="tickets@example.com",
+        events_found=True,
+        booking_confirmed=True,
+        events=[CalendarEvent(
+            title="Standup", start_datetime=future, description="tickets",
+        )],
+    )
+    captured: list[dict] = []
+
+    def capture(client, email, locked_by, lock_generation, decisions, terminal="processed"):
+        captured.extend(decisions)
+        return {"fenced": False, "applied": len(decisions), "event_ids": []}
+
+    match = EventMatch(match_id=str(event_id), baseline={**_snapshot(), "review_status": "rejected"})
+    with patch("selko.services.events.find_matching_event", return_value=match), \
+         patch("selko.services.events._commit_email_extraction", side_effect=capture), \
+         patch("selko.services.events._load_identity_context", return_value=({}, [])), \
+         patch("selko.services.events.calendars.get_all_day_policy_and_timezone",
+               return_value=(MagicMock(mode="all_day"), "UTC")):
+        save_extracted_events(MagicMock(), MagicMock(), user_id, str(email_id), extraction)
+
+    assert len(captured) == 1
+    built = captured[0]
+    window = await _decision(pg_pool, user_id, email_id, event_id)
+    await _commit(pg_pool, email_id, worker, generation, {
+        **built,
+        **{k: window[k] for k in ("window_start", "window_end", "expected_fingerprint")},
+        "source": {**built["source"], "email_id": str(email_id)},
+    })
+
+    event = await _event_row(pg_pool, event_id)
+    assert event["review_status"] == "pending_review", "back in the New lane"
+    assert event["location"] == "Room A", "only the lane changed"
+    assert await _work_items(pg_pool, event_id) == [], "never straight to the calendar"
+    proposals = await _proposals(pg_pool, event_id)
+    assert [(p["status"], p["kind"]) for p in proposals] == [("applied", "material_update")]
+
+
 # --- fail-closed ---------------------------------------------------------
 
 

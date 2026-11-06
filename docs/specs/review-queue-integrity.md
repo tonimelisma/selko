@@ -773,6 +773,13 @@ write path.
 | `pending_change`, never synced | Undo active proposal, attach cancellation, set `cancelled`. |
 | Already `cancelled` | Idempotent match; attach new source, remain cancelled. |
 | `rejected` | Record matched source/outcome, remain rejected. |
+
+Non-cancellation emails follow the same rule with one exception (2026-11-05): an
+email whose extraction sets `booking_confirmed` — a ticket receipt, a completed
+registration, an accepted RSVP — reopens a `rejected` event to `pending_review`
+through an applied proposal, with no calendar work. The user's purchase reverses
+their own earlier decision; a receipt for a school play rejected during triage
+was otherwise recorded and dropped. `cancelled` never reopens.
 | Calendar write may exist | Queue worker-owned cancellation below and remove from Review immediately. |
 
 Do not prefix the title when terminal status and History already communicate

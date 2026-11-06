@@ -1,0 +1,57 @@
+{
+  "fixture_name": "school/parent_teacher_01",
+  "operation": "extract",
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "events": [
+      {
+        "title": "Parent-Teacher Conference - Emma Johnson",
+        "start_datetime": "2026-02-19T16:15:00",
+        "end_datetime": "2026-02-19T16:35:00",
+        "location": "Room 203, Lincoln Elementary, 500 School Lane, Pleasantville, CA 94025",
+        "description": "Conference with Mrs. Thompson about Emma's progress",
+        "all_day": false,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      }
+    ],
+    "extra_events": [],
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 2,
+    "inference_key": "7c08bf9d87a36851a5b54036be6cf71b68dd131c436ad5d5bc051c9e612482ab",
+    "expected_output_hash": "d70bef896859ab0e07879767b6634718be896742712c760ce13970dc788c503d",
+    "scorer_hash": "f0daed45ca53c930922c8347e6a33a61f9970abd740009802f0b7a48737bb153"
+  },
+  "score_key": "8b05f4c795f8aa86eafc37b16eab3aded8ba239af792ad941a5f5ba6812001a8",
+  "stored_at": "2026-11-06T06:42:53.070573+00:00"
+}

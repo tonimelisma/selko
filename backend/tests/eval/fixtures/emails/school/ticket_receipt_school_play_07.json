@@ -1,0 +1,49 @@
+{
+  "name": "ticket_receipt_school_play_07",
+  "category": "school",
+  "description": "Ticket order receipt for a school play: an event the user has committed to by buying tickets",
+  "difficulty": "medium",
+  "tags": [
+    "production-regression",
+    "receipt",
+    "tickets",
+    "commitment",
+    "school",
+    "performance"
+  ],
+  "provenance": {
+    "failure_class": "ticket_purchase_swallowed_by_declined_event",
+    "anonymization_notes": "School, PTA, purchaser name, order number, street address, recipient address, ticketing vendor and links were replaced. Show name, date, showtime, duplicate ticket lines and the receipt layout are preserved."
+  },
+  "input": {
+    "provider_message_id": "eval-prod-failure-022",
+    "thread_id": "thread-prod-failure-022",
+    "subject": "Order Receipt #4821",
+    "from_email": "noreply@schooltickets.example",
+    "from_name": "Oak Hill PTA",
+    "to_emails": [
+      "recipient@example.com"
+    ],
+    "date_sent": "2026-11-06T05:25:12Z",
+    "snippet": "You're all set for The Tortoise and the Hare on November 7",
+    "body_text": "\nOak Hill PTA\nReceipt\nDate\nNovember 05, 2026\nSchool\nOak Hill PTA\nOrder Number\n4821\nPurchased By\nAlex Parent\n\nQty     Description     Amount\n1       The Tortoise and the Hare\nYou’re all set for The Tortoise and the Hare on November 7 at the Oak Hill Café. Please download your ticket and show it at the door (printed or on your phone). Thank you for supporting the Oak Hill PTA!\n- Event: Tortoise and the Hare - Show #2\n- Date: Nov 7, 2026 5:00 PM\n- Location: Oak Hill Cafeteria\n- Section: General Admission\n$15.00\n1       The Tortoise and the Hare\nYou’re all set for The Tortoise and the Hare on November 7 at the Oak Hill Café. Please download your ticket and show it at the door (printed or on your phone). Thank you for supporting the Oak Hill PTA!\n- Event: Tortoise and the Hare - Show #2\n- Date: Nov 7, 2026 5:00 PM\n- Location: Oak Hill Cafeteria\n- Section: General Admission\n$15.00\n\n\nView Order\n\nThis email was sent to: recipient@example.com\n\nOak Hill PTA - 100 Oak Hill Blvd, Riverside, CA 90000\n\nPowered by School Tickets\n\n© 2026 School Tickets, LLC. All rights reserved.\n",
+    "attachments": []
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "booking_confirmed": true,
+    "events": [
+      {
+        "title": "The Tortoise and the Hare - Show #2",
+        "start_datetime": "2026-11-07T17:00:00",
+        "end_datetime": null,
+        "location": "Oak Hill Cafeteria",
+        "description": "School play, Show #2. Two general admission tickets purchased; show the ticket at the door.",
+        "all_day": false,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "notes": "Hand-written expected. Production extracted this receipt correctly but it matched an event the user had declined a month earlier (before they decided to go), so the 'declined is terminal' rule recorded it and nothing reached the calendar. The fix needs the extractor to say the user bought tickets: booking_confirmed true. The two identical ticket lines are one performance, so one event."
+}

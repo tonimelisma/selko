@@ -1,0 +1,379 @@
+{
+  "fixture_name": "meetings/team_standup_02",
+  "operation": "extract",
+  "provider": "anthropic",
+  "model": "claude-haiku-5-5",
+  "thinking": {
+    "mode": "level",
+    "value": "low"
+  },
+  "run_at": "2026-11-06T06:42:48.646075+00:00",
+  "duration_ms": 3632,
+  "timing": {
+    "fixture_load": {
+      "started_at": "2026-11-06T06:42:45.007541+00:00",
+      "duration_ms": 0
+    },
+    "gateway_create": {
+      "started_at": "2026-11-06T06:42:45.007550+00:00",
+      "duration_ms": 7
+    },
+    "api_call": {
+      "started_at": "2026-11-06T06:42:45.015360+00:00",
+      "duration_ms": 3625
+    },
+    "scoring": {
+      "started_at": "2026-11-06T06:42:48.640697+00:00",
+      "duration_ms": 0
+    }
+  },
+  "tokens": {
+    "prompt_tokens": 2982,
+    "completion_tokens": 825,
+    "total_tokens": 3807
+  },
+  "cost": 0.0007107000000000001,
+  "actual": {
+    "events_found": true,
+    "events": [
+      {
+        "title": "Daily Team Standup (New Time)",
+        "start_datetime": "2026-02-09T12:30:00",
+        "end_datetime": "2026-02-09T12:45:00",
+        "all_day": false,
+        "location": "Conference Room B; Zoom: https://zoom.us/j/123456789",
+        "description": "Daily standup moves to a new time starting Monday, February 9, 2026: 9:30 AM PST (12:30 PM ET), 15 minutes. Previously 10:00 AM PST. Location: Conference Room B (same as before) or Zoom: https://zoom.us/j/123456789. Format stays the same: 1) What did you accomplish yesterday? 2) What are you working on today? 3) Any blockers? From Priya Sharma, Team Lead, Platform Team. Please update your calendar.",
+        "importance": "action_required",
+        "recurrence_rule": "RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR"
+      }
+    ],
+    "booking_confirmed": false
+  },
+  "trace": {
+    "content_parts": [
+      {
+        "type": "text",
+        "length": 4502,
+        "text": "Selko turns the user's email into calendar events. You read one email, with its attachments, and report every event in it that the user would put on their personal calendar.\n\nThe user message gives the email in <email_context> (today's date, the user's timezone, subject, sender, date sent) and <email_body>, with any attachments before it.\n\n<what_to_extract>\nExtract every event the email states with an explicit date: meetings, appointments, parties, performances, conferences, closures, early dismissals, half days, deadlines, and informational items such as themed dress-up days or staff birthdays.\n\nFor each event give:\n- title: a clear, descriptive name\n- start_datetime and end_datetime (end only if stated)\n- all_day: true or false\n- location: the physical address, room, venue or meeting link stated in the email. If none is stated, use null. Do not infer a location from the organization's name or the kind of event.\n- description: every relevant detail from the email\n- importance: action_required or fyi (see below)\n- recurrence_rule: an RFC 5545 RRULE for a recurring event (for example RRULE:FREQ=WEEKLY;BYDAY=MO), otherwise null\n\nA multi-day event (a three-day conference, say) is one event spanning the whole period, not one event per day. A venue or attraction that opens for a season (a skating rink, a pumpkin patch, an exhibition, a holiday market) is not a multi-day event, because nobody attends it from the first day to the last: extract the opening day as the event, all day unless an opening time is stated, and put the closing date in the description. RSVP deadlines, early-bird deadlines and registration cutoffs belong in the main event's description, not in events of their own. Only extract events whose dates are stated explicitly; do not infer a date from a holiday, the surrounding context or the subject line. Read dates relative to today's date. For PDFs and images, extract events from calendar grids, flyers and schedules.\n</what_to_extract>\n\n<times>\nWrite start_datetime and end_datetime as naive local ISO times in the user's timezone, such as 2026-09-13T10:00:00, with no Z and no numeric offset; the system applies the timezone. When the email names no time zone, write each time exactly as the email states it; do not convert it based on where the event is. When an email lists both an event time (or doors or show time) and setup, vendor or cleanup windows, use the event time and put the other windows in the description. For example, \"Event Time: 10:00 AM \u2013 2:00 PM\" with \"Vendor Set-Up: 7:00 AM \u2013 9:00 AM\" is 10:00 to 14:00, not 7:00 to 15:00.\n</times>\n\n<importance>\naction_required: the user has to act or change their schedule. Closures, early dismissals, half days, deadlines, appointments, meetings, conferences, registration deadlines, performances to attend, invitations such as birthday parties.\nfyi: nice to know, no action needed. Themed dress-up days such as pajama day or hat day, staff birthdays, spirit weeks, movie days, classroom activities the child takes part in without a parent. Extract these too; mark them fyi.\n</importance>\n\n<not_events>\nAn event is something the user would attend, take part in or prepare for. If the email is purely transactional (receipts, shipping, payments) or administrative (password resets, terms updates, account statements) and has no such event, set events_found to false and return an empty events list.\n\nThird-party automated calendar-derived briefs, relationship digests and reminder summaries that only restate entries already on the recipient's calendar are not new event sources. Return events_found false for them unless the email communicates a genuine organizer-issued change, cancellation, or new action beyond the existing calendar data. This exclusion does NOT apply to organizer-sent meeting invitations, preparation requests, or attached agendas: extract those events when the recipient is expected to attend or prepare and the date is explicit.\n</not_events>\n\n<cancellations>\nSet cancellation_detected to true only when the email is an organizer's or provider's cancellation of an existing calendar event. Keep it false for RSVP declines, counter-proposals, subscription or account cancellations, and other uses of the word cancel. A cancellation may carry no usable event details; still set cancellation_detected to true, so the system records it rather than creating a new event.\n</cancellations>\n\nIf the email contains no events, set events_found to false and return an empty events list."
+      },
+      {
+        "type": "text",
+        "length": 793,
+        "text": "<email_context>\nToday's date: 2026-02-01\nUser's timezone (local wall clock): America/New_York\nSubject: Team Standup Moving to New Time\nFrom: Priya Sharma <priya.sharma@company.com>\nDate sent: 2026-02-01T08:30:00Z\n</email_context>\n\n<email_body>\nHi team,\n\nStarting next week, our daily standup is moving to a new time to better accommodate our colleagues in different time zones.\n\nNEW SCHEDULE (effective Monday, February 9th):\n- Time: 9:30 AM PST (was 10:00 AM)\n- Duration: 15 minutes\n- Room: Conference Room B (same as before)\n- Zoom: https://zoom.us/j/123456789\n\nThe format stays the same:\n1. What did you accomplish yesterday?\n2. What are you working on today?\n3. Any blockers?\n\nPlease update your calendars accordingly.\n\nThanks,\nPriya\n\n--\nPriya Sharma\nTeam Lead, Platform Team\n</email_body>"
+      }
+    ],
+    "json_schema_input": {
+      "$defs": {
+        "CalendarEvent": {
+          "description": "A single calendar event extracted from an email.",
+          "properties": {
+            "title": {
+              "description": "The event title or name",
+              "title": "Title",
+              "type": "string"
+            },
+            "start_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Local wall-clock start in the user's timezone as naive ISO 8601 (e.g. 2026-09-13T10:00:00). Do not include Z or numeric offsets.",
+              "title": "Start Datetime"
+            },
+            "end_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Local wall-clock end in the user's timezone as naive ISO 8601 (e.g. 2026-09-13T14:00:00). Do not include Z or numeric offsets.",
+              "title": "End Datetime"
+            },
+            "all_day": {
+              "default": false,
+              "description": "Whether this is an all-day event",
+              "title": "All Day",
+              "type": "boolean"
+            },
+            "location": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event location or venue",
+              "title": "Location"
+            },
+            "description": {
+              "description": "Detailed description of the event with all relevant information",
+              "title": "Description",
+              "type": "string"
+            },
+            "importance": {
+              "default": "action_required",
+              "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+              "enum": [
+                "action_required",
+                "fyi"
+              ],
+              "title": "Importance",
+              "type": "string"
+            },
+            "recurrence_rule": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "RFC 5545 RRULE for recurring events (e.g., 'RRULE:FREQ=WEEKLY;BYDAY=MO'). Null for one-time events.",
+              "title": "Recurrence Rule"
+            }
+          },
+          "required": [
+            "title",
+            "description"
+          ],
+          "title": "CalendarEvent",
+          "type": "object"
+        }
+      },
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "title": "Events Found",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "$ref": "#/$defs/CalendarEvent"
+          },
+          "title": "Events",
+          "type": "array"
+        },
+        "cancellation_detected": {
+          "default": false,
+          "description": "Whether the email explicitly cancels an existing event. Set true only for an organizer/provider cancellation, never for an RSVP decline or a generic account cancellation.",
+          "title": "Cancellation Detected",
+          "type": "boolean"
+        },
+        "booking_confirmed": {
+          "default": false,
+          "description": "Whether the email is a ticket purchase receipt, a completed registration or booking confirmation, or an accepted RSVP. False for invitations, announcements, newsletters and 'tickets on sale' notices.",
+          "title": "Booking Confirmed",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "events_found"
+      ],
+      "title": "EventExtractionResponse",
+      "type": "object"
+    },
+    "json_schema_sanitized": {
+      "$defs": {
+        "CalendarEvent": {
+          "description": "A single calendar event extracted from an email.",
+          "properties": {
+            "title": {
+              "description": "The event title or name",
+              "title": "Title",
+              "type": "string"
+            },
+            "start_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Local wall-clock start in the user's timezone as naive ISO 8601 (e.g. 2026-09-13T10:00:00). Do not include Z or numeric offsets.",
+              "title": "Start Datetime"
+            },
+            "end_datetime": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Local wall-clock end in the user's timezone as naive ISO 8601 (e.g. 2026-09-13T14:00:00). Do not include Z or numeric offsets.",
+              "title": "End Datetime"
+            },
+            "all_day": {
+              "default": false,
+              "description": "Whether this is an all-day event",
+              "title": "All Day",
+              "type": "boolean"
+            },
+            "location": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "The event location or venue",
+              "title": "Location"
+            },
+            "description": {
+              "description": "Detailed description of the event with all relevant information",
+              "title": "Description",
+              "type": "string"
+            },
+            "importance": {
+              "default": "action_required",
+              "description": "Event importance: 'action_required' for closures, schedule changes, deadlines the user must act on; 'fyi' for themed days, birthdays, informational items that are nice to know",
+              "enum": [
+                "action_required",
+                "fyi"
+              ],
+              "title": "Importance",
+              "type": "string"
+            },
+            "recurrence_rule": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "RFC 5545 RRULE for recurring events (e.g., 'RRULE:FREQ=WEEKLY;BYDAY=MO'). Null for one-time events.",
+              "title": "Recurrence Rule"
+            }
+          },
+          "required": [
+            "title",
+            "description"
+          ],
+          "title": "CalendarEvent",
+          "type": "object"
+        }
+      },
+      "description": "LLM response containing extracted events.",
+      "properties": {
+        "events_found": {
+          "description": "Whether any calendar events were found in the email",
+          "title": "Events Found",
+          "type": "boolean"
+        },
+        "events": {
+          "description": "List of extracted calendar events",
+          "items": {
+            "$ref": "#/$defs/CalendarEvent"
+          },
+          "title": "Events",
+          "type": "array"
+        },
+        "cancellation_detected": {
+          "default": false,
+          "description": "Whether the email explicitly cancels an existing event. Set true only for an organizer/provider cancellation, never for an RSVP decline or a generic account cancellation.",
+          "title": "Cancellation Detected",
+          "type": "boolean"
+        },
+        "booking_confirmed": {
+          "default": false,
+          "description": "Whether the email is a ticket purchase receipt, a completed registration or booking confirmation, or an accepted RSVP. False for invitations, announcements, newsletters and 'tickets on sale' notices.",
+          "title": "Booking Confirmed",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "events_found"
+      ],
+      "title": "EventExtractionResponse",
+      "type": "object"
+    },
+    "raw_response_text": "{\"events_found\": true, \"events\": [{\"title\": \"Daily Team Standup (New Time)\", \"start_datetime\": \"2026-02-09T12:30:00\", \"end_datetime\": \"2026-02-09T12:45:00\", \"all_day\": false, \"location\": \"Conference Room B; Zoom: https://zoom.us/j/123456789\", \"description\": \"Daily standup moves to a new time starting Monday, February 9, 2026: 9:30 AM PST (12:30 PM ET), 15 minutes. Previously 10:00 AM PST. Location: Conference Room B (same as before) or Zoom: https://zoom.us/j/123456789. Format stays the same: 1) What did you accomplish yesterday? 2) What are you working on today? 3) Any blockers? From Priya Sharma, Team Lead, Platform Team. Please update your calendar.\", \"importance\": \"action_required\", \"recurrence_rule\": \"RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR\"}], \"cancellation_detected\": false, \"booking_confirmed\": false}",
+    "finish_reason": "end_turn",
+    "retry_count": 0,
+    "error_traceback": null,
+    "correlation_id": "f23483803bf245099a157d5e74b1f86f",
+    "route_role": "primary"
+  },
+  "category": "meetings",
+  "description": "Daily team standup meeting change",
+  "difficulty": "medium",
+  "tags": [
+    "standup",
+    "team",
+    "daily",
+    "time-change"
+  ],
+  "input_summary": {
+    "subject": "Team Standup Moving to New Time",
+    "from": "priya.sharma@company.com",
+    "has_attachments": false,
+    "attachment_count": 0,
+    "attachment_types": [],
+    "total_attachment_bytes": 0
+  },
+  "fixture_input_hash": "93bbfd51037a91b9e47b359f5c8b215380fee3d3f1e0a9976e1e47a1ab7a9a6e",
+  "code_provenance": {
+    "git_commit": "c2a2296cf8c513b4664045b89ab4dafcd6b31ebb",
+    "event_processing_sha256": "963373a9cde1851f8039d4b8107acf7c05d1985a1c7106014ae134aea65bf646"
+  },
+  "raw_response": null,
+  "identity": {
+    "identity_version": 2,
+    "operation": "extract",
+    "provider": "anthropic",
+    "model": "claude-haiku-5-5",
+    "thinking": {
+      "mode": "level",
+      "value": "low"
+    },
+    "request_settings": {
+      "api_surface": "anthropic/chat-completions-or-native",
+      "max_output_tokens": null,
+      "model": "claude-haiku-5-5",
+      "response_format": "operation_schema",
+      "temperature": null,
+      "thinking": {
+        "mode": "level",
+        "value": "low"
+      },
+      "timeout_s": null,
+      "top_p": null
+    },
+    "prompt_contract_hash": "323e57b9e4a5785d7db82244d5b020cdac4c23df1da4f1327b5cc8efa72b8c42",
+    "adapter_contract_hash": "d3cff82711b897f93c4044d5f12effe2e04dcdd511f069e9a2ac48452c725455",
+    "fixture_input_hash": "93bbfd51037a91b9e47b359f5c8b215380fee3d3f1e0a9976e1e47a1ab7a9a6e"
+  },
+  "inference_key": "bed11e1500db9972dd4adcdbe50d6a6c67ffc186d34513864a13a0f72a803213",
+  "stored_at": "2026-11-06T06:42:48.677233+00:00"
+}

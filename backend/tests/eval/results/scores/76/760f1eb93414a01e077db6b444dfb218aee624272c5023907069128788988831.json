@@ -1,0 +1,23 @@
+{
+  "fixture_name": "no_events/newsletter_01",
+  "operation": "extract",
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 2,
+    "inference_key": "3a511a229c2bfe25119dfdacaf5ce6c69944053873610ae8a8287c65c696fec0",
+    "expected_output_hash": "17d9c6dd1f1fdc362e8af3956f555cfc40dbf07c82265fd452a7ecdac52382a7",
+    "scorer_hash": "f0daed45ca53c930922c8347e6a33a61f9970abd740009802f0b7a48737bb153"
+  },
+  "score_key": "760f1eb93414a01e077db6b444dfb218aee624272c5023907069128788988831",
+  "stored_at": "2026-11-06T06:43:02.314463+00:00"
+}

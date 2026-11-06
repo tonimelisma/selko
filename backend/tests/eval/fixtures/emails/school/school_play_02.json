@@ -27,6 +27,7 @@
   "expected": {
     "events_found": true,
     "event_count": 4,
+    "booking_confirmed": false,
     "events": [
       {
         "title": "The Wizard of Oz - School Musical",

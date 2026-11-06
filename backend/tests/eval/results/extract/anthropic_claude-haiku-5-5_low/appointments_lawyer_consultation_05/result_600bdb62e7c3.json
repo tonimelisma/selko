@@ -7,23 +7,23 @@
   "provider": "anthropic",
   "model": "claude-haiku-5-5",
   "thinking": "low",
-  "run_at": "2026-11-01T04:08:05.588426+00:00",
-  "duration_ms": 1353,
+  "run_at": "2026-11-06T06:27:40.097790+00:00",
+  "duration_ms": 2488,
   "timing": {
     "fixture_load": {
-      "started_at": "2026-11-01T04:08:04.228927+00:00",
+      "started_at": "2026-11-06T06:27:36.420098+00:00",
       "duration_ms": 0
     },
     "gateway_create": {
-      "started_at": "2026-11-01T04:08:04.228942+00:00",
-      "duration_ms": 8
+      "started_at": "2026-11-06T06:27:37.601667+00:00",
+      "duration_ms": 862
     },
     "api_call": {
-      "started_at": "2026-11-01T04:08:04.237177+00:00",
-      "duration_ms": 1345
+      "started_at": "2026-11-06T06:27:38.464525+00:00",
+      "duration_ms": 1626
     },
     "scoring": {
-      "started_at": "2026-11-01T04:08:05.582599+00:00",
+      "started_at": "2026-11-06T06:27:40.090953+00:00",
       "duration_ms": 0
     }
   },
@@ -63,14 +63,15 @@
     "events_found": true,
     "events": [
       {
-        "title": "Initial Consultation with Attorney Robert Williams",
+        "title": "Initial Consultation with Attorney Robert Williams (Estate Planning)",
         "start_datetime": "2026-02-11T11:00:00",
         "end_datetime": "2026-02-11T12:00:00",
         "all_day": false,
         "location": "Williams Law Group, 100 California Street, 20th Floor, San Francisco, CA 94111",
-        "description": "Estate Planning Consultation with Attorney Robert Williams (Williams Law Group). Time: 11:00 AM - 12:00 PM. Parking: validated parking available in building garage. Bring: valid ID, current will (if applicable), and a list of assets and beneficiaries. Initial consultation fee: $250, payable at the time of appointment. Questions: call (415) 555-4567.",
+        "description": "Confirmed initial estate planning consultation with Attorney Robert Williams at Williams Law Group. Parking: validated parking available in the building garage. Bring: valid ID, current will (if applicable), and a list of assets and beneficiaries. Initial consultation fee is $250, payable at the time of appointment. Questions: call (415) 555-4567.",
         "importance": "action_required",
-        "recurrence_rule": null
+        "recurrence_rule": null,
+        "user_committed": false
       }
     ]
   },
@@ -106,10 +107,10 @@
   },
   "tokens": {
     "prompt_tokens": 2796,
-    "completion_tokens": 292,
-    "total_tokens": 3088
+    "completion_tokens": 286,
+    "total_tokens": 3082
   },
-  "cost": 0.00042560000000000005,
+  "cost": 0.0004226,
   "trace": {
     "content_parts": [
       {
@@ -367,15 +368,15 @@
       "title": "EventExtractionResponse",
       "type": "object"
     },
-    "raw_response_text": "{\"events_found\": true, \"events\": [{\"title\": \"Initial Consultation with Attorney Robert Williams\", \"start_datetime\": \"2026-02-11T11:00:00\", \"end_datetime\": \"2026-02-11T12:00:00\", \"all_day\": false, \"location\": \"Williams Law Group, 100 California Street, 20th Floor, San Francisco, CA 94111\", \"description\": \"Estate Planning Consultation with Attorney Robert Williams (Williams Law Group). Time: 11:00 AM - 12:00 PM. Parking: validated parking available in building garage. Bring: valid ID, current will (if applicable), and a list of assets and beneficiaries. Initial consultation fee: $250, payable at the time of appointment. Questions: call (415) 555-4567.\", \"importance\": \"action_required\", \"recurrence_rule\": null}], \"cancellation_detected\": false}",
+    "raw_response_text": "{\"events_found\": true, \"events\": [{\"title\": \"Initial Consultation with Attorney Robert Williams (Estate Planning)\", \"start_datetime\": \"2026-02-11T11:00:00\", \"end_datetime\": \"2026-02-11T12:00:00\", \"all_day\": false, \"location\": \"Williams Law Group, 100 California Street, 20th Floor, San Francisco, CA 94111\", \"description\": \"Confirmed initial estate planning consultation with Attorney Robert Williams at Williams Law Group. Parking: validated parking available in the building garage. Bring: valid ID, current will (if applicable), and a list of assets and beneficiaries. Initial consultation fee is $250, payable at the time of appointment. Questions: call (415) 555-4567.\", \"importance\": \"action_required\", \"recurrence_rule\": null}], \"cancellation_detected\": false}",
     "finish_reason": "end_turn",
     "retry_count": 0,
     "error_traceback": null,
-    "correlation_id": "add20636476a4d81a567d5082e95aaf1",
+    "correlation_id": "a4cf6e72711c423b8aa76c0c412efc1a",
     "route_role": "primary"
   },
   "inference_key": "17ad1ee2cba2f46ff7b98e2f1620a1ed5e5816f08e27161f7ff18dafdf13b5d1",
-  "score_key": "88a25cf0c24e20963ddde5b1e5fd18c212122b104b1690b6caa68ed116af8e0c",
+  "score_key": "f26d1f40663343177b178374eca2daad91b29aeb15dc2c130f3cadfdd5574043",
   "identity": {
     "identity_version": 2,
     "operation": "extract",

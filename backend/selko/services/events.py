@@ -480,8 +480,14 @@ def save_extracted_events(
     - No match → New lane (``pending_review``), or auto-approved when requested
       (``intent="no_change"``).
     - Match + noop changeset → silent skip.
-    - Match on a declined event (``rejected``/``cancelled``) → provenance and
-      identity only, no proposal, no revival (``intent="record_only"``).
+    - Match on a ``rejected`` event from an email that confirms a booking
+      (``extraction.booking_confirmed``: tickets bought, registration done,
+      RSVP accepted) → back to the New lane (``intent="apply"`` with
+      ``review_status="pending_review"``); nothing reaches the calendar until
+      the user approves it again.
+    - Any other match on a declined event (``rejected``/``cancelled``) →
+      provenance and identity only, no proposal, no revival
+      (``intent="record_only"``).
     - Match still in the New lane → absorb the newer information, stay in New
       (``intent="apply"`` with ``review_status="pending_review"``, so nothing is
       queued for the calendar).
@@ -675,7 +681,53 @@ def save_extracted_events(
             num_new += 1
             continue
 
-        if str(match.baseline.get("review_status") or "") in DECLINED_REVIEW_STATUSES:
+        baseline_review_status = str(match.baseline.get("review_status") or "")
+        if baseline_review_status == "rejected" and extraction.booking_confirmed:
+            # The user bought tickets for, registered for or accepted something
+            # they had dismissed earlier: that reverses their own decision, so
+            # ask again. Back to the New lane, never straight to the calendar --
+            # the same place any newly found event waits. Production: a school
+            # play rejected in a triage pass on Oct 19, tickets bought Nov 5,
+            # and the receipt was recorded against the rejection and dropped.
+            logger.info(
+                "Email %s confirms a booking for rejected event %s; reopening for review",
+                email_id,
+                match.match_id,
+            )
+            # Only the lane changes. intent "apply" with review_status stated as
+            # pending_review records an applied proposal -- the audit trail of
+            # why it came back -- and queues no calendar work.
+            decisions.append({
+                "action": "update",
+                "event_id": match.match_id,
+                "intent": "apply",
+                "fields": {"review_status": "pending_review"},
+                **_window_fields(candidate_window),
+                "hints": hint_payload,
+                "source": {
+                    "email_id": email_id,
+                    "extracted_data": source_event_data,
+                    "source_type": "update",
+                    "event_snapshot_before": match.baseline,
+                    "change_set": {
+                        "kind": "material_update",
+                        "changes": [{
+                            "field": "review_status",
+                            "before": "rejected",
+                            "after": "pending_review",
+                            "reason": "booking confirmed after the user declined",
+                        }],
+                        "reasoning": (
+                            "A ticket purchase, registration or accepted RSVP "
+                            "for an event the user had rejected reopens it for review."
+                        ),
+                    },
+                },
+            })
+            num_updated += 1
+            continue
+
+        if baseline_review_status in DECLINED_REVIEW_STATUSES:
             # Terminal. Record that this email is about the declined event and
             # keep its identity hints, so the next email matches here too rather
             # than creating a duplicate in the New lane -- but propose nothing,
