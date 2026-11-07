@@ -29,6 +29,7 @@ const signedIn = { data: { session: { user: { email: 'toni@example.com' } } } };
 const details = {
 	data: {
 		authorization_id: 'auth-1',
+		redirect_uri: 'https://claude.ai/api/mcp/auth_callback',
 		client: { id: 'c1', name: 'Claude' },
 		user: { id: 'u1', email: 'toni@example.com' },
 		scope: 'openid email'
@@ -65,6 +66,8 @@ describe('OAuth consent page', () => {
 		expect(screen.getByTestId('consent-account')).toHaveTextContent('toni@example.com');
 		expect(screen.getByText(/Accept or reject events and changes/)).toBeInTheDocument();
 		expect(screen.getByText(/cannot read your emails/)).toBeInTheDocument();
+		// The name is self-chosen at registration; the return host is not.
+		expect(screen.getByTestId('consent-return-host')).toHaveTextContent('claude.ai');
 		expect(mockGetDetails).toHaveBeenCalledWith('auth-1');
 	});
 

@@ -48,9 +48,9 @@ class _Validator:
 
 
 @pytest.mark.asyncio
-async def test_verifier_accepts_an_allowlisted_oauth_token():
+async def test_verifier_accepts_a_token_from_the_oauth_consent_flow():
     validator = _Validator()
-    verifier = SupabaseTokenVerifier(validator, frozenset({CLIENT_ID}))
+    verifier = SupabaseTokenVerifier(validator)
     access = await verifier.verify_token(_token(scope="openid email"))
     assert access is not None
     assert access.subject == USER_ID
@@ -62,40 +62,26 @@ async def test_verifier_accepts_an_allowlisted_oauth_token():
 async def test_verifier_rejects_a_browser_session_token_without_asking_supabase():
     """A web-app session token is valid for Supabase but was not minted for MCP."""
     validator = _Validator()
-    verifier = SupabaseTokenVerifier(validator, frozenset({CLIENT_ID}))
+    verifier = SupabaseTokenVerifier(validator)
     assert await verifier.verify_token(_token(client_id=None)) is None
     assert validator.calls == 0
 
 
 @pytest.mark.asyncio
-async def test_verifier_rejects_a_client_that_is_not_allowlisted():
-    validator = _Validator()
-    verifier = SupabaseTokenVerifier(validator, frozenset({CLIENT_ID}))
-    assert await verifier.verify_token(_token(client_id="someone-else")) is None
-    assert validator.calls == 0
-
-
-@pytest.mark.asyncio
-async def test_empty_allowlist_accepts_nothing():
-    verifier = SupabaseTokenVerifier(_Validator(), frozenset())
-    assert await verifier.verify_token(_token()) is None
-
-
-@pytest.mark.asyncio
 async def test_verifier_rejects_what_supabase_rejects():
-    verifier = SupabaseTokenVerifier(_Validator(answer=None), frozenset({CLIENT_ID}))
+    verifier = SupabaseTokenVerifier(_Validator(answer=None))
     assert await verifier.verify_token(_token()) is None
 
 
 @pytest.mark.asyncio
 async def test_verifier_rejects_a_token_whose_subject_supabase_disputes():
-    verifier = SupabaseTokenVerifier(_Validator(answer="another-user"), frozenset({CLIENT_ID}))
+    verifier = SupabaseTokenVerifier(_Validator(answer="another-user"))
     assert await verifier.verify_token(_token()) is None
 
 
 @pytest.mark.asyncio
 async def test_verifier_rejects_garbage():
-    verifier = SupabaseTokenVerifier(_Validator(), frozenset({CLIENT_ID}))
+    verifier = SupabaseTokenVerifier(_Validator())
     assert await verifier.verify_token("not-a-jwt") is None
 
 
@@ -104,7 +90,7 @@ async def test_validation_is_cached_briefly_then_repeated():
     """A revoked grant must stop working: the cache expires."""
     now = [0.0]
     validator = _Validator()
-    verifier = SupabaseTokenVerifier(validator, frozenset({CLIENT_ID}), clock=lambda: now[0])
+    verifier = SupabaseTokenVerifier(validator, clock=lambda: now[0])
     token = _token()
     await verifier.verify_token(token)
     await verifier.verify_token(token)
@@ -129,7 +115,6 @@ def mcp_config(mock_config):
         mock_config,
         api_public_url="https://api.example.test",
         frontend_url="https://app.example.test",
-        mcp_oauth_client_ids=(CLIENT_ID,),
     )
 
 

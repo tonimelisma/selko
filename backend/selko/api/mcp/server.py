@@ -141,7 +141,6 @@ def create_mcp_server(
 
     verifier = token_verifier or SupabaseTokenVerifier(
         supabase_user_validator(config.supabase_url, config.supabase_key),
-        frozenset(config.mcp_oauth_client_ids),
     )
 
     def ops() -> SelkoOperations:
@@ -209,7 +208,7 @@ def create_mcp_server(
             issuer_url=mcp_issuer_url(config),
             resource_server_url=mcp_resource_url(config),
             # Supabase ignores RFC 8707 resource indicators; the verifier
-            # checks the OAuth client_id claim instead (see auth.py).
+            # requires the OAuth client_id claim instead (see auth.py).
             validate_token_resource=False,
         ),
         extensions=[apps],
