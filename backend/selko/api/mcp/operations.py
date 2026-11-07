@@ -111,6 +111,14 @@ def _pending_proposal(event: dict[str, Any]) -> dict[str, Any] | None:
     return None
 
 
+def _latest_decided_proposal(event: dict[str, Any]) -> dict[str, Any] | None:
+    decided = [
+        p for p in event.get("event_change_proposals") or []
+        if p.get("status") in ("applied", "rejected")
+    ]
+    return max(decided, key=lambda p: p.get("created_at") or "", default=None)
+
+
 def _change_summary(proposal: dict[str, Any], tz: ZoneInfo) -> dict[str, Any]:
     change_set = proposal.get("change_set") or {}
     changes = []
@@ -337,7 +345,26 @@ class SelkoOperations:
 
     def decide_new(self, event_id: str, approve: bool) -> dict[str, Any]:
         event = self._owned(event_id)
-        if event.get("review_status") != "pending_review":
+        status = event.get("review_status")
+        # A widget card is rendered once from a tool result and can be shown
+        # again after the decision was made (the chat reloads, or the user
+        # decided in the app). Repeating that same decision is not an error:
+        # report it as done instead of telling the user something went wrong.
+        if (approve and status == "active") or (not approve and status == "rejected"):
+            return {
+                "event_id": event_id,
+                "title": event.get("title"),
+                "result": "accepted" if approve else "rejected",
+                "already_decided": True,
+                "detail": "Already accepted." if approve else "Already rejected.",
+            }
+        if status in ("active", "rejected"):
+            raise OperationError(
+                f"'{event.get('title')}' was already "
+                f"{'accepted' if status == 'active' else 'rejected'} earlier and is "
+                "not waiting for review. Undo that in the Selko app if needed."
+            )
+        if status != "pending_review":
             raise OperationError(
                 f"'{event.get('title')}' is not waiting for review "
                 f"(review status: {event.get('review_status')}). Only events in the "
@@ -365,6 +392,28 @@ class SelkoOperations:
         event = self._owned(event_id)
         proposal = _pending_proposal(event)
         if proposal is None:
+            # Same as decide_new: a stale card repeating the decision already
+            # on record succeeds; one that contradicts it says what happened.
+            latest = _latest_decided_proposal(event)
+            if latest is not None:
+                done = latest.get("status") == ("applied" if apply else "rejected")
+                if done:
+                    return {
+                        "event_id": event_id,
+                        "title": event.get("title"),
+                        "result": "accepted" if apply else "rejected",
+                        "kind": "cancellation" if latest.get("kind") == "cancellation" else "update",
+                        "already_decided": True,
+                        "detail": (
+                            "Already applied to your calendar." if apply
+                            else "Already rejected; the calendar entry stays as it was."
+                        ),
+                    }
+                raise OperationError(
+                    f"The change to '{event.get('title')}' was already "
+                    f"{'applied' if latest.get('status') == 'applied' else 'rejected'}, "
+                    "so there is nothing pending to decide."
+                )
             raise OperationError(
                 f"'{event.get('title')}' has no pending change. Only events in the "
                 "Changes lane of list_review_queue have one."
