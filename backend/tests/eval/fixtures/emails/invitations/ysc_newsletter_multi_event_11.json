@@ -25,25 +25,8 @@
   },
   "expected": {
     "events_found": true,
-    "event_count": 7,
-    "event_count_min": 5,
+    "event_count": 5,
     "events": [
-      {
-        "title": "Full Moon Hike",
-        "start_datetime": "2026-01-30",
-        "end_datetime": null,
-        "location": null,
-        "all_day": true,
-        "importance": "fyi"
-      },
-      {
-        "title": "YSC Annual Meeting",
-        "start_datetime": "2026-02-01T13:00:00",
-        "end_datetime": null,
-        "location": "Swedish American Hall",
-        "all_day": false,
-        "importance": "fyi"
-      },
       {
         "title": "YSC Happy Hour at Transamerica Building",
         "start_datetime": "2026-02-19T17:30:00",
@@ -86,5 +69,5 @@
       }
     ]
   },
-  "notes": "Real-world YSC newsletter with 7 events (2 past, 5 future) buried among board updates, cabin rental info, and booking rules. Past events: Full Moon Hike (Jan 30), Annual Meeting (Feb 1). Models that skip past events still pass with event_count_min=5."
+  "notes": "Real-world YSC newsletter with 5 future events buried among board updates, cabin rental info, and booking rules. It also recaps two events already past when it was sent (Full Moon Hike Jan 30, Annual Meeting Feb 1); those are not expected, since production drops past events before saving."
 }

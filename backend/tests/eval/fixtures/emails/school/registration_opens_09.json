@@ -42,7 +42,7 @@
   },
   "expected": {
     "events_found": true,
-    "event_count": 2,
+    "event_count": 1,
     "event_count_min": 1,
     "events": [
       {
@@ -52,16 +52,8 @@
         "location": null,
         "all_day": false,
         "importance": "action_required"
-      },
-      {
-        "title": "Community Arts Preschool Registration Opens",
-        "start_datetime": "2026-02-18T12:00:00",
-        "end_datetime": null,
-        "location": null,
-        "all_day": false,
-        "importance": "action_required"
       }
     ]
   },
-  "notes": "Real-world City of Walnut Creek Arts + Rec email announcing spring registration opening. Has a specific date and time (February 18 at 12:00 PM). Also mentions preschool registration opening separately on same date. Models may extract 1 combined event or 2 separate events — both are acceptable (event_count_min=1)."
+  "notes": "Real-world City of Walnut Creek Arts + Rec email announcing spring registration opening. Has a specific date and time (February 18 at 12:00 PM). Also mentions preschool registration opening separately on same date. Models may extract 1 combined event or 2 separate events \u2014 both are acceptable (event_count_min=1). Expected lists the combined event only: a second, separate preschool event is an extra, which the scorer accepts without penalty."
 }

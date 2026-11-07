@@ -1,0 +1,23 @@
+{
+  "fixture_name": "no_events/meeting_digest_past_topics_12",
+  "operation": "extract",
+  "expected": {
+    "events_found": false,
+    "event_count": 0,
+    "events": []
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 2,
+    "inference_key": "9b2346f30a10367faa44b3517dc55e02867ca47198c785f42aa98b51ca06cb3f",
+    "expected_output_hash": "17d9c6dd1f1fdc362e8af3956f555cfc40dbf07c82265fd452a7ecdac52382a7",
+    "scorer_hash": "f0daed45ca53c930922c8347e6a33a61f9970abd740009802f0b7a48737bb153"
+  },
+  "score_key": "1de09134ad7e4c96228e5e1b3bc28d328e8ddb986a66b45899f6c18a6a46e0ff",
+  "stored_at": "2026-11-07T03:52:31.995898+00:00"
+}
