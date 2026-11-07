@@ -2,7 +2,7 @@
 	import LogoMark from '$lib/components/LogoMark.svelte';
 
 	const contactEmail = 'toni.melisma@gmail.com';
-	const lastUpdated = 'November 1, 2026';
+	const lastUpdated = 'November 6, 2026';
 </script>
 
 <svelte:head>
@@ -82,7 +82,7 @@
 			<p class="mt-3">
 				Selko requests read-only access to Gmail and access to manage events on Google Calendar.
 				Gmail data is used only to find and update calendar events for you, and is transferred to
-				others only as described under "Who else handles your data" below, which is needed to
+				others only as described under "Who else handles your data" and "Apps you connect" below, which is needed to
 				provide that feature. It is never used to train general-purpose AI models.
 			</p>
 		</section>
@@ -114,6 +114,18 @@
 			<p class="mt-3">
 				We may also disclose data if the law requires it, or to a successor if Selko is
 				transferred, in which case this policy continues to apply to your data.
+			</p>
+		</section>
+
+		<section>
+			<h2 class="text-xl font-bold">Apps you connect</h2>
+			<p class="mt-3">
+				You can connect an app such as Claude to your Selko account. Selko asks you first, on a
+				page that names the app, and shares nothing until you allow it. A connected app can see
+				the events Selko found and, for each one, the subject and sender of the email it came
+				from. It can accept or reject events and changes for you. It cannot read your emails or
+				attachments. What the app does with that information is governed by its own terms. You
+				can disconnect an app at any time in Settings.
 			</p>
 		</section>
 

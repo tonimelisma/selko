@@ -86,6 +86,34 @@ describe('Login Page', () => {
 		expect(mockGoto).toHaveBeenCalledWith('/app');
 	});
 
+	it('returns to the OAuth consent page that sent the user to sign in', async () => {
+		const user = userEvent.setup();
+		window.history.replaceState({}, '', '/login?next=' + encodeURIComponent('/oauth/consent?authorization_id=a1'));
+		mockSignInWithPassword.mockResolvedValue({ data: { user: { id: '123' } }, error: null });
+
+		render(LoginPage);
+		await user.type(screen.getByLabelText(/email/i), 'test@example.com');
+		await user.type(screen.getByLabelText(/password/i), 'password123');
+		await user.click(screen.getByRole('button', { name: /sign in/i }));
+
+		expect(mockGoto).toHaveBeenCalledWith('/oauth/consent?authorization_id=a1');
+		window.history.replaceState({}, '', '/');
+	});
+
+	it('ignores a next parameter that points off-site', async () => {
+		const user = userEvent.setup();
+		window.history.replaceState({}, '', '/login?next=' + encodeURIComponent('https://evil.example'));
+		mockSignInWithPassword.mockResolvedValue({ data: { user: { id: '123' } }, error: null });
+
+		render(LoginPage);
+		await user.type(screen.getByLabelText(/email/i), 'test@example.com');
+		await user.type(screen.getByLabelText(/password/i), 'password123');
+		await user.click(screen.getByRole('button', { name: /sign in/i }));
+
+		expect(mockGoto).toHaveBeenCalledWith('/app');
+		window.history.replaceState({}, '', '/');
+	});
+
 	it('displays error message on login failure', async () => {
 		const user = userEvent.setup();
 		mockSignInWithPassword.mockResolvedValue({

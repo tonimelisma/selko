@@ -1,0 +1,228 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="color-scheme" content="light dark" />
+<title>Selko review queue</title>
+<style>
+  /* Host tokens first (Claude supplies --color-*, --font-*, --border-radius-*),
+     Selko Warmth values as fallbacks. One hue per meaning: green accepts,
+     berry rejects, ochre marks a change. */
+  :root {
+    --ink: var(--color-text-primary, #2B2622);
+    --muted: var(--color-text-secondary, #746A61);
+    --line: var(--color-border-primary, #EDE4DA);
+    --surface: var(--color-background-primary, transparent);
+    --subtle: var(--color-background-secondary, #F5EEE6);
+    --accept: #276243;
+    --reject: #AD3650;
+    --changed: #C97A2E;
+    --on-fill: #FFFFFF;
+    --radius: var(--border-radius-md, 10px);
+    --font: var(--font-sans, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif);
+  }
+  :root.dark {
+    --ink: var(--color-text-primary, #F2ECE4);
+    --muted: var(--color-text-secondary, #A99E92);
+    --line: var(--color-border-primary, #322B25);
+    --subtle: var(--color-background-secondary, #2C2621);
+    --accept: #7FD9A8;
+    --reject: #EE7189;
+    --changed: #F0B45C;
+    --on-fill: #12100E;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: transparent; color: var(--ink); font: 14px/1.4 var(--font); }
+  main { padding: 4px 2px 6px; }
+  header { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin: 0 2px 8px; }
+  h1 { font-size: 15px; font-weight: 650; margin: 0; }
+  .counts { color: var(--muted); font-size: 13px; }
+  ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  li.card { border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); padding: 12px; }
+  .top { display: flex; gap: 8px; align-items: flex-start; justify-content: space-between; }
+  .title { font-weight: 600; overflow-wrap: anywhere; }
+  .tag { flex: none; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--subtle); color: var(--muted); }
+  .tag.change { color: var(--changed); }
+  .meta { color: var(--muted); font-size: 13px; margin-top: 2px; overflow-wrap: anywhere; }
+  .diff { margin: 8px 0 0; padding: 0; list-style: none; font-size: 13px; }
+  .diff li { margin-top: 2px; }
+  .diff .old { text-decoration: line-through; color: var(--muted); }
+  .actions { display: flex; gap: 8px; margin-top: 10px; }
+  button { font: inherit; font-weight: 600; min-height: 44px; flex: 1; border-radius: calc(var(--radius) - 2px); cursor: pointer; padding: 0 12px; }
+  button.accept { background: var(--accept); color: var(--on-fill); border: 1px solid var(--accept); }
+  button.reject { background: transparent; color: var(--reject); border: 1px solid var(--reject); }
+  button:disabled { opacity: .55; cursor: default; }
+  button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+  .done { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--muted); font-size: 13px; }
+  .done strong { color: var(--ink); font-weight: 600; }
+  .error { color: var(--reject); font-size: 13px; margin-top: 8px; }
+  footer { margin: 10px 2px 0; color: var(--muted); font-size: 13px; display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  a { color: inherit; }
+  .empty { padding: 16px 4px; color: var(--muted); }
+  .skeleton { height: 92px; border-radius: var(--radius); background: var(--subtle); animation: pulse 1.4s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .5; } }
+  @media (prefers-reduced-motion: reduce) { .skeleton { animation: none; } }
+</style>
+</head>
+<body>
+<main id="root" aria-live="polite">
+  <ol><li class="skeleton"></li><li class="skeleton"></li></ol>
+</main>
+<script type="module">
+/*__EXT_APPS_BUNDLE__*/
+const { App, applyHostStyleVariables, applyHostFonts } = globalThis.ExtApps;
+const MAX_CARDS = 5;
+const root = document.getElementById("root");
+let appUrl = null;
+
+function el(tag, attrs = {}, ...children) {
+  const node = document.createElement(tag);
+  for (const [key, value] of Object.entries(attrs)) {
+    if (key === "class") node.className = value;
+    else if (key.startsWith("on")) node.addEventListener(key.slice(2), value);
+    else node.setAttribute(key, value);
+  }
+  for (const child of children) if (child != null) node.append(child);
+  return node;
+}
+
+const dayFmt = { weekday: "short", month: "short", day: "numeric" };
+function fmtDate(iso) {
+  return new Date(iso + "T12:00:00").toLocaleDateString(undefined, dayFmt);
+}
+function fmtDateTime(iso) {
+  const d = new Date(iso);
+  return d.toLocaleDateString(undefined, dayFmt) + ", " +
+    d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+}
+function fmtTime(iso) {
+  return new Date(iso).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+}
+function when(item) {
+  if (item.all_day) {
+    if (!item.start_date) return "All day";
+    return fmtDate(item.start_date) + (item.end_date ? " – " + fmtDate(item.end_date) : "") + ", all day";
+  }
+  if (!item.start) return "Time not set";
+  return fmtDateTime(item.start) + (item.end ? " – " + fmtTime(item.end) : "");
+}
+const FIELD = { title: "Title", start_datetime: "Start", end_datetime: "End", location: "Location",
+  all_day: "All day", description: "Details", importance: "Importance", status: "Status" };
+function value(field, v) {
+  if (v === null || v === undefined || v === "") return "none";
+  if (typeof v === "boolean") return v ? "yes" : "no";
+  if ((field === "start_datetime" || field === "end_datetime") && /^\d{4}-\d{2}-\d{2}T/.test(v)) return fmtDateTime(v);
+  return String(v);
+}
+
+function card(item, app) {
+  const isChange = item.lane === "change";
+  const isCancel = isChange && item.change?.kind === "cancellation";
+  const li = el("li", { class: "card" });
+  const meta = [when(item), item.location].filter(Boolean).join(" · ");
+  const from = item.source?.from ? "From " + item.source.from : null;
+  li.append(
+    el("div", { class: "top" },
+      el("div", { class: "title" }, item.title || "Untitled event"),
+      el("span", { class: "tag" + (isChange ? " change" : "") },
+        isCancel ? "Cancelled" : isChange ? "Changed" : "New")),
+    el("div", { class: "meta" }, meta),
+    from ? el("div", { class: "meta" }, from) : null,
+  );
+  if (isCancel) {
+    li.append(el("div", { class: "meta" }, "Cancelled by the sender. Accepting removes it from your calendar."));
+  }
+  if (isChange && !isCancel && item.change?.changes?.length) {
+    const diff = el("ul", { class: "diff" });
+    for (const c of item.change.changes.slice(0, 3)) {
+      diff.append(el("li", {}, (FIELD[c.field] || c.field) + ": ",
+        el("span", { class: "old" }, value(c.field, c.before)), " → ", value(c.field, c.after)));
+    }
+    li.append(diff);
+  }
+  const acceptTool = isChange ? "accept_change" : "accept_event";
+  const rejectTool = isChange ? "reject_change" : "reject_event";
+  const acceptLabel = isChange ? "Accept change" : "Accept";
+  const rejectLabel = isChange ? "Reject change" : "Reject";
+  const accept = el("button", { class: "accept", type: "button" }, acceptLabel);
+  const reject = el("button", { class: "reject", type: "button" }, rejectLabel);
+  const decide = async (tool, verb) => {
+    accept.disabled = reject.disabled = true;
+    li.querySelector(".error")?.remove();
+    try {
+      const result = await app.callServerTool({ name: tool, arguments: { event_id: item.event_id } });
+      if (result.isError) throw new Error(result.content?.[0]?.text || "Selko could not do that.");
+      const detail = result.structuredContent?.detail || "";
+      li.replaceChildren(el("div", { class: "done" },
+        el("span", {}, el("strong", {}, verb), " · " + (item.title || "Event")),
+        el("span", {}, detail)));
+      decided.push(`${verb}: "${item.title}" (${item.event_id})`);
+      app.updateModelContext({ content: [{ type: "text",
+        text: "In the Selko review widget the user has already decided: " + decided.join("; ") +
+          ". These need no further action." }] }).catch(() => {});
+    } catch (err) {
+      accept.disabled = reject.disabled = false;
+      li.append(el("div", { class: "error", role: "alert" }, String(err.message || err)));
+    }
+  };
+  accept.addEventListener("click", () => decide(acceptTool, "Accepted"));
+  reject.addEventListener("click", () => decide(rejectTool, "Rejected"));
+  li.append(el("div", { class: "actions" }, accept, reject));
+  return li;
+}
+
+const decided = [];
+function render(data, app) {
+  appUrl = data.app_url || null;
+  const items = data.items || [];
+  root.replaceChildren();
+  const parts = [];
+  if (data.new_count) parts.push(data.new_count + " new");
+  if (data.change_count) parts.push(data.change_count + (data.change_count === 1 ? " change" : " changes"));
+  root.append(el("header", {}, el("h1", {}, "Waiting for review"),
+    el("span", { class: "counts" }, parts.join(" · "))));
+  if (!items.length) {
+    root.append(el("div", { class: "empty" }, "Nothing to review. Selko will add new events here as emails arrive."));
+    return;
+  }
+  const list = el("ol");
+  for (const item of items.slice(0, MAX_CARDS)) list.append(card(item, app));
+  root.append(list);
+  const hidden = (data.total_waiting || items.length) - Math.min(items.length, MAX_CARDS);
+  const footer = el("footer", {}, el("span", {}, hidden > 0 ? `${hidden} more waiting` : ""));
+  if (appUrl) {
+    const link = el("a", { href: appUrl }, "Open Selko");
+    link.addEventListener("click", (e) => { e.preventDefault(); app.openLink({ url: appUrl }); });
+    footer.append(link);
+  }
+  root.append(footer);
+}
+
+function applyContext(ctx) {
+  if (!ctx) return;
+  document.documentElement.classList.toggle("dark", ctx.theme === "dark");
+  if (ctx.styles?.variables) applyHostStyleVariables(ctx.styles.variables);
+  if (ctx.styles?.css?.fonts) applyHostFonts(ctx.styles.css.fonts);
+}
+
+(async () => {
+  const app = new App({ name: "Selko review queue", version: "1.0.0" }, {}, { autoResize: true });
+  app.ontoolresult = (result) => {
+    let data = result.structuredContent;
+    if (!data) {
+      try { data = JSON.parse(result.content?.[0]?.text || "{}"); } catch { data = null; }
+    }
+    if (!data) {
+      root.replaceChildren(el("div", { class: "empty" }, "Selko returned something this view cannot show."));
+      return;
+    }
+    render(data, app);
+  };
+  app.onhostcontextchanged = applyContext;
+  await app.connect();
+  applyContext(app.getHostContext());
+})();
+</script>
+</body>
+</html>
