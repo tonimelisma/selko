@@ -43,21 +43,26 @@ def _admin_headers(config) -> dict[str, str]:
 
 @pytest.fixture
 def oauth_client(config):
-    """A pre-registered public client, as Claude is registered. Always removed."""
+    """A client that registers itself, as Claude does when a connector is added.
+
+    Uses the dynamic client registration endpoint the authorization server
+    advertises, then removes the client with the admin API.
+    """
     with httpx.Client(timeout=15) as http:
-        response = http.post(
-            f"{config.supabase_url}/auth/v1/admin/oauth/clients",
-            headers=_admin_headers(config),
-            json={
-                "client_name": "Claude (integration test)",
-                "redirect_uris": [REDIRECT_URI],
-                "token_endpoint_auth_method": "none",
-            },
+        metadata = http.get(f"{config.supabase_url}/auth/v1/.well-known/oauth-authorization-server")
+        registration = metadata.json().get("registration_endpoint")
+        assert registration, (
+            "Supabase does not advertise dynamic client registration; restart supabase so "
+            "config.toml [auth.oauth_server] allow_dynamic_registration = true applies."
         )
-        assert response.status_code == 201, (
-            "Supabase OAuth server is not enabled locally; restart supabase so "
-            f"config.toml [auth.oauth_server] applies. Got {response.status_code}: {response.text}"
-        )
+        response = http.post(registration, json={
+            "client_name": "Claude (integration test)",
+            "redirect_uris": [REDIRECT_URI],
+            "token_endpoint_auth_method": "none",
+            "grant_types": ["authorization_code", "refresh_token"],
+            "response_types": ["code"],
+        })
+        assert response.status_code == 201, response.text
         client_id = response.json()["client_id"]
         try:
             yield client_id
@@ -218,7 +223,7 @@ async def test_claude_shaped_token_reviews_the_queue_end_to_end(
 ):
     user_id, email, password = temp_user
     ids = _seed(admin_client, user_id)
-    mcp_config = dataclasses.replace(config, api_public_url=API, mcp_oauth_client_ids=(oauth_client,))
+    mcp_config = dataclasses.replace(config, api_public_url=API)
     token = _oauth_token(config, oauth_client, _session_token(config, email, password))
 
     async with _mcp(mcp_config, token) as http, _client(http) as client:
@@ -278,7 +283,7 @@ async def test_row_level_security_hides_other_users_events(
     }).user
     try:
         theirs = _seed(admin_client, stranger.id)
-        mcp_config = dataclasses.replace(config, api_public_url=API, mcp_oauth_client_ids=(oauth_client,))
+        mcp_config = dataclasses.replace(config, api_public_url=API)
         token = _oauth_token(config, oauth_client, _session_token(config, email, password))
         async with _mcp(mcp_config, token) as http, _client(http) as client:
             queue = (await client.call_tool("list_review_queue", {})).structured_content
@@ -296,20 +301,19 @@ async def test_row_level_security_hides_other_users_events(
 
 
 @pytest.mark.asyncio
-async def test_only_oauth_tokens_for_an_allowed_client_get_in(config, temp_user, oauth_client):
+async def test_only_tokens_from_the_consent_flow_get_in(config, temp_user, oauth_client):
     _, email, password = temp_user
     session = _session_token(config, email, password)
     token = _oauth_token(config, oauth_client, session)
 
-    allowed = dataclasses.replace(config, api_public_url=API, mcp_oauth_client_ids=(oauth_client,))
-    async with _mcp(allowed, token) as http:
+    mcp_config = dataclasses.replace(config, api_public_url=API)
+    async with _mcp(mcp_config, token) as http:
         assert await _initialize_status(http) == 200
-    # A web-app session token is a valid Supabase token, but not one minted for MCP.
-    async with _mcp(allowed, session) as http:
+    # A web-app session token is a valid Supabase token, but the user never
+    # approved an app with it.
+    async with _mcp(mcp_config, session) as http:
         assert await _initialize_status(http) == 401
-    # The same OAuth token, once its client is no longer allowlisted.
-    closed = dataclasses.replace(allowed, mcp_oauth_client_ids=())
-    async with _mcp(closed, token) as http:
+    async with _mcp(mcp_config, "not-a-token") as http:
         assert await _initialize_status(http) == 401
 
 
@@ -319,7 +323,7 @@ async def test_disconnecting_the_app_revokes_its_token(config, temp_user, oauth_
     _, email, password = temp_user
     session = _session_token(config, email, password)
     token = _oauth_token(config, oauth_client, session)
-    mcp_config = dataclasses.replace(config, api_public_url=API, mcp_oauth_client_ids=(oauth_client,))
+    mcp_config = dataclasses.replace(config, api_public_url=API)
 
     async with _mcp(mcp_config, token) as http:
         assert await _initialize_status(http) == 200
@@ -341,7 +345,7 @@ async def test_accepting_a_change_rewrites_the_event_and_queues_the_calendar(
 ):
     user_id, email, password = temp_user
     ids = _seed(admin_client, user_id)
-    mcp_config = dataclasses.replace(config, api_public_url=API, mcp_oauth_client_ids=(oauth_client,))
+    mcp_config = dataclasses.replace(config, api_public_url=API)
     token = _oauth_token(config, oauth_client, _session_token(config, email, password))
     async with _mcp(mcp_config, token) as http, _client(http) as client:
         result = await client.call_tool("accept_change", {"event_id": ids["practice"]})

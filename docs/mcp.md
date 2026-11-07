@@ -13,16 +13,9 @@ on a schedule, for example a morning digest.
 
 ## Connect Claude
 
-Selko uses OAuth, so you sign in to Selko once per Claude surface and never
-paste a token. Claude is a **pre-registered** OAuth client: dynamic client
-registration is off, so you give Claude Selko's client ID when adding the
-connector.
-
-| Setting | Production value |
-|---|---|
-| Server URL | `https://api.selkoapp.com/mcp` |
-| OAuth Client ID | `8d42b6e3-21ca-4ea4-9bec-1f02a3939e45` |
-| OAuth Client Secret | leave empty (public client, PKCE) |
+All you need is the URL, **`https://api.selkoapp.com/mcp`**. Claude registers
+itself with Selko automatically, then opens Selko's own login page, where you
+sign in and choose **Allow**. Nothing to paste.
 
 ### claude.ai, Claude Desktop and Claude mobile
 
@@ -31,11 +24,10 @@ These share one connector list, so add it once on the web or in Desktop.
 1. Open **Settings → Connectors** (claude.ai/customize/connectors) and choose
    **Add custom connector**.
 2. Name: `Selko`. Remote MCP server URL: `https://api.selkoapp.com/mcp`.
-3. Open **Advanced settings**, paste the OAuth Client ID above, leave the
-   secret empty, and **Add**.
-4. Choose **Connect**. A Selko page opens: sign in if asked, check that it says
+   Leave **Advanced settings** empty and choose **Add**.
+3. Choose **Connect**. A Selko page opens: sign in if asked, check that it says
    *Connect Claude to Selko* with your account, and choose **Allow**.
-5. In a chat, enable Selko from the tools menu and ask *"What's waiting in
+4. In a chat, enable Selko from the tools menu and ask *"What's waiting in
    Selko?"*. In Desktop and on the web, the queue appears as cards with
    Accept / Reject buttons.
 
@@ -45,11 +37,8 @@ the connector's settings.
 
 ### Claude Code (CLI)
 
-Claude Code needs the client ID and a fixed callback port, because the
-redirect URI registered for Selko is exactly `http://localhost:8765/callback`.
-
 ```bash
-claude mcp add --transport http --scope user --client-id 8d42b6e3-21ca-4ea4-9bec-1f02a3939e45 --callback-port 8765 selko https://api.selkoapp.com/mcp
+claude mcp add --transport http --scope user selko https://api.selkoapp.com/mcp
 ```
 
 Then run `/mcp` inside `claude`, pick **selko → Authenticate**, and approve in
@@ -200,8 +189,12 @@ Claude ──(1) POST /mcp, no token──────────────�
 - **Audience:** Supabase sets `aud=authenticated` on every token and ignores the
   RFC 8707 `resource` parameter, so the audience cannot distinguish an MCP token
   from a browser session. The `client_id` claim can (only the OAuth server mints
-  it), so the verifier requires it to be in `MCP_OAUTH_CLIENT_IDS`. A browser
-  session token is refused at `/mcp`.
+  it), so the verifier requires it. A browser session token is refused at
+  `/mcp`.
+- **Registration:** dynamic client registration is on, as every MCP client
+  expects: Claude registers itself when the connector is added. No client
+  allowlist exists; the gate is the consent page, which names the app and
+  shares nothing until the user chooses Allow.
 - **Data access:** reads use the caller's token through PostgREST, so RLS
   applies exactly as in the apps. Writes reuse the apps' paths:
   `set_event_review_status`, `apply_change_proposal` / `reject_change_proposal`
@@ -219,30 +212,18 @@ Claude ──(1) POST /mcp, no token──────────────�
 
 | Environment | Authorization server | Consent page | Client |
 |---|---|---|---|
-| Local | `http://127.0.0.1:54321/auth/v1` (`supabase/config.toml` `[auth.oauth_server] enabled = true`) | `http://127.0.0.1:3000/oauth/consent` | registered per test, removed after |
-| Production | `https://khahcozfbnpykspvatrg.supabase.co/auth/v1` | `https://selkoapp.com/oauth/consent` | "Claude", `8d42b6e3-21ca-4ea4-9bec-1f02a3939e45` |
+| Local | `http://127.0.0.1:54321/auth/v1` (`supabase/config.toml` `[auth.oauth_server]`; restart supabase after changing it) | `http://127.0.0.1:3000/oauth/consent` | self-registered per test, removed after |
+| Production | `https://khahcozfbnpykspvatrg.supabase.co/auth/v1` | `https://selkoapp.com/oauth/consent` | self-registered by each Claude surface |
 
-Production settings, set on 2026-11-06 (deploy log `docs/deploy-log/`):
+Production settings (deploy logs `docs/deploy-log/2026-11-06-*`):
 
 - Supabase auth config: `oauth_server_enabled=true`,
   `oauth_server_authorization_path=/oauth/consent`,
-  `oauth_server_allow_dynamic_registration=false`, `site_url=https://selkoapp.com`
+  `oauth_server_allow_dynamic_registration=true`, `site_url=https://selkoapp.com`
   (the consent path is resolved against `site_url`, **and** GoTrue refuses
   consent API calls whose `Origin` is not `site_url` — "unauthorized request
   origin". The consent page only works on the exact `site_url` origin, which
   is why `www.selkoapp.com` must keep redirecting to the apex).
-- OAuth client "Claude": public (`token_endpoint_auth_method=none`), redirect
-  URIs `https://claude.ai/api/mcp/auth_callback` and
-  `http://localhost:8765/callback`.
-- Render `selko-api`: `MCP_OAUTH_CLIENT_IDS=8d42b6e3-21ca-4ea4-9bec-1f02a3939e45`.
-
-Register another client (e.g. a second redirect URI) with the admin API, then
-add its id to `MCP_OAUTH_CLIENT_IDS`:
-
-```bash
-curl -X POST "$SUPABASE_URL/auth/v1/admin/oauth/clients" -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" -H "Content-Type: application/json" -d '{"client_name":"Claude","redirect_uris":["https://claude.ai/api/mcp/auth_callback","http://localhost:8765/callback"],"token_endpoint_auth_method":"none"}'
-```
-
 Check the endpoint from outside:
 
 ```bash
@@ -258,8 +239,8 @@ The second one answers 401 without a token, which is correct.
 **Tests:** `backend/tests/test_mcp_server.py` (verifier, tool contract and
 annotations, widget, HTTP wiring, `create_app` mount) and
 `backend/tests/integration/test_integration_mcp.py` (a real Supabase OAuth
-grant → MCP over HTTP → RLS and RPCs; session tokens and non-allowlisted
-clients refused; revocation).
+grant from a self-registered client → MCP over HTTP → RLS and RPCs; session
+tokens refused; revocation).
 
 ## Design notes
 
@@ -278,10 +259,12 @@ connectors. The callback is `https://claude.ai/api/mcp/auth_callback` for every
 hosted surface, plus a localhost loopback for Claude Code. Token endpoints must
 accept form-encoded bodies, PKCE S256 is required, and discovery and token
 calls have about a 10 s budget. Supabase's OAuth 2.1 server covers all of that.
-Its tokens are ordinary Supabase JWTs, so RLS keeps working unchanged, and
-pre-registering Claude means no unknown client can obtain a grant. CIMD would
-remove the copy-paste of a client ID, but Supabase does not support it yet, and
-open DCR would let any MCP client register.
+Its tokens are ordinary Supabase JWTs, so RLS keeps working unchanged.
+Supabase offers DCR (it does not support CIMD yet). DCR is how every other
+MCP server works: the user adds a URL and lands on the service's login page.
+The first version kept DCR off and pre-registered Claude, which made users
+paste a client ID into Advanced settings. Nobody else's MCP asks for that, so
+it was reverted the same day.
 
 **Tool design** (the connector review criteria):
 

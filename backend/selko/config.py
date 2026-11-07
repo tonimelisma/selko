@@ -179,10 +179,6 @@ class Config:
     api_public_url: str = "http://localhost:8000"
     frontend_url: str = "http://localhost:3000"
 
-    # OAuth client ids (Supabase OAuth 2.1 server) allowed to call /mcp.
-    # Empty accepts no token at all: the endpoint answers 401 to everyone.
-    mcp_oauth_client_ids: tuple[str, ...] = ()
-
 
 def get_environment(override: Optional[str] = None) -> str:
     """Get the current environment name.
@@ -603,9 +599,6 @@ def load_config(env_override: Optional[str] = None) -> Config:
         allowed_origins=_parse_allowed_origins(getenv),
         api_public_url=getenv("API_PUBLIC_URL", "http://localhost:8000").rstrip("/"),
         frontend_url=getenv("FRONTEND_URL", "http://localhost:3000").rstrip("/"),
-        mcp_oauth_client_ids=tuple(
-            c.strip() for c in getenv("MCP_OAUTH_CLIENT_IDS", "").split(",") if c.strip()
-        ),
         max_pdf_pages_for_llm=int(getenv("MAX_PDF_PAGES_FOR_LLM", "10")),
         max_image_size_for_llm=int(getenv("MAX_IMAGE_SIZE_FOR_LLM", str(10 * 1024 * 1024))),
         max_other_size_for_llm=int(getenv("MAX_OTHER_SIZE_FOR_LLM", str(20 * 1024 * 1024))),

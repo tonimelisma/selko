@@ -3,8 +3,9 @@
 	 * OAuth consent for apps that connect to Selko (e.g. Claude, via Selko's
 	 * MCP endpoint). Supabase Auth's OAuth 2.1 server sends the browser here
 	 * with ?authorization_id=…; approving or denying hands the browser back to
-	 * the app's redirect URI. Only pre-registered clients can reach this page:
-	 * dynamic client registration is off.
+	 * the app's redirect URI. Apps register themselves (dynamic client
+	 * registration), so this page is the only gate: it names the app, and
+	 * nothing is shared until the user chooses Allow.
 	 */
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
@@ -19,6 +20,7 @@
 	let authorizationId = $state('');
 	let clientName = $state('');
 	let email = $state('');
+	let returnHost = $state('');
 
 	onMount(async () => {
 		const params = new URLSearchParams(window.location.search);
@@ -50,6 +52,13 @@
 		}
 		clientName = data.client?.name || 'This app';
 		email = data.user?.email || sessionData.session.user?.email || '';
+		// Apps name themselves when they register, so show where approving
+		// actually sends the user: a fake "Claude" cannot fake this.
+		try {
+			returnHost = data.redirect_uri ? new URL(data.redirect_uri).host : '';
+		} catch {
+			returnHost = '';
+		}
 		phase = 'ready';
 	});
 
@@ -117,6 +126,11 @@
 						<li>{$_('oauthConsent.canSync')}</li>
 					</ul>
 					<p class="mt-3 text-sm text-base-content/70">{$_('oauthConsent.cannot')}</p>
+					{#if returnHost}
+						<p class="mt-3 text-xs text-base-content/60" data-testid="consent-return-host">
+							{$_('oauthConsent.returnsTo', { values: { host: returnHost } })}
+						</p>
+					{/if}
 					<p class="mt-1 text-xs text-base-content/60">{$_('oauthConsent.revokeHint')}</p>
 				</div>
 				<div class="flex flex-col-reverse gap-2 sm:flex-row">
