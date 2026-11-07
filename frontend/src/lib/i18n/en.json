@@ -314,7 +314,8 @@
     "missingRequestGeneric": "This link is missing its authorization request. Start connecting again from the app you were using.",
     "loadFailed": "This request has expired or was already used. Start connecting again from the app you were using.",
     "decisionFailed": "Selko could not record your answer. Try again.",
-    "redirecting": "Returning you to {client}…"
+    "redirecting": "Returning you to {client}…",
+    "returnsTo": "Allowing sends you back to {host}."
   },
   "connectedApps": {
     "heading": "Connected apps",

@@ -342,15 +342,16 @@ enabled = false
 # domain = "example.clerk.accounts.dev"
 
 # OAuth server configuration. Selko's MCP endpoint (/mcp) accepts tokens from
-# this server only; Claude is a pre-registered client (docs/mcp.md). Dynamic
-# registration stays off so no unknown client can obtain a grant.
+# this server only. Dynamic registration is on, as MCP clients expect: Claude
+# registers itself when the connector is added, then the user signs in and
+# approves on /oauth/consent (docs/mcp.md).
 [auth.oauth_server]
 # Enable OAuth server functionality
 enabled = true
 # Path for OAuth consent flow UI
 authorization_url_path = "/oauth/consent"
 # Allow dynamic client registration
-allow_dynamic_registration = false
+allow_dynamic_registration = true
 
 [edge_runtime]
 enabled = true
