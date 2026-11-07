@@ -444,3 +444,77 @@ async def test_queueing_calendar_work_does_not_change_the_review_decision(pg_poo
     )
     assert (await _event_row(pg_pool, event_id))["review_status"] == "pending_review"
     assert [item["action"] for item in await _work_items(pg_pool, event_id)] == ["upsert"]
+
+
+@pytest.mark.parametrize("adopted_from_calendar", [False, True])
+async def test_an_update_applies_to_a_selko_event_and_waits_on_a_calendar_one(
+    pg_pool, temp_user, admin_client, adopted_from_calendar
+):
+    """Provenance is read from real rows and the decision goes through the real commit.
+
+    A Selko-created event (email provenance only) takes the update and queues
+    calendar work; an event adopted from the user's own calendar keeps its
+    values and gets a pending proposal instead.
+    """
+    from unittest.mock import MagicMock, patch
+
+    from selko.api.schemas.calendar import CalendarEvent, CalendarEventExtraction
+    from selko.services.event_diff import EventChangeSet, FieldChange
+    from selko.services.events import EventMatch, save_extracted_events
+
+    user_id, _, _ = temp_user
+    email_id, worker, generation = await _claim_email(pg_pool, user_id)
+    event_id = await _event(pg_pool, user_id, "active")
+    await pg_pool.execute(
+        "INSERT INTO public.event_sources (event_id, email_id, source_origin, source_type, extracted_data)"
+        " VALUES ($1, $2, 'email', 'new_invitation', '{}'::jsonb)",
+        event_id, email_id,
+    )
+    if adopted_from_calendar:
+        await pg_pool.execute(
+            "INSERT INTO public.event_sources (event_id, source_origin, google_calendar_source_event_id,"
+            " source_type, extracted_data) VALUES ($1, 'google_calendar', 'gcal-1', 'unknown', '{}'::jsonb)",
+            event_id,
+        )
+
+    future = datetime.now() + timedelta(days=30)
+    extraction = CalendarEventExtraction(
+        email_message_id="update", sender_email="organizer@example.com", events_found=True,
+        events=[CalendarEvent(title="Standup", start_datetime=future, location="Room B",
+                              description="moved")],
+    )
+    captured: list[dict] = []
+
+    def capture(client, email, locked_by, lock_generation, decisions, terminal="processed"):
+        captured.extend(decisions)
+        return {"fenced": False, "applied": len(decisions), "event_ids": []}
+
+    match = EventMatch(match_id=str(event_id), baseline=_snapshot())
+    change_set = EventChangeSet(kind="material_update", changes=[
+        FieldChange(field="location", before="Room A", after="Room B", reason="moved")])
+    with patch("selko.services.events.find_matching_event", return_value=match), \
+         patch("selko.services.events._commit_email_extraction", side_effect=capture), \
+         patch("selko.services.events.event_processing.propose_event_update",
+               return_value=change_set):
+        save_extracted_events(admin_client, MagicMock(), user_id, str(email_id), extraction)
+
+    built = captured[0]
+    window = await _decision(pg_pool, user_id, email_id, event_id)
+    await _commit(pg_pool, email_id, worker, generation, {
+        **built,
+        **{k: window[k] for k in ("window_start", "window_end", "expected_fingerprint")},
+    })
+
+    event = await _event_row(pg_pool, event_id)
+    proposals = await _proposals(pg_pool, event_id)
+    work = await _work_items(pg_pool, event_id)
+    if adopted_from_calendar:
+        assert event["location"] == "Room A", "the user's own entry is not rewritten"
+        assert [p["status"] for p in proposals] == ["pending"]
+        assert work == []
+    else:
+        assert event["location"] == "Room B"
+        assert [p["status"] for p in proposals] == ["applied"]
+        assert [(w["action"], json.loads(w["desired_event"])["location"]) for w in work] == [
+            ("upsert", "Room B")
+        ]

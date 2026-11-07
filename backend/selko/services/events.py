@@ -345,6 +345,29 @@ def _fetch_baseline_info_date(
     return max(dates) if dates else None
 
 
+def _is_from_users_calendar(supabase_client: Client, event_id: str) -> bool:
+    """Whether a local event was adopted from the user's own calendar.
+
+    Selko-created events carry email provenance only; an event the user made
+    in their calendar has a ``google_calendar`` source from its adoption. A
+    lookup failure answers True, so an unknown origin keeps the change for
+    review instead of rewriting a calendar entry the user may own.
+    """
+    try:
+        result = (
+            supabase_client.table("event_sources")
+            .select("id")
+            .eq("event_id", event_id)
+            .eq("source_origin", "google_calendar")
+            .limit(1)
+            .execute()
+        )
+    except Exception as e:
+        logger.warning("Could not read provenance of event %s: %s", event_id, e)
+        return True
+    return bool(result.data)
+
+
 def _load_identity_context(
     supabase_client: Client,
     email_id: str,
@@ -491,9 +514,13 @@ def save_extracted_events(
     - Match still in the New lane → absorb the newer information, stay in New
       (``intent="apply"`` with ``review_status="pending_review"``, so nothing is
       queued for the calendar).
-    - Match + real change → Changes lane: the event is untouched and a pending
-      proposal owns the change (``intent="review"``), or the change is applied
-      immediately when ``initial_status == "approved"`` (sender auto_approve).
+    - Match + real change on an approved event Selko created (no
+      ``google_calendar`` provenance) → applied immediately and queued for the
+      calendar (``intent="apply"``); a cancellation-kind change still waits.
+    - Match + real change on an event from the user's own calendar →
+      Changes lane: the event is untouched and a pending proposal owns the
+      change (``intent="review"``), or the change is applied immediately when
+      ``initial_status == "approved"`` (sender auto_approve).
     Args:
         supabase_client: Authenticated Supabase client.
         gateway: LLMGateway instance for LLM operations.
@@ -891,7 +918,17 @@ def save_extracted_events(
                 "hints": hint_payload,
                 "source": source,
             })
-        elif auto_apply:
+        elif auto_apply or (
+            # An update to an event Selko created and the user approved needs
+            # no second approval: apply it and update the calendar entry. Only
+            # an event the user made in their own calendar, or a change the
+            # model reads as a cancellation (an upsert cannot remove an event;
+            # organizer cancellations take the cancellation path), waits in
+            # the Changes lane.
+            change_set.kind != "cancellation"
+            and match.baseline.get("review_status") == "active"
+            and not _is_from_users_calendar(supabase_client, match.match_id)
+        ):
             applied = apply_asserted_fields(match.baseline, proposed_fields)
             decisions.append({
                 "action": "update",
