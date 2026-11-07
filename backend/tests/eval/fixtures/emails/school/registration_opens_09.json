@@ -43,6 +43,7 @@
   "expected": {
     "events_found": true,
     "event_count": 1,
+    "booking_confirmed": false,
     "event_count_min": 1,
     "events": [
       {
