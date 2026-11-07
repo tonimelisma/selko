@@ -1,0 +1,43 @@
+{
+  "name": "rsvp_accepted_12",
+  "category": "invitations",
+  "description": "RSVP confirmation: the recipient replied yes to a child's birthday party",
+  "difficulty": "medium",
+  "tags": [
+    "booking-confirmed",
+    "rsvp",
+    "birthday",
+    "kids"
+  ],
+  "input": {
+    "thread_id": "thread-rsvp_accepted_12",
+    "to_emails": [
+      "recipient@example.com"
+    ],
+    "attachments": [],
+    "provider_message_id": "eval-booking-001",
+    "subject": "You're going to Maya's 8th Birthday!",
+    "from_email": "noreply@invites.example",
+    "from_name": "Party Invites",
+    "date_sent": "2026-11-20T18:05:00Z",
+    "snippet": "You RSVP'd Yes for 2 guests.",
+    "body_text": "Party Invites\n\nYou're going!\n\nYou RSVP'd Yes for 2 guests to Maya's 8th Birthday Party.\n\nSaturday, December 12, 2026\n2:00 PM - 4:00 PM\nJumpZone Trampoline Park, 820 Market Street, Riverside, CA\n\nHost note: socks with grips are required. Pizza and cake will be served.\n\nChange your RSVP or message the host from the event page."
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "booking_confirmed": true,
+    "events": [
+      {
+        "title": "Maya's 8th Birthday Party",
+        "start_datetime": "2026-12-12T14:00:00",
+        "end_datetime": "2026-12-12T16:00:00",
+        "location": "JumpZone Trampoline Park, 820 Market Street, Riverside, CA",
+        "description": "RSVP'd yes for 2 guests; grip socks required",
+        "all_day": false,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "notes": "Hand-written expected. An accepted RSVP is the user's own commitment, so booking_confirmed is true."
+}

@@ -881,17 +881,8 @@ class TestUpdateEventResync:
         mock_table.insert.return_value = mock_insert
         mock_insert.execute.return_value = MagicMock()
 
-        # Mock LLM merge
-        with patch("selko.services.events.event_processing.merge_event_data", return_value={
-            "title": "Updated Meeting",
-            "start_datetime": "2026-03-15T14:00:00Z",
-            "end_datetime": "2026-03-15T15:00:00Z",
-            "all_day": False,
-            "location": "Room B",
-            "description": "Updated weekly sync",
-        }):
-            with pytest.raises(EventsError, match="removed"):
-                update_event(mock_client, mock_gateway, "event-123", {}, "email-456", "update")
+        with pytest.raises(EventsError, match="removed"):
+            update_event(mock_client, mock_gateway, "event-123", {}, "email-456", "update")
 
 
     def test_preserves_pending_review(self):
@@ -928,16 +919,8 @@ class TestUpdateEventResync:
         mock_table.insert.return_value = mock_insert
         mock_insert.execute.return_value = MagicMock()
 
-        with patch("selko.services.events.event_processing.merge_event_data", return_value={
-            "title": "Updated Meeting",
-            "start_datetime": "2026-03-15T14:00:00Z",
-            "end_datetime": "2026-03-15T15:00:00Z",
-            "all_day": False,
-            "location": "Room B",
-            "description": "Updated",
-        }):
-            with pytest.raises(EventsError, match="removed"):
-                update_event(mock_client, mock_gateway, "event-123", {}, "email-456", "update")
+        with pytest.raises(EventsError, match="removed"):
+            update_event(mock_client, mock_gateway, "event-123", {}, "email-456", "update")
 
 
 

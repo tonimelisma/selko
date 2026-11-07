@@ -169,9 +169,9 @@ When a real email is mishandled in production, or you identify an untested edge 
 
 ### Scoring Thresholds (from `eval_config.py`)
 
-- **Title similarity**: ≥ 0.8 (extraction), ≥ 0.9 (merge)
-- **Time tolerance**: ± 30 minutes (extraction), exact (merge)
-- **Location similarity**: ≥ 0.7 (extraction), ≥ 0.8 (merge)
+- **Title similarity**: ≥ 0.8 (extraction)
+- **Time tolerance**: ± 30 minutes (extraction)
+- **Location similarity**: ≥ 0.7 (extraction)
 - **Confidence minimum**: ≥ 0.5
 
 ### What the Numbers Tell You

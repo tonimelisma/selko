@@ -159,10 +159,7 @@ class TestOperationIsolation:
     def test_prompt_hashes_differ_by_operation(self):
         extract_h = compute_prompt_contract_hash("extract")
         compare_h = compute_prompt_contract_hash("compare")
-        merge_h = compute_prompt_contract_hash("merge")
         assert extract_h != compare_h
-        assert compare_h != merge_h
-        assert extract_h != merge_h
 
     def test_thinking_affects_identity(self, tmp_path):
         fixture = _sample_fixture()
@@ -390,22 +387,22 @@ class TestPlanAndShouldRun:
 
 
 class TestScorerIdentity:
-    def test_merge_hash_includes_shared_helpers(self, monkeypatch):
+    def test_extract_hash_includes_shared_helpers(self, monkeypatch):
         from tests.eval import identity as identity_module
         from tests.eval import run_eval
 
         original_getsource = identity_module.inspect.getsource
-        baseline = compute_scorer_hash("merge")
+        baseline = compute_scorer_hash("extract")
 
         def changed_getsource(obj):
             source = original_getsource(obj)
-            if obj is run_eval.string_similarity:
+            if obj is run_eval.time_difference_minutes:
                 # Change actual logic, not just a comment - normalized hash must detect semantic change
                 return source.replace("return", "x = 42\n    return", 1)
             return source
 
         monkeypatch.setattr(identity_module.inspect, "getsource", changed_getsource)
-        assert compute_scorer_hash("merge") != baseline
+        assert compute_scorer_hash("extract") != baseline
 
     def test_comment_and_whitespace_do_not_invalidate_prompt(self, monkeypatch):
         from tests.eval import identity as identity_module
@@ -429,17 +426,17 @@ class TestScorerIdentity:
         from tests.eval import run_eval
 
         original_getsource = identity_module.inspect.getsource
-        baseline = compute_scorer_hash("merge")
+        baseline = compute_scorer_hash("extract")
 
         def fake_getsource(obj):
             src = original_getsource(obj)
-            if obj is run_eval.string_similarity:
+            if obj is run_eval.time_difference_minutes:
                 return src + "\n# comment only\n"
             return src
 
         monkeypatch.setattr(identity_module.inspect, "getsource", fake_getsource)
         identity_module.clear_source_hash_cache()
-        assert compute_scorer_hash("merge") == baseline
+        assert compute_scorer_hash("extract") == baseline
 
     def test_schema_source_whitespace_does_not_invalidate(self, monkeypatch):
         from tests.eval import identity as identity_module

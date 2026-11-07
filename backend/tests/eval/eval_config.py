@@ -10,7 +10,6 @@ EMAILS_DIR = FIXTURES_DIR / "emails"
 ATTACHMENTS_DIR = FIXTURES_DIR / "attachments"
 THREADS_DIR = FIXTURES_DIR / "threads"
 COMPARE_DIR = FIXTURES_DIR / "compare"
-MERGE_DIR = FIXTURES_DIR / "merge"
 RESULTS_DIR = EVAL_DIR / "results"
 INFERENCE_RESULTS_DIR = RESULTS_DIR / "inference"
 SCORE_RESULTS_DIR = RESULTS_DIR / "scores"
@@ -49,12 +48,6 @@ AUTO_SCORE_THRESHOLDS = {
     "time_tolerance_minutes": 60,  # Allow 60 min difference in times
 }
 
-# Merge scoring thresholds
-MERGE_SCORE_THRESHOLDS = {
-    "title_similarity": 0.9,
-    "time_tolerance_minutes": 0,  # Must be exact
-    "location_similarity": 0.8,
-}
 
 # Provider and model configuration (env overrides)
 DEFAULT_PROVIDER = os.environ.get("LLM_PROVIDER", os.environ.get("SELKO_EVAL_PROVIDER", "gemini"))
@@ -112,20 +105,17 @@ COST_TIERS = {
         "image_rate": 0.10,
         "avg_images": 2,
         "dedup_rate": 0.40,
-        "merge_rate": 0.20,
     },
     "Tier 2 (150 emails)": {
         "emails_per_month": 150,
         "image_rate": 0.15,
         "avg_images": 3,
         "dedup_rate": 0.50,
-        "merge_rate": 0.25,
     },
     "Tier 3 (500 emails)": {
         "emails_per_month": 500,
         "image_rate": 0.20,
         "avg_images": 5,
         "dedup_rate": 0.60,
-        "merge_rate": 0.30,
     },
 }

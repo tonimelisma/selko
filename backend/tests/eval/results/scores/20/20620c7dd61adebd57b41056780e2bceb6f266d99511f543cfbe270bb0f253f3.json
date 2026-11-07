@@ -1,0 +1,63 @@
+{
+  "fixture_name": "invitations/rsvp_request_13",
+  "operation": "extract",
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "booking_confirmed": false,
+    "events": [
+      {
+        "title": "Oak Street Holiday Party",
+        "start_datetime": "2026-12-11T18:30:00",
+        "end_datetime": "2026-12-11T21:30:00",
+        "location": "Community Clubhouse, 14 Oak Street",
+        "description": "RSVP by December 1; bring a dish to share",
+        "all_day": false,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      }
+    ],
+    "extra_events": [],
+    "all_events_match": true,
+    "booking_confirmed": {
+      "expected": false,
+      "actual": false,
+      "match": true
+    },
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 2,
+    "inference_key": "152070df9653344e01b7f3c335288c0424f85edcfe5916f9489cb293f874192d",
+    "expected_output_hash": "97c880a054282540d6aa18622d19a10b86d2223a63fb4e1a9ba5ae62991aed68",
+    "scorer_hash": "f0daed45ca53c930922c8347e6a33a61f9970abd740009802f0b7a48737bb153"
+  },
+  "score_key": "20620c7dd61adebd57b41056780e2bceb6f266d99511f543cfbe270bb0f253f3",
+  "stored_at": "2026-11-07T05:36:55.447052+00:00"
+}

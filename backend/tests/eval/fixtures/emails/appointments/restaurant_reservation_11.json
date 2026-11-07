@@ -1,0 +1,42 @@
+{
+  "name": "restaurant_reservation_11",
+  "category": "appointments",
+  "description": "Restaurant reservation confirmation",
+  "difficulty": "medium",
+  "tags": [
+    "booking-confirmed",
+    "reservation",
+    "restaurant"
+  ],
+  "input": {
+    "thread_id": "thread-restaurant_reservation_11",
+    "to_emails": [
+      "recipient@example.com"
+    ],
+    "attachments": [],
+    "provider_message_id": "eval-booking-004",
+    "subject": "Your reservation at Harbor Table is confirmed",
+    "from_email": "reservations@tables.example",
+    "from_name": "Table Booking",
+    "date_sent": "2026-11-21T03:40:00Z",
+    "snippet": "Party of 4, Friday, December 18 at 7:30 PM.",
+    "body_text": "Your reservation is confirmed\n\nHarbor Table\n455 Bay Street, Riverside, CA\n\nFriday, December 18, 2026 at 7:30 PM\nParty of 4\n\nThe restaurant holds tables for 15 minutes. Modify or cancel from the app."
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "booking_confirmed": true,
+    "events": [
+      {
+        "title": "Dinner at Harbor Table",
+        "start_datetime": "2026-12-18T19:30:00",
+        "end_datetime": null,
+        "location": "Harbor Table, 455 Bay Street, Riverside, CA",
+        "description": "Reservation for 4; table held 15 minutes",
+        "all_day": false,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "notes": "Hand-written expected. A confirmed reservation the user made: booking_confirmed is true."
+}

@@ -119,17 +119,6 @@ def validate_compare_response(response: LLMResponse) -> CompareEventsResponse:
         ) from e
 
 
-def validate_merge_response(response: LLMResponse) -> dict[str, Any]:
-    """Validator for merge_events structured output."""
-    parsed = _parse_json_payload(response)
-    try:
-        merged = MergedEventData.model_validate(parsed)
-    except ValidationError as e:
-        raise LLMValidationError(
-            LLMFailureKind.INVALID_SCHEMA, f"Merge schema validation failed: {e}"
-        ) from e
-    return merged.model_dump()
-
 def _build_prompt() -> SystemText:
     """Build the system prompt for calendar event extraction.
 
@@ -800,102 +789,6 @@ Return JSON with kind, changes[], and reasoning.
         raise
     except Exception as e:
         raise LLMGatewayError(f"Event update proposal failed: {e}") from e
-
-
-def merge_event_data(
-    gateway: LLMGateway,
-    existing_event: dict[str, Any],
-    new_extraction: dict[str, Any],
-    source_type: str,
-) -> dict[str, Any]:
-    """Ask LLM to merge new info into existing event.
-
-    Uses LLM to intelligently merge event data from a new email into an
-    existing event. Follows rules like preferring specific times over all-day,
-    combining descriptions, etc.
-
-    Args:
-        gateway: LLMGateway instance (with user context set).
-        existing_event: Current event data from DB.
-        new_extraction: New event data from email.
-        source_type: Type of update (update, cancellation, reminder, etc).
-
-    Returns:
-        Dict with merged event data.
-
-    Raises:
-        LLMGatewayError: If merge fails.
-    """
-    prompt = f"""You are merging calendar event data from multiple emails.
-
-**Existing Event:**
-- Title: {existing_event.get('title')}
-- Start: {existing_event.get('start_datetime')}
-- End: {existing_event.get('end_datetime')}
-- All Day: {existing_event.get('all_day', False)}
-- Location: {existing_event.get('location', 'Not specified')}
-- Description: {existing_event.get('description', '')}
-- Importance: {existing_event.get('importance', 'action_required')}
-
-**New Information (source type: {source_type}):**
-- Title: {new_extraction.get('title')}
-- Start: {new_extraction.get('start_datetime')}
-- End: {new_extraction.get('end_datetime')}
-- All Day: {new_extraction.get('all_day', False)}
-- Location: {new_extraction.get('location', 'Not specified')}
-- Description: {new_extraction.get('description', '')}
-- Importance: {new_extraction.get('importance', 'action_required')}
-
-**Merge Rules:**
-1. If source_type is "cancellation", prefix title with "CANCELLED: " (if not already)
-2. Prefer specific time (e.g., 6-7pm) over all-day
-3. Combine descriptions, keeping all relevant info (append new info)
-4. Use most specific location (longer address usually better)
-5. Keep newer times if they differ (updates)
-6. For importance: keep the highest level (action_required > fyi)
-
-Output JSON with merged event data:
-{{
-    "title": "...",
-    "start_datetime": "...",
-    "end_datetime": "...",
-    "all_day": true/false,
-    "location": "...",
-    "description": "...",
-    "importance": "action_required" or "fyi"
-}}
-"""
-
-    # Use JSON schema for merge response
-    merge_schema = {
-        "type": "object",
-        "properties": {
-            "title": {"type": "string"},
-            "start_datetime": {"type": "string"},
-            "end_datetime": {"anyOf": [{"type": "string"}, {"type": "null"}]},
-            "all_day": {"type": "boolean"},
-            "location": {"anyOf": [{"type": "string"}, {"type": "null"}]},
-            "description": {"anyOf": [{"type": "string"}, {"type": "null"}]},
-            "importance": {"type": "string", "enum": ["action_required", "fyi"]},
-        },
-        "required": ["title", "start_datetime", "all_day", "importance"],
-    }
-
-    try:
-        merged = gateway.call_validated(
-            operation=LLMOperationType.MERGE_EVENTS,
-            contents=[prompt],
-            validator=validate_merge_response,
-            json_schema=merge_schema,
-        )
-
-        logger.info(f"Event merge complete: {merged.get('title')}")
-        return merged
-
-    except LLMGatewayError:
-        raise
-    except Exception as e:
-        raise LLMGatewayError(f"Event merge failed: {e}") from e
 
 
 def generate_source_attribution(sources: list[dict[str, Any]]) -> str:

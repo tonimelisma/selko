@@ -16,7 +16,6 @@ from selko.services.event_processing import (
     extract_calendar_events,
     generate_source_attribution,
     looks_like_json_schema,
-    merge_event_data,
 )
 from selko.services.llm_gateway import LLMGatewayError
 from selko.services.llm_gateway import LLMGateway, LLMGatewayError, LLMRateLimitError
@@ -635,115 +634,6 @@ class TestCompareEvents:
         assert prompt.count("Start: 2026-10-30T08:00:00\n") == 2
         assert "+00:00" not in prompt
         assert "-07:00" not in prompt
-
-
-class TestMergeEventData:
-    """Test event data merging."""
-
-    def test_merges_event_data(self, mock_provider):
-        """Test that event data is properly merged."""
-        mock_provider.generate.return_value = LLMResponse(
-            text=json.dumps({
-                "title": "Updated Meeting",
-                "start_datetime": "2026-03-15T15:00:00Z",
-                "end_datetime": "2026-03-15T16:00:00Z",
-                "all_day": False,
-                "location": "Conference Room B",
-                "description": "Original info. Updated: new agenda.",
-            }),
-            prompt_tokens=10,
-            completion_tokens=20,
-        )
-
-        gateway = LLMGateway(mock_provider)
-
-        existing_event = {
-            "title": "Team Meeting",
-            "start_datetime": "2026-03-15T14:00:00Z",
-            "end_datetime": "2026-03-15T15:00:00Z",
-            "all_day": False,
-            "location": "Conference Room A",
-            "description": "Original info.",
-        }
-
-        new_extraction = {
-            "title": "Updated Meeting",
-            "start_datetime": "2026-03-15T15:00:00Z",
-            "end_datetime": "2026-03-15T16:00:00Z",
-            "all_day": False,
-            "location": "Conference Room B",
-            "description": "new agenda",
-        }
-
-        result = merge_event_data(gateway, existing_event, new_extraction, "update")
-
-        assert result["title"] == "Updated Meeting"
-        assert result["start_datetime"] == "2026-03-15T15:00:00Z"
-        assert result["location"] == "Conference Room B"
-        mock_provider.generate.assert_called_once()
-
-    def test_handles_cancellation_source_type(self, mock_provider):
-        """Test that cancellation source type triggers CANCELLED prefix."""
-        mock_provider.generate.return_value = LLMResponse(
-            text=json.dumps({
-                "title": "CANCELLED: Team Meeting",
-                "start_datetime": "2026-03-15T14:00:00Z",
-                "end_datetime": "2026-03-15T15:00:00Z",
-                "all_day": False,
-                "location": "Conference Room A",
-                "description": "Event has been cancelled.",
-            }),
-            prompt_tokens=10,
-            completion_tokens=20,
-        )
-
-        gateway = LLMGateway(mock_provider)
-
-        existing_event = {
-            "title": "Team Meeting",
-            "start_datetime": "2026-03-15T14:00:00Z",
-            "end_datetime": "2026-03-15T15:00:00Z",
-            "all_day": False,
-            "location": "Conference Room A",
-            "description": "Weekly sync.",
-        }
-
-        new_extraction = {
-            "title": "Meeting Cancelled",
-            "start_datetime": "2026-03-15T14:00:00Z",
-        }
-
-        result = merge_event_data(gateway, existing_event, new_extraction, "cancellation")
-
-        assert "CANCELLED" in result["title"]
-
-    def test_raises_error_on_llm_failure(self, mock_provider):
-        """Test that LLM failure raises LLMGatewayError."""
-        mock_provider.generate.side_effect = Exception("API Error")
-
-        gateway = LLMGateway(mock_provider)
-
-        existing_event = {"title": "Test", "start_datetime": "2026-03-15T14:00:00Z"}
-        new_extraction = {"title": "Test Updated", "start_datetime": "2026-03-15T15:00:00Z"}
-
-        with pytest.raises(LLMGatewayError) as exc_info:
-            merge_event_data(gateway, existing_event, new_extraction, "update")
-
-        assert "api error" in str(exc_info.value).lower()
-
-    def test_raises_error_on_invalid_json(self, mock_provider):
-        """Test that invalid JSON response raises LLMGatewayError."""
-        mock_provider.generate.return_value = LLMResponse(
-            text="not valid json", prompt_tokens=10, completion_tokens=5
-        )
-
-        gateway = LLMGateway(mock_provider)
-
-        existing_event = {"title": "Test", "start_datetime": "2026-03-15T14:00:00Z"}
-        new_extraction = {"title": "Test Updated", "start_datetime": "2026-03-15T15:00:00Z"}
-
-        with pytest.raises(LLMGatewayError):
-            merge_event_data(gateway, existing_event, new_extraction, "update")
 
 
 class TestGenerateSourceAttribution:

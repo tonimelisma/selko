@@ -1,0 +1,43 @@
+{
+  "name": "rsvp_request_13",
+  "category": "invitations",
+  "description": "Invitation asking the recipient to RSVP; nothing has been accepted yet",
+  "difficulty": "medium",
+  "tags": [
+    "booking-confirmed",
+    "rsvp",
+    "holiday-party",
+    "negative-test"
+  ],
+  "input": {
+    "thread_id": "thread-rsvp_request_13",
+    "to_emails": [
+      "recipient@example.com"
+    ],
+    "attachments": [],
+    "provider_message_id": "eval-booking-002",
+    "subject": "Please RSVP: Neighborhood Holiday Party",
+    "from_email": "events@neighbors.example",
+    "from_name": "Oak Street Neighbors",
+    "date_sent": "2026-11-20T19:30:00Z",
+    "snippet": "Please RSVP by December 1.",
+    "body_text": "Hi neighbors,\n\nYou're invited to the Oak Street Holiday Party!\n\nFriday, December 11, 2026, 6:30 PM - 9:30 PM\nCommunity Clubhouse, 14 Oak Street\n\nPlease RSVP by December 1 so we can plan food. Click Yes, No or Maybe below.\n\nBring a dish to share if you can.\n\nThe Oak Street social committee"
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "booking_confirmed": false,
+    "events": [
+      {
+        "title": "Oak Street Holiday Party",
+        "start_datetime": "2026-12-11T18:30:00",
+        "end_datetime": "2026-12-11T21:30:00",
+        "location": "Community Clubhouse, 14 Oak Street",
+        "description": "RSVP by December 1; bring a dish to share",
+        "all_day": false,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "notes": "Hand-written expected. Asking for an RSVP is an invitation, not an accepted one: booking_confirmed is false. The RSVP deadline belongs in the description, not a separate event."
+}

@@ -26,6 +26,7 @@
   "expected": {
     "events_found": true,
     "event_count": 1,
+    "booking_confirmed": true,
     "events": [
       {
         "title": "Car Rental - Hertz LAX",

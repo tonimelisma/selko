@@ -4,10 +4,9 @@ Multi-model, multi-operation evaluation framework for testing LLM email processi
 
 ## Overview
 
-This directory contains ~97 test fixtures across 3 operations designed to evaluate:
+This directory contains ~97 test fixtures across 2 operations designed to evaluate:
 - **Extract**: Calendar event extraction from various email types (text, images, attachments)
 - **Compare**: Event deduplication — matching new events against existing candidates
-- **Merge**: Event data merging from multiple email sources
 - Date/time parsing (relative dates, timezones, all-day events)
 - Multi-email thread processing (updates, cancellations, reminders)
 - Correct identification of emails with no extractable events
@@ -27,7 +26,6 @@ eval/
 │   │   ├── recurring/       # Weekly/monthly recurring (4)
 │   │   └── no_events/       # Newsletters, receipts, etc. (10)
 │   ├── compare/             # Compare (dedup) fixtures
-│   ├── merge/               # Merge fixtures
 │   ├── attachments/         # Text/image attachment fixtures
 │   └── threads/             # Multi-email thread scenarios (4)
 ├── results/                 # Cached evaluation results (tracked in git)
@@ -36,8 +34,7 @@ eval/
 │   ├── manifests/           # Per-run HIT/MISS manifests
 │   ├── reports/             # Markdown reports
 │   ├── extract/             # Legacy per-model extract results (compat)
-│   ├── compare/             # Legacy per-model compare results (compat)
-│   └── merge/               # Legacy per-model merge results (compat)
+│   └── compare/             # Legacy per-model compare results (compat)
 ├── identity.py              # InferenceIdentity / ScoreIdentity hashing
 ├── artifact_store.py        # Atomic immutable artifact storage
 ├── run_eval.py              # Evaluation runner CLI
@@ -78,7 +75,7 @@ export MOONSHOT_API_KEY="your-api-key"
 # Run all extract fixtures against default model (costs $$$)
 uv run python -m backend.tests.eval.run_eval --all
 
-# Run all 3 operations (extract + compare + merge)
+# Run both operations (extract + compare)
 uv run python -m backend.tests.eval.run_eval --all --all-operations
 
 # Run all operations across the configured frontier model matrix
@@ -90,9 +87,8 @@ uv run python -m backend.tests.eval.run_eval --category invitations
 # Run single fixture
 uv run python -m backend.tests.eval.run_eval --fixture invitations/birthday_party_01
 
-# Run compare or merge only
+# Run compare only
 uv run python -m backend.tests.eval.run_eval --compare
-uv run python -m backend.tests.eval.run_eval --merge
 
 # Run thread scenarios only
 uv run python -m backend.tests.eval.run_eval --threads
