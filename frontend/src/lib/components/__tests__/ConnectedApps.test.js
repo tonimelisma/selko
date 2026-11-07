@@ -42,7 +42,7 @@ describe('ConnectedApps', () => {
 		mockRevokeGrant.mockResolvedValue({ data: {}, error: null });
 		render(ConnectedApps);
 		expect(await screen.findByText('Claude')).toBeInTheDocument();
-		await userEvent.click(screen.getByRole('button', { name: 'Disconnect' }));
+		await userEvent.click(screen.getByRole('button', { name: 'Disconnect Claude' }));
 		expect(mockRevokeGrant).toHaveBeenCalledWith({ clientId: 'c1' });
 		await waitFor(() => expect(screen.queryByText('Claude')).not.toBeInTheDocument());
 	});
@@ -51,7 +51,7 @@ describe('ConnectedApps', () => {
 		mockListGrants.mockResolvedValue({ data: [claude], error: null });
 		mockRevokeGrant.mockResolvedValue({ data: null, error: { message: 'boom' } });
 		render(ConnectedApps);
-		await userEvent.click(await screen.findByRole('button', { name: 'Disconnect' }));
+		await userEvent.click(await screen.findByRole('button', { name: 'Disconnect Claude' }));
 		expect(await screen.findByText(/could not disconnect/)).toBeInTheDocument();
 		expect(screen.getByText('Claude')).toBeInTheDocument();
 	});

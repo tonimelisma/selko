@@ -66,6 +66,7 @@
 							class="btn peer-action peer-action-destructive"
 							disabled={revoking !== ''}
 							aria-busy={revoking === grant.client.id}
+							aria-label={$_('connectedApps.disconnectApp', { values: { name: grant.client.name } })}
 							onclick={() => revoke(grant.client.id)}
 						>
 							{$_('connectedApps.disconnect', { values: { name: grant.client.name } })}

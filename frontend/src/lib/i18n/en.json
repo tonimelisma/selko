@@ -320,6 +320,7 @@
     "heading": "Connected apps",
     "connectedSince": "Connected {date}",
     "disconnect": "Disconnect",
-    "revokeFailed": "Selko could not disconnect this app. Try again."
+    "revokeFailed": "Selko could not disconnect this app. Try again.",
+    "disconnectApp": "Disconnect {name}"
   }
 }

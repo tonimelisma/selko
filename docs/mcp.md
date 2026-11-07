@@ -21,7 +21,7 @@ connector.
 | Setting | Production value |
 |---|---|
 | Server URL | `https://api.selkoapp.com/mcp` |
-| OAuth Client ID | `PROD_CLIENT_ID` |
+| OAuth Client ID | `8d42b6e3-21ca-4ea4-9bec-1f02a3939e45` |
 | OAuth Client Secret | leave empty (public client, PKCE) |
 
 ### claude.ai, Claude Desktop and Claude mobile
@@ -49,7 +49,7 @@ Claude Code needs the client ID and a fixed callback port, because the
 redirect URI registered for Selko is exactly `http://localhost:8765/callback`.
 
 ```bash
-claude mcp add --transport http --scope user --client-id PROD_CLIENT_ID --callback-port 8765 selko https://api.selkoapp.com/mcp
+claude mcp add --transport http --scope user --client-id 8d42b6e3-21ca-4ea4-9bec-1f02a3939e45 --callback-port 8765 selko https://api.selkoapp.com/mcp
 ```
 
 Then run `/mcp` inside `claude`, pick **selko → Authenticate**, and approve in
@@ -220,18 +220,21 @@ Claude ──(1) POST /mcp, no token──────────────�
 | Environment | Authorization server | Consent page | Client |
 |---|---|---|---|
 | Local | `http://127.0.0.1:54321/auth/v1` (`supabase/config.toml` `[auth.oauth_server] enabled = true`) | `http://127.0.0.1:3000/oauth/consent` | registered per test, removed after |
-| Production | `https://khahcozfbnpykspvatrg.supabase.co/auth/v1` | `https://selkoapp.com/oauth/consent` | "Claude", `PROD_CLIENT_ID` |
+| Production | `https://khahcozfbnpykspvatrg.supabase.co/auth/v1` | `https://selkoapp.com/oauth/consent` | "Claude", `8d42b6e3-21ca-4ea4-9bec-1f02a3939e45` |
 
 Production settings, set on 2026-11-06 (deploy log `docs/deploy-log/`):
 
 - Supabase auth config: `oauth_server_enabled=true`,
   `oauth_server_authorization_path=/oauth/consent`,
   `oauth_server_allow_dynamic_registration=false`, `site_url=https://selkoapp.com`
-  (the consent path is resolved against `site_url`).
+  (the consent path is resolved against `site_url`, **and** GoTrue refuses
+  consent API calls whose `Origin` is not `site_url` — "unauthorized request
+  origin". The consent page only works on the exact `site_url` origin, which
+  is why `www.selkoapp.com` must keep redirecting to the apex).
 - OAuth client "Claude": public (`token_endpoint_auth_method=none`), redirect
   URIs `https://claude.ai/api/mcp/auth_callback` and
   `http://localhost:8765/callback`.
-- Render `selko-api`: `MCP_OAUTH_CLIENT_IDS=PROD_CLIENT_ID`.
+- Render `selko-api`: `MCP_OAUTH_CLIENT_IDS=8d42b6e3-21ca-4ea4-9bec-1f02a3939e45`.
 
 Register another client (e.g. a second redirect URI) with the admin API, then
 add its id to `MCP_OAUTH_CLIENT_IDS`:
