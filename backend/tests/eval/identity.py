@@ -23,7 +23,7 @@ IDENTITY_VERSION = 2
 SCORING_VERSION = 2
 PROMPT_RENDERER_VERSION = 2
 
-OperationName = Literal["extract", "compare", "merge"]
+OperationName = Literal["extract", "compare"]
 
 _source_hash_cache: dict[str, str] = {}
 _source_hash_lock = threading.Lock()
@@ -219,7 +219,7 @@ def _schema_hash(cls: type) -> str:
 
 
 def compute_prompt_contract_hash(operation: OperationName | str) -> str:
-    """Operation-specific prompt/schema contract. Does not mix extract/compare/merge."""
+    """Operation-specific prompt/schema contract. Does not mix extract/compare."""
     try:
         from selko.api.schemas.calendar import CalendarEvent, EventExtractionResponse
         from selko.services import event_processing
@@ -248,8 +248,6 @@ def compute_prompt_contract_hash(operation: OperationName | str) -> str:
     elif operation == "compare":
         parts.append(_normalized_source(event_processing.compare_events))
         # Compare uses an inline JSON schema inside the function source above.
-    elif operation == "merge":
-        parts.append(_normalized_source(event_processing.merge_event_data))
     else:
         raise ValueError(f"Unknown operation for prompt contract: {operation}")
 
@@ -314,12 +312,6 @@ def compute_scorer_hash(operation: OperationName | str) -> str:
                 objs.append(helper)
     elif operation == "compare":
         objs = [run_eval.score_compare_result]
-    elif operation == "merge":
-        objs = [run_eval.score_merge_result]
-        for helper_name in ("string_similarity", "time_difference_minutes"):
-            helper = getattr(run_eval, helper_name, None)
-            if helper is not None:
-                objs.append(helper)
     else:
         raise ValueError(f"Unknown operation for scorer hash: {operation}")
 
@@ -331,8 +323,6 @@ def compute_scorer_hash(operation: OperationName | str) -> str:
 
     if operation == "extract":
         parts.append(canonical_json(eval_config.AUTO_SCORE_THRESHOLDS))
-    elif operation == "merge":
-        parts.append(canonical_json(eval_config.MERGE_SCORE_THRESHOLDS))
     return sha256_hex("\n".join(parts))
 
 

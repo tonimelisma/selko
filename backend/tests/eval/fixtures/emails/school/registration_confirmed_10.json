@@ -1,0 +1,43 @@
+{
+  "name": "registration_confirmed_10",
+  "category": "school",
+  "description": "Registration confirmation for a one-evening workshop",
+  "difficulty": "medium",
+  "tags": [
+    "booking-confirmed",
+    "registration",
+    "workshop",
+    "receipt"
+  ],
+  "input": {
+    "thread_id": "thread-registration_confirmed_10",
+    "to_emails": [
+      "recipient@example.com"
+    ],
+    "attachments": [],
+    "provider_message_id": "eval-booking-003",
+    "subject": "Registration Confirmed: Bike Repair Basics",
+    "from_email": "noreply@rec.example",
+    "from_name": "Riverside Arts + Rec",
+    "date_sent": "2026-11-18T22:10:00Z",
+    "snippet": "You're registered for Bike Repair Basics.",
+    "body_text": "Riverside Arts + Rec\n\nRegistration Confirmation\nReceipt #R-77412\n\nParticipant: Alex Parent\nCourse: Bike Repair Basics (Adult) - #48120\nDate: Thursday, December 3, 2026\nTime: 6:00 PM - 8:00 PM\nLocation: Civic Park Community Center, Room 2\nFee paid: $25.00\n\nBring your own bike if you can. Cancellations more than 48 hours ahead receive a full refund."
+  },
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "booking_confirmed": true,
+    "events": [
+      {
+        "title": "Bike Repair Basics",
+        "start_datetime": "2026-12-03T18:00:00",
+        "end_datetime": "2026-12-03T20:00:00",
+        "location": "Civic Park Community Center, Room 2",
+        "description": "Registered and paid; bring your own bike",
+        "all_day": false,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "notes": "Hand-written expected. A completed, paid registration: booking_confirmed is true."
+}

@@ -1,0 +1,63 @@
+{
+  "fixture_name": "school/registration_confirmed_10",
+  "operation": "extract",
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "booking_confirmed": true,
+    "events": [
+      {
+        "title": "Bike Repair Basics",
+        "start_datetime": "2026-12-03T18:00:00",
+        "end_datetime": "2026-12-03T20:00:00",
+        "location": "Civic Park Community Center, Room 2",
+        "description": "Registered and paid; bring your own bike",
+        "all_day": false,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      }
+    ],
+    "extra_events": [],
+    "all_events_match": true,
+    "booking_confirmed": {
+      "expected": true,
+      "actual": true,
+      "match": true
+    },
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 2,
+    "inference_key": "cc39fd2c6ee2e37864a0a602b202d64c4b563c3f190685689f38de5bdeab62a5",
+    "expected_output_hash": "4f7e2e26c44d46b1d3c658bd81a7a87e5abd7baf85107dfac4e60c9cf3012954",
+    "scorer_hash": "f0daed45ca53c930922c8347e6a33a61f9970abd740009802f0b7a48737bb153"
+  },
+  "score_key": "871a7e91c54cb9ea6b588c82849d273a7fe239d6d2cff13c2ea5ad4e2b355b67",
+  "stored_at": "2026-11-07T05:36:59.199756+00:00"
+}

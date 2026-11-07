@@ -26,6 +26,7 @@
   "expected": {
     "events_found": true,
     "event_count": 2,
+    "booking_confirmed": true,
     "events": [
       {
         "title": "Flight UA 1234 - SFO to JFK",

@@ -2,7 +2,7 @@
 """
 LLM Evaluation Runner — Multi-Model, Multi-Operation, Cost Tracking
 
-Comprehensive eval framework for testing all 3 LLM operations (extract, compare, merge)
+Comprehensive eval framework for testing both LLM operations (extract, compare)
 across 6 default models (one per provider) with idempotent caching and cost analysis.
 
 Run with: uv run python -m backend.tests.eval.run_eval --help
@@ -41,8 +41,6 @@ from .eval_config import (
     EMAILS_DIR,
     EVAL_MODELS,
     EVENT_PROCESSING_PATH,
-    MERGE_DIR,
-    MERGE_SCORE_THRESHOLDS,
     RATING_SCALE,
     RESULTS_DIR,
     THREADS_DIR,
@@ -397,15 +395,6 @@ def get_compare_fixtures() -> list[tuple[str, Path]]:
     return fixtures
 
 
-def get_merge_fixtures() -> list[tuple[str, Path]]:
-    """Get all merge fixtures."""
-    fixtures = []
-    if MERGE_DIR.exists():
-        for fixture_file in sorted(MERGE_DIR.glob("*.json")):
-            fixtures.append((fixture_file.stem, fixture_file))
-    return fixtures
-
-
 def get_thread_scenarios() -> list[tuple[str, Path]]:
     """Get all thread scenario files."""
     scenarios = []
@@ -711,102 +700,6 @@ def score_compare_result(expected: dict, actual_matched_id: str | None) -> dict[
     return {"correct": correct, "expected": expected_id, "actual": actual_matched_id}
 
 
-def score_merge_result(expected: dict, actual: dict) -> dict[str, Any]:
-    """Score a merge result. Returns per-field scores and overall rating 1-5."""
-    scores = {}
-    fields_matched = 0
-    total_fields = 0
-
-    # Title
-    total_fields += 1
-    title_sim = string_similarity(expected.get("title"), actual.get("title"))
-    title_match = title_sim >= MERGE_SCORE_THRESHOLDS["title_similarity"]
-    scores["title"] = {"similarity": title_sim, "match": title_match}
-    if title_match:
-        fields_matched += 1
-
-    # Check cancellation prefix
-    if expected.get("title", "").startswith("CANCELLED:"):
-        actual_title = actual.get("title", "")
-        scores["cancellation_prefix"] = actual_title.upper().startswith("CANCELLED:")
-        if not scores["cancellation_prefix"]:
-            fields_matched = max(0, fields_matched - 1)
-
-    # Start datetime
-    total_fields += 1
-    start_diff = time_difference_minutes(
-        expected.get("start_datetime"), actual.get("start_datetime")
-    )
-    start_match = isinstance(start_diff, (int, float)) and start_diff <= MERGE_SCORE_THRESHOLDS["time_tolerance_minutes"]
-    scores["start_datetime"] = {"difference_minutes": start_diff, "match": start_match}
-    if start_match:
-        fields_matched += 1
-
-    # End datetime
-    total_fields += 1
-    end_diff = time_difference_minutes(
-        expected.get("end_datetime"), actual.get("end_datetime")
-    )
-    end_match = end_diff is None or (isinstance(end_diff, (int, float)) and end_diff <= MERGE_SCORE_THRESHOLDS["time_tolerance_minutes"])
-    scores["end_datetime"] = {"difference_minutes": end_diff, "match": end_match}
-    if end_match:
-        fields_matched += 1
-
-    # All day
-    if "all_day" in expected:
-        total_fields += 1
-        allday_match = expected["all_day"] == actual.get("all_day")
-        scores["all_day"] = {"match": allday_match}
-        if allday_match:
-            fields_matched += 1
-
-    # Location
-    if expected.get("location") is not None:
-        total_fields += 1
-        loc_sim = string_similarity(expected.get("location"), actual.get("location"))
-        loc_match = loc_sim >= MERGE_SCORE_THRESHOLDS["location_similarity"]
-        scores["location"] = {"similarity": loc_sim, "match": loc_match}
-        if loc_match:
-            fields_matched += 1
-
-    # Description contains
-    desc_keywords = expected.get("description_contains", [])
-    if desc_keywords:
-        total_fields += 1
-        actual_desc = (actual.get("description") or "").lower()
-        found = [kw for kw in desc_keywords if kw.lower() in actual_desc]
-        missing = [kw for kw in desc_keywords if kw.lower() not in actual_desc]
-        desc_match = len(missing) == 0
-        scores["description_contains"] = {
-            "found": found,
-            "missing": missing,
-            "match": desc_match,
-        }
-        if desc_match:
-            fields_matched += 1
-
-    # Overall rating
-    if total_fields == 0:
-        rating = 1
-    else:
-        ratio = fields_matched / total_fields
-        if ratio == 1.0:
-            rating = 5
-        elif ratio >= 0.8:
-            rating = 4
-        elif ratio >= 0.6:
-            rating = 3
-        elif ratio >= 0.4:
-            rating = 2
-        else:
-            rating = 1
-
-    scores["fields_matched"] = fields_matched
-    scores["total_fields"] = total_fields
-    scores["auto_rating"] = rating
-    return scores
-
-
 # ---------------------------------------------------------------------------
 # Fixture schema validation
 # ---------------------------------------------------------------------------
@@ -847,21 +740,6 @@ def validate_fixtures() -> list[str]:
         if "matched_event_id" not in expected:
             warnings.append(f"[compare] {fixture_name}: Missing required field 'expected.matched_event_id'")
 
-    # Validate merge fixtures
-    for fixture_name, fixture_path in get_merge_fixtures():
-        try:
-            fixture = load_fixture(fixture_path)
-        except Exception as e:
-            warnings.append(f"[merge] {fixture_name}: Failed to parse JSON: {e}")
-            continue
-
-        input_data = fixture.get("input", {})
-        if "existing_event" not in input_data:
-            warnings.append(f"[merge] {fixture_name}: Missing 'input.existing_event'")
-        if "new_extraction" not in input_data:
-            warnings.append(f"[merge] {fixture_name}: Missing 'input.new_extraction'")
-        if "source_type" not in input_data:
-            warnings.append(f"[merge] {fixture_name}: Missing 'input.source_type'")
 
     return warnings
 
@@ -1543,201 +1421,6 @@ def _run_compare_eval_locked(
 # Merge eval runner
 # ---------------------------------------------------------------------------
 
-def run_merge_eval(
-    fixture_name: str,
-    fixture_path: Path,
-    provider_name: str,
-    model_name: str,
-    use_cache: bool = True,
-    verbose: bool = False,
-    dry_run: bool = False,
-    thinking: str = "low",
-    replicate: int | None = None,
-    store: ArtifactStore | None = None,
-) -> dict[str, Any]:
-    return _run_eval_with_lease(
-        _run_merge_eval_locked,
-        "merge",
-        fixture_name=fixture_name,
-        fixture_path=fixture_path,
-        provider_name=provider_name,
-        model_name=model_name,
-        use_cache=use_cache,
-        verbose=verbose,
-        dry_run=dry_run,
-        thinking=thinking,
-        replicate=replicate,
-        store=store,
-    )
-
-
-def _run_merge_eval_locked(
-    fixture_name: str,
-    fixture_path: Path,
-    provider_name: str,
-    model_name: str,
-    use_cache: bool = True,
-    verbose: bool = False,
-    dry_run: bool = False,
-    thinking: str = "low",
-    replicate: int | None = None,
-    store: ArtifactStore | None = None,
-) -> dict[str, Any]:
-    """Run merge evaluation for a single fixture."""
-    fixture = load_fixture(fixture_path)
-    store = store or _DEFAULT_STORE
-
-    if (
-        use_cache
-        and replicate is None
-        and not dry_run
-        and not should_run(
-            fixture_path, "merge", provider_name, model_name, fixture_name, thinking, store=store
-        )
-    ):
-        cached = get_latest_result(
-            "merge",
-            provider_name,
-            model_name,
-            fixture_name,
-            thinking,
-            fixture=fixture,
-            store=store,
-        )
-        if cached:
-            if verbose:
-                print(f"  [cached] {fixture_name}")
-            return cached
-        rescored = _rescore_cached_inference(
-            "merge",
-            fixture_name,
-            fixture,
-            provider_name,
-            model_name,
-            thinking,
-            store=store,
-            score_fn=score_merge_result,
-        )
-        if rescored is not None:
-            if verbose:
-                print(f"  [rescore] {fixture_name}")
-            return rescored
-
-    input_data = fixture["input"]
-    expected = fixture["expected"]
-
-    if dry_run:
-        validation_errors = []
-        if "existing_event" not in input_data:
-            validation_errors.append("Missing 'input.existing_event'")
-        if "new_extraction" not in input_data:
-            validation_errors.append("Missing 'input.new_extraction'")
-        if "source_type" not in input_data:
-            validation_errors.append("Missing 'input.source_type'")
-        is_valid = len(validation_errors) == 0
-        return {
-            "fixture_name": fixture_name,
-            "operation": "merge",
-            "provider": provider_name,
-            "model": model_name,
-            "run_at": datetime.now(timezone.utc).isoformat(),
-            "dry_run": True,
-            "valid": is_valid,
-            "errors": validation_errors,
-        }
-
-    from selko.services.event_processing import merge_event_data
-
-    # Phase 1: Fixture loading (already done above)
-    fixture_load_started_at = datetime.now(timezone.utc)
-    existing_event = input_data["existing_event"]
-    new_extraction = input_data["new_extraction"]
-    source_type = input_data["source_type"]
-    fixture_load_ms = int((datetime.now(timezone.utc) - fixture_load_started_at).total_seconds() * 1000)
-
-    # Phase 2: Gateway creation
-    gateway_create_started_at = datetime.now(timezone.utc)
-    gateway = _create_gateway(provider_name, model_name, thinking=thinking)
-    gateway.trace = {}  # Enable tracing
-    gateway_create_ms = int((datetime.now(timezone.utc) - gateway_create_started_at).total_seconds() * 1000)
-
-    # Phase 3: API call
-    api_call_started_at = datetime.now(timezone.utc)
-    try:
-        merged = merge_event_data(gateway, existing_event, new_extraction, source_type)
-        error = None
-    except Exception as e:
-        merged = {}
-        error = str(e)
-    api_call_ms = int((datetime.now(timezone.utc) - api_call_started_at).total_seconds() * 1000)
-
-    # Phase 4: Scoring
-    scoring_started_at = datetime.now(timezone.utc)
-    prompt_tokens = getattr(gateway, '_last_prompt_tokens', None)
-    completion_tokens = getattr(gateway, '_last_completion_tokens', None)
-    auto_score = score_merge_result(expected, merged) if not error else {"error": error}
-    scoring_ms = int((datetime.now(timezone.utc) - scoring_started_at).total_seconds() * 1000)
-
-    result = {
-        "fixture_name": fixture_name,
-        "fixture_hash": compute_fixture_input_hash(fixture),
-        "code_hash": get_code_hash(),
-        "prompt_hash": get_prompt_hash("merge"),
-        "operation": "merge",
-        "provider": provider_name,
-        "model": model_name,
-        "thinking": thinking,
-        "run_at": datetime.now(timezone.utc).isoformat(),
-        "duration_ms": fixture_load_ms + gateway_create_ms + api_call_ms + scoring_ms,
-        "timing": {
-            "fixture_load": {
-                "started_at": fixture_load_started_at.isoformat(),
-                "duration_ms": fixture_load_ms,
-            },
-            "gateway_create": {
-                "started_at": gateway_create_started_at.isoformat(),
-                "duration_ms": gateway_create_ms,
-            },
-            "api_call": {
-                "started_at": api_call_started_at.isoformat(),
-                "duration_ms": api_call_ms,
-            },
-            "scoring": {
-                "started_at": scoring_started_at.isoformat(),
-                "duration_ms": scoring_ms,
-            },
-        },
-        "description": fixture.get("description", ""),
-        "difficulty": fixture.get("difficulty", "medium"),
-        "tags": fixture.get("tags", []),
-        "expected": expected,
-        "actual": merged,
-        "auto_score": auto_score,
-        "tokens": {
-            "prompt_tokens": prompt_tokens,
-            "completion_tokens": completion_tokens,
-            "total_tokens": (prompt_tokens or 0) + (completion_tokens or 0)
-            if prompt_tokens is not None or completion_tokens is not None
-            else None,
-        },
-        "cost": estimate_cost(model_name, prompt_tokens, completion_tokens),
-        "trace": gateway.trace,
-    }
-
-    save_result_new(
-        result,
-        "merge",
-        provider_name,
-        model_name,
-        fixture_name,
-        thinking,
-        fixture=fixture,
-        store=store,
-        replicate=replicate,
-    )
-    return result
-
-
 # ---------------------------------------------------------------------------
 # Thread eval runner (legacy, unchanged)
 # ---------------------------------------------------------------------------
@@ -2030,11 +1713,6 @@ def _get_result_status(result: dict[str, Any]) -> str:
         return "FAIL"
     elif op == "compare":
         return "PASS" if auto_score.get("correct", False) else "FAIL"
-    elif op == "merge":
-        rating = auto_score.get("auto_rating", "?")
-        if isinstance(rating, (int, float)):
-            return "PASS" if rating == 5 else ("PARTIAL" if rating >= 3 else "FAIL")
-        return "ERROR"
     return "?"
 
 
@@ -2157,17 +1835,6 @@ def print_result_summary(result: dict[str, Any], progress: str = "") -> None:
             f"{cost_str} ({timing_str}) {extra}{error_str}",
             flush=True,
         )
-    elif op == "merge":
-        rating = auto_score.get("auto_rating", "?")
-        matched = auto_score.get("fields_matched", 0)
-        total = auto_score.get("total_fields", 0)
-        extra = token_str
-        print(
-            f"  {progress}[{op:7}] {result.get('fixture_name', '?'):40} "
-            f"[{status:7}] Rating:{rating}/5 ({matched}/{total}) "
-            f"{cost_str} ({timing_str}) {extra}{error_str}",
-            flush=True,
-        )
 
 
 def print_thread_result_summary(result: dict[str, Any]) -> None:
@@ -2234,9 +1901,6 @@ def generate_report(results: list[dict[str, Any]]) -> None:
         elif op == "compare":
             correct = sum(1 for r in op_results if r.get("auto_score", {}).get("correct"))
             print(f"  Correct: {correct}/{len(op_results)} ({100*correct/len(op_results):.1f}%)")
-        elif op == "merge":
-            avg_rating = sum(r.get("auto_score", {}).get("auto_rating", 0) for r in op_results) / len(op_results)
-            print(f"  Avg rating: {avg_rating:.1f}/5")
 
     known_costs = [r.get("cost") for r in results if isinstance(r.get("cost"), (int, float))]
     total_cost = sum(known_costs) if known_costs else None
@@ -2424,13 +2088,6 @@ def collect_fixtures_for_operations(
                 (n, p) for n, p in fixtures if load_fixture(p).get("difficulty") == difficulty
             ]
         by_op["compare"] = fixtures
-    if "merge" in operations:
-        fixtures = get_merge_fixtures()
-        if difficulty:
-            fixtures = [
-                (n, p) for n, p in fixtures if load_fixture(p).get("difficulty") == difficulty
-            ]
-        by_op["merge"] = fixtures
     return by_op
 
 
@@ -2599,7 +2256,6 @@ def generate_markdown_report(output_path: str, manifest_run_id: str | None = Non
     total_evals = len(all_results)
     total_extract = sum(1 for r in all_results if r.get("operation") == "extract")
     total_compare = sum(1 for r in all_results if r.get("operation") == "compare")
-    total_merge = sum(1 for r in all_results if r.get("operation") == "merge")
     total_duration_s = sum(r.get("duration_ms", 0) or 0 for r in all_results) / 1000
     code_hashes = set(r.get("code_hash", "") for r in all_results if r.get("code_hash"))
     missing_count = sum(1 for r in all_results if r.get("missing") or r.get("missing_score"))
@@ -2613,7 +2269,7 @@ def generate_markdown_report(output_path: str, manifest_run_id: str | None = Non
         line(f"| Unknown-cost cells | {unknown_cost_count} |")
     if missing_count:
         line(f"| Missing/error cells | {missing_count} |")
-    line(f"| Total Evals | {total_evals} ({total_extract} extract, {total_compare} compare, {total_merge} merge) |")
+    line(f"| Total Evals | {total_evals} ({total_extract} extract, {total_compare} compare) |")
     line(f"| Models Tested | {len(models_sorted)} |")
     line(f"| Total Tokens | {grand_total_tokens:,} |")
     line(f"| Total API Time | {total_duration_s:.0f}s |")
@@ -2623,8 +2279,8 @@ def generate_markdown_report(output_path: str, manifest_run_id: str | None = Non
     # ---- Model Comparison Table ----
     line("## Model Comparison")
     line()
-    line("| Model | Extract | Compare | Merge | Cost | Avg Latency |")
-    line("|-------|---------|---------|-------|------|-------------|")
+    line("| Model | Extract | Compare | Cost | Avg Latency |")
+    line("|-------|---------|---------|------|-------------|")
 
     for model in models_sorted:
         ops = by_model_op.get(model, {})
@@ -2657,23 +2313,7 @@ def generate_markdown_report(output_path: str, manifest_run_id: str | None = Non
         else:
             cmp_str = "-"
 
-        merge_results = ops.get("merge", [])
-        if merge_results:
-            eligible = [r for r in merge_results if not r.get("missing")]
-            mrg_pass = sum(
-                1 for r in eligible if r.get("auto_score", {}).get("auto_rating", 0) == 5
-            )
-            mrg_total = len(eligible)
-            mrg_avg = (
-                sum(r.get("auto_score", {}).get("auto_rating", 0) for r in eligible) / mrg_total
-                if mrg_total
-                else 0
-            )
-            mrg_str = f"{mrg_pass}/{mrg_total} ({mrg_avg:.1f} avg)"
-        else:
-            mrg_str = "-"
-
-        all_model = extract_results + compare_results + merge_results
+        all_model = extract_results + compare_results
         model_costs = [r.get("cost") for r in all_model if isinstance(r.get("cost"), (int, float))]
         total_cost = sum(model_costs) if model_costs else None
         avg_latency = (
@@ -2683,10 +2323,10 @@ def generate_markdown_report(output_path: str, manifest_run_id: str | None = Non
         )
 
         line(
-            f"| {model} | {ext_str} | {cmp_str} | {mrg_str} | {_format_cost(total_cost)} | {avg_latency:.0f}ms |"
+            f"| {model} | {ext_str} | {cmp_str} | {_format_cost(total_cost)} | {avg_latency:.0f}ms |"
         )
 
-    line(f"| **TOTAL** | | | | **{_format_cost(grand_total_cost)}** | |")
+    line(f"| **TOTAL** | | | **{_format_cost(grand_total_cost)}** | |")
     line()
 
     # Keep the remainder of the detailed sections from the previous report body by
@@ -2699,7 +2339,7 @@ def generate_markdown_report(output_path: str, manifest_run_id: str | None = Non
 
 
 def _append_detailed_report_sections(line, models_sorted, by_model_op) -> None:
-    """Append extraction/compare/merge detail tables to a markdown report."""
+    """Append extraction/compare detail tables to a markdown report."""
     line("## Extraction Results")
     line()
     line("### All Fixtures")
@@ -2758,26 +2398,6 @@ def _append_detailed_report_sections(line, models_sorted, by_model_op) -> None:
         )
     line()
 
-    line("## Merge Results")
-    line()
-    line("| Model | Avg Rating | Perfect | Cost |")
-    line("|-------|------------|---------|------|")
-    for model in models_sorted:
-        results = [
-            r for r in by_model_op.get(model, {}).get("merge", []) if not r.get("missing")
-        ]
-        if not results:
-            continue
-        perfect = sum(1 for r in results if r.get("auto_score", {}).get("auto_rating", 0) == 5)
-        avg_rating = (
-            sum(r.get("auto_score", {}).get("auto_rating", 0) for r in results) / len(results)
-        )
-        costs = [r.get("cost") for r in results if isinstance(r.get("cost"), (int, float))]
-        cost = sum(costs) if costs else None
-        line(
-            f"| {model} | {avg_rating:.1f}/5 | {perfect}/{len(results)} | {_format_cost(cost)} |"
-        )
-    line()
 
 
 # ---------------------------------------------------------------------------
@@ -3118,35 +2738,6 @@ def run_all_models(
             if not dry_run:
                 _print_model_summary(model_name, thinking, model_compare_results)
 
-        if "merge" in operations:
-            fixtures = get_merge_fixtures()
-            if difficulty:
-                fixtures = [(n, p) for n, p in fixtures if load_fixture(p).get("difficulty") == difficulty]
-            total = len(fixtures)
-            print(f"\n  Merge: {total} fixtures (concurrency: {concurrency})")
-            print(f"  {'-'*50}")
-
-            def _run_merge(name, path):
-                return run_merge_eval(
-                    name, path, provider_name, model_name,
-                    use_cache=use_cache, verbose=verbose, dry_run=dry_run,
-                    thinking=thinking, replicate=replicate,
-                )
-
-            model_merge_results = _run_fixtures_parallel(
-                fixtures,
-                "merge",
-                _run_merge,
-                concurrency,
-                {
-                    "provider": provider_name,
-                    "model": model_name,
-                    "thinking": thinking,
-                },
-            )
-            all_results.extend(model_merge_results)
-            if not dry_run:
-                _print_model_summary(model_name, thinking, model_merge_results)
 
     return all_results
 
@@ -3165,7 +2756,7 @@ def _handle_show_trace(args) -> None:
 
     # Try all 3 operations and show whichever exists
     found = False
-    for operation in ("extract", "compare", "merge"):
+    for operation in ("extract", "compare"):
         result = get_latest_result(operation, provider, model, fixture_name, thinking)
         if result:
             found = True
@@ -3215,8 +2806,6 @@ Examples:
   Run compare only:
     uv run python -m backend.tests.eval.run_eval --compare
 
-  Run merge only:
-    uv run python -m backend.tests.eval.run_eval --merge
 
   Use a specific model:
     uv run python -m backend.tests.eval.run_eval --all --provider moonshot --model kimi-k2.5
@@ -3241,8 +2830,7 @@ Examples:
     parser.add_argument("--fixture", type=str, help="Run single extraction fixture (category/name)")
     parser.add_argument("--threads", action="store_true", help="Run thread scenarios")
     parser.add_argument("--compare", action="store_true", help="Run compare (dedup) fixtures")
-    parser.add_argument("--merge", action="store_true", help="Run merge fixtures")
-    parser.add_argument("--all-operations", action="store_true", help="Run extract + compare + merge")
+    parser.add_argument("--all-operations", action="store_true", help="Run extract + compare")
     parser.add_argument("--all-models", action="store_true", help="Run evals for all 6 default models")
     parser.add_argument(
         "--difficulty", type=str, choices=DIFFICULTY_LEVELS, help="Filter by difficulty"
@@ -3380,12 +2968,6 @@ Examples:
             desc = fixture.get("description", "")[:60]
             print(f"  {name:40} {desc}")
 
-        merge = get_merge_fixtures()
-        print(f"\nMerge fixtures ({len(merge)}):")
-        for name, path in merge:
-            fixture = load_fixture(path)
-            desc = fixture.get("description", "")[:60]
-            print(f"  {name:40} {desc}")
 
         threads = get_thread_scenarios()
         if threads:
@@ -3416,14 +2998,12 @@ Examples:
     # Determine operations early (shared by --plan and runners)
     operations = []
     if args.all_operations:
-        operations = ["extract", "compare", "merge"]
+        operations = ["extract", "compare"]
     else:
         if args.all or args.category or args.fixture:
             operations.append("extract")
         if args.compare:
             operations.append("compare")
-        if args.merge:
-            operations.append("merge")
 
     # Handle --plan (zero provider calls)
     if args.plan:
@@ -3496,14 +3076,12 @@ Examples:
     # Determine operations to run
     operations = []
     if args.all_operations:
-        operations = ["extract", "compare", "merge"]
+        operations = ["extract", "compare"]
     else:
         if args.all or args.category or args.fixture:
             operations.append("extract")
         if args.compare:
             operations.append("compare")
-        if args.merge:
-            operations.append("merge")
 
     # Handle preflight-only mode
     if args.preflight and not args.all_models and not args.all:
@@ -3517,7 +3095,7 @@ Examples:
     # Multi-model mode
     if args.all_models:
         if not operations:
-            operations = ["extract", "compare", "merge"]
+            operations = ["extract", "compare"]
 
         # Apply --skip-models filter
         filtered_models = list(EVAL_MODELS)
@@ -3676,33 +3254,6 @@ Examples:
             )
             all_results.extend(compare_results)
 
-    if "merge" in operations:
-        fixtures_to_run = get_merge_fixtures()
-        if args.difficulty:
-            fixtures_to_run = [(n, p) for n, p in fixtures_to_run if load_fixture(p).get("difficulty") == args.difficulty]
-        if fixtures_to_run:
-            executed_fixtures_by_op["merge"] = fixtures_to_run
-            total = len(fixtures_to_run)
-            print(f"\nRunning {total} merge fixtures ({provider}/{model}, concurrency: {args.concurrency})...")
-            if args.dry_run:
-                print("(dry-run mode)")
-            print("-" * 60)
-
-            def _run_merge_single(name, path):
-                return run_merge_eval(
-                    name, path, provider, model,
-                    use_cache=use_cache, verbose=args.verbose, dry_run=args.dry_run,
-                    thinking=args.thinking, replicate=args.replicate,
-                )
-
-            merge_results = _run_fixtures_parallel(
-                fixtures_to_run,
-                "merge",
-                _run_merge_single,
-                args.concurrency,
-                {"provider": provider, "model": model, "thinking": args.thinking},
-            )
-            all_results.extend(merge_results)
 
     if not operations and not args.threads:
         parser.print_help()

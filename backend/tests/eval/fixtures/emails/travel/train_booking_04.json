@@ -25,6 +25,7 @@
   "expected": {
     "events_found": true,
     "event_count": 1,
+    "booking_confirmed": true,
     "events": [
       {
         "title": "Amtrak Acela 2151 - Washington to New York",

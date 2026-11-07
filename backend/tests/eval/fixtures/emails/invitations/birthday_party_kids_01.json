@@ -26,6 +26,7 @@
   "expected": {
     "events_found": true,
     "event_count": 1,
+    "booking_confirmed": false,
     "events": [
       {
         "title": "Emma's 6th Birthday Party",

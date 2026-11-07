@@ -1,0 +1,93 @@
+{
+  "fixture_name": "travel/flight_confirmation_01",
+  "operation": "extract",
+  "expected": {
+    "events_found": true,
+    "event_count": 2,
+    "booking_confirmed": true,
+    "events": [
+      {
+        "title": "Flight UA 1234 - SFO to JFK",
+        "start_datetime": "2026-03-13T08:00:00",
+        "end_datetime": "2026-03-13T16:35:00",
+        "location": "San Francisco International Airport (SFO)",
+        "description": "United Airlines flight to New York JFK",
+        "all_day": false,
+        "importance": "action_required"
+      },
+      {
+        "title": "Flight UA 5678 - JFK to SFO",
+        "start_datetime": "2026-03-15T19:00:00",
+        "end_datetime": "2026-03-15T22:15:00",
+        "location": "John F. Kennedy International Airport (JFK)",
+        "description": "United Airlines return flight to San Francisco",
+        "all_day": false,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      }
+    ],
+    "extra_events": [],
+    "all_events_match": true,
+    "booking_confirmed": {
+      "expected": true,
+      "actual": true,
+      "match": true
+    },
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 2,
+    "inference_key": "cc369c9d6c4e0baa4c0003f2fef7a592184dabbe098cb8a24e7862ec7ebe175a",
+    "expected_output_hash": "117c82addaa9d4487222fea7e32b1e8443be640b18c2686a1cb53c15e329ed84",
+    "scorer_hash": "f0daed45ca53c930922c8347e6a33a61f9970abd740009802f0b7a48737bb153"
+  },
+  "score_key": "1fd232b0f47d48d65850d03ca3bf2646bfc12a0ed47a3573d3b5c80a8bce309e",
+  "stored_at": "2026-11-07T05:42:35.808643+00:00"
+}
