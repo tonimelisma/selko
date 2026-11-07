@@ -4,6 +4,7 @@
 	import { supabase } from '$lib/supabase.js';
 	import ErrorAlert from '$lib/components/ErrorAlert.svelte';
 	import LogoMark from '$lib/components/LogoMark.svelte';
+	import { safeNextPath } from '$lib/safe-redirect.js';
 
 	let email = $state('');
 	let password = $state('');
@@ -25,7 +26,8 @@
 			error = authError.message;
 			isLoading = false;
 		} else {
-			goto('/app');
+			// e.g. back to /oauth/consent when Claude sent the user here to sign in
+			goto(safeNextPath(new URLSearchParams(window.location.search).get('next')));
 		}
 	}
 </script>

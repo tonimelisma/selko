@@ -18,6 +18,7 @@
 	import ConfirmModal from '$lib/components/ConfirmModal.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import SenderRulesPanel from '$lib/components/SenderRulesPanel.svelte';
+	import ConnectedApps from '$lib/components/ConnectedApps.svelte';
 	import ErrorAlert from '$lib/components/ErrorAlert.svelte';
 	import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
 	import LabeledSwitch from '$lib/components/LabeledSwitch.svelte';
@@ -563,6 +564,9 @@
 			<h2 class="mb-4 text-[11px] font-bold uppercase tracking-[0.08em] text-secondary">{$_('settings.automationRules')}</h2>
 			<SenderRulesPanel />
 		</section>
+
+		<!-- Apps connected through OAuth consent, e.g. Claude (hidden when none) -->
+		<ConnectedApps />
 
 		<!-- Section 5: Account -->
 		<section>

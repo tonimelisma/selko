@@ -297,5 +297,29 @@
     "pageNotFoundDescription": "The page you're looking for doesn't exist.",
     "unexpectedError": "An unexpected error occurred.",
     "backToApp": "Back to App"
+  },
+  "oauthConsent": {
+    "title": "Connect {client} - Selko",
+    "heading": "Connect {client} to Selko",
+    "intro": "{client} is asking to use your Selko account.",
+    "signedInAs": "Signed in as {email}",
+    "canHeading": "{client} will be able to",
+    "canSee": "See the events Selko found in your email and what is waiting for review",
+    "canDecide": "Accept or reject events and changes for you, which updates your calendar",
+    "canSync": "Ask Selko to check your email now",
+    "cannot": "It cannot read your emails or change your Selko settings.",
+    "revokeHint": "You can disconnect it any time in Settings.",
+    "allow": "Allow",
+    "cancel": "Cancel",
+    "missingRequestGeneric": "This link is missing its authorization request. Start connecting again from the app you were using.",
+    "loadFailed": "This request has expired or was already used. Start connecting again from the app you were using.",
+    "decisionFailed": "Selko could not record your answer. Try again.",
+    "redirecting": "Returning you to {client}…"
+  },
+  "connectedApps": {
+    "heading": "Connected apps",
+    "connectedSince": "Connected {date}",
+    "disconnect": "Disconnect",
+    "revokeFailed": "Selko could not disconnect this app. Try again."
   }
 }
