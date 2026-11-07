@@ -29,8 +29,8 @@
     "events": [
       {
         "title": "Interview - InnovateTech Senior Software Engineer",
-        "start_datetime": "2026-02-12T13:00:00",
-        "end_datetime": "2026-02-12T15:00:00",
+        "start_datetime": "2026-02-12T16:00:00",
+        "end_datetime": "2026-02-12T18:00:00",
         "location": "InnovateTech Headquarters, 500 Innovation Drive, Building A, San Jose, CA 95110",
         "description": "On-site interview for Senior Software Engineer position",
         "all_day": false,
@@ -38,5 +38,5 @@
       }
     ]
   },
-  "notes": "Job interview with detailed schedule breakdown"
+  "notes": "Job interview with detailed schedule breakdown. Times are stated in Pacific time and the eval user's timezone is the default America/New_York, so the expected times are the Eastern equivalents (+3h): converting a stated zone into the user's zone is what the prompt asks for."
 }

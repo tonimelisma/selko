@@ -1,0 +1,153 @@
+{
+  "fixture_name": "school/school_play_02",
+  "operation": "extract",
+  "expected": {
+    "events_found": true,
+    "event_count": 4,
+    "booking_confirmed": false,
+    "events": [
+      {
+        "title": "The Wizard of Oz - School Musical",
+        "start_datetime": "2026-04-03T19:00:00",
+        "end_datetime": null,
+        "location": "Woodside High Auditorium, 150 Education Drive, Woodside, CA 94062",
+        "description": "Woodside High School spring musical performance",
+        "all_day": false,
+        "importance": "action_required"
+      },
+      {
+        "title": "The Wizard of Oz - School Musical (Matinee)",
+        "start_datetime": "2026-04-04T14:00:00",
+        "end_datetime": null,
+        "location": "Woodside High Auditorium, 150 Education Drive, Woodside, CA 94062",
+        "description": "Woodside High School spring musical - Saturday matinee",
+        "all_day": false,
+        "importance": "action_required"
+      },
+      {
+        "title": "The Wizard of Oz - School Musical",
+        "start_datetime": "2026-04-04T19:00:00",
+        "end_datetime": null,
+        "location": "Woodside High Auditorium, 150 Education Drive, Woodside, CA 94062",
+        "description": "Woodside High School spring musical - Saturday evening",
+        "all_day": false,
+        "importance": "action_required"
+      },
+      {
+        "title": "The Wizard of Oz - School Musical (Matinee)",
+        "start_datetime": "2026-04-05T14:00:00",
+        "end_datetime": null,
+        "location": "Woodside High Auditorium, 150 Education Drive, Woodside, CA 94062",
+        "description": "Woodside High School spring musical - Sunday matinee",
+        "all_day": false,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      },
+      {
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      }
+    ],
+    "extra_events": [],
+    "all_events_match": true,
+    "booking_confirmed": {
+      "expected": false,
+      "actual": false,
+      "match": true
+    },
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 2,
+    "inference_key": "11c24ccd96bd22d0a4cc07fae7e863e0dfd386fd9d90dcbbe75a3aeb23686573",
+    "expected_output_hash": "a3771ed1e8ea2c96efe2e8ae9ae7e48af0718bef79fdf9502905a3ad3f1996d9",
+    "scorer_hash": "f0daed45ca53c930922c8347e6a33a61f9970abd740009802f0b7a48737bb153"
+  },
+  "score_key": "773bdc1444dd92f3ef0fe8d90587b96f63ec7debf43f3d08f7f2976b9aeb9760",
+  "stored_at": "2026-11-07T03:52:28.347568+00:00"
+}

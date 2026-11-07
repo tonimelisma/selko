@@ -29,8 +29,8 @@
     "events": [
       {
         "title": "Team Standup",
-        "start_datetime": "2026-02-09T09:30:00",
-        "end_datetime": "2026-02-09T09:45:00",
+        "start_datetime": "2026-02-09T12:30:00",
+        "end_datetime": "2026-02-09T12:45:00",
         "location": "Conference Room B",
         "description": "Daily team standup meeting (new time)",
         "all_day": false,
@@ -39,5 +39,5 @@
       }
     ]
   },
-  "notes": "Daily standup time change announcement - tests extracting recurring weekday meeting"
+  "notes": "Daily standup time change announcement - tests extracting recurring weekday meeting. Times are stated in Pacific time and the eval user's timezone is the default America/New_York, so the expected times are the Eastern equivalents (+3h): converting a stated zone into the user's zone is what the prompt asks for."
 }

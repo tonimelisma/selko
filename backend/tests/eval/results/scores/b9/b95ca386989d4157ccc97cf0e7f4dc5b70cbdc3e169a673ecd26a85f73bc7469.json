@@ -1,0 +1,51 @@
+{
+  "fixture_name": "conferences/credential_maintenance_deadlines_07",
+  "operation": "extract",
+  "expected": {
+    "events_found": true,
+    "event_count": 3,
+    "events": [
+      {
+        "title": "Analytics Integration Certificate Maintenance Due",
+        "start_datetime": "2026-08-21T00:00:00",
+        "end_datetime": null,
+        "location": null,
+        "description": "Rotate the Analytics Integration certificate before service is interrupted",
+        "all_day": true,
+        "importance": "action_required"
+      },
+      {
+        "title": "Billing API Certificate Maintenance Due",
+        "start_datetime": "2026-12-04T00:00:00",
+        "end_datetime": null,
+        "location": null,
+        "description": "Rotate the Billing API certificate before service is interrupted",
+        "all_day": true,
+        "importance": "action_required"
+      },
+      {
+        "title": "Customer Portal Certificate Maintenance Due",
+        "start_datetime": "2027-04-16T00:00:00",
+        "end_datetime": null,
+        "location": null,
+        "description": "Rotate the Customer Portal certificate before service is interrupted",
+        "all_day": true,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": false,
+    "event_count_match": false,
+    "all_events_match": false,
+    "auto_rating": 1
+  },
+  "identity": {
+    "scoring_version": 2,
+    "inference_key": "aa274954c267632970796d562b102045bfa8fdda80fc0cb5cc5c5e4f1a20d7d3",
+    "expected_output_hash": "41bc4049eaaa73a9dc4c07a89beddd3f21cf3a45709ab3d447c55b6e266cb82c",
+    "scorer_hash": "f0daed45ca53c930922c8347e6a33a61f9970abd740009802f0b7a48737bb153"
+  },
+  "score_key": "b95ca386989d4157ccc97cf0e7f4dc5b70cbdc3e169a673ecd26a85f73bc7469",
+  "stored_at": "2026-11-07T03:52:17.702379+00:00"
+}

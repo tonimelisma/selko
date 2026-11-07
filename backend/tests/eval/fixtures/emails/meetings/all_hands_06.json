@@ -29,8 +29,8 @@
     "events": [
       {
         "title": "Company All-Hands Meeting",
-        "start_datetime": "2026-02-27T16:00:00",
-        "end_datetime": "2026-02-27T17:00:00",
+        "start_datetime": "2026-02-27T19:00:00",
+        "end_datetime": "2026-02-27T20:00:00",
         "location": "Main Auditorium",
         "description": "Monthly all-hands meeting with company updates and AMA",
         "all_day": false,
@@ -38,5 +38,5 @@
       }
     ]
   },
-  "notes": "Company-wide all-hands meeting"
+  "notes": "Company-wide all-hands meeting. Times are stated in Pacific time and the eval user's timezone is the default America/New_York, so the expected times are the Eastern equivalents (+3h): converting a stated zone into the user's zone is what the prompt asks for."
 }

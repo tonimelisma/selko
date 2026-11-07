@@ -936,3 +936,58 @@ class TestBuildContentPartsPerTypeLimits:
         parts = _build_content_parts("prompt", "email body", attachments, config=config)
 
         assert len(parts) == 3
+
+
+def test_text_attachments_reach_the_anthropic_request():
+    """Regression: a .txt agenda was wrapped as an image and silently dropped.
+
+    The provider-side converter accepts only images and PDFs, so before this a
+    text/plain or text/csv attachment never reached the model, and an email
+    whose details were "in the attached agenda" produced a date with no time.
+    """
+    from unittest.mock import MagicMock
+
+    from selko.services.event_processing import _build_content_parts, _build_prompt
+    from selko.services.llm_provider import AnthropicProvider
+
+    parts = _build_content_parts(
+        _build_prompt(),
+        "Details in attachment.",
+        attachments=[
+            {"data": b"Quarterly Planning\nMarch 10, 9:00 AM - 12:00 PM\nRoom 4B",
+             "mime_type": "text/plain", "filename": "agenda.txt"},
+            {"data": b"date,time\n2026-03-11,14:00", "mime_type": "text/csv; charset=utf-8",
+             "filename": 'sched"ule.csv'},
+            {"data": b"BEGIN:VCALENDAR", "mime_type": "text/calendar", "filename": "invite.ics"},
+        ],
+    )
+
+    provider = AnthropicProvider(api_key="x", model="claude-haiku-5-5", thinking="low",
+                                 adaptive_thinking=True)
+    provider.client = MagicMock()
+    provider.client.messages.create.return_value = MagicMock(
+        content=[], usage=None, stop_reason="end_turn")
+    provider.generate(parts, json_schema={"type": "object"})
+
+    sent = provider.client.messages.create.call_args.kwargs["messages"][0]["content"]
+    texts = [block["text"] for block in sent if block["type"] == "text"]
+    assert texts[0] == (
+        '<attachment filename="agenda.txt">\n'
+        "Quarterly Planning\nMarch 10, 9:00 AM - 12:00 PM\nRoom 4B\n</attachment>"
+    )
+    assert texts[1].startswith("<attachment filename=\"sched'ule.csv\">\ndate,time")
+    assert not any("VCALENDAR" in text for text in texts), "calendar files stay parsed separately"
+    assert "<email_body>\nDetails in attachment." in texts[-1], "the email body stays last"
+
+
+def test_oversized_text_attachment_is_truncated_not_dropped():
+    from selko.services.event_processing import (
+        MAX_TEXT_ATTACHMENT_CHARS,
+        _text_attachment_part,
+    )
+
+    part = _text_attachment_part(b"a" * (MAX_TEXT_ATTACHMENT_CHARS + 5), "big.txt")
+
+    assert "a" * MAX_TEXT_ATTACHMENT_CHARS + "\n[attachment truncated]" in part
+    assert "a" * (MAX_TEXT_ATTACHMENT_CHARS + 1) not in part
+    assert part.endswith("[attachment truncated]\n</attachment>")

@@ -30,8 +30,8 @@
     "events": [
       {
         "title": "Project Kickoff - GlobalTech Partnership",
-        "start_datetime": "2026-02-10T11:00:00",
-        "end_datetime": "2026-02-10T12:30:00",
+        "start_datetime": "2026-02-10T14:00:00",
+        "end_datetime": "2026-02-10T15:30:00",
         "location": "Microsoft Teams",
         "description": "Project kickoff call with GlobalTech",
         "all_day": false,
@@ -39,5 +39,5 @@
       }
     ]
   },
-  "notes": "Client kickoff call with detailed agenda and dial-in info"
+  "notes": "Client kickoff call with detailed agenda and dial-in info. Times are stated in Pacific time and the eval user's timezone is the default America/New_York, so the expected times are the Eastern equivalents (+3h): converting a stated zone into the user's zone is what the prompt asks for."
 }

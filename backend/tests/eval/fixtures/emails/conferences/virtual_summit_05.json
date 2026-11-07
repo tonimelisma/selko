@@ -29,8 +29,8 @@
     "events": [
       {
         "title": "PM Summit 2026",
-        "start_datetime": "2026-04-07T09:00:00",
-        "end_datetime": "2026-04-08T16:30:00",
+        "start_datetime": "2026-04-07T12:00:00",
+        "end_datetime": "2026-04-08T19:30:00",
         "location": "Virtual (Hopin)",
         "description": "Product Management Virtual Summit - 2-day event with keynotes, track sessions, and workshops",
         "all_day": false,
@@ -38,5 +38,5 @@
       }
     ]
   },
-  "notes": "Multi-day virtual summit \u2014 prompt says 'multi-day events should be ONE event with start/end spanning the full duration'"
+  "notes": "Multi-day virtual summit \u2014 prompt says 'multi-day events should be ONE event with start/end spanning the full duration'. Times are stated in Pacific time and the eval user's timezone is the default America/New_York, so the expected times are the Eastern equivalents (+3h): converting a stated zone into the user's zone is what the prompt asks for."
 }

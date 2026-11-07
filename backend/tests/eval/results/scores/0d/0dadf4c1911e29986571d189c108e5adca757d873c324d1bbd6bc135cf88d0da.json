@@ -1,0 +1,57 @@
+{
+  "fixture_name": "school/registration_opens_09",
+  "operation": "extract",
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "event_count_min": 1,
+    "events": [
+      {
+        "title": "Spring 2026 Registration Opens",
+        "start_datetime": "2026-02-18T12:00:00",
+        "end_datetime": null,
+        "location": null,
+        "all_day": false,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      }
+    ],
+    "extra_events": [],
+    "all_events_match": true,
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 2,
+    "inference_key": "8d5f3f22b955a7f2fbbd67718ef3f2360ad41907ffc1e787810cdfbb6fd5d6d3",
+    "expected_output_hash": "bec53e7dd1b14ee85c316f57eafdac09d3553c24a3d5deddf2d5b1e2d55453d5",
+    "scorer_hash": "f0daed45ca53c930922c8347e6a33a61f9970abd740009802f0b7a48737bb153"
+  },
+  "score_key": "0dadf4c1911e29986571d189c108e5adca757d873c324d1bbd6bc135cf88d0da",
+  "stored_at": "2026-11-07T03:52:27.177300+00:00"
+}

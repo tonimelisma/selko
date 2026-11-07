@@ -1,0 +1,63 @@
+{
+  "fixture_name": "school/ticket_receipt_school_play_07",
+  "operation": "extract",
+  "expected": {
+    "events_found": true,
+    "event_count": 1,
+    "booking_confirmed": true,
+    "events": [
+      {
+        "title": "The Tortoise and the Hare - Show #2",
+        "start_datetime": "2026-11-07T17:00:00",
+        "end_datetime": null,
+        "location": "Oak Hill Cafeteria",
+        "description": "School play, Show #2. Two general admission tickets purchased; show the ticket at the door.",
+        "all_day": false,
+        "importance": "action_required"
+      }
+    ]
+  },
+  "auto_score": {
+    "events_found_match": true,
+    "event_count_match": true,
+    "event_scores": [
+      {
+        "start_datetime": {
+          "difference_minutes": 0.0,
+          "match": true
+        },
+        "end_datetime": {
+          "difference_minutes": null,
+          "match": true
+        },
+        "all_day": {
+          "expected": false,
+          "actual": false,
+          "match": true
+        },
+        "importance": {
+          "expected": "action_required",
+          "actual": "action_required",
+          "match": true
+        },
+        "overall_match": true
+      }
+    ],
+    "extra_events": [],
+    "all_events_match": true,
+    "booking_confirmed": {
+      "expected": true,
+      "actual": true,
+      "match": true
+    },
+    "auto_rating": 5
+  },
+  "identity": {
+    "scoring_version": 2,
+    "inference_key": "96160a2dfb80541bc1fb88e188006ee8884b35c851ac7d4e123f147ffa1633a6",
+    "expected_output_hash": "12cb7b680789950cc05e85394aa2862e961a72d35c0832b29c0fb248e3051a90",
+    "scorer_hash": "f0daed45ca53c930922c8347e6a33a61f9970abd740009802f0b7a48737bb153"
+  },
+  "score_key": "f21f87737fc9f42d7d31317417a8da2507a96a1ecbcca29967a3ba63cb6965c6",
+  "stored_at": "2026-11-07T03:52:29.324576+00:00"
+}

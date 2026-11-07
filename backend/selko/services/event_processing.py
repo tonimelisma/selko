@@ -198,6 +198,28 @@ def _build_email_context(email_metadata: dict[str, Any], current_date: str) -> s
     )
 
 
+# Plain-text attachments the model reads as text. They used to be wrapped as
+# ImageContent, which the provider-side converter discards (it accepts only
+# images and PDFs), so a .txt agenda or a .csv schedule never reached the model.
+TEXT_ATTACHMENT_TYPES = frozenset({
+    "text/plain",
+    "text/csv",
+    "text/markdown",
+    "text/tab-separated-values",
+})
+# About 10K tokens: enough for any agenda or schedule, and far below the 100K
+# prompt length where Haiku 5.5 switches to its higher rate card.
+MAX_TEXT_ATTACHMENT_CHARS = 40_000
+
+
+def _text_attachment_part(data: bytes, filename: str) -> str:
+    text = data.decode("utf-8", errors="replace").replace("\x00", "")
+    if len(text) > MAX_TEXT_ATTACHMENT_CHARS:
+        text = text[:MAX_TEXT_ATTACHMENT_CHARS] + "\n[attachment truncated]"
+    safe_name = filename.replace('"', "'")
+    return f'<attachment filename="{safe_name}">\n{text}\n</attachment>'
+
+
 def _get_attachment_size_limit(mime_type: str, config: Optional[Config] = None) -> int:
     """Get the size limit for an attachment based on its MIME type.
 
@@ -260,6 +282,10 @@ def _build_content_parts(
             # Skip .ics attachments — raw iCalendar bytes aren't useful to the LLM
             if mime_type == "text/calendar" or filename.lower().endswith(".ics"):
                 logger.debug(f"Skipping .ics attachment from LLM: {filename}")
+                continue
+            if mime_type.split(";", 1)[0].strip().lower() in TEXT_ATTACHMENT_TYPES:
+                if data:
+                    content_parts.append(_text_attachment_part(data, filename))
                 continue
             size_limit = _get_attachment_size_limit(mime_type, config)
 
@@ -636,7 +662,6 @@ Compare civil clock times only — do not convert timezones.
 - All day: {baseline.get('all_day', False)}
 - Location: {baseline.get('location', 'Not specified')}
 - Description: {baseline.get('description', '')}
-- Status: {baseline.get('status', 'unknown')}
 
 **Newly extracted event fields from the email:**
 - Title: {extracted_event.get('title')}

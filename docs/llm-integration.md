@@ -55,6 +55,20 @@ primary or fallback provider is a privacy-policy change too.
 - **No prompt caching yet.** About one call every 25 minutes against a
   5-minute cache TTL means every call would pay the write premium and almost
   never hit. Revisit if bulk backfills become common.
+- **Schema text stays as rendered (audited Nov 2026).** The Anthropic provider
+  appends the schema as Python `str(dict)` under "You MUST respond with valid
+  JSON". Rendering it as real JSON with plain wording was measured and not
+  shipped: no fixture improved, and `survey_request_09` went from 13/13 to 13/15
+  (two false-positive "survey closes" events). Re-measure before changing it.
+- **Text attachments are sent as text.** `text/plain`, `text/csv`,
+  `text/markdown` and TSV attachments become `<attachment filename="…">` text
+  blocks (capped at 40K characters). They used to be wrapped as images and
+  discarded by the converter, so an agenda in a `.txt` file never reached the
+  model.
+- **Eval fixtures and time zones.** A fixture without `user_timezone` runs as
+  `America/New_York`. When the email states a zone (PST, "Pacific Time"), the
+  expected times are the user-zone equivalents; when it states none, times are
+  copied as written.
 
 > **Photo-library status:** Google Photos/OneDrive library ingestion is dormant while photo ingestion is parked; see [`docs/backlog.md`](backlog.md). The multimodal/image-processing material below describes the active email-attachment pipeline and remains applicable to email attachments.
 
