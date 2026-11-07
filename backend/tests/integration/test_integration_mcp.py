@@ -351,11 +351,41 @@ async def test_accepting_a_change_rewrites_the_event_and_queues_the_calendar(
         result = await client.call_tool("accept_change", {"event_id": ids["practice"]})
         assert not result.is_error, result.content
         assert result.structured_content["result"] == "accepted"
-        none_left = await client.call_tool("accept_change", {"event_id": ids["practice"]})
-        assert none_left.is_error and "no pending change" in none_left.content[0].text
+        # A stale widget card repeats the decision already on record: that is
+        # done, not an error (production: the user saw "has no pending change"
+        # on a change their first click had applied).
+        again = await client.call_tool("accept_change", {"event_id": ids["practice"]})
+        assert not again.is_error, again.content
+        assert again.structured_content["already_decided"] is True
+        assert again.structured_content["result"] == "accepted"
+        contradicting = await client.call_tool("reject_change", {"event_id": ids["practice"]})
+        assert contradicting.is_error
+        assert "already applied" in contradicting.content[0].text
     row = admin_client.table("events").select("location, review_status").eq(
         "id", ids["practice"]).execute().data[0]
     assert row == {"location": "North field", "review_status": "active"}
     work = admin_client.table("calendar_work_items").select("action").eq(
         "event_id", ids["practice"]).execute().data
     assert [item["action"] for item in work] == ["upsert"]
+
+
+@pytest.mark.asyncio
+async def test_repeating_a_new_lane_decision_reports_it_done(
+    config, admin_client, temp_user, oauth_client
+):
+    user_id, email, password = temp_user
+    ids = _seed(admin_client, user_id)
+    mcp_config = dataclasses.replace(config, api_public_url=API)
+    token = _oauth_token(config, oauth_client, _session_token(config, email, password))
+    async with _mcp(mcp_config, token) as http, _client(http) as client:
+        first = await client.call_tool("accept_event", {"event_id": ids["concert"]})
+        assert not first.is_error, first.content
+        again = await client.call_tool("accept_event", {"event_id": ids["concert"]})
+        assert not again.is_error, again.content
+        assert again.structured_content["already_decided"] is True
+        contradicting = await client.call_tool("reject_event", {"event_id": ids["concert"]})
+        assert contradicting.is_error
+        assert "already accepted" in contradicting.content[0].text
+    row = admin_client.table("events").select("review_status").eq(
+        "id", ids["concert"]).execute().data[0]
+    assert row == {"review_status": "active"}
