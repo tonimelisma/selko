@@ -389,3 +389,107 @@ async def test_repeating_a_new_lane_decision_reports_it_done(
     row = admin_client.table("events").select("review_status").eq(
         "id", ids["concert"]).execute().data[0]
     assert row == {"review_status": "active"}
+
+
+# ------------------------------------------------------- connection health
+
+
+def _integration(admin_client, user_id: str, provider: str, status: str, **extra) -> str:
+    return admin_client.table("integrations").insert({
+        "user_id": user_id,
+        "provider": provider,
+        "status": status,
+        "access_token": "not-a-real-token",
+        "refresh_token": "not-a-real-token",
+        "provider_email": "parent@example.test",
+        **extra,
+    }).execute().data[0]["id"]
+
+
+@pytest.mark.asyncio
+async def test_a_lapsed_sign_in_is_reported_on_every_read_with_its_fix(
+    config, admin_client, temp_user, oauth_client
+):
+    """Real RLS, the security_invoker health view and blocked calendar work."""
+    user_id, email, password = temp_user
+    ids = _seed(admin_client, user_id)
+    gmail = _integration(admin_client, user_id, "gmail", "expired")
+    _integration(admin_client, user_id, "google_calendar", "expired")
+    # An accepted event the calendar worker parked on the lapsed sign-in.
+    admin_client.table("calendar_work_items").insert({
+        "event_id": ids["practice"], "user_id": user_id, "action": "upsert",
+        "generation": 1, "status": "blocked", "failure_code": "oauth_required",
+        "provider": "google_calendar",
+    }).execute()
+    mcp_config = dataclasses.replace(config, api_public_url=API)
+    token = _oauth_token(config, oauth_client, _session_token(config, email, password))
+
+    async with _mcp(mcp_config, token) as http, _client(http) as client:
+        status = (await client.call_tool("get_account_status", {})).structured_content
+        assert status["all_good"] is False
+        [google] = status["connections"]
+        assert google["state"] == "needs_reconnect"
+        assert google["events_waiting_on_sign_in"] == 1
+        [problem] = status["needs_attention"]
+        assert problem["sign_in"] == "google" and problem["action"] == "reconnect"
+        assert problem["reconnect_url"].endswith("/app/settings?reconnect=google")
+        assert "connection_alert" not in status  # it is the report itself
+
+        queue = (await client.call_tool("list_review_queue", {})).structured_content
+        assert queue["connection_alert"]["items"] == [problem]
+        assert queue["new_count"] == 2 and queue["change_count"] == 1
+
+        no_mailbox = await client.call_tool("check_email_now", {})
+        assert no_mailbox.is_error and "reconnect_account" in no_mailbox.content[0].text
+
+    # Reconnecting clears it with no other action.
+    admin_client.table("integrations").update({"status": "active"}).eq("user_id", user_id).execute()
+    admin_client.table("calendar_work_items").delete().eq("event_id", ids["practice"]).execute()
+    async with _mcp(mcp_config, token) as http, _client(http) as client:
+        status = (await client.call_tool("get_account_status", {})).structured_content
+        assert status["all_good"] is True, status["needs_attention"]
+        assert status["connections"][0]["mail"]["connected"] is True
+        queue = (await client.call_tool("list_review_queue", {})).structured_content
+        assert "connection_alert" not in queue
+    # The trigger provisioned polling state for the reactivated mailbox.
+    assert admin_client.table("email_sync_state").select("integration_id").eq(
+        "integration_id", gmail).execute().data
+
+
+@pytest.mark.asyncio
+async def test_reconnect_account_hands_out_a_sign_in_link_bound_to_the_user(
+    config, admin_client, temp_user, oauth_client
+):
+    user_id, email, password = temp_user
+    mcp_config = dataclasses.replace(config, api_public_url=API)
+    token = _oauth_token(config, oauth_client, _session_token(config, email, password))
+    states: list[str] = []
+    try:
+        async with _mcp(mcp_config, token) as http, _client(http) as client:
+            google = await client.call_tool("reconnect_account", {"sign_in": "google"})
+            assert not google.is_error, google.content
+            link = urlparse(google.structured_content["sign_in_url"])
+            assert link.hostname == "accounts.google.com"
+            query = parse_qs(link.query)
+            assert query["redirect_uri"] == [f"{API}/integrations/google/callback"]
+            states.append(query["state"][0])
+            assert google.structured_content["settings_url"].endswith(
+                "/app/settings?reconnect=google")
+
+            outlook = await client.call_tool("reconnect_account", {"sign_in": "outlook"})
+            assert not outlook.is_error, outlook.content
+            outlook_link = urlparse(outlook.structured_content["sign_in_url"])
+            assert outlook_link.hostname == "login.microsoftonline.com"
+            states.append(parse_qs(outlook_link.query)["state"][0])
+
+            bogus = await client.call_tool("reconnect_account", {"sign_in": "photos"})
+            assert bogus.is_error
+
+        rows = admin_client.table("oauth_states").select("state, user_id, provider").in_(
+            "state", states).execute().data
+        assert {(r["user_id"], r["provider"]) for r in rows} == {
+            (user_id, "google"), (user_id, "outlook")}
+    finally:
+        if states:
+            admin_client.table("oauth_states").delete().in_("state", states).execute()
+    assert admin_client.table("oauth_states").select("state").in_("state", states).execute().data == []

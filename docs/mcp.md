@@ -79,7 +79,7 @@ decisions that need no human. The examples below allow only read tools.
       (old → new). Put cancellations first.
    2. list_recent_activity with since_hours=24: what Selko already put on my
       calendar or updated since yesterday.
-   3. get_account_status: say if any account needs reconnecting.
+   3. get_account_status: if all_good is false, lead with what needs me and include each reconnect_url.
    Keep it under 15 lines. Do not accept or reject anything.
    ```
 
@@ -153,7 +153,8 @@ a day.
 | `get_event` | read | One event: description (≤1,500 chars), status, pending change, every source email (subject, sender, time) |
 | `list_calendar_events` | read | Accepted events in a date range with calendar delivery status |
 | `list_recent_activity` | read | Events found or changed in the last N hours, incl. automatic updates |
-| `get_account_status` | read | Connected accounts, which need reconnecting, lane counts |
+| `get_account_status` | read | Every Google/Outlook sign-in: is mail being read (last check, failing polls), can events reach a calendar, accepted events parked on a lapsed sign-in, catch-up progress; `all_good` plus `needs_attention` (problem, action, `reconnect_url`); lane counts |
+| `reconnect_account` | write | Direct Google or Microsoft sign-in link for this user (`initiate_oauth_flow`, 10-minute state), plus the non-expiring Settings link |
 | `accept_event` | write | New lane → calendar (`set_event_review_status` → `active`) |
 | `reject_event` | write, destructive | New lane → rejected (terminal) |
 | `accept_change` | write, destructive | Apply a pending update or cancellation to the calendar entry |
@@ -161,6 +162,32 @@ a day.
 | `check_email_now` | write, idempotent | `request_email_sync_now` for each active mailbox |
 
 Prompt: `daily_digest` (the read-only digest above, as a slash command).
+
+### Connection health on every answer
+
+Every tool except `get_account_status` and `reconnect_account` attaches
+`connection_alert` when a sign-in needs the user — a lapsed Google or Microsoft
+sign-in, Google consent without Calendar, an Outlook mail-only grant with no
+other writable calendar, polls failing on auth, or accepted events parked
+`blocked` with `oauth_required`/`oauth_scope_required`. Self-healing problems
+(transient poll failures, a mailbox not checked for six hours) appear only in
+`get_account_status` as `action: "wait"`, so the alert is never noise Claude
+learns to ignore. Each problem clears without bookkeeping: signing in again
+flips the integration to `active` and recovery requeues parked work. The
+verdict lives in `selko/api/mcp/connections.py` and mirrors the web banner's
+`recoveryPlan`; it reads `email_sync_health` (the safe `security_invoker`
+view), never `email_sync_state`. The check is best effort: if it fails, the
+tool still answers and the failure is logged as `mcp_connection_check_failed`.
+The review widget shows the alert above the cards with a sign-in button, so an
+empty queue caused by a lapsed sign-in is not presented as "nothing to review".
+
+**Reauth.** Selko cannot complete a provider consent inside Claude; the user
+must open a browser. Two links: `reconnect_url`
+(`/app/settings?reconnect=google|outlook`) never expires — Settings starts the
+sign-in on open, and a signed-out user returns to it after login via `next` —
+which is what a scheduled digest read hours later needs; `reconnect_account`
+returns the provider's own consent URL for a live chat, bound to the caller's
+user id through the same `oauth_states` row the apps create, valid 10 minutes.
 
 Times are returned in the user's timezone (`user_calendar_settings.timezone`).
 Email bodies and attachments never leave Selko through MCP.
@@ -279,7 +306,7 @@ it was reverted the same day.
 - Results are compact. Claude.ai caps a tool result at about 150k characters
   and Claude Code at about 25k tokens.
 
-Ten tools is well inside the "one tool per action" range (<15). Tool names use
+Eleven tools is well inside the "one tool per action" range (<15). Tool names use
 the apps' own words (Accept / Reject, New / Changes) so a user moving between
 Selko and Claude sees one vocabulary.
 

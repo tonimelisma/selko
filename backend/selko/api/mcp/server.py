@@ -20,7 +20,7 @@ import logging
 import re
 from functools import lru_cache
 from pathlib import Path
-from typing import Annotated, Any, Callable
+from typing import Annotated, Any, Callable, Literal
 
 from mcp.server.apps import Apps
 from mcp.server.auth.middleware.auth_context import get_access_token
@@ -32,6 +32,7 @@ from pydantic import Field
 from supabase import Client, ClientOptions, create_client
 
 from selko.api.mcp.auth import SupabaseTokenVerifier, supabase_user_validator
+from selko.api.mcp.connections import attention_summary
 from selko.api.mcp.operations import OperationError, SelkoOperations
 from selko.config import Config
 
@@ -54,7 +55,12 @@ the entry as it is.
 
 Times are in the user's own timezone, reported with each result. Selko only \
 knows about events it found in email; list_calendar_events is not the user's \
-whole calendar.\
+whole calendar.
+
+Connections: get_account_status reports every Google and Outlook sign-in and \
+whether mail is being read and events can reach a calendar. When any result \
+carries connection_alert, tell the user what stopped working and give them the \
+reconnect_url, or call reconnect_account for a direct sign-in link.\
 """
 
 EventId = Annotated[
@@ -150,9 +156,27 @@ def create_mcp_server(
             raise ToolError("Not signed in to Selko. Reconnect the Selko connector.")
         return SelkoOperations(make_user_client(access.token), access.subject, make_service_client)
 
-    def run(fn: Callable[[SelkoOperations], dict[str, Any]]) -> dict[str, Any]:
+    def connection_alert(o: SelkoOperations) -> dict[str, Any] | None:
+        """Best effort: a failed check must not fail the tool the user asked for."""
         try:
-            return fn(ops())
+            return attention_summary(o.connection_health(config.frontend_url))
+        except Exception:
+            logger.warning("mcp_connection_check_failed", exc_info=True)
+            return None
+
+    def run(
+        fn: Callable[[SelkoOperations], dict[str, Any]], *, check_connections: bool = True
+    ) -> dict[str, Any]:
+        try:
+            o = ops()
+            result = fn(o)
+            # Every answer says when a sign-in needs the user, so a digest or a
+            # quick question surfaces a lapsed Gmail instead of quietly showing
+            # an empty queue.
+            alert = connection_alert(o) if check_connections else None
+            if alert is not None:
+                result["connection_alert"] = alert
+            return result
         except OperationError as exc:
             raise ToolError(str(exc)) from exc
         except ToolError:
@@ -275,12 +299,39 @@ def create_mcp_server(
         title="Get Selko account status",
         annotations=_read("Get Selko account status"),
         description=(
-            "Report which mail and calendar accounts are connected and whether any needs "
-            "reconnecting, plus how many events wait in the New and Changes lanes."
+            "Check every Google and Outlook connection: whether Selko is reading the "
+            "mailbox (and when it last checked), whether accepted events can reach a "
+            "calendar, accepted events stuck waiting for a sign-in, and catch-up "
+            "progress after a reconnect. all_good is true when nothing needs attention; "
+            "otherwise needs_attention says what broke, what to do, and a reconnect_url. "
+            "Also counts events waiting in the New and Changes lanes."
         ),
     )
     def get_account_status() -> dict[str, Any]:
-        return run(lambda o: o.account_status())
+        return run(lambda o: o.account_status(config.frontend_url), check_connections=False)
+
+    @server.tool(
+        name="reconnect_account",
+        title="Get a sign-in link to reconnect an account",
+        annotations=_write(
+            "Get a sign-in link to reconnect an account", destructive=False, idempotent=False
+        ),
+        description=(
+            "Get a link that signs the user in to Google (Gmail and Google Calendar) or "
+            "Microsoft (Outlook mail and calendar) again, or connects it for the first "
+            "time. Returns sign_in_url, which the user opens in a browser (Selko cannot "
+            "sign in on their behalf); it works for 10 minutes. settings_url does the "
+            "same from Selko Settings and does not expire. get_account_status shows "
+            "whether the connection works afterwards."
+        ),
+    )
+    def reconnect_account(
+        sign_in: Annotated[
+            Literal["google", "outlook"],
+            Field(description="Which sign-in: 'google' or 'outlook'."),
+        ],
+    ) -> dict[str, Any]:
+        return run(lambda o: o.reconnect_link(sign_in, config), check_connections=False)
 
     @server.tool(
         name="accept_event",
@@ -357,8 +408,8 @@ def create_mcp_server(
             "Call list_recent_activity and list_review_queue. List what is waiting for a "
             "decision first (title, when, where it came from, and for changes what "
             "changed), then what Selko already put on the calendar or updated. Call "
-            "get_account_status and mention any account that needs reconnecting. Do not "
-            "accept or reject anything."
+            "get_account_status; if all_good is false, lead with what needs the user "
+            "and include each reconnect_url. Do not accept or reject anything."
         )
 
     return server

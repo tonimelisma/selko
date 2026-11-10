@@ -60,6 +60,9 @@
   footer { margin: 10px 2px 0; color: var(--muted); font-size: 13px; display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
   a { color: inherit; }
   .empty { padding: 16px 4px; color: var(--muted); }
+  .alert { border: 1px solid var(--changed); border-radius: var(--radius); padding: 12px; margin: 0 0 10px; display: grid; gap: 8px; }
+  .alert p { margin: 0; }
+  .alert button { background: transparent; color: var(--ink); border: 1px solid var(--line); flex: none; }
   .skeleton { height: 92px; border-radius: var(--radius); background: var(--subtle); animation: pulse 1.4s ease-in-out infinite; }
   @keyframes pulse { 50% { opacity: .5; } }
   @media (prefers-reduced-motion: reduce) { .skeleton { animation: none; } }
@@ -172,6 +175,25 @@ function card(item, app) {
   return li;
 }
 
+const SIGN_IN = { google: "Sign in to Google", outlook: "Sign in to Microsoft" };
+function openButton(label, url, app) {
+  const button = el("button", { type: "button" }, label);
+  button.addEventListener("click", () => app.openLink({ url }));
+  return button;
+}
+// A lapsed sign-in is why the queue may be empty: say so before the cards.
+function alertBlock(alert, app) {
+  const box = el("section", { class: "alert", role: "alert" });
+  for (const item of alert.items || []) {
+    box.append(el("p", {}, item.problem));
+    const links = item.reconnect_url ? { [item.sign_in]: item.reconnect_url } : (item.connect_urls || {});
+    const actions = el("div", { class: "actions" });
+    for (const [signIn, url] of Object.entries(links)) actions.append(openButton(SIGN_IN[signIn] || "Sign in", url, app));
+    if (actions.childElementCount) box.append(actions);
+  }
+  return box;
+}
+
 const decided = [];
 function render(data, app) {
   appUrl = data.app_url || null;
@@ -182,8 +204,12 @@ function render(data, app) {
   if (data.change_count) parts.push(data.change_count + (data.change_count === 1 ? " change" : " changes"));
   root.append(el("header", {}, el("h1", {}, "Waiting for review"),
     el("span", { class: "counts" }, parts.join(" · "))));
+  const alert = data.connection_alert;
+  if (alert?.items?.length) root.append(alertBlock(alert, app));
   if (!items.length) {
-    root.append(el("div", { class: "empty" }, "Nothing to review. Selko will add new events here as emails arrive."));
+    root.append(el("div", { class: "empty" }, alert?.items?.length
+      ? "Nothing to review right now."
+      : "Nothing to review. Selko will add new events here as emails arrive."));
     return;
   }
   const list = el("ol");
