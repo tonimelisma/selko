@@ -140,9 +140,28 @@
 		});
 
 		loadData();
+		startRequestedReconnect();
 
 		return unsub;
 	});
+
+	/**
+	 * `?reconnect=google|outlook` is the durable link Claude (via Selko's MCP
+	 * connector) and reconnect prompts hand out: it starts that sign-in straight
+	 * away. The parameter is dropped first, so coming Back from the provider
+	 * does not start the sign-in a second time.
+	 */
+	async function startRequestedReconnect() {
+		const requested = new URLSearchParams(window.location.search).get('reconnect');
+		if (requested !== 'google' && requested !== 'outlook') return;
+		window.history.replaceState({}, '', window.location.pathname);
+		try {
+			await handleAuthorize(requested);
+		} catch (error) {
+			integrationError =
+				error instanceof Error && error.message ? error.message : $_('integrations.connectFailed');
+		}
+	}
 
 	async function loadData() {
 		isLoading = true;
