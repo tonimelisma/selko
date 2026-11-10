@@ -10,3 +10,8 @@ android/local.properties
 # Supabase's linked project ref. Without it the staging drill and Tier 2
 # verifier refuse in a worktree ("linked project ref is unknown").
 supabase/.temp/project-ref
+# The linked project's IPv4 session-pooler address. Without it the CLI falls
+# back to the direct host, which is IPv6-only, and the schema-compat prod lane
+# fails in every worktree with "IPv6 is not supported on your current network"
+# (2026-11-10). Holds the host and user, no password.
+supabase/.temp/pooler-url
