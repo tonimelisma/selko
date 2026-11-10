@@ -37,6 +37,7 @@ from selko.services.integrations import (
     complete_oauth_flow,
     granted_google_providers,
     initiate_oauth_flow,
+    oauth_callback_uri,
     save_oauth_credentials,
     save_provider_tokens,
 )
@@ -161,13 +162,6 @@ def _allowed_redirect_hosts(config: Config) -> set[str]:
     return hosts
 
 
-def _default_oauth_callback_uri(config: Config, provider: str = "gmail") -> str:
-    """Default OAuth callback URI for the selected provider."""
-    if provider == "outlook":
-        return f"{config.api_public_url}/integrations/microsoft/callback"
-    return f"{config.api_public_url}/integrations/google/callback"
-
-
 def _check_callback_rate_limit(request: Request) -> None:
     """Check IP-based rate limit for OAuth callback endpoint.
 
@@ -242,7 +236,7 @@ def _oauth_initiate_response(
     accept: str | None,
 ) -> RedirectResponse | JSONResponse:
     """Shared OAuth initiation for Gmail / Calendar."""
-    resolved_uri = redirect_uri or _default_oauth_callback_uri(config, provider)
+    resolved_uri = redirect_uri or oauth_callback_uri(config, provider)
 
     if not _validate_redirect_uri(resolved_uri, config):
         logger.warning(f"Invalid redirect_uri attempted: {resolved_uri}")

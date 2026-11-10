@@ -127,7 +127,7 @@ async def test_every_tool_is_annotated_and_reads_are_split_from_writes(mcp_confi
     assert set(by_name) == {
         "list_review_queue", "get_event", "list_calendar_events", "list_recent_activity",
         "get_account_status", "accept_event", "reject_event", "accept_change",
-        "reject_change", "check_email_now",
+        "reject_change", "check_email_now", "reconnect_account",
     }
     reads = {"list_review_queue", "get_event", "list_calendar_events",
              "list_recent_activity", "get_account_status"}

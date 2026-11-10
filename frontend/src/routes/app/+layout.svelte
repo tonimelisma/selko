@@ -13,6 +13,16 @@
 	let currentUser = $state(null);
 	let isLoading = $state(true);
 
+	/**
+	 * Sign-in keeps the deep link the user opened (an event, or a reconnect
+	 * link from Claude) and returns to it; login only honours same-origin paths.
+	 */
+	function loginPath() {
+		const here = window.location.pathname + window.location.search;
+		if (here === '/app' || !here.startsWith('/app')) return '/login';
+		return `/login?next=${encodeURIComponent(here)}`;
+	}
+
 	onMount(() => {
 		/** @type {string | null} */
 		let currentUid = null;
@@ -21,7 +31,7 @@
 		});
 		const unsubUser = user.subscribe((u) => {
 			currentUser = u;
-			if (!isLoading && !u) goto('/login');
+			if (!isLoading && !u) goto(loginPath());
 			const uid = u?.id || null;
 			if (uid !== currentUid) {
 				currentUid = uid;

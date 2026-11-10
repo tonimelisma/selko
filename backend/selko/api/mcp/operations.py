@@ -23,6 +23,12 @@ from zoneinfo import ZoneInfo
 
 from supabase import Client
 
+from selko.api.mcp.connections import (
+    OAUTH_BLOCKED_CODES,
+    SIGN_INS,
+    assess_connections,
+    reconnect_url,
+)
 from selko.services.events import (
     EventsError,
     apply_change_proposal,
@@ -41,6 +47,9 @@ _EVENT_COLUMNS = (
 )
 _WORK_ITEMS = "calendar_work_items(action, generation, status, failure_code)"
 _PROPOSALS = "event_change_proposals(id, kind, status, change_set, created_at)"
+# Inner-joined so PostgREST returns only events that have a pending proposal.
+_PENDING_PROPOSALS = "event_change_proposals!inner(id, kind, status, change_set, created_at)"
+_ACTIVE_RECOVERY = ("pending", "processing", "waiting")
 _SOURCES = (
     "event_sources(source_type, source_origin, created_at, "
     "emails(subject, from_email, from_name, date_sent))"
@@ -185,22 +194,42 @@ class SelkoOperations:
             try:
                 self._tz = ZoneInfo(name)
             except Exception:
+                logger.warning("mcp_unknown_timezone", extra={"timezone": name})
                 self._tz = ZoneInfo("UTC")
         return self._tz
 
-    def review_queue(self, limit: int) -> dict[str, Any]:
-        now = self._now()
-        rows = (
+    def _waiting_rows(self) -> list[dict[str, Any]]:
+        """New-lane events plus accepted events with a pending change.
+
+        Two targeted queries rather than every accepted event the user ever
+        had, filtered in Python: the accepted set only grows.
+        """
+        new = (
             self._db.table("events")
             .select(f"{_EVENT_COLUMNS}, {_SOURCES}, {_PROPOSALS}, {_WORK_ITEMS}")
-            .in_("review_status", ["pending_review", "active"])
-            .order("start_datetime")
+            .eq("review_status", "pending_review")
             .execute()
             .data
             or []
         )
+        changes = (
+            self._db.table("events")
+            .select(f"{_EVENT_COLUMNS}, {_SOURCES}, {_PENDING_PROPOSALS}, {_WORK_ITEMS}")
+            .eq("review_status", "active")
+            .eq("event_change_proposals.status", "pending")
+            .execute()
+            .data
+            or []
+        )
+        far_future = datetime.max.replace(tzinfo=timezone.utc)
+        return sorted(
+            new + changes, key=lambda row: _parse(row.get("start_datetime")) or far_future
+        )
+
+    def review_queue(self, limit: int) -> dict[str, Any]:
+        now = self._now()
         waiting = [
-            row for row in rows
+            row for row in self._waiting_rows()
             if _still_relevant(row, now)
             and (row.get("review_status") == "pending_review" or _pending_proposal(row))
         ]
@@ -298,32 +327,104 @@ class SelkoOperations:
             items.append(summary)
         return {"timezone": self.tz.key, "since_hours": since_hours, "items": items}
 
-    def account_status(self) -> dict[str, Any]:
+    def connection_health(self, frontend_url: str) -> dict[str, Any]:
+        """Every sign-in's state and what the user must do, if anything.
+
+        Four small reads with the caller's token; RLS scopes each to the user.
+        """
         # Explicit columns: this table also holds OAuth tokens.
         integrations = (
             self._db.table("integrations")
-            .select("provider, provider_email, status, updated_at")
+            .select("id, provider, provider_email, status, scopes")
             .neq("provider", "google_photos")
             .execute()
             .data
             or []
         )
+        # The security_invoker view, not the table: no leases or raw errors.
+        sync_health = (
+            self._db.table("email_sync_health")
+            .select(
+                "integration_id, consecutive_failures, last_error_code, last_success_at, "
+                "last_started_at, next_poll_at"
+            )
+            .execute()
+            .data
+            or []
+        )
+        blocked = (
+            self._db.table("calendar_work_items")
+            .select("provider, failure_code")
+            .eq("status", "blocked")
+            .in_("failure_code", list(OAUTH_BLOCKED_CODES))
+            .limit(500)
+            .execute()
+            .data
+            or []
+        )
+        recoveries = (
+            self._db.table("integration_recoveries")
+            .select("provider, status, remaining_count, completed_count")
+            .in_("status", list(_ACTIVE_RECOVERY))
+            .execute()
+            .data
+            or []
+        )
+        return assess_connections(
+            integrations, sync_health, blocked, recoveries,
+            frontend_url=frontend_url, now=self._now(),
+        )
+
+    def account_status(self, frontend_url: str) -> dict[str, Any]:
         queue = self.review_queue(limit=0)
         return {
             "timezone": self.tz.key,
-            "connections": [
-                {
-                    "provider": row.get("provider"),
-                    "account": row.get("provider_email"),
-                    "status": row.get("status"),
-                    "needs_reconnect": row.get("status") in {"expired", "revoked", "error"},
-                }
-                for row in integrations
-            ],
+            **self.connection_health(frontend_url),
             "waiting_for_review": {
                 "new": queue["new_count"],
                 "changes": queue["change_count"],
             },
+        }
+
+    def reconnect_link(self, sign_in: str, config: Any) -> dict[str, Any]:
+        """A direct provider sign-in link bound to this user, as Settings starts.
+
+        The same ``initiate_oauth_flow`` the REST routes call, with the same
+        callback, so the consent lands through the one existing code path.
+        """
+        if sign_in not in SIGN_INS:
+            raise OperationError("sign_in must be 'google' or 'outlook'.")
+        from selko.services.integrations import (
+            IntegrationError,
+            initiate_oauth_flow,
+            oauth_callback_uri,
+        )
+        from selko.services.outlook import OutlookError
+
+        settings_url = reconnect_url(config.frontend_url, sign_in)
+        try:
+            result = initiate_oauth_flow(
+                config=config,
+                provider=sign_in,
+                user_id=self._user_id,
+                redirect_uri=oauth_callback_uri(config, sign_in),
+            )
+        except (IntegrationError, OutlookError) as exc:
+            logger.error("mcp_reconnect_link_failed", extra={"sign_in": sign_in, "error": str(exc)})
+            raise OperationError(
+                f"Selko could not start the sign-in right now. Use {settings_url} instead."
+            ) from exc
+        label = "Google" if sign_in == "google" else "Microsoft"
+        return {
+            "sign_in": sign_in,
+            "sign_in_url": result["auth_url"],
+            "expires_in_minutes": 10,
+            "settings_url": settings_url,
+            "detail": (
+                f"Open sign_in_url to sign in to {label} and allow mail and calendar "
+                "access; Selko picks up where it stopped. The link works for 10 minutes; "
+                "settings_url does the same from Selko Settings and does not expire."
+            ),
         }
 
     # ---------------------------------------------------------------- writes
@@ -445,16 +546,22 @@ class SelkoOperations:
         }
 
     def request_sync(self) -> dict[str, Any]:
-        rows = (
+        mailboxes = (
             self._db.table("integrations")
             .select("id, provider, provider_email, status")
             .in_("provider", ["gmail", "outlook"])
-            .eq("status", "active")
             .execute()
             .data
             or []
         )
+        rows = [row for row in mailboxes if row.get("status") == "active"]
         if not rows:
+            if mailboxes:
+                lapsed = ", ".join(row.get("provider_email") or row["provider"] for row in mailboxes)
+                raise OperationError(
+                    f"The sign-in for {lapsed} has lapsed, so there is no mailbox Selko can "
+                    "check. Call reconnect_account to get a sign-in link."
+                )
             raise OperationError(
                 "No connected mailbox to check. Connect Gmail or Outlook in Selko settings."
             )
@@ -485,4 +592,6 @@ def _nudge_calendar_worker() -> None:
         if worker_pool is not None:
             worker_pool.nudge()
     except Exception:
-        pass
+        # The decision is committed; the worker's safety-net poll still picks
+        # it up. Log so a nudge that never works is visible.
+        logger.warning("mcp_calendar_nudge_failed", exc_info=True)

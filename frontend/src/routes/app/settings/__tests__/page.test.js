@@ -308,6 +308,42 @@ describe('Settings Page', () => {
 		expect(within(prompt).getByRole('button', { name: 'Reconnect Outlook' })).toBeEnabled();
 	});
 
+	it('starts the sign-in a ?reconnect= link asks for, once', async () => {
+		window.history.replaceState({}, '', '/app/settings?reconnect=google');
+		mockInitiateGoogleAuth.mockResolvedValue(undefined);
+		mockFetchIntegrations.mockResolvedValue({ data: [], error: null });
+
+		render(SettingsPage);
+
+		await waitFor(() => expect(mockInitiateGoogleAuth).toHaveBeenCalledTimes(1));
+		expect(mockInitiateOutlookAuth).not.toHaveBeenCalled();
+		// Dropped before leaving, so Back from Google does not start it again.
+		expect(window.location.search).toBe('');
+	});
+
+	it('ignores a ?reconnect= value that is not a sign-in', async () => {
+		window.history.replaceState({}, '', '/app/settings?reconnect=photos');
+		mockFetchIntegrations.mockResolvedValue({ data: [], error: null });
+
+		render(SettingsPage);
+
+		await screen.findByText('Settings');
+		expect(mockInitiateGoogleAuth).not.toHaveBeenCalled();
+		expect(mockInitiateOutlookAuth).not.toHaveBeenCalled();
+		window.history.replaceState({}, '', '/');
+	});
+
+	it('shows why a ?reconnect= sign-in could not start', async () => {
+		window.history.replaceState({}, '', '/app/settings?reconnect=outlook');
+		mockInitiateOutlookAuth.mockRejectedValue(new Error('Outlook unavailable'));
+		mockFetchIntegrations.mockResolvedValue({ data: [], error: null });
+
+		render(SettingsPage);
+
+		expect(await screen.findByText('Outlook unavailable')).toBeInTheDocument();
+		window.history.replaceState({}, '', '/');
+	});
+
 	it('shows the Outlook calendar prompt alongside Google calendars', async () => {
 		mockFetchIntegrations.mockResolvedValue({
 			data: [

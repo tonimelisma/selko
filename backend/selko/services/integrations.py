@@ -683,6 +683,13 @@ def _clean_expired_oauth_states() -> None:
         logger.warning(f"Failed to clean up expired OAuth states: {e}")
 
 
+def oauth_callback_uri(config: Config, provider: str) -> str:
+    """The API's own OAuth callback for a provider's consent."""
+    if provider == "outlook":
+        return f"{config.api_public_url}/integrations/microsoft/callback"
+    return f"{config.api_public_url}/integrations/google/callback"
+
+
 def initiate_oauth_flow(
     config: Config,
     provider: str,
