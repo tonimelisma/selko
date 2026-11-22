@@ -49,6 +49,14 @@ fi
 
 export PATH="$HOME/.local/node/bin:$HOME/.local/bin:/usr/local/bin:$PATH"
 
+# The cloud image sets UV_NATIVE_TLS (trust the proxy's CA), which current uv
+# deprecates with a warning on every command. UV_SYSTEM_CERTS is the same
+# setting under its new name.
+if [[ -n "${UV_NATIVE_TLS:-}" ]]; then
+	export UV_SYSTEM_CERTS="$UV_NATIVE_TLS"
+	unset UV_NATIVE_TLS
+fi
+
 say() { printf '%s\n' "$*" | tee -a "$LOG"; }
 step() { printf '[%3ss] %s\n' "$((SECONDS - START))" "$*" | tee -a "$LOG"; }
 remaining() { echo $((BUDGET_SECONDS - (SECONDS - START))); }
@@ -58,6 +66,9 @@ persist_path() {
 	# SessionStart hook hands environment to them.
 	if [[ -n "${CLAUDE_ENV_FILE:-}" ]]; then
 		echo "export PATH=\"$HOME/.local/node/bin:$HOME/.local/bin:/usr/local/bin:\$PATH\"" >>"$CLAUDE_ENV_FILE"
+		if [[ -n "${UV_SYSTEM_CERTS:-}" ]]; then
+			echo "export UV_SYSTEM_CERTS=\"$UV_SYSTEM_CERTS\"; unset UV_NATIVE_TLS" >>"$CLAUDE_ENV_FILE"
+		fi
 	fi
 }
 
@@ -80,8 +91,8 @@ ensure_uv() {
 			python3 -m pip install --user -q uv >>"$LOG" 2>&1
 	fi
 	step "uv sync (Python $(cat .python-version 2>/dev/null))"
-	# uv fetches the interpreter pinned in .python-version from GitHub, which
-	# the Limited network allows.
+	# uv fetches the interpreter pinned in .python-version from GitHub. Verified
+	# on an unrestricted cloud network only; the Limited policy is untested.
 	uv sync --frozen >>"$LOG" 2>&1
 }
 
@@ -191,7 +202,10 @@ start_supabase() {
 	# Foreground. Pull failures on the default registry (public.ecr.aws) are
 	# retried against Docker Hub and then GHCR, in case the session's network
 	# policy allows only some of them.
-	supabase_healthy && return 0
+	if supabase_healthy; then
+		echo "local Supabase already healthy; nothing to start"
+		return 0
+	fi
 	local registry
 	for registry in "" docker.io ghcr.io; do
 		echo "supabase start (registry: ${registry:-default})"

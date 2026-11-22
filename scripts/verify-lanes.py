@@ -77,13 +77,38 @@ def load_lanes(path: Path) -> dict[str, dict]:
         return tomllib.load(handle)["lanes"]
 
 
+def _glob_pattern(pattern: str) -> str:
+    """Make a trailing ``**`` match files on every Python version.
+
+    Before Python 3.13, ``Path.glob("dir/**")`` yields only directories, which
+    ``_iter_input_files`` then discards -- so ``frontend/src/**`` fingerprinted
+    zero files on Python 3.12 and the lane reused a stale pass whatever changed.
+    """
+    return f"{pattern}/*" if pattern.endswith("**") else pattern
+
+
 def _iter_input_files(patterns: list[str]) -> list[Path]:
     seen: set[Path] = set()
     for pattern in patterns:
-        for match in ROOT.glob(pattern):
+        for match in ROOT.glob(_glob_pattern(pattern)):
             if match.is_file():
                 seen.add(match)
     return sorted(seen)
+
+
+def unmatched_inputs(lane: dict) -> list[str]:
+    """Declared input patterns that match no file.
+
+    A pattern naming a file that does not exist (renamed, deleted, or never
+    there) silently drops out of the fingerprint, so the lane is reused across
+    changes it was meant to notice. That is a gate that cannot go red; treat it
+    as a broken declaration instead.
+    """
+    return [
+        pattern
+        for pattern in lane["inputs"]
+        if not any(match.is_file() for match in ROOT.glob(_glob_pattern(pattern)))
+    ]
 
 
 def fingerprint(lane: dict) -> tuple[str, int]:
@@ -299,8 +324,27 @@ def main() -> int:
         # cache during the fix/revert cycles where it matters most.
         previous = lane_state.get("results", {}).get(fp, {})
         reusable = not args.force and previous.get("status") == "pass"
+        stale_inputs = unmatched_inputs(lane)
 
-        if reusable:
+        if stale_inputs:
+            # Checked before reuse: a fingerprint missing a declared input is
+            # exactly the one that would be reused when it should not be.
+            reason = "input pattern(s) match no files: " + ", ".join(stale_inputs)
+            record = {
+                "lane": name,
+                "gate": lane["gate"],
+                "status": "fail",
+                "executed": False,
+                "reason": f"{reason} -- fix scripts/lanes.toml",
+                "duration_seconds": 0.0,
+                "fingerprint": fp,
+                "input_files": file_count,
+                "run_id": run_id,
+                "git_sha": sha,
+                "timestamp": _now(),
+            }
+            print(f"BLOCKED -- {reason} (fix scripts/lanes.toml)")
+        elif reusable:
             record = {
                 "lane": name,
                 "gate": lane["gate"],

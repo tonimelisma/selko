@@ -200,9 +200,17 @@ jobs:
 
       - name: State what this job did not verify
         if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
         run: |
-          echo "Verified here: staging migrations applied, deploy hook fired,"
-          echo "  /health served the pushed revision, root health assertion."
+          # Runs on failure too, so it must not claim what a failed step skipped.
+          if [ "$JOB_STATUS" = "success" ]; then
+            echo "Verified here: staging migrations applied, deploy hook fired,"
+            echo "  /health served the pushed revision, root health assertion."
+          else
+            echo "Verified here: NOTHING. An earlier step ended '$JOB_STATUS'; see"
+            echo "  its log. Staging may not have this revision at all."
+          fi
           echo "NOT verified here: worker leases, generation fencing, expiry"
           echo "  reclaim, LISTEN/NOTIFY. Those need a live worker on the"
           echo "  Supavisor session pooler and are proven by"

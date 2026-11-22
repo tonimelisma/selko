@@ -19,10 +19,20 @@ description = "Tier 1: migrations applied to local Postgres, unit + integration"
 command = "./scripts/verify.sh backend"
 inputs = [
     "backend/**/*.py",
+    # Non-Python files the suite reads: the MCP widget the API serves, email
+    # fixtures, the skip budget, and the package manifests that build selko.
+    "backend/selko/api/mcp/**",
+    "backend/tests/fixtures/**",
+    "backend/tests/skip_budget.toml",
+    "backend/pyproject.toml",
     "cli/**/*.py",
+    "cli/pyproject.toml",
     "supabase/migrations/**/*.sql",
+    # Configures the local stack the integration tests run against.
+    "supabase/config.toml",
     "pyproject.toml",
     "uv.lock",
+    "scripts/verify.sh",
 ]
 
 [lanes.schema-compat]
@@ -64,9 +74,17 @@ description = "Web unit tests and svelte-check"
 command = "./scripts/verify.sh frontend"
 inputs = [
     "frontend/src/**",
+    "frontend/tests/fixtures/**",
     "frontend/package.json",
-    "frontend/tsconfig.json",
-    "frontend/tailwind.config.js",
+    "frontend/package-lock.json",
+    # svelte-check reads jsconfig.json; there is no tsconfig.json or
+    # tailwind.config.js (themes live in src/app.css).
+    "frontend/jsconfig.json",
+    "frontend/svelte.config.js",
+    "frontend/vite.config.js",
+    "frontend/vitest.config.js",
+    "frontend/vitest.setup.js",
+    "scripts/verify.sh",
 ]
 
 [lanes.ios]

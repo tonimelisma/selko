@@ -195,3 +195,70 @@ def test_every_worktree_shares_one_lock(tmp_path):
 
     assert _lock_dir_for(main) == _lock_dir_for(other)
     assert _lock_dir_for(main).endswith("selko-verify-locks")
+
+
+def _load_runner():
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("verify_lanes_runner", RUNNER)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_a_trailing_double_star_fingerprints_the_files_under_it(probe_file, tmp_path):
+    """`dir/**` must see the files in dir on every Python version.
+
+    Before Python 3.13, Path.glob("dir/**") yields directories only, which the
+    runner discards. `frontend/src/**` therefore fingerprinted zero files on
+    Python 3.12, and the frontend lane reused its last pass whatever changed.
+    """
+    runner = _load_runner()
+    assert runner._glob_pattern("frontend/src/**") == "frontend/src/**/*"
+
+    scratch_dir = probe_file.parent.relative_to(ROOT).as_posix()
+    lanes = tmp_path / "lanes.toml"
+    lanes.write_text(
+        "[lanes.probe]\n"
+        'gate = "prod"\n'
+        'description = "probe"\n'
+        'command = "true"\n'
+        f'inputs = ["{scratch_dir}/**"]\n'
+    )
+    first = _run(lanes, tmp_path)
+    assert "pass" in first.stdout, first.stdout
+
+    probe_file.write_text("changed\n")
+    second = _run(lanes, tmp_path)
+    assert "reused" not in second.stdout.splitlines()[0], second.stdout
+
+
+def test_an_input_pattern_that_matches_nothing_is_red(probe_file, tmp_path):
+    """A declared input that does not exist silently leaves the fingerprint.
+
+    The frontend lane declared tsconfig.json and tailwind.config.js, neither of
+    which exists, so edits to the files that replaced them never invalidated it.
+    """
+    lanes = tmp_path / "lanes.toml"
+    lanes.write_text(
+        "[lanes.probe]\n"
+        'gate = "prod"\n'
+        'description = "probe"\n'
+        'command = "true"\n'
+        f'inputs = ["{probe_file.relative_to(ROOT).as_posix()}", "no/such/file.json"]\n'
+    )
+    result = _run(lanes, tmp_path)
+    assert result.returncode == 1, result.stdout
+    assert "no/such/file.json" in result.stdout, result.stdout
+    assert "match no files" in result.stdout, result.stdout
+
+
+def test_the_repository_lanes_declare_only_inputs_that_exist():
+    runner = _load_runner()
+    lanes = runner.load_lanes(ROOT / "scripts" / "lanes.toml")
+    missing = {
+        name: unmatched
+        for name, lane in lanes.items()
+        if (unmatched := runner.unmatched_inputs(lane))
+    }
+    assert missing == {}, f"scripts/lanes.toml names inputs that match nothing: {missing}"
