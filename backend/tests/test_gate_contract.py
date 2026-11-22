@@ -191,7 +191,7 @@ def test_sourcing_the_gate_does_not_run_it(tmp_path):
     assert not marker.exists()
 
 
-WORKFLOW = ROOT / ".github" / "workflows" / "test.yml"
+WORKFLOWS = sorted((ROOT / ".github" / "workflows").glob("*.yml"))
 
 # A shell line that is really a misplaced YAML env entry: NAME: ${{ ... }}
 _STRAY_ENV_IN_SHELL = re.compile(r"^\s*[A-Z][A-Z0-9_]*:\s*\$\{\{")
@@ -212,16 +212,18 @@ def test_no_workflow_step_has_env_entries_stranded_inside_its_script():
     """
     import yaml
 
-    workflow = yaml.safe_load(WORKFLOW.read_text())
+    assert WORKFLOWS, "no workflow files found"
     offenders = []
-    for job_name, job in (workflow.get("jobs") or {}).items():
-        for step in job.get("steps") or []:
-            script = step.get("run")
-            if not isinstance(script, str):
-                continue
-            for line in script.splitlines():
-                if _STRAY_ENV_IN_SHELL.match(line):
-                    offenders.append(f"{job_name} / {step.get('name')}: {line.strip()}")
+    for path in WORKFLOWS:
+        workflow = yaml.safe_load(path.read_text())
+        for job_name, job in (workflow.get("jobs") or {}).items():
+            for step in job.get("steps") or []:
+                script = step.get("run")
+                if not isinstance(script, str):
+                    continue
+                for line in script.splitlines():
+                    if _STRAY_ENV_IN_SHELL.match(line):
+                        offenders.append(f"{path.name} / {job_name} / {step.get('name')}: {line.strip()}")
     assert not offenders, (
         "env entries stranded inside a run: block — they will execute as shell: "
         f"{offenders}"

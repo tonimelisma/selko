@@ -114,7 +114,13 @@ fi
 
 echo "==> Copying and resizing screenshots..."
 cp "$TMP_DIR"/Pictures/*.png "$SCREENSHOT_DIR/"
-sips --resampleHeight 1920 "$SCREENSHOT_DIR"/android-*.png
+# sips on the Mac; ImageMagick on Linux (ops.yml's android-emulator job).
+if command -v sips >/dev/null; then
+    sips --resampleHeight 1920 "$SCREENSHOT_DIR"/android-*.png
+else
+    command -v mogrify >/dev/null || fail "neither sips nor ImageMagick's mogrify is installed"
+    mogrify -resize x1920 "$SCREENSHOT_DIR"/android-*.png
+fi
 
 rm -rf "$TMP_DIR"
 echo "==> Android screenshots saved to docs/screenshots/"

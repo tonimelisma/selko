@@ -33,13 +33,32 @@ inputs = [
     "pyproject.toml",
     "uv.lock",
     "scripts/verify.sh",
+    # Read by test_ops.py / test_gate_contract.py: the workflow structure and
+    # the ops payload contract are asserted by this suite.
+    ".github/workflows/*.yml",
+    "scripts/ops.py",
 ]
 
 [lanes.schema-compat]
 gate = "prod"
-description = "Schema and code agree (R5 gate)"
-command = "./scripts/assert-schema-code-compat.sh --linked"
-inputs = ["supabase/migrations/**/*.sql", "backend/selko/**/*.py"]
+description = "Production would accept this tree's migrations (supabase db push --dry-run, in GitHub Actions)"
+# Postgres (TCP 5432/6543) is unreachable from a cloud session and the
+# production password lives only in the repository's Actions secrets, so the
+# check runs as ops.yml's schema-compat operation. The command dispatches it and
+# exits with the run's conclusion -- the same command on the Mac.
+#
+# pre-deploy, not the R5 "everything is applied" assertion: before a deploy the
+# new migrations are by definition not applied yet, so R5 can only be green
+# after the push. deploy-production runs R5 itself right after `db push`.
+# Depends on production's state as well as the tree; use --force for a fresh
+# reading after something else changed production.
+command = "./scripts/ops.py dispatch schema-compat target=production when=pre-deploy"
+inputs = [
+    "supabase/migrations/**/*.sql",
+    "backend/selko/**/*.py",
+    "scripts/ops.py",
+    ".github/workflows/ops.yml",
+]
 
 [lanes.migration-order]
 gate = "prod"
@@ -108,6 +127,15 @@ inputs = [
 
 [lanes.android]
 gate = "mobile"
-description = "Android unit tests"
+description = "Android unit tests (JVM; runs in a cloud session)"
 command = "./android/gradlew -p android testDebugUnitTest"
 inputs = ["android/**/*.kt", "android/**/*.kts"]
+
+[[lanes.android.requires]]
+name = "android-sdk"
+check = "grep -q '^sdk.dir=' android/local.properties 2>/dev/null || test -n \"${ANDROID_HOME:-}\""
+remedy = "no Android SDK: in a cloud session run scripts/cloud-setup.sh --android (the SessionStart hook starts it in the background); on the Mac install it from Android Studio"
+
+# Emulator UI tests and screenshots need KVM, which a cloud VM lacks. They run
+# in ops.yml's android-emulator operation on a GitHub-hosted runner:
+#   ./scripts/ops.py dispatch android-emulator ref=<branch> --download <dir>

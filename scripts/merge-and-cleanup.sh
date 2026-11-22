@@ -33,18 +33,20 @@ PR="$1"
 # Resolve the main working tree (listed first by `git worktree list`).
 MAIN_REPO=$(git worktree list --porcelain | awk '/^worktree /{print $2; exit}')
 
+# REST, not `gh pr view/merge`: those use GraphQL, which a cloud session's
+# GitHub proxy refuses (403). `gh api` REST works the same on the Mac.
+REPO=$(git -C "$MAIN_REPO" remote get-url origin | sed -E 's#\.git$##; s#.*[/:]([^/]+/[^/]+)$#\1#')
+
 # Capture the PR's branch BEFORE merging — the remote branch is deleted on merge.
-PR_BRANCH=$(gh pr view "$PR" --json headRefName -q '.headRefName')
+PR_BRANCH=$(gh api "repos/${REPO}/pulls/${PR}" --jq '.head.ref')
 echo "Merging PR #${PR} (branch: ${PR_BRANCH})..."
 
-# 1. Squash-merge. Do NOT wait for CI. Do NOT pass --delete-branch: gh would
-#    also try to delete the LOCAL branch as part of this command, which fails
-#    (silently, without aborting) because it's checked out in the feature
-#    worktree below — that partial failure is what left the worktree/branch
-#    cleanup in an inconsistent state. The remote branch doesn't need it
-#    either: this repo has "Automatically delete head branches" enabled, so
-#    GitHub deletes the remote branch itself once the merge lands.
-gh pr merge "$PR" --squash
+# 1. Squash-merge. Do NOT wait for CI. Never delete the remote branch: this
+#    repo has "Automatically delete head branches" enabled, so GitHub deletes
+#    it once the merge lands (and a cloud session's proxy refuses ref deletes).
+PR_TITLE=$(gh api "repos/${REPO}/pulls/${PR}" --jq '.title')
+gh api -X PUT "repos/${REPO}/pulls/${PR}/merge" -f merge_method=squash \
+    -f commit_title="${PR_TITLE} (#${PR})" --jq '.message'
 
 # Cloud sessions (CLAUDE_CODE_REMOTE=true) work in a single throwaway clone with
 # the PR branch checked out in it and no worktrees, so "fast-forward main and

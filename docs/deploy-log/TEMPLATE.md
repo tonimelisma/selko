@@ -10,7 +10,8 @@
 ## Pre-deploy evidence
 - **Verification run id:** (`.verify/runs/<id>.json`)
 - **Prod lanes green:** yes / no — if no, why deploying anyway
-- **Rehearsal:** (`scripts/rehearse_cutover.py --faithful`) predicted vs actual
+- **Rehearsal:** (`scripts/ops.py dispatch rehearse-cutover`, run URL) predicted vs actual
+- **Deploy run:** (`scripts/ops.py dispatch deploy-production …` run URL; its last step is the T+0 health check)
 - **Affected table row counts:**
 
 ## Observation

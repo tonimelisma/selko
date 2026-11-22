@@ -156,14 +156,20 @@ files, claiming review comments, or making other implementation writes.
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
 │  Source code (backend/, frontend/src/, ios/, android/, cli/)           │
-│    → MUST use worktree + feature branch + PR                           │
+│    → MUST use a feature branch + PR                                    │
+│      cloud session: in its own clone (no worktree)                     │
+│      Mac: in a worktree                                                │
 │                                                                         │
 │  Config files (.env, docs/, CLAUDE.md, scripts/, supabase/)            │
-│    → CAN edit directly in main repo                                    │
+│    → Mac: CAN edit directly in main repo                               │
+│      cloud session: session branch + PR like everything else           │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Why:** Multiple AI agents work simultaneously. Worktrees isolate each task. PRs ensure CI runs before merging.
+**Why:** Multiple AI agents work simultaneously. Each cloud session has a
+private clone; on the Mac, worktrees isolate each task. PRs ensure CI runs
+before merging. The worktree steps below apply to the Mac only — a cloud
+session follows "Cloud sessions" instead.
 
 ### Naming
 
@@ -178,7 +184,7 @@ Types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`
 
 See `docs/parallel-agents.md` for the full pre-work checklist (sync, create worktree, copy env files, install deps).
 
-> **CRITICAL:** After setup, your working directory MUST be the worktree (`~/Development/selko-<type>-<task>/`). All commands run from there. If a Bash command is rejected, you're probably in the wrong directory — verify with `pwd`.
+> **CRITICAL (Mac):** After setup, your working directory MUST be the worktree (`~/Development/selko-<type>-<task>/`). All commands run from there. If a Bash command is rejected, you're probably in the wrong directory — verify with `pwd`.
 
 ### Enforcement
 
@@ -192,8 +198,9 @@ BLOCKED: Cannot edit source code in the main repository.
 ## Cloud sessions (claude.ai/code)
 
 A cloud session (`CLAUDE_CODE_REMOTE=true`) runs in an Ubuntu 24.04 x86_64 VM
-with a throwaway clone of this repo. Everything above still applies, with these
-differences.
+with a throwaway clone of this repo. **This is the default way to work**: the
+Mac is used only for what needs macOS/Xcode. Everything above still applies,
+with these differences.
 
 **Setup is automatic.** The SessionStart hook `scripts/cloud-setup.sh` (a no-op
 anywhere else) installs uv + Python 3.14, the pinned Supabase CLI, jq/lsof, the
@@ -201,9 +208,10 @@ frontend's npm deps, points Playwright at the preinstalled Chrome
 (`$CHROME_PATH`), sets `core.hooksPath=.githooks`, starts `dockerd` and
 `supabase start` (Studio/analytics excluded), and writes `.env` and
 `frontend/.env` holding **only the local Supabase demo keys**, a throwaway
-test-user password and labelled non-functional placeholders for the LLM key
-and OAuth client IDs (routes build the gateway and sign-in URL before
-deciding anything; no test reaches a provider with them). Image pulls run
+test-user password and labelled non-functional placeholders for the OAuth
+client IDs and for any LLM key the environment does not provide (routes build
+the gateway and sign-in URL before deciding anything; no test reaches a
+provider with them). It also starts the Android SDK install in the background. Image pulls run
 detached, so the stack may still be coming up when the session starts:
 `scripts/cloud-setup.sh --status` says what is ready, `scripts/cloud-setup.sh
 --db` finishes it in the foreground. Full log: `.verify/cloud-setup.log`.
@@ -222,32 +230,50 @@ its own session branch (`branch/<name>`, same commit as `main`), so the guard
 allows edits from the start; push to that branch. `merge-and-cleanup.sh` moves
 the clone onto the merged `main` instead of removing a worktree.
 
-**Runs in the VM, same commands as on the Mac:**
+**Where each lane and task runs.** Everything runs from the cloud session
+except what is physically macOS. Work that needs Postgres over TCP (5432/6543
+is refused from the VM), a hosted-database password, the Render deploy hooks
+or KVM is an **operation** of `.github/workflows/ops.yml`, started by
+`repository_dispatch` through `scripts/ops.py` — which validates a typed
+payload, dispatches, waits for the run and exits with its conclusion, printing
+each job's result and the tail of a failed job's log. Run conclusions,
+check-runs and job logs are readable over REST from the VM (verified
+2026-11-22: `actions/runs`, `actions/runs/<id>/jobs`, `actions/jobs/<id>/logs`,
+`commits/<sha>/check-runs`). The repo is public, so those logs are public:
+production-reading steps print counts, versions and migration names, and pipe
+through `scripts/ops.py redact` (UUIDs, emails).
 
-| Lane | Command | Notes |
+| Lane / task | Where | Command |
 |---|---|---|
-| backend | `./scripts/verify.sh backend --accept-stale-gmail-token` (or `ACCEPT_STALE_GMAIL_TOKEN=1 ./scripts/verify-lanes.py --gate prod`) | Real local Postgres in Docker. The flag records the `real-gmail-token-unavailable` degradation, as on the Mac while staging is paused. Unit + integration were green this way in an Ubuntu 24.04 container |
-| frontend | `./scripts/verify.sh frontend` | Needs Node ≥ 22.12: on older Node, npm silently skips rolldown's native binding and the build fails with `Cannot find module '@rolldown/binding-linux-x64-gnu'`. Setup installs Node 22.12 into `~/.local/node` when the VM's is older |
-| migration-order | `./scripts/check-migration-order.sh` | |
-| web screenshots | `./scripts/capture-all-screenshots.sh web` | Headless Chrome for Testing via `$CHROME_PATH` |
+| backend (Tier 1) | VM | `./scripts/verify.sh backend --accept-stale-gmail-token` (or `ACCEPT_STALE_GMAIL_TOKEN=1 ./scripts/verify-lanes.py --gate prod`). Real local Postgres in Docker; the flag records the `real-gmail-token-unavailable` degradation while staging is paused |
+| frontend | VM | `./scripts/verify.sh frontend`. Needs Node ≥ 22.12 (older Node silently skips rolldown's native binding: `Cannot find module '@rolldown/binding-linux-x64-gnu'`); setup installs 22.12 into `~/.local/node` when needed |
+| migration-order | VM | `./scripts/check-migration-order.sh` |
+| web screenshots | VM | `./scripts/capture-all-screenshots.sh web` (Chrome for Testing via `$CHROME_PATH`) |
+| android (unit, JVM) | VM | `./android/gradlew -p android testDebugUnitTest`. JDK 21 is preinstalled; the hook installs the SDK into `~/android-sdk` in the background (`scripts/cloud-setup.sh --android`, ~10 s). First run ≈ 2.5 min (Gradle + deps), measured 2026-11-22 |
+| Android emulator UI tests + screenshots | Actions (KVM) | `./scripts/ops.py dispatch android-emulator ref=<pushed branch> --download <dir>` — `connectedDebugAndroidTest`, then `capture-all-screenshots.sh android` against a local Supabase on the runner; the 12 PNGs come back as the `android-screenshots` artifact |
+| schema-compat (prod gate) | Actions | `./scripts/ops.py dispatch schema-compat` (what the lane runs): `supabase db push --dry-run` against production must succeed and lists what a deploy would apply. `when=post-deploy` runs R5 (`assert-schema-code-compat.sh --linked`) |
+| production deploy | Actions | `./scripts/ops.py dispatch deploy-production sha=<main's tip> confirm="deploy <sha>"` — only after the owner's explicit yes for that SHA (see "Ship it") |
+| cutover rehearsal | Actions | `./scripts/ops.py dispatch rehearse-cutover` (`faithful=false` for the status-shape-only variant). Scratch database on the runner's local Supabase; reads production with the read-only URL |
+| review-queue repair | Actions | dry run: `./scripts/ops.py dispatch repair-review-queue --payload-file <request.json>` with `{"manifest": {...}}`. Apply adds `"apply": true, "confirm_user": "<uuid>", "confirm": "apply <uuid>"` — and needs the owner's explicit yes first. The reverse-operation artifact is kept 7 days |
+| Tier 2 (staging) | Actions | `./scripts/ops.py dispatch staging-tier2` (`verify-staging.sh` + worker drill). **Staging is paused (owner decision)**, so this is red today; the push-triggered `deploy-staging` job reports "paused, nothing verified" instead of failing every push |
+| prod-health (observe), deploy-log windows | VM | `./scripts/check-production-health.sh` (`api.selkoapp.com` is reachable from the VM) |
+| Supabase Management API / MCP | VM | `api.supabase.com` with the network secret below, e.g. `./scripts/supabase-project-status.sh <ref>` |
+| Render API | VM | `curl https://api.render.com/v1/services` with the network secret below (deploys stay in `deploy-production`) |
+| Sentry synthetic | VM | `SMOKE_SENTRY_DSN` env var, then `uv run python scripts/smoke-ingestion.py --base-url https://api.selkoapp.com --check-sentry` |
+| LLM evals / real-model tests | VM, "selko" environment | `uv run python -m backend.tests.eval.run_eval --fixture <category/name>` (or `--all --all-operations`, per `docs/evals-process.md`); `uv run pytest backend/tests/<file> --run-llm`. Needs the provider keys as environment variables (Owner setup) |
+| iOS | Mac (Xcode) | below |
 
-**Needs Toni's credentials — red in the VM until he adds them.** Credentials
-never go in environment variables (anyone using the environment can read
-them) and are never committed. They go in the cloud environment's **network
-secrets**, which Anthropic's proxy adds as a header to requests for a listed
-host; Toni sets them in the environment UI. A lane that cannot reach its
-target is red, never skipped.
-
-| Lane / task | Host | Header | Without it |
-|---|---|---|---|
-| `prod-health` (observe), deploy-log windows | `api.selkoapp.com` | none — add the host to the allowed network list | red: host not reachable |
-| production deploy (`gh workflow run test.yml …`) | `api.github.com` | `Authorization: Bearer <fine-grained PAT, Actions: write on tonimelisma/selko>` | the session's git access pushes and opens PRs but cannot dispatch workflows |
-| `schema-compat` | — | — | **stays on the Mac**: it reads migrations over Postgres (TCP 5432 to the Supavisor pooler) with the production DB password, and network secrets only reach HTTPS |
-| Tier 2 `verify.sh staging` | — | — | **stays on the Mac** for the same reason, plus staging is paused |
-
-Everything that needs a hosted database password, a production migration
-push, or `.env.test`/`.env.production` runs on the Mac (in the main repo,
-through Latchkey `shell_run`), never in the VM.
+**LLM keys are the one credential kept as environment variables** (owner
+decision), in the dedicated personal "selko" cloud environment. setup never
+copies one into a file: `.env` gets a placeholder only for a key the
+environment does *not* provide, and a placeholder left from an earlier session
+is dropped once the key appears (the integration conftest reloads `.env` with
+`override=True`, so a placeholder would otherwise replace the real key).
+**Claude Code removes `ANTHROPIC_API_KEY` from the shells it starts**, so that
+key is stored as `SELKO_ANTHROPIC_API_KEY` and mapped back by reference in
+`CLAUDE_ENV_FILE`. Every other credential is a **network secret** (the proxy
+adds the header to requests for its host) or a GitHub Actions secret — never an
+environment variable, never committed.
 
 **iOS (no Xcode in the VM) — through the Latchkey connector on Toni's Mac.**
 Commit and push the branch, then:
@@ -263,6 +289,9 @@ shell_run (Toni's Mac), keep_minutes: 30:
     2>&1 | grep -E "Executed|error:|\*\* TEST" | tail -15;
   rc=$?; rm -rf "$LATCHKEY_SCRATCH"/{dd,selko,TestResults.xcresult}; exit $rc
 ```
+
+A session without the Latchkey connector pushes the branch and hands this
+command to the coordinating session (or Toni), which runs it and reports back.
 
 - Each `shell_run` has its own scratch folder, moved to the Trash when the
   command ends — clone and test in **one** command (or pass `keep_minutes`).
@@ -291,9 +320,60 @@ shell_run (Toni's Mac), keep_minutes: 30:
 - The pre-commit hook does not demand iOS evidence in a cloud session (there
   is no Xcode to produce it); the Mac run above is the gate, before merge.
 
-**Android:** no emulator (the VM has no KVM) and no Android SDK is installed by
-setup. Unit tests and screenshots stay on the Mac (Latchkey `shell_run`,
-`./android/gradlew -p android testDebugUnitTest` in a scratch clone).
+**GitHub from the VM.** `gh api` REST works (pulls, merges, check-runs,
+issues, `repos/<this repo>/dispatches`); GraphQL is refused, so `gh pr
+create/list/view/merge` fail — use `gh api repos/tonimelisma/selko/pulls …`.
+Pushing tags, deleting refs, releases, repository settings and Actions
+secrets/variables are refused too; anything of that kind belongs in a
+workflow. Merged branches are deleted by GitHub ("Automatically delete head
+branches").
+
+### Owner setup (Toni only)
+
+Values are never handled by an agent. Each item names where it goes.
+
+**Cloud environment "selko"** (claude.ai → environment settings; personal):
+
+- *Environment variables* — LLM keys config.py reads, only those you use:
+  `SELKO_ANTHROPIC_API_KEY` (the Anthropic key; see above), `GEMINI_API_KEY`,
+  `OPENAI_API_KEY`, `XAI_API_KEY`, `META_MODEL_API_KEY` (or `META_API_KEY` /
+  `MODEL_API_KEY`), `MOONSHOT_API_KEY`, `ZAI_API_KEY` (or `ZHIPU_API_KEY`),
+  `DEEPSEEK_API_KEY`, `ALIBABA_API_KEY`, `MINIMAX_API_KEY`, `TINKER_API_KEY`;
+  plus `SMOKE_SENTRY_DSN` (a DSN for the synthetic, not production's).
+- *Network secrets* — `api.supabase.com`: `Authorization: Bearer <Supabase
+  personal access token>`; `api.render.com`: `Authorization: Bearer <Render
+  API key>`.
+- *Allowed hosts*, if the environment is ever switched from unrestricted to
+  limited: `api.selkoapp.com`, `api.supabase.com`, `api.render.com`, Sentry's
+  ingest host from the DSN, the Android/Gradle hosts `dl.google.com`,
+  `maven.google.com`, `services.gradle.org` (redirects to `github.com`),
+  `repo.maven.apache.org`, `plugins.gradle.org`; the LLM hosts
+  `generativelanguage.googleapis.com`, `api.openai.com`, `api.x.ai`,
+  `api.meta.ai`, `api.moonshot.ai`, `api.z.ai`, `api.deepseek.com`,
+  `dashscope-intl.aliyuncs.com`, `api.minimax.io`,
+  `tinker.thinkingmachines.dev`; and setup's `nodejs.org`, `public.ecr.aws`,
+  `ghcr.io`, `registry-1.docker.io`, `github.com` /
+  `release-assets.githubusercontent.com` (Supabase CLI, Python builds, the
+  Gradle distribution).
+
+**GitHub Actions secrets** (repository → Settings → Secrets and variables →
+Actions). Already used by the old jobs and expected to exist:
+`SUPABASE_ACCESS_TOKEN`, `PRODUCTION_SUPABASE_DB_PASSWORD`,
+`RENDER_DEPLOY_HOOK_APP_PRODUCTION`, `RENDER_DEPLOY_HOOK_WEB_PRODUCTION`,
+`STAGING_SUPABASE_DB_PASSWORD`, `RENDER_DEPLOY_HOOK_APP_STAGING`,
+`STAGING_SUPABASE_URL`, `STAGING_SUPABASE_PUBLISHABLE_KEY`,
+`STAGING_SUPABASE_SERVICE_ROLE_KEY`, `STAGING_TEST_USER_EMAIL`,
+`STAGING_TEST_USER_PASSWORD`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`.
+New, for the operations that replace Mac-only steps:
+
+- `PRODUCTION_SUPABASE_READONLY_DB_URL` — session-pooler URL of a read-only
+  role (`rehearse-cutover`).
+- `PRODUCTION_SUPABASE_DB_URL` and `PRODUCTION_SUPABASE_PUBLISHABLE_KEY` —
+  service connection for `repair-review-queue` (dry run and apply).
+- `STAGING_SUPABASE_DB_URL` — staging session pooler, for the worker drill in
+  `staging-tier2` (only once staging is unpaused).
+
+---
 
 ---
 
@@ -309,8 +389,8 @@ Review comments often land **after** a PR has already been squash-merged (async 
 claim, or fix unrelated PR comments while doing documentation or configuration
 work. Run it only when the current increment will edit source code.
 
-1. `gh pr list --state merged --limit 10` — check the last 10 merged PRs.
-2. For each, check for review comments that haven't been addressed yet (`gh pr view <number> --comments` or `gh api repos/<owner>/<repo>/pulls/<number>/comments`). Skip comments already marked fixed/claimed by a prior increment.
+1. `gh api "repos/tonimelisma/selko/pulls?state=closed&per_page=10" --jq '.[] | select(.merged_at) | [.number,.title] | @tsv'` — the last merged PRs (REST: `gh pr list` needs GraphQL).
+2. For each, check for review comments that haven't been addressed yet (`gh api repos/tonimelisma/selko/pulls/<number>/comments` and `gh api repos/tonimelisma/selko/issues/<number>/comments`). Skip comments already marked fixed/claimed by a prior increment.
 3. **Claim** any unclaimed, unaddressed comment by posting a reply that you'll fix it, so parallel agents don't duplicate the work.
 4. **Fix it** as part of the current increment (same worktree/branch as whatever else you're doing, or its own small PR if unrelated to the current task).
 5. **Close the loop** — post a follow-up comment on the original PR explaining how it was fixed (link the commit/PR that fixed it).
@@ -319,14 +399,21 @@ This keeps stale review feedback from silently rotting once a PR is merged and o
 
 ## MANDATORY: Verification tiers
 
-CI is not a tier. It may never run. Both tiers below run from your machine.
+CI is not a tier. It runs on every push and PR (the repo is public, so
+hosted-runner minutes cost nothing) and is never left red, but the gate is the
+two tiers below, not a green tick.
 
-**Tier 1 — local, before the PR merges.** `./scripts/verify.sh backend`.
-Real Postgres via `supabase start`, all migrations applied, unit + integration
-tests. This is the merge gate.
+**Tier 1 — in the session, before the PR merges.** `./scripts/verify.sh backend`.
+Real Postgres via `supabase start` (Docker in the cloud VM), all migrations
+applied, unit + integration tests. This is the merge gate.
 
-**Tier 2 — staging, immediately after the PR merges.** `./scripts/verify.sh staging`.
-Real Supavisor pooler, real Render, real OAuth, real Realtime, real egress.
+**Tier 2 — staging, immediately after the PR merges.**
+`./scripts/ops.py dispatch staging-tier2` (runs `verify-staging.sh` and the
+worker drill in GitHub Actions; `./scripts/verify.sh staging` is the same
+script for a machine that holds the staging credentials). Real Supavisor
+pooler, real Render, real OAuth, real Realtime, real egress. **Staging is
+paused by owner decision**, so Tier 2 cannot run today: say so in the report
+(an operator waiver per deploy, below), never call it green.
 
 Tier 2 is not optional and not deferrable, because Tier 1 *cannot* reach what
 Tier 2 covers:
@@ -351,8 +438,8 @@ not authorize unrelated production-data mutations.
 
 | You changed | Required before merge (Tier 1) | Required after merge (Tier 2) |
 |-------------|-------------------------------|-------------------------------|
-| `backend/**`, `cli/**` | `./scripts/verify.sh backend` — unit **+** integration against local Supabase | `./scripts/verify.sh staging` |
-| `supabase/**` (schema/migrations) | `./scripts/verify.sh backend` — the integration run is what proves the migration executes | `./scripts/verify.sh staging` — **required**, migrations must reach staging before prod |
+| `backend/**`, `cli/**` | `./scripts/verify.sh backend` — unit **+** integration against local Supabase | `./scripts/ops.py dispatch staging-tier2` |
+| `supabase/**` (schema/migrations) | `./scripts/verify.sh backend` — the integration run is what proves the migration executes | `./scripts/ops.py dispatch staging-tier2` — **required**, migrations must reach staging before prod (paused: disclose the gap) |
 | `frontend/src/**` | Frontend unit tests + `npm run check` + **web** screenshots |
 | `ios/**` | iOS tests + **iOS** screenshots |
 | `android/**` | Android tests + **Android** screenshots |
@@ -469,9 +556,10 @@ what makes verification improvable: `verify-report.py` shows which lanes have
 ever caught a real failure and what each costs, so a lane that has never fired
 across many runs can be demoted on evidence rather than kept on faith.
 
-**A lane that cannot run is RED, never skipped.** `schema-compat` reports failure
-without `SUPABASE_ACCESS_TOKEN` and a linked project, because a local-only check
-proves nothing. Silence is not success.
+**A lane that cannot run is RED, never skipped.** `schema-compat` is red when
+its dispatch cannot be sent, its run never appears, or the run lacks the
+production credentials, because a local-only check proves nothing. Silence is
+not success.
 
 **`prod` and `mobile` are separate gates.** Production is backend + supabase +
 frontend. iOS and Android ship through app stores. A red iOS suite has never been
@@ -479,42 +567,46 @@ a reason to hold a backend deploy, and treating it as one has cost hours.
 
 ### 2. Ship it
 
-- [ ] Source code → feature branch in a worktree. Config/docs → edit `main` directly (`git push origin main`).
-- [ ] The scoped tests above pass locally — **local tests are the gate, not CI**
-- [ ] Commit (conventional format), push, `gh pr create`
-- [ ] `./scripts/merge-and-cleanup.sh <pr_number>` — squash-merges and does full cleanup: deletes remote + local branch, fast-forwards `main`, removes the worktree, prunes. **Does not wait on CI.**
+- [ ] Source code → feature branch (cloud: the session's clone; Mac: a worktree). Config/docs on the Mac may go to `main` directly; a cloud session uses its branch + PR.
+- [ ] The scoped lanes above pass in the session — **the lanes are the gate, not CI**
+- [ ] Commit (conventional format), push, open the PR over REST: `gh api repos/tonimelisma/selko/pulls -f head=<branch> -f base=main -f title=… -f body=…` (`gh pr create` needs GraphQL, which the cloud proxy refuses)
+- [ ] `./scripts/merge-and-cleanup.sh <pr_number>` — squash-merges over REST and cleans up: GitHub deletes the remote branch itself, the script deletes the local branch, moves the clone to the merged `main` (cloud) or fast-forwards `main` and removes the worktree (Mac). **Does not wait on CI.**
 - [ ] **After any production deploy, open a `docs/deploy-log/<date>-<sha>.md` entry from `TEMPLATE.md` and fill the T+0 and T+15m rows before reporting done.** The T+24h row is filled the next day. Config, real-data and elapsed-time failures are only observable here — a deploy is not finished when it is applied, it is finished when it has been watched. Always fill in "which gate should have caught it"; that is what turns an incident into a permanent gate improvement instead of folklore.
-- [ ] **Check CI on `main` and fix forward if it ran and failed** — `gh run list --branch main --limit 3`. Not a merge gate, but never left red. See "CI Ownership" below.
-- [ ] If your change ships to a server (`backend`/`supabase`/`frontend`), **report the `--gate prod` lane table and state a recommendation**, then ask whether to deploy. A bare "Should I deploy this to production?" with no evidence attached asks the operator to adjudicate a question the lane table already answers. Never deploy to prod without an explicit yes. Once the user says yes, deploy; a previously disclosed staging failure does not require another confirmation. Apply production migrations locally, then dispatch `test.yml` with `staging_action=none` and `deploy_production=true`; that explicit job owns the secret Render hooks.
+- [ ] **Check CI on `main` and fix forward if it ran and failed** — the `actions/runs?branch=main` query under "CI Ownership". Not a merge gate, but never left red. See "CI Ownership" below.
+- [ ] If your change ships to a server (`backend`/`supabase`/`frontend`), **report the `--gate prod` lane table and state a recommendation**, then ask whether to deploy. A bare "Should I deploy this to production?" with no evidence attached asks the operator to adjudicate a question the lane table already answers. Never deploy to prod without an explicit yes **for that SHA**. Once the user says yes, deploy: `./scripts/ops.py dispatch deploy-production sha=<main's tip> confirm="deploy <sha>"`. That one job runs `supabase db push --dry-run`, `supabase db push`, R5 (`assert-schema-code-compat.sh --linked`), the secret Render hooks, waits until `api.selkoapp.com/health` serves the SHA and runs the health invariants (your T+0 evidence) — there is no separate "push migrations first" step. It refuses a SHA that is not main's tip, because Render's hook builds the branch tip. A previously disclosed staging failure does not require another confirmation.
 
 See `docs/parallel-agents.md` for the full workflow. See `docs/ci-cd.md` for CI architecture details.
 
 ### CI Ownership — never a gate, but never ignored
 
-**We will never top up GitHub Actions minutes, and CI is never a merge gate.**
-Verification is two tiers, both run from your machine: Tier 1 (local, pre-merge)
-and Tier 2 (staging, post-merge). See "Verification tiers" above.
+**CI runs on every push and PR, and it is never a merge gate.** The gate is the
+lanes: Tier 1 in the session before merge, Tier 2 (staging) after. See
+"Verification tiers" above.
 
-**But CI does run, and a red CI is never left red.** The previous version of
-this section claimed `deploy-staging` and `integration-tests-staging` "require
-Actions minutes and therefore do not run." That was false: those jobs have been
-running on every push to `main`, and `deploy-staging` was failing on `main`
-across three consecutive runs while this file said it could not execute. A
-status nobody reads is worse than no status.
+**A red CI is never left red.** An earlier version of this file claimed the
+staging jobs "require Actions minutes and therefore do not run." That was
+false: they ran on every push to `main`, and `deploy-staging` failed on `main`
+across three consecutive runs while this file said it could not execute — and
+later failed every backend push because staging was paused. It now reports a
+paused staging as exactly that. A status nobody reads is worse than no status.
 
 **MANDATORY — after every merge to `main`, check CI and fix forward.** This is
 step 3 of "Ship it" and is not optional. Never leave `main` red.
 
 ```bash
-gh run list --branch main --limit 3
+gh api "repos/tonimelisma/selko/actions/runs?branch=main&per_page=3" \
+  --jq '.workflow_runs[] | [.id,.name,.event,.conclusion] | @tsv'
 ```
 
 If it failed:
-1. **Diagnose** — `gh run view <id> --log-failed`
+1. **Diagnose** — `gh api repos/tonimelisma/selko/actions/runs/<id>/jobs --jq '.jobs[] | [.id,.name,.conclusion] | @tsv'`,
+   then `gh api repos/tonimelisma/selko/actions/jobs/<job id>/logs | tail -80`
 2. **Missing configuration** — the most common cause, and the one a diff cannot
-   show. `gh secret list` shows what exists; a referenced secret that is not in
-   that list expands to the empty string silently. Fix the workflow or tell the
-   operator which secret to add — do not paper over it by disabling the check.
+   show. A referenced secret that does not exist expands to the empty string
+   silently. The secrets list is not readable from a cloud session, so the
+   jobs check their own secrets and say which one is missing; tell the
+   operator which secret to add (Owner setup) — do not paper over it by
+   disabling the check.
 3. **Google OAuth expired** (`RefreshError: invalid_grant`): run `uv run python -m cli.cli_seed_tokens --sync --provider gmail` (copies working dev↔staging token to stale side); only if both are stale, re-auth one side then re-run `--sync`.
 4. **Code issue** — follow-up PR.
 
@@ -523,7 +615,9 @@ of its verification, it says so in its own output rather than passing quietly �
 `deploy-staging` prints exactly what it did and did not verify. A green tick
 that reads as more than it is has caused more damage here than a red one.
 
-Production migrations are pushed locally after `./scripts/assert-schema-code-compat.sh` (R5 gate). Production code is deployed with `gh workflow run test.yml -f staging_action=none -f deploy_production=true`, because the secret Render hooks live in that explicit, dependency-free job. Do not wait for unrelated test jobs after the production deploy job succeeds. `./scripts/poll-and-merge.sh` is deprecated.
+Production migrations and code ship together in ops.yml's `deploy-production`
+(`./scripts/ops.py dispatch deploy-production …`): dry run, push, R5, Render
+hooks, then the served-SHA and health checks. It depends on no other job.
 
 ### Worktree Cleanup Rules
 
@@ -688,8 +782,8 @@ adb devices | grep -q emulator || (emulator -avd Pixel_8 -no-audio &)
 | File | Purpose |
 |------|---------|
 | `.env` | Local development (Docker) |
-| `.env.test` | Staging environment |
-| `.env.production` | Production environment |
+| `.env.test` | Staging values — Mac only, optional. Cloud sessions and ops.yml use the `STAGING_*` Actions secrets |
+| `.env.production` | Production values — Mac only, optional. Cloud sessions and ops.yml use the `PRODUCTION_*` Actions secrets |
 | `.env.example` | Template for setup |
 
 **Supabase Instances:** Local (`localhost:54321`), Staging (`lxmysergoeaegxlyfzwk`), Production (`khahcozfbnpykspvatrg`)

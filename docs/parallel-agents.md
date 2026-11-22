@@ -2,6 +2,13 @@
 
 This guide covers running multiple AI coding agents simultaneously on the same repository using Git worktrees.
 
+> **Cloud sessions (the default way to work): skip the worktree parts.** Each
+> claude.ai/code session already has its own throwaway clone, so it works on a
+> feature branch in that clone (`CLAUDE.md` → "Cloud sessions"). Its GitHub
+> proxy refuses GraphQL, so `gh pr create/list/view/merge` fail there; use the
+> REST equivalents below, which also work on the Mac. Worktrees remain the
+> isolation mechanism only where several agents share one checkout (the Mac).
+
 ## Overview
 
 | Component | Choice | Why |
@@ -106,10 +113,9 @@ git push -u origin feat/add-login
 ### Creating PR and Merging
 
 ```bash
-# Create the PR
-gh pr create \
-  --title "feat: add new capability" \
-  --body "Description of changes"
+# Create the PR (REST; `gh pr create` needs GraphQL, refused in cloud sessions)
+gh api repos/tonimelisma/selko/pulls -f head=feat/add-login -f base=main \
+  -f title="feat: add new capability" -f body="Description of changes" --jq .number
 
 # Merge (no CI gate) and fully clean up — branch, worktree, main
 ./scripts/merge-and-cleanup.sh <pr_number>
@@ -139,7 +145,7 @@ The DoD scales to what you changed — run only the scoped tests for the code yo
 - [ ] Scoped tests pass locally — **this is the gate, not CI**
 - [ ] Bug fixes include a regression test
 - [ ] Screenshots only for the platform whose UI changed (skip for backend/docs/config)
-- [ ] Committed (conventional format), pushed, PR created (`gh pr create`)
+- [ ] Committed (conventional format), pushed, PR created (`gh api repos/tonimelisma/selko/pulls -f head=… -f base=main …`)
 - [ ] `./scripts/merge-and-cleanup.sh <pr_number>` — merges (no CI gate) and cleans up branch + worktree + main
 - [ ] If the change ships to a server (`backend`/`supabase`/`frontend`), end your final report asking whether to deploy to production
 
@@ -147,7 +153,7 @@ The DoD scales to what you changed — run only the scoped tests for the code yo
 
 ### MANDATORY: AI agents MUST follow all steps
 
-`merge-and-cleanup.sh` does the whole thing in one command — squash-merge (no CI gate), delete the remote + local branch, fast-forward main, remove the worktree, prune. Run it as your **final step**; the worktree no longer exists afterward, so report back to the user next.
+`merge-and-cleanup.sh` does the whole thing in one command — squash-merge (no CI gate; GitHub deletes the remote branch itself), delete the local branch, fast-forward main, remove the worktree, prune. Run it as your **final step**; the worktree no longer exists afterward, so report back to the user next.
 
 ```bash
 ./scripts/merge-and-cleanup.sh <pr_number>
@@ -237,8 +243,8 @@ git merge origin/main
 | Remove worktree | `git worktree remove ../selko-<type>-<task>` (NEVER `--force` — inspect first) |
 | Delete branch | `git branch -D <type>/<task>` |
 | Prune refs | `git worktree prune` |
-| Create PR | `gh pr create` |
+| Create PR | `gh api repos/tonimelisma/selko/pulls -f head=<branch> -f base=main -f title=… -f body=…` |
 | Merge + clean up (no CI gate) | `./scripts/merge-and-cleanup.sh <pr_number>` |
-| Verify CI before prod (optional) | `./scripts/poll-and-merge.sh <pr_number>` |
+| Read CI for a commit | `gh api repos/tonimelisma/selko/commits/<sha>/check-runs --jq '.check_runs[] \| [.name,.conclusion] \| @tsv'` |
 | Rebase | `git fetch origin main && git rebase origin/main` |
 | Force push | `git push --force-with-lease` |

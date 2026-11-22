@@ -15,7 +15,12 @@
 # Usage:
 #   scripts/cloud-setup.sh            # full setup (the SessionStart hook)
 #   scripts/cloud-setup.sh --db       # start local Supabase + write .env (foreground)
+#   scripts/cloud-setup.sh --android  # JDK 21 + Android SDK for the android lane (foreground)
 #   scripts/cloud-setup.sh --status   # report what is ready
+#
+# The same --db mode builds the local stack inside GitHub Actions jobs
+# (.github/workflows/ops.yml) with SELKO_CLOUD_SETUP_FORCE=1, so the cloud VM
+# and the runners share one definition of "a local Supabase with its .env".
 set -uo pipefail
 
 if [[ "${CLAUDE_CODE_REMOTE:-}" != "true" && "${SELKO_CLOUD_SETUP_FORCE:-}" != "1" ]]; then
@@ -23,7 +28,7 @@ if [[ "${CLAUDE_CODE_REMOTE:-}" != "true" && "${SELKO_CLOUD_SETUP_FORCE:-}" != "
 fi
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-cd "$ROOT"
+cd "$ROOT" || exit 1
 mkdir -p .verify
 LOG=".verify/cloud-setup.log"
 DB_LOG=".verify/cloud-setup-db.log"
@@ -41,6 +46,40 @@ SUPABASE_EXCLUDES="vector,logflare,studio,postgres-meta,imgproxy,edge-runtime,su
 # when the VM's Node is older.
 NODE_MIN_VERSION="22.12.0"
 NODE_PIN_VERSION="22.12.0"
+
+# Android: the android lane is JVM unit tests (no emulator: the VM has no KVM;
+# emulator tests and screenshots run in ops.yml's android-emulator job).
+# Bump the command-line tools build from
+# https://dl.google.com/android/repository/repository2-3.xml.
+ANDROID_LOG=".verify/cloud-setup-android.log"
+ANDROID_SDK_DIR="${ANDROID_HOME:-$HOME/android-sdk}"
+ANDROID_CMDLINE_TOOLS_BUILD="${ANDROID_CMDLINE_TOOLS_BUILD:-16111833}"
+# compileSdk = release(37) in android/app/build.gradle.kts, plus the matching
+# build-tools. Names are the new `android sdk` CLI's (slash-separated; the old
+# "platforms;android-37" form is "not found" there).
+ANDROID_SDK_PACKAGES=("platform-tools" "platforms/android-37.0" "build-tools/37.0.0")
+
+# LLM provider keys config.py reads. When the cloud environment sets one, .env
+# must not carry a placeholder for it: backend/tests/integration/conftest.py
+# reloads .env with override=True before every integration test, so a
+# placeholder line would replace the real key and every --run-llm test would
+# fail as unauthorized.
+LLM_KEY_NAMES=(
+	ANTHROPIC_API_KEY GEMINI_API_KEY OPENAI_API_KEY XAI_API_KEY
+	META_API_KEY META_MODEL_API_KEY MODEL_API_KEY MOONSHOT_API_KEY
+	ZAI_API_KEY ZHIPU_API_KEY DEEPSEEK_API_KEY ALIBABA_API_KEY
+	MINIMAX_API_KEY TINKER_API_KEY
+)
+
+# Claude Code removes ANTHROPIC_API_KEY from the shells it starts (its own
+# credential name): the Default environment defines it, yet `env` in a Bash
+# tool call shows only ANTHROPIC_BASE_URL (measured 2026-11-22). The cloud
+# environment therefore carries the key as SELKO_ANTHROPIC_API_KEY, and this
+# maps it back -- here for this script, and in CLAUDE_ENV_FILE by *reference*
+# (persist_path), so the value is never written to any file.
+if [[ -z "${ANTHROPIC_API_KEY:-}" && -n "${SELKO_ANTHROPIC_API_KEY:-}" ]]; then
+	export ANTHROPIC_API_KEY="$SELKO_ANTHROPIC_API_KEY"
+fi
 
 SUDO=""
 if [[ $EUID -ne 0 ]] && command -v sudo >/dev/null 2>&1; then
@@ -69,6 +108,9 @@ persist_path() {
 		if [[ -n "${UV_SYSTEM_CERTS:-}" ]]; then
 			echo "export UV_SYSTEM_CERTS=\"$UV_SYSTEM_CERTS\"; unset UV_NATIVE_TLS" >>"$CLAUDE_ENV_FILE"
 		fi
+		# Single quotes: the line holds the variable's name, not its value.
+		# shellcheck disable=SC2016
+		echo 'if [ -n "${SELKO_ANTHROPIC_API_KEY:-}" ] && [ -z "${ANTHROPIC_API_KEY:-}" ]; then export ANTHROPIC_API_KEY="$SELKO_ANTHROPIC_API_KEY"; fi' >>"$CLAUDE_ENV_FILE"
 	fi
 }
 
@@ -191,6 +233,42 @@ ensure_frontend() {
 	(cd frontend && npx playwright install --with-deps chromium) >>"$LOG" 2>&1
 }
 
+android_ready() {
+	[[ -x "$ANDROID_SDK_DIR/cmdline-tools/latest/bin/android" &&
+		-d "$ANDROID_SDK_DIR/platforms/android-37.0" && -f android/local.properties ]]
+}
+
+ensure_android() {
+	# Foreground; the hook runs it detached (it downloads ~300 MB).
+	if ! java -version 2>&1 | grep -qE 'version "(2[1-9]|[3-9][0-9])'; then
+		echo "installing JDK 21"
+		DEBIAN_FRONTEND=noninteractive $SUDO apt-get install -y -qq openjdk-21-jdk-headless || return 1
+	fi
+	# The command-line tools now ship `android` (sdkmanager is a deprecated
+	# wrapper around it). Installing implies the license terms; there is no
+	# separate --licenses step any more.
+	local android_cli="$ANDROID_SDK_DIR/cmdline-tools/latest/bin/android"
+	if [[ ! -x "$android_cli" ]]; then
+		echo "installing Android command-line tools ${ANDROID_CMDLINE_TOOLS_BUILD} into $ANDROID_SDK_DIR"
+		local tmp
+		tmp="$(mktemp -d)"
+		curl -fsSL -o "$tmp/tools.zip" \
+			"https://dl.google.com/android/repository/commandlinetools-linux-${ANDROID_CMDLINE_TOOLS_BUILD}_latest.zip" &&
+			unzip -q "$tmp/tools.zip" -d "$tmp" &&
+			mkdir -p "$ANDROID_SDK_DIR/cmdline-tools" &&
+			rm -rf "$ANDROID_SDK_DIR/cmdline-tools/latest" &&
+			mv "$tmp/cmdline-tools" "$ANDROID_SDK_DIR/cmdline-tools/latest"
+		local status=$?
+		rm -rf "$tmp"
+		((status == 0)) || return 1
+	fi
+	"$android_cli" --no-metrics --sdk="$ANDROID_SDK_DIR" sdk install "${ANDROID_SDK_PACKAGES[@]}" || return 1
+	# Gradle reads sdk.dir from here (gitignored), so the lane works in a shell
+	# that never saw ANDROID_HOME.
+	printf 'sdk.dir=%s\n' "$ANDROID_SDK_DIR" >android/local.properties
+	android_ready
+}
+
 supabase_healthy() {
 	local db gw
 	db="$(docker inspect -f '{{.State.Health.Status}}' supabase_db_selko 2>/dev/null)"
@@ -251,11 +329,10 @@ write_env_files() {
 			# a reason unrelated to the code. Nothing reaches a provider with
 			# these: real-LLM tests need --run-llm and real-Gmail tests skip on
 			# the missing token, and a real call would be refused as unauthorized.
-			# A key set in the cloud environment's variables wins over this file
-			# (config.py load_config: process env first, .env only via setdefault), but
-			# LLM_PROVIDER=anthropic and LLM_FALLBACK_PROVIDER=none mean other
-			# providers' keys are never selected.
-			echo "ANTHROPIC_API_KEY=placeholder-cloud-session-not-a-key"
+			# The LLM key placeholder is written only when the cloud environment
+			# does not provide the key (see LLM_KEY_NAMES): a real key lives in
+			# the process environment and is never copied into this file.
+			[[ -n "${ANTHROPIC_API_KEY:-}" ]] || echo "ANTHROPIC_API_KEY=placeholder-cloud-session-not-a-key"
 			echo "GOOGLE_CLIENT_ID=placeholder-cloud-session.apps.googleusercontent.com"
 			echo "GOOGLE_CLIENT_SECRET=placeholder-cloud-session-not-a-secret"
 			echo "MICROSOFT_CLIENT_ID=00000000-0000-0000-0000-000000000000"
@@ -263,6 +340,26 @@ write_env_files() {
 		} >.env
 		echo "wrote .env (local Supabase)"
 	fi
+	drop_shadowed_llm_placeholders
+	write_frontend_env "$api_url" "$anon_key"
+}
+
+drop_shadowed_llm_placeholders() {
+	# An .env written before the key was added to the environment still holds
+	# the placeholder. Remove only placeholder lines, and only for keys the
+	# environment now provides; a hand-written value is never touched.
+	[[ -f .env ]] || return 0
+	local name
+	for name in "${LLM_KEY_NAMES[@]}"; do
+		if [[ -n "${!name:-}" ]] && grep -q "^${name}=placeholder-" .env; then
+			sed -i "/^${name}=placeholder-/d" .env
+			echo "dropped the ${name} placeholder from .env: the environment provides the key"
+		fi
+	done
+}
+
+write_frontend_env() {
+	local api_url="$1" anon_key="$2"
 	if [[ ! -f frontend/.env ]]; then
 		{
 			echo "# Generated by scripts/cloud-setup.sh for this cloud VM's local Supabase."
@@ -286,6 +383,22 @@ report_status() {
 		ok=0
 	fi
 	[[ -f .env ]] && say "  ready: .env" || { say "  MISSING: .env (written once Supabase is up)"; ok=0; }
+	# Not counted in ok: only the android lane needs it, and it installs in
+	# the background after the hook returns.
+	if android_ready; then
+		say "  ready: Android SDK ($ANDROID_SDK_DIR)"
+	else
+		say "  NOT READY: Android SDK -- installing (tail $ANDROID_LOG) or failed; finish with: scripts/cloud-setup.sh --android"
+	fi
+	local name present=()
+	for name in "${LLM_KEY_NAMES[@]}"; do
+		[[ -n "${!name:-}" ]] && present+=("$name")
+	done
+	if ((${#present[@]} > 0)); then
+		say "  ready: LLM keys from the environment: ${present[*]}"
+	else
+		say "  note: no LLM keys in the environment; run_eval and --run-llm need the 'selko' cloud environment (CLAUDE.md, Owner setup)"
+	fi
 	((ok == 1))
 }
 
@@ -294,6 +407,10 @@ case "${1:-}" in
 	ensure_docker || exit 1
 	start_supabase || exit 1
 	write_env_files
+	exit $?
+	;;
+--android)
+	ensure_android
 	exit $?
 	;;
 --status)
@@ -305,7 +422,7 @@ case "${1:-}" in
 	;;
 "") ;;
 *)
-	echo "Usage: $0 [--db|--status]" >&2
+	echo "Usage: $0 [--db|--android|--status]" >&2
 	exit 2
 	;;
 esac
@@ -332,6 +449,16 @@ fi
 
 ensure_uv || failed+=("uv-sync")
 ensure_frontend || failed+=("frontend")
+
+# Detached and never waited for: only the android lane needs it, and the
+# lane's precondition names this command as the remedy if it is not done.
+if ! android_ready; then
+	step "installing the Android SDK in the background (log: $ANDROID_LOG)"
+	nohup setsid "$0" --android >"$ANDROID_LOG" 2>&1 </dev/null &
+fi
+if [[ -n "${CLAUDE_ENV_FILE:-}" ]]; then
+	echo "export ANDROID_HOME=\"$ANDROID_SDK_DIR\"" >>"$CLAUDE_ENV_FILE"
+fi
 
 if [[ -n "$db_pid" ]]; then
 	while kill -0 "$db_pid" 2>/dev/null && (($(remaining) > 15)); do

@@ -73,16 +73,16 @@ the defect.
 Ordering constraint (migrations first, code second, flag last) carried from the
 egress-scheduling and polling-v2 work:
 
-1. **No CI minutes will ever be bought for test gating.** Local verification remains authoritative. The dependency-free production deployment job is the exception because it owns the secret Render hooks; wait only for that job, not unrelated test jobs.
+1. **CI is not the test gate.** The session's lanes remain authoritative. Hosted-environment steps are `ops.yml` operations started with `scripts/ops.py dispatch` (a cloud session cannot reach Postgres); wait only for the operation's own run, not unrelated test jobs.
 2. **Staging token:** `uv run python -m cli.cli_seed_tokens --sync --provider gmail` (checks both dev and staging, copies working → stale; if both stale, re-auth one side then re-sync). Do not ask to reauth when one side is working.
-3. **Staging deploy (local, gated):** `./scripts/assert-schema-code-compat.sh && supabase link --project-ref lxmysergoeaegxlyfzwk && supabase db push` (dry-run then push). Render deploys on main push. `gh workflow run test.yml` to staging is a bonus only — never required.
-4. **Staging drills:** `ENVIRONMENT=staging ./scripts/drill-staging-workers.sh` — starts `selko.worker_app` against staging over the Supavisor session pooler, drains it, then runs the ten-step acceptance drill. (`drill-lease-recovery.sh` is deleted: it ran its delegate with `|| true` and echoed `PASSED` regardless.)
-4b. **Faithful cutover rehearsal (required, and re-run on the day):** `uv run python scripts/rehearse_cutover.py --production-url <read-only> --faithful`. Replays every pending migration against a redacted clone of production's real rows. Production data changes; a rehearsal from last week is evidence about last week.
-5. **Prod migrations (local, gated):** `./scripts/assert-schema-code-compat.sh && supabase link --project-ref khahcozfbnpykspvatrg && supabase db push --dry-run` (review every pending migration; the count has grown past the 12 recorded here) then `supabase db push`. Take the `pg_dump` from the Rollback section FIRST — it is the only restore point that will exist.
-6. **Prod code:** after explicit approval and the local production migration gate, run `gh workflow run test.yml -f staging_action=none -f deploy_production=true`. The dependency-free production job owns both secret Render hooks. Do not wait for unrelated test jobs after that deploy job succeeds.
+3. **Staging deploy (gated):** `./scripts/ops.py dispatch staging-tier2` — dry-run, push, R5, deploy hook, served revision, staging suite. Staging is paused by owner decision; unpause it first.
+4. **Staging drills:** part of `staging-tier2` (`require_workers=true`, the default): `drill-staging-workers.sh` starts `selko.worker_app` against staging over the Supavisor session pooler, drains it, then runs the ten-step acceptance drill. (`drill-lease-recovery.sh` is deleted: it ran its delegate with `|| true` and echoed `PASSED` regardless.)
+4b. **Faithful cutover rehearsal (required, and re-run on the day):** `./scripts/ops.py dispatch rehearse-cutover` (runs `rehearse_cutover.py --production-url <read-only secret> --faithful` on a runner). Replays every pending migration against a redacted clone of production's real rows. Production data changes; a rehearsal from last week is evidence about last week.
+5. **Prod migrations (gated):** `./scripts/ops.py dispatch schema-compat` prints `supabase db push --dry-run` against production (review every pending migration; the count has grown past the 12 recorded here). Take the `pg_dump` from the Rollback section FIRST — it is the only restore point that will exist (a Postgres connection: not from a cloud session).
+6. **Prod migrations + code:** after explicit approval, `./scripts/ops.py dispatch deploy-production sha=<main's tip> confirm="deploy <sha>"` — dry run, push, R5, both secret Render hooks, served-SHA and health checks in one job.
 7. **Flag:** set `ENABLE_BACKGROUND_PROCESSING=true` only after steps 5-6 and health below.
 
-## Local DoD (gate, not CI — CI is out of minutes)
+## Session DoD (the gate, not CI)
 
 Ran 2026-08-07 against `main`:
 

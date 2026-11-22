@@ -48,7 +48,7 @@ cd android && ./gradlew test
 |--------|-------------|--------------|
 | `integration` | All integration tests | Local Supabase running |
 | `development` | Tests against local Supabase + real Gmail | Seeded tokens |
-| `staging` | Tests against cloud Supabase + real services | `./scripts/verify.sh staging` after merge |
+| `staging` | Tests against cloud Supabase + real services | `./scripts/ops.py dispatch staging-tier2` after merge (paused) |
 | `llm` | Tests requiring real LLM API calls | `--run-llm` flag |
 
 ## Test Architecture
@@ -202,10 +202,10 @@ MCP servers (Playwright, XcodeBuildMCP, mobile-mcp) are available for **manual d
 
 ## Continuous Integration
 
-Pull-request CI, when it runs, covers mocked/unit checks only and may not run
-because Actions minutes are not funded. The authoritative gates are
-`./scripts/verify.sh backend` before merge and `./scripts/verify.sh staging`
-after merge. See `docs/ci-cd.md` for the bonus CI details.
+Pull-request CI runs on every push and PR and covers mocked/unit checks only;
+it is never the gate. The authoritative gates are `./scripts/verify.sh backend`
+before merge (in the session) and `./scripts/ops.py dispatch staging-tier2`
+after merge (staging is paused today). See `docs/ci-cd.md`.
 
 ## When the gate reports an unresponsive Docker daemon
 

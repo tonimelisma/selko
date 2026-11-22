@@ -42,6 +42,27 @@ When something fails, categorize the root cause:
 
 ---
 
+## Where evals run: a cloud session
+
+Evals and real-model tests run in a claude.ai/code session on the dedicated
+**"selko" cloud environment**, which holds the provider keys as environment
+variables (`CLAUDE.md` → "Owner setup"). Nothing else is needed: the
+SessionStart hook leaves those keys out of `.env`, so the process environment
+supplies them, and maps `SELKO_ANTHROPIC_API_KEY` to `ANTHROPIC_API_KEY`
+(Claude Code removes the latter from the shells it starts).
+
+```bash
+scripts/cloud-setup.sh --status          # "ready: LLM keys from the environment: …"
+uv run python -m backend.tests.eval.run_eval --fixture <category/fixture_name>
+uv run python -m backend.tests.eval.run_eval --all --all-operations
+uv run pytest backend/tests/<test_file>.py --run-llm   # real-LLM pytest cases
+```
+
+A key that is missing shows up as an unauthorized provider error, never as a
+pass. The commands below are the same in a session and on the Mac.
+
+---
+
 ## Common Workflows
 
 ### Workflow A: Prompt Iteration (most common)

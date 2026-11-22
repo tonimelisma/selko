@@ -1,0 +1,417 @@
+name: Ops
+
+# Operations that need a credential or a network path a Claude Code cloud
+# session does not have: Postgres over TCP, the production database password,
+# the Render deploy hooks, an Android emulator (KVM). Each is started by a
+# repository_dispatch whose payload is typed by scripts/ops.py, which is also
+# the client:
+#
+#   scripts/ops.py dispatch <operation> [key=value ...]
+#
+# waits for this run and exits with its conclusion. The `request` job validates
+# the payload before any job that holds a secret starts.
+#
+# THE REPOSITORY IS PUBLIC, AND SO ARE THESE LOGS. Steps that read production
+# pipe their output through `scripts/ops.py redact` (UUIDs, emails) and print
+# counts, versions and migration names only -- never row content, tokens or
+# connection strings.
+
+run-name: >-
+  ops ${{ github.event.action || inputs.operation }}
+  ${{ github.event.client_payload.request_id || inputs.request_id }}
+
+on:
+  repository_dispatch:
+    types:
+      - schema-compat
+      - deploy-production
+      - rehearse-cutover
+      - repair-review-queue
+      - staging-tier2
+      - android-emulator
+  # The same operations from the Actions tab, for the owner. The payload is the
+  # same JSON object a dispatch carries.
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: Operation (see scripts/ops.py SCHEMAS)
+        required: true
+        type: choice
+        options:
+          - schema-compat
+          - deploy-production
+          - rehearse-cutover
+          - repair-review-queue
+          - staging-tier2
+          - android-emulator
+      payload:
+        description: JSON payload, e.g. {"target":"production","when":"pre-deploy"}
+        required: false
+        default: "{}"
+      request_id:
+        description: Optional 32-hex id shown in the run name
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  SUPABASE_CLI_VERSION: 2.118.0 # pinned: v3 of setup-cli changed db push to target the local stack
+  PRODUCTION_REF: khahcozfbnpykspvatrg
+  STAGING_REF: lxmysergoeaegxlyfzwk
+
+jobs:
+  request:
+    name: Validate request
+    runs-on: ubuntu-latest
+    outputs:
+      operation: ${{ steps.validate.outputs.operation }}
+      target: ${{ steps.validate.outputs.target }}
+      when: ${{ steps.validate.outputs.when }}
+      sha: ${{ steps.validate.outputs.sha }}
+      faithful: ${{ steps.validate.outputs.faithful }}
+      apply: ${{ steps.validate.outputs.apply }}
+      require_workers: ${{ steps.validate.outputs.require_workers }}
+      ref: ${{ steps.validate.outputs.ref }}
+      screenshots: ${{ steps.validate.outputs.screenshots }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      # Reads the payload from $GITHUB_EVENT_PATH, never from step env: every
+      # step's env block is printed in this public log. Fields that identify a
+      # user (the repair manifest, confirm_user) are not job outputs either;
+      # the job that needs them validates again and reads them from a file.
+      - id: validate
+        name: Check the payload against its schema
+        run: python3 scripts/ops.py validate
+
+  schema-compat:
+    name: Schema compat (${{ needs.request.outputs.target }}, ${{ needs.request.outputs.when }})
+    needs: request
+    if: needs.request.outputs.operation == 'schema-compat'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: supabase/setup-cli@689adcfb80d947100a1eab127289b97d1fb07b13 # v3
+        with:
+          version: ${{ env.SUPABASE_CLI_VERSION }}
+      - name: Link the target project
+        env:
+          TARGET: ${{ needs.request.outputs.target }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          ref="$PRODUCTION_REF"
+          [[ "$TARGET" == "staging" ]] && ref="$STAGING_REF"
+          supabase link --project-ref "$ref"
+      - name: Pre-deploy -- the push would apply cleanly
+        if: needs.request.outputs.when == 'pre-deploy'
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets[format('{0}_SUPABASE_DB_PASSWORD', needs.request.outputs.target == 'staging' && 'STAGING' || 'PRODUCTION')] }}
+        # Fails when the remote holds a migration the repo does not (drift);
+        # otherwise lists exactly what deploy-production would apply.
+        run: supabase db push --dry-run
+      - name: Post-deploy -- every repo migration is applied remotely (R5)
+        if: needs.request.outputs.when == 'post-deploy'
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets[format('{0}_SUPABASE_DB_PASSWORD', needs.request.outputs.target == 'staging' && 'STAGING' || 'PRODUCTION')] }}
+        run: ./scripts/assert-schema-code-compat.sh --linked
+
+  deploy-production:
+    name: Deploy to Production
+    needs: request
+    if: needs.request.outputs.operation == 'deploy-production'
+    runs-on: ubuntu-latest
+    # One production change at a time; never cancel one half-applied.
+    concurrency:
+      group: production
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ needs.request.outputs.sha }}
+          fetch-depth: 0
+      - name: The approved SHA is main's tip
+        env:
+          SHA: ${{ needs.request.outputs.sha }}
+        # Render's deploy hook builds the branch tip, not a SHA. Deploying
+        # anything other than the commit the owner approved must fail here.
+        run: |
+          git fetch --quiet origin main
+          tip="$(git rev-parse origin/main)"
+          if [[ "$tip" != "$SHA" ]]; then
+            echo "::error::main is at $tip, not the approved $SHA; refusing to deploy a different commit"
+            exit 1
+          fi
+          echo "Deploying $SHA (main's tip)"
+      - uses: supabase/setup-cli@689adcfb80d947100a1eab127289b97d1fb07b13 # v3
+        with:
+          version: ${{ env.SUPABASE_CLI_VERSION }}
+      - name: Link to Production Supabase
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: supabase link --project-ref "$PRODUCTION_REF"
+      - name: Migrations -- dry run
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.PRODUCTION_SUPABASE_DB_PASSWORD }}
+        run: supabase db push --dry-run
+      - name: Migrations -- apply
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.PRODUCTION_SUPABASE_DB_PASSWORD }}
+        run: supabase db push
+      - name: Migrations -- every repo migration is applied (R5)
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.PRODUCTION_SUPABASE_DB_PASSWORD }}
+        run: ./scripts/assert-schema-code-compat.sh --linked
+      - name: Deploy to Render (Production)
+        env:
+          APP_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_APP_PRODUCTION }}
+          WEB_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_WEB_PRODUCTION }}
+        # Never print a hook URL or its response: each is a deploy credential.
+        run: |
+          for name in App Web; do
+            var="${name^^}_HOOK"
+            url="${!var}"
+            if [[ -z "$url" ]]; then
+              # Same posture as before this job moved here: a missing hook is
+              # loud, not fatal (the next step still proves what is served).
+              echo "::warning::${name} deploy hook secret is not configured; ${name} was not deployed"
+              continue
+            fi
+            for attempt in 1 2; do
+              status=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$url")
+              if [[ "$status" -ge 200 && "$status" -lt 300 ]]; then
+                echo "${name} deploy hook accepted (HTTP ${status})"
+                break
+              fi
+              echo "${name} deploy hook returned HTTP ${status} (attempt ${attempt}/2)"
+              [[ "$attempt" -eq 2 ]] && exit 1
+              sleep 5
+            done
+          done
+      - name: Production serves the approved SHA
+        env:
+          SHA: ${{ needs.request.outputs.sha }}
+        # The deploy is not done when the hook is accepted; it is done when
+        # api.selkoapp.com answers with this build. 30 x 30 s covers a Render
+        # build with room to spare.
+        run: |
+          for attempt in $(seq 1 30); do
+            served="$(curl -fsS --max-time 15 https://api.selkoapp.com/health | jq -r '.build_sha // empty' || true)"
+            if [[ "$served" == "$SHA" ]]; then
+              echo "api.selkoapp.com serves $SHA (attempt $attempt)"
+              exit 0
+            fi
+            echo "attempt $attempt: serving ${served:-<no answer>}"
+            sleep 30
+          done
+          echo "::error::production did not serve $SHA within 15 minutes"
+          exit 1
+      - name: Production health invariants (T+0)
+        run: ./scripts/check-production-health.sh
+
+  rehearse-cutover:
+    name: Rehearse pending migrations on production's shape
+    needs: request
+    if: needs.request.outputs.operation == 'rehearse-cutover'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Required secret is configured
+        env:
+          PRODUCTION_URL: ${{ secrets.PRODUCTION_SUPABASE_READONLY_DB_URL }}
+        run: '[[ -n "$PRODUCTION_URL" ]] || { echo "::error::PRODUCTION_SUPABASE_READONLY_DB_URL is not configured (CLAUDE.md, Owner setup)"; exit 1; }'
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+      - run: uv python install 3.14
+      - run: uv sync --frozen
+      - uses: supabase/setup-cli@689adcfb80d947100a1eab127289b97d1fb07b13 # v3
+        with:
+          version: ${{ env.SUPABASE_CLI_VERSION }}
+      - name: Local Supabase (the scratch database's host)
+        env:
+          SELKO_CLOUD_SETUP_FORCE: "1"
+        run: ./scripts/cloud-setup.sh --db
+      - name: Rehearse
+        env:
+          PRODUCTION_URL: ${{ secrets.PRODUCTION_SUPABASE_READONLY_DB_URL }}
+          FAITHFUL: ${{ needs.request.outputs.faithful }}
+        # Reads labels and counts (and, with --faithful, content-redacted rows
+        # into the runner's throwaway scratch database). Writes nothing to
+        # production.
+        run: |
+          args=(--production-url "$PRODUCTION_URL")
+          [[ "$FAITHFUL" == "true" ]] && args+=(--faithful)
+          uv run python scripts/rehearse_cutover.py "${args[@]}" 2>&1 | python3 scripts/ops.py redact
+
+  repair-review-queue:
+    name: Review-queue repair (${{ needs.request.outputs.apply == 'true' && 'APPLY' || 'dry run' }})
+    needs: request
+    if: needs.request.outputs.operation == 'repair-review-queue'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: production
+      cancel-in-progress: false
+    steps:
+      - name: Required secrets are configured
+        env:
+          DB_URL: ${{ secrets.PRODUCTION_SUPABASE_DB_URL }}
+          PUBLISHABLE_KEY: ${{ secrets.PRODUCTION_SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          [[ -n "$DB_URL" ]] || { echo "::error::PRODUCTION_SUPABASE_DB_URL is not configured (CLAUDE.md, Owner setup)"; exit 1; }
+          [[ -n "$PUBLISHABLE_KEY" ]] || { echo "::error::PRODUCTION_SUPABASE_PUBLISHABLE_KEY is not configured (CLAUDE.md, Owner setup)"; exit 1; }
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+      - run: uv python install 3.14
+      - run: uv sync --frozen
+      - name: Materialize the request (manifest and confirmed user stay out of the log)
+        run: |
+          python3 scripts/ops.py validate --operation repair-review-queue --write-payload "$RUNNER_TEMP/request.json" >/dev/null
+          jq '.manifest' "$RUNNER_TEMP/request.json" >"$RUNNER_TEMP/manifest.json"
+      - name: Repair
+        env:
+          ENVIRONMENT: production
+          SUPABASE_URL: https://khahcozfbnpykspvatrg.supabase.co
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.PRODUCTION_SUPABASE_PUBLISHABLE_KEY }}
+          SUPABASE_DB_URL: ${{ secrets.PRODUCTION_SUPABASE_DB_URL }}
+          # The repair opens its own connection; it starts no workers.
+          ENABLE_BACKGROUND_PROCESSING: "false"
+          APPLY: ${{ needs.request.outputs.apply }}
+        run: |
+          args=(--environment production --manifest "$RUNNER_TEMP/manifest.json")
+          if [[ "$APPLY" == "true" ]]; then
+            confirm_user="$(jq -r '.confirm_user' "$RUNNER_TEMP/request.json")"
+            args+=(--apply --confirm-user "$confirm_user" --artifact "$RUNNER_TEMP/reverse-operations.json")
+          fi
+          uv run python scripts/repair_review_queue_integrity.py "${args[@]}" 2>&1 | python3 scripts/ops.py redact
+      # UUIDs and status labels only, as the script writes it. Needed to undo
+      # an apply; kept for the shortest retention GitHub allows.
+      - name: Keep the reverse-operation artifact
+        if: always() && needs.request.outputs.apply == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: repair-reverse-operations
+          path: ${{ runner.temp }}/reverse-operations.json
+          if-no-files-found: ignore
+          retention-days: 7
+
+  staging-tier2:
+    name: Tier 2 (staging)
+    needs: request
+    if: needs.request.outputs.operation == 'staging-tier2'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Staging is running
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        # Requested explicitly, so a paused project is red here: a lane that
+        # cannot run is red, never skipped.
+        run: ./scripts/supabase-project-status.sh "$STAGING_REF"
+      - uses: supabase/setup-cli@689adcfb80d947100a1eab127289b97d1fb07b13 # v3
+        with:
+          version: ${{ env.SUPABASE_CLI_VERSION }}
+      - name: Link to Staging Supabase
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: supabase link --project-ref "$STAGING_REF"
+      - uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+      - run: uv python install 3.14
+      - run: uv sync --extra test
+      - name: Deploy staging, verify it, run the worker drill and staging suite
+        run: ./scripts/verify-staging.sh
+        env:
+          ENVIRONMENT: staging
+          STAGING_RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_APP_STAGING }}
+          STAGING_API_BASE_URL: https://selko.onrender.com
+          STAGING_APPLY_MIGRATIONS: "1"
+          STAGING_REQUIRE_WORKERS: ${{ needs.request.outputs.require_workers == 'true' && '1' || '0' }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.STAGING_SUPABASE_DB_PASSWORD }}
+          SUPABASE_DB_URL: ${{ secrets.STAGING_SUPABASE_DB_URL }}
+          SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.STAGING_SUPABASE_PUBLISHABLE_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.STAGING_SUPABASE_SERVICE_ROLE_KEY }}
+          TEST_USER_EMAIL: ${{ secrets.STAGING_TEST_USER_EMAIL }}
+          TEST_USER_PASSWORD: ${{ secrets.STAGING_TEST_USER_PASSWORD }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+
+  android-emulator:
+    name: Android emulator UI tests and screenshots (${{ needs.request.outputs.ref }})
+    needs: request
+    if: needs.request.outputs.operation == 'android-emulator'
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ needs.request.outputs.ref }}
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          java-version: "21"
+          distribution: temurin
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('android/**/*.gradle*', 'android/gradle/libs.versions.toml', 'android/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: gradle-${{ runner.os }}-
+      - uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+      - run: uv python install 3.14
+      - run: uv sync --frozen
+      - uses: supabase/setup-cli@689adcfb80d947100a1eab127289b97d1fb07b13 # v3
+        with:
+          version: ${{ env.SUPABASE_CLI_VERSION }}
+      - name: Local Supabase (the emulator reaches it at 10.0.2.2)
+        env:
+          SELKO_CLOUD_SETUP_FORCE: "1"
+        run: ./scripts/cloud-setup.sh --db
+      - name: ImageMagick (screenshot resize; sips is macOS-only)
+        run: sudo apt-get install -y -qq imagemagick
+      - name: UI tests, then screenshots, on an emulator
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        env:
+          SCREENSHOTS: ${{ needs.request.outputs.screenshots }}
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_7
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          # One line per command; the action stops at the first that fails.
+          # ScreenshotCaptureTest needs the seeded backend, so it runs from the
+          # screenshot script (which starts the API and seeds) and not here.
+          script: |
+            ./android/gradlew -p android connectedDebugAndroidTest --console=plain -Pandroid.testInstrumentationRunnerArguments.notClass=net.melisma.selko.ScreenshotCaptureTest
+            if [ "$SCREENSHOTS" = "true" ]; then ./scripts/capture-all-screenshots.sh android; fi
+      - name: Keep the screenshots
+        if: needs.request.outputs.screenshots == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: android-screenshots
+          path: docs/screenshots/android-*.png
+          if-no-files-found: error
+          retention-days: 7
+      - name: Keep the test reports
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: android-test-reports
+          path: android/app/build/reports/
+          if-no-files-found: ignore
+          retention-days: 7
