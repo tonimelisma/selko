@@ -11,6 +11,26 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ---
 
+## MANDATORY: Working with Toni
+
+Toni's standing rules for every project. They live in his `~/.claude/CLAUDE.md`
+too, but that file never reaches a cloud session, so they are repeated here.
+
+- **When it is already clear what Toni wants, do it.** Never ask whether to do
+  it, how to do it, or which piece to do first, and never end a turn with a
+  go-ahead question or a "Yes, do it" button. Ask only for what only Toni can
+  do (his accounts, devices, approvals) or a real product choice he has not
+  made yet.
+- **Never end a turn while any item Toni asked for can still move forward
+  without him.** When one item is blocked (the Mac locked, something only he
+  can do), go on to the next unblocked one; stop only when every item is done
+  or truly blocked, and list just the Toni-only steps at the end.
+- **Live tests may write to Toni's real apps; every test removes what it made**
+  in its own teardown, even when it fails, and confirms the removal. Never
+  leave test data behind.
+
+---
+
 ## Project Overview
 
 **Selko** is an AI-powered assistant that automates personal organization by analyzing digital inputs (emails; photo-library ingestion is parked) to manage schedules, to-do lists, and digital filing systems. See `PRD_ARCH.md` for complete product requirements and architecture.
@@ -163,6 +183,108 @@ A Claude Code hook **blocks source code edits** in the main repo. You'll see:
 ```
 BLOCKED: Cannot edit source code in the main repository.
 ```
+
+---
+
+## Cloud sessions (claude.ai/code)
+
+A cloud session (`CLAUDE_CODE_REMOTE=true`) runs in an Ubuntu 24.04 x86_64 VM
+with a throwaway clone of this repo. Everything above still applies, with these
+differences.
+
+**Setup is automatic.** The SessionStart hook `scripts/cloud-setup.sh` (a no-op
+anywhere else) installs uv + Python 3.14, the pinned Supabase CLI, jq/lsof, the
+frontend's npm deps, points Playwright at the preinstalled Chrome
+(`$CHROME_PATH`), sets `core.hooksPath=.githooks`, starts `dockerd` and
+`supabase start` (Studio/analytics excluded), and writes `.env` and
+`frontend/.env` holding **only the local Supabase demo keys**, a throwaway
+test-user password and labelled non-functional placeholders for the LLM key
+and OAuth client IDs (routes build the gateway and sign-in URL before
+deciding anything; no test reaches a provider with them). Image pulls run
+detached, so the stack may still be coming up when the session starts:
+`scripts/cloud-setup.sh --status` says what is ready, `scripts/cloud-setup.sh
+--db` finishes it in the foreground. Full log: `.verify/cloud-setup.log`.
+The hook stops waiting at 480 s, under Claude Code's 600 s cancellation; on a
+throttled x86_64 Ubuntu 24.04 container it took ~9 min for the hook plus ~5
+more for Supabase's first image pull, so expect less on a cloud VM.
+
+**Worktrees: not used.** The clone is already private to the session. Work on
+a feature branch (`git switch -c <type>/<task>`); the edit-guard hook blocks
+source edits only while the clone is on `main`. `merge-and-cleanup.sh` moves
+the clone onto the merged `main` instead of removing a worktree.
+
+**Runs in the VM, same commands as on the Mac:**
+
+| Lane | Command | Notes |
+|---|---|---|
+| backend | `./scripts/verify.sh backend --accept-stale-gmail-token` (or `ACCEPT_STALE_GMAIL_TOKEN=1 ./scripts/verify-lanes.py --gate prod`) | Real local Postgres in Docker. The flag records the `real-gmail-token-unavailable` degradation, as on the Mac while staging is paused. Unit + integration were green this way in an Ubuntu 24.04 container |
+| frontend | `./scripts/verify.sh frontend` | Needs Node ≥ 22.12: on older Node, npm silently skips rolldown's native binding and the build fails with `Cannot find module '@rolldown/binding-linux-x64-gnu'`. Setup installs Node 22.12 into `~/.local/node` when the VM's is older |
+| migration-order | `./scripts/check-migration-order.sh` | |
+| web screenshots | `./scripts/capture-all-screenshots.sh web` | Headless Chrome for Testing via `$CHROME_PATH` |
+
+**Needs Toni's credentials — red in the VM until he adds them.** Credentials
+never go in environment variables (anyone using the environment can read
+them) and are never committed. They go in the cloud environment's **network
+secrets**, which Anthropic's proxy adds as a header to requests for a listed
+host; Toni sets them in the environment UI. A lane that cannot reach its
+target is red, never skipped.
+
+| Lane / task | Host | Header | Without it |
+|---|---|---|---|
+| `prod-health` (observe), deploy-log windows | `api.selkoapp.com` | none — add the host to the allowed network list | red: host not reachable |
+| production deploy (`gh workflow run test.yml …`) | `api.github.com` | `Authorization: Bearer <fine-grained PAT, Actions: write on tonimelisma/selko>` | the session's git access pushes and opens PRs but cannot dispatch workflows |
+| `schema-compat` | — | — | **stays on the Mac**: it reads migrations over Postgres (TCP 5432 to the Supavisor pooler) with the production DB password, and network secrets only reach HTTPS |
+| Tier 2 `verify.sh staging` | — | — | **stays on the Mac** for the same reason, plus staging is paused |
+
+Everything that needs a hosted database password, a production migration
+push, or `.env.test`/`.env.production` runs on the Mac (in the main repo,
+through Latchkey `shell_run`), never in the VM.
+
+**iOS (no Xcode in the VM) — through the Latchkey connector on Toni's Mac.**
+Commit and push the branch, then:
+
+```text
+shell_run (Toni's Mac), keep_minutes: 30:
+  set -o pipefail; cd "$LATCHKEY_SCRATCH" &&
+  git clone -q --depth 1 -b <branch> https://github.com/tonimelisma/selko.git &&
+  cd selko && xcodebuild test -project ios/iOS.xcodeproj -scheme iOS \
+    -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+    -derivedDataPath "$LATCHKEY_SCRATCH/dd" \
+    -resultBundlePath "$LATCHKEY_SCRATCH/TestResults.xcresult" -only-testing:iOSTests \
+    2>&1 | grep -E "Executed|error:|\*\* TEST" | tail -15;
+  rc=$?; rm -rf "$LATCHKEY_SCRATCH"/{dd,selko,TestResults.xcresult}; exit $rc
+```
+
+- Each `shell_run` has its own scratch folder, moved to the Trash when the
+  command ends — clone and test in **one** command (or pass `keep_minutes`).
+- `set -o pipefail` before `| tail`: without it the job reports exit 0 for a
+  failed build.
+- Test targets are `iOSTests` / `iOSUITests` (product names `SelkoTests` /
+  `SelkoUITests` are not valid `-only-testing` values).
+- Check `ps -eo pid,etime,command | grep xcodebuild` first: other sessions
+  drive the same simulators.
+- The full lane (`verify-lanes.py`'s `ios`, UI tests) also needs the local API
+  and Supabase on the Mac; run it in the main repo there.
+- Verified 2026-11-21: `-only-testing:iOSTests` passes this way in ~4.5 min
+  (clone, SwiftPM resolve, build, test), with the simulator booted headless:
+  no `uses: ["open"]` and no unlocked screen needed. The derived data is
+  ~700 MB, and Latchkey moves scratch to the Trash rather than deleting it, so
+  end the command with `rm -rf "$LATCHKEY_SCRATCH"/{dd,selko,TestResults.xcresult}`.
+  The Mac's disk has filled up before.
+- Screenshots, headless (works while the Mac is locked): `xcrun simctl boot
+  <udid>; xcrun simctl bootstatus <udid> -b; xcrun simctl io <udid> screenshot
+  "$LATCHKEY_SCRATCH/s.png"; xcrun simctl shutdown <udid>`, then read the PNG
+  with `files_read`. `simctl io … screenshot` on a *shut-down* device hangs,
+  so boot first. `scripts/capture-ios-screenshots.sh` additionally needs
+  local Supabase and the API running on the Mac. `computer_look` (the real
+  screen, e.g. the Simulator app) works only while the Mac is unlocked;
+  `machines` reports locked/unlocked.
+- The pre-commit hook does not demand iOS evidence in a cloud session (there
+  is no Xcode to produce it); the Mac run above is the gate, before merge.
+
+**Android:** no emulator (the VM has no KVM) and no Android SDK is installed by
+setup. Unit tests and screenshots stay on the Mac (Latchkey `shell_run`,
+`./android/gradlew -p android testDebugUnitTest` in a scratch clone).
 
 ---
 

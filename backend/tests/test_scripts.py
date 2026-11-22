@@ -217,3 +217,33 @@ class TestMigrationOrder:
 
         assert result.returncode == 0
         assert "ordered" in result.stdout
+
+    def _run_against(self, repo, ref):
+        return subprocess.run(
+            ["bash", str(ORDER_SCRIPT), ref],
+            cwd=repo,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+
+    def test_falls_back_to_origin_ref_when_no_local_branch(self, tmp_path):
+        """A cloud session's clone can have origin/main but no local main.
+        verify.sh backend calls this script with `main`, which used to fail
+        with "base ref 'main' does not resolve" before any test ran."""
+        repo = self._repo(tmp_path, "20260811000001_out_of_order.sql")
+        subprocess.run(
+            ["git", "-C", str(repo), "update-ref", "refs/remotes/origin/base", "HEAD~1"],
+            check=True,
+        )
+
+        result = self._run_against(repo, "base")
+
+        assert result.returncode == 1
+        assert "20260811000001" in result.stderr
+
+    def test_still_fails_closed_when_ref_is_missing_everywhere(self, tmp_path):
+        result = self._run_against(self._repo(tmp_path, "20260811000005_ordered.sql"), "nonexistent")
+
+        assert result.returncode == 1
+        assert "does not resolve" in result.stderr

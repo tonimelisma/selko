@@ -46,6 +46,26 @@ echo "Merging PR #${PR} (branch: ${PR_BRANCH})..."
 #    GitHub deletes the remote branch itself once the merge lands.
 gh pr merge "$PR" --squash
 
+# Cloud sessions (CLAUDE_CODE_REMOTE=true) work in a single throwaway clone with
+# the PR branch checked out in it and no worktrees, so "fast-forward main and
+# remove the worktree" means: move this clone onto the merged main and drop the
+# local branch. Uncommitted work makes the switch refuse, as remove does below.
+if [[ "${CLAUDE_CODE_REMOTE:-}" == "true" ]]; then
+    git -C "$MAIN_REPO" fetch origin
+    if [[ -n "$(git -C "$MAIN_REPO" status --porcelain)" ]]; then
+        echo "Refusing to switch branches: the clone has uncommitted work. Inspect it (git status)." >&2
+        exit 1
+    fi
+    git -C "$MAIN_REPO" switch -C main origin/main
+    if git -C "$MAIN_REPO" show-ref --verify --quiet "refs/heads/${PR_BRANCH}"; then
+        git -C "$MAIN_REPO" branch -D "$PR_BRANCH"
+    fi
+    echo ""
+    echo "Done. PR #${PR} merged; this cloud clone is on the merged main; local branch deleted."
+    echo "CI runs on the merge as a safety net (not a gate)."
+    exit 0
+fi
+
 # 2. Fast-forward local main.
 git -C "$MAIN_REPO" fetch origin
 git -C "$MAIN_REPO" merge --ff-only origin/main

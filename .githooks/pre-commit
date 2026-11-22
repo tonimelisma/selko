@@ -218,7 +218,14 @@ if [ "$FRONTEND_CHANGED" = true ]; then
     fi
 fi
 
-if [ "$IOS_CHANGED" = true ]; then
+if [ "$IOS_CHANGED" = true ] && [ "${CLAUDE_CODE_REMOTE:-}" = "true" ]; then
+    # A cloud VM has no Xcode, and the iOS lane runs on Toni's Mac from a clone
+    # of the *pushed* branch (CLAUDE.md "Cloud sessions"), so requiring the
+    # evidence here would make it impossible to commit the code that the test
+    # needs. The gate moves, it does not disappear: the PR is not merged until
+    # that Mac run passes.
+    echo "  ios: cloud session -- run the iOS lane on the Mac through Latchkey after pushing; do not merge before it passes"
+elif [ "$IOS_CHANGED" = true ]; then
     echo "  Checking ios..."
     if check_ios; then
         echo "    iOS tests verified (xcresult)"
@@ -228,7 +235,11 @@ if [ "$IOS_CHANGED" = true ]; then
     fi
 fi
 
-if [ "$ANDROID_CHANGED" = true ]; then
+if [ "$ANDROID_CHANGED" = true ] && [ "${CLAUDE_CODE_REMOTE:-}" = "true" ]; then
+    # Same reasoning as iOS: the cloud VM has no Android SDK, the lane runs on
+    # the Mac from the pushed branch, and that run gates the merge.
+    echo "  android: cloud session -- run the Android lane on the Mac through Latchkey after pushing; do not merge before it passes"
+elif [ "$ANDROID_CHANGED" = true ]; then
     echo "  Checking android..."
     if check_android; then
         echo "    Android tests verified (gradle results)"

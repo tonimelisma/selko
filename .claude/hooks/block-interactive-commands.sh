@@ -7,7 +7,12 @@
 
 # Read tool input from stdin
 INPUT=$(cat)
-COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
+if command -v jq >/dev/null 2>&1; then
+  COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
+else
+  # Fresh cloud VMs may lack jq; an empty command would silently allow everything.
+  COMMAND=$(echo "$INPUT" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("tool_input",{}).get("command",""))')
+fi
 
 # Skip commands containing git commit (they may mention blocked commands in messages)
 if echo "$COMMAND" | grep -qE 'git commit'; then

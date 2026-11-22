@@ -5,6 +5,14 @@ set -euo pipefail
 
 BASE_REF="${1:-main}"
 
+# A cloud session's clone may carry only the remote-tracking branch (no local
+# `main`); compare against origin/<ref> then rather than failing on a missing
+# name. Still fails closed when neither exists.
+if ! git rev-parse --verify --quiet "$BASE_REF^{commit}" >/dev/null &&
+  git rev-parse --verify --quiet "origin/$BASE_REF^{commit}" >/dev/null; then
+  BASE_REF="origin/$BASE_REF"
+fi
+
 if ! git rev-parse --verify "$BASE_REF^{commit}" >/dev/null 2>&1; then
   echo "ERROR: base ref '$BASE_REF' does not resolve to a commit" >&2
   exit 1

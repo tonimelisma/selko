@@ -22,7 +22,11 @@ const APPEARANCES = ['light', 'dark'] as const;
  */
 async function waitForLoginForm(page: Page): Promise<void> {
   await page.getByLabel('Email').waitFor({ state: 'visible', timeout: 30000 });
-  await page.waitForTimeout(1000);
+  // Every module and the locale JSON have loaded, so hydration has run. A
+  // fixed 1 s delay used to stand in for this and lost the race on a slow CPU
+  // (a throttled cloud-session container): the click then submitted the bare
+  // HTML form as a GET to /login? and the test timed out waiting for /app.
+  await page.waitForLoadState('networkidle');
 }
 
 /**
@@ -38,11 +42,20 @@ async function createAuthContext(
   const page = await context.newPage();
 
   await page.goto('/login');
-  await waitForLoginForm(page);
-  await page.getByLabel('Email').fill(SCREENSHOT_USER);
-  await page.getByLabel('Password').fill(SCREENSHOT_PASS);
-  await page.getByRole('button', { name: 'Sign in' }).click();
-  await page.waitForURL('/app', { timeout: 15000 });
+  for (let attempt = 1; ; attempt++) {
+    await waitForLoginForm(page);
+    await page.getByLabel('Email').fill(SCREENSHOT_USER);
+    await page.getByLabel('Password').fill(SCREENSHOT_PASS);
+    await page.getByRole('button', { name: 'Sign in' }).click();
+    // Either the app signs in and routes to /app, or the click beat hydration
+    // and the browser submitted the plain form (URL becomes /login?...).
+    // (URL.search is "" for a bare "?", so match the href.)
+    await page.waitForURL((url) => url.pathname === '/app' || url.href.includes('/login?'), {
+      timeout: 15000,
+    });
+    if (new URL(page.url()).pathname === '/app') break;
+    if (attempt === 3) throw new Error(`login never hydrated: still at ${page.url()}`);
+  }
 
   return { context, page };
 }

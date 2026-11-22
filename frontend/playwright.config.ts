@@ -11,6 +11,9 @@ export default defineConfig({
     baseURL: 'http://localhost:5173',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
+    // Cloud sessions (scripts/cloud-setup.sh) ship Chrome for Testing at
+    // $CHROME_PATH; use it rather than downloading Playwright's own build.
+    ...(process.env.CHROME_PATH ? { launchOptions: { executablePath: process.env.CHROME_PATH } } : {}),
   },
   projects: [
     { name: 'setup', testMatch: /.*\.setup\.ts/ },
