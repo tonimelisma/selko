@@ -25,6 +25,9 @@ too, but that file never reaches a cloud session, so they are repeated here.
   without him.** When one item is blocked (the Mac locked, something only he
   can do), go on to the next unblocked one; stop only when every item is done
   or truly blocked, and list just the Toni-only steps at the end.
+- **Merge without asking.** Once the scoped lanes for a change pass, open the
+  PR and squash-merge it yourself; never stop to ask whether to merge. This
+  does not extend to production deploys, which still need an explicit yes.
 - **Live tests may write to Toni's real apps; every test removes what it made**
   in its own teardown, even when it fails, and confirms the removal. Never
   leave test data behind.
@@ -204,13 +207,19 @@ deciding anything; no test reaches a provider with them). Image pulls run
 detached, so the stack may still be coming up when the session starts:
 `scripts/cloud-setup.sh --status` says what is ready, `scripts/cloud-setup.sh
 --db` finishes it in the foreground. Full log: `.verify/cloud-setup.log`.
-The hook stops waiting at 480 s, under Claude Code's 600 s cancellation; on a
-throttled x86_64 Ubuntu 24.04 container it took ~9 min for the hook plus ~5
-more for Supabase's first image pull, so expect less on a cloud VM.
+The hook stops waiting at 480 s, under Claude Code's 600 s cancellation.
+Measured on a real cloud VM (2026-11-22, 4 CPUs, 15 GB): the whole hook took
+73 s with Supabase healthy inside it (pulls + every migration ≈ 63 s). The VM's
+Node was already ≥ 22.12, so no Node download. public.ecr.aws refused several
+pulls with `Data limit exceeded`; the Supabase CLI's own retry fetched those
+images from ghcr.io, so the script's docker.io/ghcr.io loop was never needed.
+(A throttled 1.5-CPU container took ~9 + ~5 min; that is the worst case.)
 
 **Worktrees: not used.** The clone is already private to the session. Work on
 a feature branch (`git switch -c <type>/<task>`); the edit-guard hook blocks
-source edits only while the clone is on `main`. `merge-and-cleanup.sh` moves
+source edits only while the clone is on `main`. The harness usually checks out
+its own session branch (`branch/<name>`, same commit as `main`), so the guard
+allows edits from the start; push to that branch. `merge-and-cleanup.sh` moves
 the clone onto the merged `main` instead of removing a worktree.
 
 **Runs in the VM, same commands as on the Mac:**

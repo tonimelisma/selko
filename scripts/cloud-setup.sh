@@ -237,6 +237,10 @@ write_env_files() {
 			# a reason unrelated to the code. Nothing reaches a provider with
 			# these: real-LLM tests need --run-llm and real-Gmail tests skip on
 			# the missing token, and a real call would be refused as unauthorized.
+			# A key set in the cloud environment's variables wins over this file
+			# (config.py load_config: process env first, .env only via setdefault), but
+			# LLM_PROVIDER=anthropic and LLM_FALLBACK_PROVIDER=none mean other
+			# providers' keys are never selected.
 			echo "ANTHROPIC_API_KEY=placeholder-cloud-session-not-a-key"
 			echo "GOOGLE_CLIENT_ID=placeholder-cloud-session.apps.googleusercontent.com"
 			echo "GOOGLE_CLIENT_SECRET=placeholder-cloud-session-not-a-secret"
@@ -279,6 +283,9 @@ case "${1:-}" in
 	exit $?
 	;;
 --status)
+	# A query, not a setup step: print only. Appending here would add a second
+	# set of "ready:" lines to the hook's log every time someone checks.
+	LOG=/dev/null
 	report_status
 	exit $?
 	;;
