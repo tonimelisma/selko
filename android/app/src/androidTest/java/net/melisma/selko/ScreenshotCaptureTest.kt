@@ -17,16 +17,10 @@ import java.io.File
 import java.io.FileOutputStream
 
 /**
- * Navigates through all 6 screens in light and dark appearances and saves 12 PNG screenshots.
- *
- * Run with:
- *   ./gradlew installDebug installDebugAndroidTest
- *   adb shell am instrument -w \
- *     -e class net.melisma.selko.ScreenshotCaptureTest \
- *     net.melisma.selko.test/androidx.test.runner.AndroidJUnitRunner
- *
- * Then pull screenshots:
- *   adb pull /sdcard/Android/data/net.melisma.selko/files/Pictures/ /tmp/android-screenshots/
+ * Navigates through all 6 screens in light and dark appearances and saves 12 PNG screenshots:
+ * ten from [captureAllScreenshots], then -- after `pm clear` -- the two signed-out dark
+ * screens from [captureSignedOutDarkScreens]. scripts/capture-android-screenshots.sh runs
+ * the two in that order and pulls the PNGs between them (`pm clear` deletes them).
  */
 @RunWith(AndroidJUnit4::class)
 class ScreenshotCaptureTest {
@@ -189,16 +183,24 @@ class ScreenshotCaptureTest {
         tapAndAwaitScreen("Settings", "Settings screen") { waitForSettingsScreen() }
         saveScreenshot("android-settings-dark")
 
-        // Clear the authenticated app state before capturing the unauthenticated
-        // dark screens. Going through the network-backed sign-out flow makes
-        // this fixture depend on Supabase auth response timing and can leave
-        // the instrumentation process waiting after all authenticated captures
-        // have already succeeded.
-        device.executeShellCommand("pm clear $PACKAGE")
-        device.executeShellCommand("am force-stop $PACKAGE")
-        device.executeShellCommand("monkey -p $PACKAGE 1")
+        device.executeShellCommand("cmd uimode night no")
+    }
+
+    /**
+     * The signed-out screens in dark mode. Runs as its own instrumentation,
+     * after scripts/capture-android-screenshots.sh has run `pm clear`: clearing
+     * the package from inside this test kills the process the test itself runs
+     * in (the instrumentation shares the app's process), which ended every run
+     * as "Process crashed" after the dark Settings capture -- and `pm clear`
+     * also wipes the Pictures folder, so the script pulls the first ten
+     * screenshots before it clears. Signing out through the UI instead would
+     * make this fixture depend on Supabase auth response timing.
+     */
+    @Test
+    fun captureSignedOutDarkScreens() {
+        device.executeShellCommand("cmd uimode night yes")
         require(waitForAnyObject(TIMEOUT, By.text("Sign in"))) {
-            "Login screen did not appear after clearing authenticated state"
+            "Login screen did not appear; run this after `pm clear $PACKAGE`"
         }
         SystemClock.sleep(500)
         device.waitForIdle()
@@ -292,6 +294,21 @@ class ScreenshotCaptureTest {
     }
 
     private fun saveScreenshot(name: String) {
+        // A screen counts as "shown" as soon as one of its labels appears (the
+        // tab bar's, for instance), while its content may still be loading. On
+        // a slower device that captured a bare spinner for Review and History.
+        // Compose progress indicators reach UiAutomator as ProgressBar nodes.
+        val deadline = SystemClock.elapsedRealtime() + TIMEOUT
+        while (device.hasObject(By.clazz("android.widget.ProgressBar")) &&
+            SystemClock.elapsedRealtime() < deadline
+        ) {
+            device.waitForIdle(POLL_INTERVAL)
+        }
+        require(!device.hasObject(By.clazz("android.widget.ProgressBar"))) {
+            "$name: still loading after ${TIMEOUT / 1000}s; refusing to save a spinner"
+        }
+        device.waitForIdle()
+
         val bitmap = InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
             ?: throw AssertionError("Failed to take screenshot for $name")
 

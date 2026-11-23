@@ -392,11 +392,14 @@ jobs:
           arch: x86_64
           profile: pixel_7
           disable-animations: true
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -memory 4096 -cores 4
           # One line per command; the action stops at the first that fails.
           # ScreenshotCaptureTest needs the seeded backend, so it runs from the
           # screenshot script (which starts the API and seeds) and not here.
+          # hide_error_dialogs: a system ANR dialog ("Pixel Launcher isn't
+          # responding") once covered the login form mid-test on this runner.
           script: |
+            adb shell settings put global hide_error_dialogs 1
             ./android/gradlew -p android connectedDebugAndroidTest --console=plain -Pandroid.testInstrumentationRunnerArguments.notClass=net.melisma.selko.ScreenshotCaptureTest
             if [ "$SCREENSHOTS" = "true" ]; then ./scripts/capture-all-screenshots.sh android; fi
       - name: Keep the screenshots

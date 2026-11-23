@@ -156,7 +156,7 @@ class SettingsScreenTest {
     }
 
     @Test
-    fun settingsScreen_showsGmailIntegration() {
+    fun settingsScreen_showsOneGoogleCardForGmailAndCalendar() {
         setupMocks()
 
         composeTestRule.setContent {
@@ -169,24 +169,10 @@ class SettingsScreenTest {
         }
 
         composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithText("Gmail").assertIsDisplayed()
-    }
-
-    @Test
-    fun settingsScreen_showsGoogleCalendarIntegration() {
-        setupMocks()
-
-        composeTestRule.setContent {
-            SelkoTheme {
-                SettingsScreen(
-                    onLogout = {},
-                    viewModel = viewModel()
-                )
-            }
-        }
-
-        composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithText("Google Calendar").assertIsDisplayed()
+        // Gmail and Google Calendar share one consent and token, so they are
+        // one "Google" card (#387), described by both product names.
+        composeTestRule.onNodeWithText("Google").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Gmail and Google Calendar").assertIsDisplayed()
     }
 
     @Test

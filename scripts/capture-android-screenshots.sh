@@ -86,25 +86,58 @@ else
     done
 fi
 
+# A system ANR dialog ("Pixel Launcher isn't responding") once covered the
+# login form mid-run on a slow emulator; a capture run never wants one.
+adb shell settings put global hide_error_dialogs 1 2>/dev/null || true
+
 cd "$PROJECT_ROOT/android"
 
-echo "==> Clearing old screenshots from device..."
-adb shell rm -f /sdcard/Android/data/net.melisma.selko/files/Pictures/*.png 2>/dev/null || true
 
 echo "==> Installing debug APK and test APK..."
 with_timeout 900 ./gradlew installDebug installDebugAndroidTest
 
+PICTURES=/sdcard/Android/data/net.melisma.selko/files/Pictures
+mkdir -p "$TMP_DIR"
+
+# Run one ScreenshotCaptureTest method. `am instrument` exits 0 even when the
+# app process crashes or a test fails; the verdict is only in its output. Read
+# it, or a crash surfaces later as a misleading "no screenshots to pull".
+run_capture() {
+    local method="$1" output
+    adb logcat -c 2>/dev/null || true
+    output="$(with_timeout 600 adb shell am instrument -w \
+        -e class "net.melisma.selko.ScreenshotCaptureTest#${method}" \
+        net.melisma.selko.test/androidx.test.runner.AndroidJUnitRunner)"
+    printf '%s\n' "$output"
+    grep -q '^OK (' <<<"$output" && return 0
+    echo "==> ${method} did not pass; crash buffer and test log:" >&2
+    adb logcat -d -b crash 2>/dev/null | tail -60 >&2 || true
+    adb logcat -d -s TestRunner:* AndroidRuntime:E 2>/dev/null | tail -60 >&2 || true
+    # What the screen showed when it gave up -- seeded demo data only. Kept
+    # under build/reports so ops.yml's android-test-reports artifact has it.
+    local failure_dir="$PROJECT_ROOT/android/app/build/reports/screenshot-failure"
+    mkdir -p "$failure_dir"
+    adb exec-out screencap -p >"$failure_dir/screen.png" 2>/dev/null || true
+    adb shell uiautomator dump /sdcard/window.xml >/dev/null 2>&1 &&
+        adb pull /sdcard/window.xml "$failure_dir/window.xml" >/dev/null 2>&1 || true
+    echo "==> Screen at failure saved to android/app/build/reports/screenshot-failure/" >&2
+    fail "ScreenshotCaptureTest#${method} did not report OK"
+}
+
+# `pm clear` both signs the app out and deletes its Pictures folder, so pull
+# after each signed-in pass. It must run from here: from inside the test it
+# kills the process the instrumentation itself runs in.
 echo "==> Clearing app data (removes stale Supabase sessions)..."
 adb shell pm clear net.melisma.selko 2>/dev/null || true
 
-echo "==> Running screenshot capture test..."
-with_timeout 600 adb shell am instrument -w \
-  -e class net.melisma.selko.ScreenshotCaptureTest \
-  net.melisma.selko.test/androidx.test.runner.AndroidJUnitRunner
+echo "==> Capturing the signed-in screens (light and dark) and the light signed-out ones..."
+run_capture captureAllScreenshots
+adb pull "$PICTURES/" "$TMP_DIR/"
 
-echo "==> Pulling screenshots from device..."
-mkdir -p "$TMP_DIR"
-adb pull /sdcard/Android/data/net.melisma.selko/files/Pictures/ "$TMP_DIR/"
+echo "==> Signing out (pm clear), then capturing the dark signed-out screens..."
+adb shell pm clear net.melisma.selko >/dev/null
+run_capture captureSignedOutDarkScreens
+adb pull "$PICTURES/" "$TMP_DIR/"
 
 SCREENSHOT_COUNT=$(find "$TMP_DIR/Pictures" -name 'android-*.png' | wc -l | tr -d ' ')
 if [ "$SCREENSHOT_COUNT" -ne 12 ]; then
