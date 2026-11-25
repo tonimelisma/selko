@@ -265,3 +265,47 @@ def test_the_removed_photo_tables_and_column_are_not_carried(importer, fixture_s
     columns = {r[1] for r in conn.execute("PRAGMA table_info(integrations)")}
     assert "last_photo_sync_at" not in columns
     assert conn.execute("SELECT count(*) FROM integrations").fetchone()[0] == 1
+
+
+def test_a_write_during_the_import_does_not_break_verification(importer, fixture_source, tmp_path, monkeypatch):
+    """A live source (a rehearsal while the old deployment runs) still verifies.
+
+    Rehearsal 2 failed with exit 5 on email_sync_state: the old workers updated
+    rows between the copy and the source checksum, which then ran outside the
+    copy's transaction. The whole import now reads one snapshot, so a commit
+    made meanwhile is simply not part of the copy.
+    """
+    import asyncio
+
+    import asyncpg
+
+    original = importer._export
+    fired = {"done": False}
+
+    async def export_then_write(conn, table, columns):
+        async for batch in original(conn, table, columns):
+            yield batch
+        if table == "events" and not fired["done"]:
+            other = await asyncpg.connect(fixture_source)
+            await other.execute("UPDATE public.events SET title = title || ' (changed meanwhile)'")
+            await other.execute("UPDATE public.users SET display_name = 'changed meanwhile'")
+            await other.close()
+            fired["done"] = True
+
+    monkeypatch.setattr(importer, "_export", export_then_write)
+    target = tmp_path / "selko.db"
+    report = importer.import_sync(fixture_source, target, progress=lambda _: None)
+    assert fired["done"], "the concurrent write never happened"
+    assert report.ok
+    conn = sqlite3.connect(target)
+    titles = [r[0] for r in conn.execute("SELECT title FROM events")]
+    assert titles and not any("changed meanwhile" in t for t in titles)  # the copy is the snapshot
+    assert conn.execute("SELECT display_name FROM users").fetchone()[0] != "changed meanwhile"
+
+    async def changed():
+        c = await asyncpg.connect(fixture_source)
+        n = await c.fetchval("SELECT count(*) FROM public.events WHERE title LIKE '%changed meanwhile%'")
+        await c.close()
+        return n
+
+    assert asyncio.run(changed()) >= 1  # the write really happened at the source

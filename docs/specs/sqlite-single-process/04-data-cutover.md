@@ -871,18 +871,21 @@ checks on the secret files, `server_encoding` and timeout settings.
 
 - Drift check first: the live `public` table and column lists must equal the
   pinned map exactly, or exit 3. Then the removed-feature check (§A.3), exit 3.
-- Each table is exported in its own `REPEATABLE READ READ ONLY` transaction
-  through an asyncpg cursor (500 rows per fetch and per batch), selecting
-  every column through its `CONVERT` expression. Its source checksum is then
-  computed by a separate query.
-- **This is not one snapshot across all tables, and nothing re-checks the
-  source after the load.** Correctness therefore depends on the freeze
-  (§C.3): with every writer stopped, every table is read at the same state. A
-  write during the import shows up as a checksum mismatch (exit 5) only if it
-  lands in a table between its export and its checksum; one that lands in a
-  table already checksummed is not caught. **Not built:** the single-snapshot
-  export, the write fingerprint (Q0.7) taken by the tool, and the second-
-  snapshot re-check; take the Q0.7 fingerprint by hand at the freeze.
+- **One snapshot for the whole import.** The drift check, the removed-feature
+  check, the accounts and every table's rows *and* source checksum are read in
+  a single `REPEATABLE READ READ ONLY` transaction, through asyncpg cursors
+  (500 rows per fetch and per batch), every column through its `CONVERT`
+  expression. The copy is therefore exactly the source as of that
+  transaction's start, and a write committed while the import runs is neither
+  copied nor counted: a rehearsal against the live deployment verifies as
+  cleanly as the real run. (Rehearsal 2 failed with exit 5 on
+  `email_sync_state` before this: each table had its own transaction and the
+  checksum ran outside it, so a live worker's write landed in between.)
+- The freeze (§C.3) is still what makes the copy *complete*: with the old
+  workers stopped, nothing written after the snapshot is lost, and no OAuth
+  refresh token rotates after it is copied. **Not built:** the write
+  fingerprint (Q0.7) taken by the tool; take it by hand at the freeze.
+- `attachments` reads its object list and row count in one snapshot too.
 
 ### B.4 Memory
 

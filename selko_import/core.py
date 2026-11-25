@@ -146,17 +146,17 @@ def _sqlite_cell(kind: str) -> Callable[[Any], str | None]:
 
 
 async def _export(conn: Any, table: str, columns: list[list[str]]):
+    """Stream a table's rows. Runs inside _load's one snapshot transaction."""
     select = ", ".join(CONVERT[k].format(c=f'"{n}"') for n, k in columns)
-    async with conn.transaction(isolation="repeatable_read", readonly=True):
-        cursor = conn.cursor(f'SELECT {select} FROM public."{table}"', prefetch=BATCH)
-        batch = []
-        async for record in cursor:
-            batch.append(tuple(record))
-            if len(batch) >= BATCH:
-                yield batch
-                batch = []
-        if batch:
+    cursor = conn.cursor(f'SELECT {select} FROM public."{table}"', prefetch=BATCH)
+    batch = []
+    async for record in cursor:
+        batch.append(tuple(record))
+        if len(batch) >= BATCH:
             yield batch
+            batch = []
+    if batch:
+        yield batch
 
 
 def _typed(row: tuple, kinds: list[str]) -> tuple:
@@ -218,72 +218,79 @@ async def _load(source_url: str, lite: sqlite3.Connection, report: Report, progr
     conn = await asyncpg.connect(source_url, statement_cache_size=0)
     try:
         await conn.execute("SET TIME ZONE 'UTC'")
-        # Schema drift fails closed: the pinned map must match the source exactly.
-        live = await conn.fetch(
-            "SELECT table_name, column_name FROM information_schema.columns WHERE table_schema = 'public'"
-            " AND table_name IN (SELECT tablename FROM pg_tables WHERE schemaname = 'public')"
-            " ORDER BY table_name, ordinal_position"
-        )
-        live_map: dict[str, list[str]] = {}
-        for r in live:
-            live_map.setdefault(r["table_name"], []).append(r["column_name"])
-        pinned = {t: [c[0] for c in cols] for t, cols in COLUMNS.items()}
-        if live_map != pinned:
-            drift = sorted(set(live_map) ^ set(pinned)) or sorted(t for t in pinned if live_map.get(t) != pinned[t])
-            raise ImportError_(f"source schema differs from the pinned map in: {drift}", 3)
-        left = []
-        for what, sql in REMOVED_FEATURE_DATA.items():
-            n = int(await conn.fetchval(sql))
-            if n:
-                left.append(f"{n} {what}")
-        if left:
-            raise ImportError_(
-                "the source holds data of the removed Google Photos ingestion, which the target"
-                " cannot keep: " + ", ".join(left) + ". Remove it at the source (or keep the"
-                " old deployment) before importing.", 3)
+        # One snapshot for the whole import: every table's rows and its source
+        # checksum, the accounts and the refusal counts are read in a single
+        # REPEATABLE READ, READ ONLY transaction. Rows written at the source
+        # while the import runs are simply not in it, so a live source (a
+        # rehearsal) verifies as cleanly as a frozen one -- the copy is exactly
+        # the source as of the transaction's start.
+        async with conn.transaction(isolation="repeatable_read", readonly=True):
+            # Schema drift fails closed: the pinned map must match the source exactly.
+            live = await conn.fetch(
+                "SELECT table_name, column_name FROM information_schema.columns WHERE table_schema = 'public'"
+                " AND table_name IN (SELECT tablename FROM pg_tables WHERE schemaname = 'public')"
+                " ORDER BY table_name, ordinal_position"
+            )
+            live_map: dict[str, list[str]] = {}
+            for r in live:
+                live_map.setdefault(r["table_name"], []).append(r["column_name"])
+            pinned = {t: [c[0] for c in cols] for t, cols in COLUMNS.items()}
+            if live_map != pinned:
+                drift = sorted(set(live_map) ^ set(pinned)) or sorted(t for t in pinned if live_map.get(t) != pinned[t])
+                raise ImportError_(f"source schema differs from the pinned map in: {drift}", 3)
+            left = []
+            for what, sql in REMOVED_FEATURE_DATA.items():
+                n = int(await conn.fetchval(sql))
+                if n:
+                    left.append(f"{n} {what}")
+            if left:
+                raise ImportError_(
+                    "the source holds data of the removed Google Photos ingestion, which the target"
+                    " cannot keep: " + ", ".join(left) + ". Remove it at the source (or keep the"
+                    " old deployment) before importing.", 3)
 
-        # Accounts first: users.id references them.
-        rows = await conn.fetch(ACCOUNT_SOURCE)
-        lite.execute("BEGIN")
-        lite.executemany(
-            f"INSERT INTO accounts ({', '.join(ACCOUNT_COLUMNS)}) VALUES ({', '.join('?' * len(ACCOUNT_COLUMNS))})",
-            [tuple(r) for r in rows],
-        )
-        lite.execute("COMMIT")
-        report.accounts = len(rows)
-        progress(f"accounts: {len(rows)}")
-
-        for table in sorted(COLUMNS):
-            if table in SKIPPED:
-                progress(f"{table}: skipped")
-                continue
-            columns = carried_columns(table)
-            kinds = [k for _, k in columns]
-            marks = ", ".join("?" * len(columns))
-            names = ", ".join(f'"{n}"' for n, _ in columns)
-            count = 0
+            # Accounts first: users.id references them.
+            rows = await conn.fetch(ACCOUNT_SOURCE)
             lite.execute("BEGIN")
-            try:
-                async for batch in _export(conn, table, columns):
-                    lite.executemany(f'INSERT INTO "{table}" ({names}) VALUES ({marks})',
-                                     [_typed(r, kinds) for r in batch])
-                    count += len(batch)
-            except sqlite3.Error as exc:
-                # A source row the target's constraints refuse: nothing is replaced.
-                lite.execute("ROLLBACK")
-                raise ImportError_(f"{table}: a source row violates the target schema ({exc})", 5) from exc
+            lite.executemany(
+                f"INSERT INTO accounts ({', '.join(ACCOUNT_COLUMNS)}) VALUES ({', '.join('?' * len(ACCOUNT_COLUMNS))})",
+                [tuple(r) for r in rows],
+            )
             lite.execute("COMMIT")
+            report.accounts = len(rows)
+            progress(f"accounts: {len(rows)}")
 
-            src = await conn.fetchrow(_pg_hash_sql(table, columns))
-            source = (int(src[0]), int(src[1]), int(src[2]))
-            cells = [_sqlite_cell(k) for k in kinds]
-            hashes = [
-                row_hash([cell(v) for cell, v in zip(cells, row, strict=True)])
-                for row in lite.execute(f'SELECT {names} FROM "{table}"')
-            ]
-            target_sum = fold(hashes)
-            report.tables.append(TableReport(table, count, source, target_sum))
-            progress(f"{table}: {count} rows, checksum {'ok' if source == target_sum else 'MISMATCH'}")
+            for table in sorted(COLUMNS):
+                if table in SKIPPED:
+                    progress(f"{table}: skipped")
+                    continue
+                columns = carried_columns(table)
+                kinds = [k for _, k in columns]
+                marks = ", ".join("?" * len(columns))
+                names = ", ".join(f'"{n}"' for n, _ in columns)
+                count = 0
+                lite.execute("BEGIN")
+                try:
+                    async for batch in _export(conn, table, columns):
+                        lite.executemany(f'INSERT INTO "{table}" ({names}) VALUES ({marks})',
+                                         [_typed(r, kinds) for r in batch])
+                        count += len(batch)
+                except sqlite3.Error as exc:
+                    # A source row the target's constraints refuse: nothing is replaced.
+                    lite.execute("ROLLBACK")
+                    raise ImportError_(f"{table}: a source row violates the target schema ({exc})", 5) from exc
+                lite.execute("COMMIT")
+
+                src = await conn.fetchrow(_pg_hash_sql(table, columns))
+                source = (int(src[0]), int(src[1]), int(src[2]))
+                cells = [_sqlite_cell(k) for k in kinds]
+                hashes = [
+                    row_hash([cell(v) for cell, v in zip(cells, row, strict=True)])
+                    for row in lite.execute(f'SELECT {names} FROM "{table}"')
+                ]
+                target_sum = fold(hashes)
+                report.tables.append(TableReport(table, count, source, target_sum))
+                progress(f"{table}: {count} rows, checksum {'ok' if source == target_sum else 'MISMATCH'}")
     finally:
         await conn.close()
 

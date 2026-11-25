@@ -99,11 +99,13 @@ async def _objects(source_url: str) -> tuple[list[tuple[str, int | None, str | N
 
     conn = await asyncpg.connect(source_url, statement_cache_size=0)
     try:
-        rows = await conn.fetch(OBJECTS_SQL)
-        without = await conn.fetchval(
-            "SELECT count(*) FROM public.attachments a WHERE a.storage_path IS NOT NULL AND NOT EXISTS"
-            " (SELECT 1 FROM storage.objects o WHERE o.bucket_id = 'attachments' AND o.name = a.storage_path)"
-        )
+        # One snapshot for the object list and the row count, as in the database import.
+        async with conn.transaction(isolation="repeatable_read", readonly=True):
+            rows = await conn.fetch(OBJECTS_SQL)
+            without = await conn.fetchval(
+                "SELECT count(*) FROM public.attachments a WHERE a.storage_path IS NOT NULL AND NOT EXISTS"
+                " (SELECT 1 FROM storage.objects o WHERE o.bucket_id = 'attachments' AND o.name = a.storage_path)"
+            )
     finally:
         await conn.close()
     return [(r["name"], r["size"], r["content_hash"], r["has_row"]) for r in rows], int(without or 0)
