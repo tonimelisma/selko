@@ -46,7 +46,8 @@ image (every push and PR)
 
 release (main only, after image passes)
     cosign sign --yes <digest>, cosign verify <digest>   (both images)
-    docker buildx imagetools create --tag :main <digest>  (both images)
+    crane tag <digest> main  (both images; :main is the signed digest itself,
+                              asserted, and cosign verify passes on :main)
 ```
 
 The image that is checked is the image that is pushed: one build, loaded into

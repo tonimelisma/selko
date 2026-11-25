@@ -92,6 +92,14 @@ jobs:
       - name: Install cosign
         uses: sigstore/cosign-installer@v3
 
+      - name: Install crane
+        uses: imjasonh/setup-crane@v0.4
+
+      # :main must point at the very digest that was signed. `crane tag` adds a
+      # tag to the existing manifest; a tool that writes a new manifest (as
+      # `docker buildx imagetools create` does) would leave :main on an
+      # unsigned digest, which the server rightly refuses. So the job proves
+      # it: :main resolves to the signed digest and verifies by itself.
       - name: Sign both digests and move :main to them
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -99,12 +107,19 @@ jobs:
           IMPORTER_DIGEST: ${{ needs.image.outputs.importer_digest }}
         run: |
           echo "$GH_TOKEN" | docker login ghcr.io -u "${GITHUB_ACTOR}" --password-stdin
+          identity="https://github.com/${GITHUB_REPOSITORY}/.github/workflows/image.yml@refs/heads/main"
+          issuer="https://token.actions.githubusercontent.com"
           for ref in "$DIGEST" "$IMPORTER_DIGEST"; do
+            repo="${ref%@*}"
+            digest="${ref#*@}"
             cosign sign --yes "$ref"
-            cosign verify "$ref" \
-              --certificate-identity "https://github.com/${GITHUB_REPOSITORY}/.github/workflows/image.yml@refs/heads/main" \
-              --certificate-oidc-issuer https://token.actions.githubusercontent.com >/dev/null
-            # :main follows the signed digest; the manifest is copied server side.
-            docker buildx imagetools create --tag "${ref%@*}:main" "$ref"
-            echo "released $ref as ${ref%@*}:main"
+            cosign verify "$ref" --certificate-identity "$identity" --certificate-oidc-issuer "$issuer" >/dev/null
+            crane tag "$ref" main
+            moved="$(crane digest "$repo:main")"
+            if [ "$moved" != "$digest" ]; then
+              echo "::error::$repo:main is $moved, not the signed $digest"
+              exit 1
+            fi
+            cosign verify "$repo:main" --certificate-identity "$identity" --certificate-oidc-issuer "$issuer" >/dev/null
+            echo "released $ref as $repo:main (same digest, signature verified on :main)"
           done
