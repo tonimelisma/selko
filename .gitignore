@@ -13,8 +13,6 @@ xcuserdata/
 .env.*
 !.env.example
 
-# Supabase
-supabase/.env
 .mcp.json
 
 # Python

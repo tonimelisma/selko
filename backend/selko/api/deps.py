@@ -104,11 +104,8 @@ def get_quota_service(
 ) -> QuotaService:
     """Create QuotaService for rate limiting.
 
-    Uses service role client to ensure atomic quota operations work
-    regardless of RLS policies.
-
     Args:
-        service_client: Supabase client with service role.
+        service_client: The process database.
 
     Returns:
         Configured QuotaService instance.
@@ -121,10 +118,8 @@ def get_llm_logging_service(
 ) -> LLMLoggingService:
     """Create LLMLoggingService for LLM call auditing.
 
-    Uses service role client to write logs regardless of RLS policies.
-
     Args:
-        service_client: Supabase client with service role.
+        service_client: The process database.
 
     Returns:
         Configured LLMLoggingService instance.

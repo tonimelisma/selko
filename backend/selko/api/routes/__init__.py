@@ -1,7 +1,7 @@
 """API route modules.
 
 Server-side endpoints that require secrets (OAuth, Gmail API, LLM, Calendar API, Photos API).
-For direct database queries, frontends should use Supabase client directly.
+The web app's data API is routes/client.py (docs/api-client-endpoints.md).
 """
 
 from selko.api.routes.calendars import router as calendars_router

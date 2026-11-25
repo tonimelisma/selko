@@ -221,8 +221,7 @@ def create_app() -> FastAPI:
         allow_headers=["Authorization", "Content-Type", "Accept"],
     )
 
-    # Include routers (server-side endpoints only)
-    # For direct database queries, frontends use Supabase client
+    # Include routers; routes/client.py is the web app's data API.
     app.include_router(health_router)
     app.include_router(emails_router)
     app.include_router(integrations_router)
