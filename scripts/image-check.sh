@@ -103,6 +103,10 @@ for module in asyncpg psycopg psycopg2 supabase postgrest; do
 done
 pass "no Postgres or Supabase client in the image"
 
+docker exec "$CURRENT" python -c "from selko.db.runtime import open_database; open_database('/data', owner='a second server')" \
+  >/dev/null 2>&1 && fail "a second server could open /data while the first runs"
+pass "the running server holds /data: a second owner is refused"
+
 EMAIL="check-$$@example.test"
 code="$(curl -sS -o /dev/null -w '%{http_code}' -H "Origin: $BASE" -H 'Content-Type: application/json' \
   -d "{\"email\":\"$EMAIL\",\"password\":\"check-password\"}" "$BASE/auth/signup")"

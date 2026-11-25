@@ -69,7 +69,7 @@ async def lifespan(app: FastAPI):
     from selko.db.startup import reset_leases_at_startup
     from selko.services.accounts import TokenKeys
 
-    db = open_database(config.data_dir)
+    db = open_database(config.data_dir, owner="selko.api")
     app.state.db = db
     app.state.bus = db.bus
     app.state.environment = config.environment

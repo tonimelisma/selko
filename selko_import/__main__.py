@@ -7,6 +7,9 @@
 Secrets are read from files, never from the command line: the source URL
 carries the database password, the storage key reads every user's files.
 
+Both commands take the data directory's lock (selko.db.datalock) and exit 4
+if a server or another import holds it: stop the server first.
+
 database:    0 imported and verified; 3 the source schema differs from the
              pinned map, or it holds data of the removed Google Photos
              ingestion; 5 verification failed (nothing written); 2 usage.
@@ -43,6 +46,21 @@ def main(argv: list[str] | None = None) -> int:
     files.add_argument("--data-dir", required=True, type=Path)
     args = parser.parse_args(argv)
 
+    from selko.db.datalock import DataDirLocked, acquire, release
+
+    data_dir = args.target.parent if args.command == "database" else args.data_dir
+    try:
+        lock = acquire(data_dir, f"selko_import {args.command}")
+    except DataDirLocked as exc:
+        print(f"refusing: {exc}", file=sys.stderr)
+        return 4
+    try:
+        return _run(args)
+    finally:
+        release(lock)
+
+
+def _run(args: argparse.Namespace) -> int:
     if args.command == "database":
         from selko_import.core import ImportError_, import_sync
 

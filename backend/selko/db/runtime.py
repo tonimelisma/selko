@@ -10,6 +10,7 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
+from selko.db import datalock
 from selko.db.bus import Bus, WorkSignals
 from selko.db.connection import Database
 from selko.db.migrate import migrate
@@ -20,16 +21,24 @@ DATABASE_FILE = "selko.db"
 ATTACHMENTS_DIR = "attachments"
 
 _database: Database | None = None
+_lock = None
 
 
-def open_database(data_dir: Path | str) -> Database:
-    """Migrate and open ``<data_dir>/selko.db``; idempotent within a process."""
-    global _database
+def open_database(data_dir: Path | str, *, owner: str | None = None) -> Database:
+    """Migrate and open ``<data_dir>/selko.db``; idempotent within a process.
+
+    ``owner`` names a server process (``selko.api``, ``selko.worker_app``): it
+    takes the directory's lock first (selko.db.datalock) and raises
+    ``DataDirLocked`` if another process holds it. Operator commands pass none.
+    """
+    global _database, _lock
     data_dir = Path(data_dir)
     path = data_dir / DATABASE_FILE
     if _database is not None and _database.path == path:
         return _database
     data_dir.mkdir(parents=True, exist_ok=True)
+    if owner is not None:
+        _lock = datalock.acquire(data_dir, owner)
     (data_dir / ATTACHMENTS_DIR).mkdir(exist_ok=True)
     applied = migrate(path)
     if applied:
@@ -55,7 +64,9 @@ def attachments_dir() -> Path:
 
 
 def close_database() -> None:
-    global _database
+    global _database, _lock
     if _database is not None:
         _database.close()
         _database = None
+    datalock.release(_lock)
+    _lock = None

@@ -1,16 +1,24 @@
-# The Selko image: build it, check it the way the server runs it, and on main
-# publish ghcr.io/tonimelisma/selko:<sha> signed keylessly with cosign.
+# The Selko images: build them, check them the way the server runs them, and on
+# main publish them -- but only release them after Toni approves.
 #
-# The image that is checked is the image that is pushed and signed: one build,
-# loaded into the runner's Docker, checked by scripts/image-lane.sh, then
-# pushed by digest. Nothing is pushed unless every check passed.
+# image   (every push and PR) builds ghcr.io/tonimelisma/selko and the one-time
+#         importer ghcr.io/tonimelisma/selko-import, and checks them with
+#         scripts/image-lane.sh. On main it pushes both as :<sha>, unsigned.
+#         Nothing is pushed unless every check passed, and the image that was
+#         checked is the image that is pushed (one build, pushed by digest).
+# release (main only) runs in the GitHub environment `production`, whose
+#         required reviewer is Toni: the job waits for his approval in the
+#         Actions tab. It then signs both digests with cosign (keyless) and
+#         moves :main to them. The server follows :main and accepts only signed
+#         digests, so nothing reaches production before that approval. A newer
+#         merge replaces a release still waiting for approval.
 #
-# Tags: ghcr.io/tonimelisma/selko:<sha> and :main (the newest build of main);
-# the same for ghcr.io/tonimelisma/selko-import. A server verifies a pulled
-# image with:
+# A server verifies a pulled image with:
 #   cosign verify ghcr.io/tonimelisma/selko:<sha or main> \
 #     --certificate-identity "https://github.com/tonimelisma/selko/.github/workflows/image.yml@refs/heads/main" \
 #     --certificate-oidc-issuer https://token.actions.githubusercontent.com
+# The identity is this file on refs/heads/main; the environment does not change
+# it, so moving signing into the release job keeps the server's check valid.
 name: Image
 
 on:
@@ -19,10 +27,6 @@ on:
   pull_request:
   workflow_dispatch:
 
-concurrency:
-  group: image-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
-
 permissions:
   contents: read
 
@@ -30,15 +34,20 @@ jobs:
   image:
     runs-on: ubuntu-24.04
     timeout-minutes: 40
+    concurrency:
+      group: image-${{ github.ref }}
+      cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
     permissions:
       contents: read
-      packages: write   # push to ghcr.io (main only)
-      id-token: write   # cosign keyless signing (main only)
+      packages: write   # push :<sha> to ghcr.io (main only)
     env:
       IMAGE: ghcr.io/tonimelisma/selko:${{ github.sha }}
       # The one-time cutover importer: a separate image, so the app image never
       # carries a Postgres driver.
       IMPORTER: ghcr.io/tonimelisma/selko-import:${{ github.sha }}
+    outputs:
+      digest: ${{ steps.push.outputs.digest }}
+      importer_digest: ${{ steps.push.outputs.importer_digest }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
@@ -55,7 +64,8 @@ jobs:
           SELKO_FIXTURE_POSTGRES_IMAGE: postgres:17
         run: ./scripts/image-lane.sh "$IMAGE" "$IMPORTER"
 
-      - name: Push and sign
+      - name: Push :<sha> (unsigned until released)
+        id: push
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -63,31 +73,45 @@ jobs:
           echo "$GH_TOKEN" | docker login ghcr.io -u "${GITHUB_ACTOR}" --password-stdin
           docker push -q "$IMAGE"
           docker push -q "$IMPORTER"
-          # A moving tag for pull-based updaters: always the newest checked and
-          # signed build of main. The signature is on the digest, so a puller
-          # verifies whatever :main resolves to.
-          docker tag "$IMAGE" "${IMAGE%:*}:main"
-          docker tag "$IMPORTER" "${IMPORTER%:*}:main"
-          docker push -q "${IMAGE%:*}:main"
-          docker push -q "${IMPORTER%:*}:main"
           digest="$(docker image inspect "$IMAGE" --format '{{index .RepoDigests 0}}')"
           importer_digest="$(docker image inspect "$IMPORTER" --format '{{index .RepoDigests 0}}')"
           echo "pushed $digest and $importer_digest"
           echo "digest=$digest" >> "$GITHUB_OUTPUT"
           echo "importer_digest=$importer_digest" >> "$GITHUB_OUTPUT"
-        id: push
 
+  release:
+    needs: image
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.image.outputs.digest != ''
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    # Toni is this environment's required reviewer (repository Settings ->
+    # Environments -> production). Without that setting the job runs unapproved:
+    # the environment is what turns a merge into a release.
+    environment: production
+    concurrency:
+      group: release-production
+      cancel-in-progress: true
+    permissions:
+      contents: read
+      packages: write   # move :main
+      id-token: write   # cosign keyless signing
+    steps:
       - name: Install cosign
-        if: steps.push.outputs.digest != ''
         uses: sigstore/cosign-installer@v3
 
-      - name: Sign the pushed digest
-        if: steps.push.outputs.digest != ''
+      - name: Sign both digests and move :main to them
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DIGEST: ${{ needs.image.outputs.digest }}
+          IMPORTER_DIGEST: ${{ needs.image.outputs.importer_digest }}
         run: |
-          for ref in "${{ steps.push.outputs.digest }}" "${{ steps.push.outputs.importer_digest }}"; do
+          echo "$GH_TOKEN" | docker login ghcr.io -u "${GITHUB_ACTOR}" --password-stdin
+          for ref in "$DIGEST" "$IMPORTER_DIGEST"; do
             cosign sign --yes "$ref"
             cosign verify "$ref" \
               --certificate-identity "https://github.com/${GITHUB_REPOSITORY}/.github/workflows/image.yml@refs/heads/main" \
               --certificate-oidc-issuer https://token.actions.githubusercontent.com >/dev/null
-            echo "signed and verified $ref"
+            # :main follows the signed digest; the manifest is copied server side.
+            docker buildx imagetools create --tag "${ref%@*}:main" "$ref"
+            echo "released $ref as ${ref%@*}:main"
           done

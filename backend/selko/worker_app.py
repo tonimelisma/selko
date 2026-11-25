@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 async def main() -> None:
     config = load_config()
-    db = open_database(config.data_dir)
+    db = open_database(config.data_dir, owner="selko.worker_app")
     await db.signals.start()
     # One process owns every lease, so any lease present now belongs to a
     # dead run. Release them before a single worker starts.

@@ -24,38 +24,49 @@ cost nothing.
 |----------|---------|------|
 | `test.yml` | push to `main`, PRs (path-filtered: `backend/**`, `selko_import/**`, `scripts/seed_screenshot_data.py`, `pyproject.toml`, `uv.lock`) | `unit-tests`: the whole backend suite, unit + integration (SQLite needs no service) |
 | `frontend-tests.yml` | push to `main`, PRs touching `frontend/**` | `unit-tests` (Vitest), `build` (build + `svelte-check`) |
-| `image.yml` | push to `main`, PRs, manual | `image`: build → `scripts/image-lane.sh` → on `main` only, push and cosign-sign |
+| `image.yml` | push to `main`, PRs, manual | `image`: build both images → `scripts/image-lane.sh` → on `main` only, push `:<sha>` unsigned; `release` (environment `production`, waits for Toni's approval): cosign-sign both digests, move `:main` |
 
 ## image.yml
 
 ```
-docker build --build-arg GIT_COMMIT_SHA=<sha> -t ghcr.io/tonimelisma/selko:<sha> .
-    |
-scripts/image-lane.sh <image>
-    |-- throwaway Postgres holding selko_import/fixture, imported with selko_import
-    |-- scripts/image-check.sh: read-only root, --cap-drop ALL, no-new-privileges,
-    |   400 MB, /data the only volume; /health, health invariants, web shell,
-    |   non-root, sign-up/sign-in/refresh, review + /live, attachment download,
-    |   memory, the imported database
-    |
-main only:
-    docker push  (GITHUB_TOKEN, packages: write)
-    cosign sign --yes <digest>   (keyless, OIDC: id-token: write)
-    cosign verify <digest>       (identity: image.yml@refs/heads/main)
+image (every push and PR)
+    docker build -t ghcr.io/tonimelisma/selko:<sha> .
+    docker build --target importer -t ghcr.io/tonimelisma/selko-import:<sha> .
+        |
+    scripts/image-lane.sh <image> <importer>
+        |-- throwaway Postgres holding selko_import/fixture, imported with the
+        |   importer image (read-only, no capabilities)
+        |-- scripts/image-check.sh: read-only root, --cap-drop ALL,
+        |   no-new-privileges, 400 MB, /data the only volume; /health, health
+        |   invariants, web shell, non-root, no Postgres/Supabase client, the
+        |   data-directory lock, sign-up/sign-in/refresh, review + /live,
+        |   attachment download, memory, the imported database
+        |
+    main only: docker push :<sha> for both (unsigned)
+
+release (main only; GitHub environment `production`, required reviewer Toni)
+    waits for approval in the Actions tab
+    cosign sign --yes <digest>, cosign verify <digest>   (both images)
+    docker buildx imagetools create --tag :main <digest>  (both images)
 ```
 
 The image that is checked is the image that is pushed: one build, loaded into
 the runner's Docker, checked, then pushed by digest. Nothing is pushed unless
-every check passed. A server verifies a pulled image with:
+every check passed, and nothing is signed or tagged `:main` until Toni
+approves the release. A newer merge replaces a release still waiting for
+approval. The production server follows `:main` and accepts only a signed
+digest:
 
 ```bash
-cosign verify ghcr.io/tonimelisma/selko:<sha> \
+cosign verify ghcr.io/tonimelisma/selko:main \
   --certificate-identity "https://github.com/tonimelisma/selko/.github/workflows/image.yml@refs/heads/main" \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
 
 No secret is involved: the workflow's `GITHUB_TOKEN` pushes and GitHub's OIDC
-token signs.
+token signs. The environment's reviewer rule is a repository setting (Settings →
+Environments → `production` → Required reviewers); without it the release job
+runs unapproved.
 
 ## Migrations
 

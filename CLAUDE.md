@@ -441,9 +441,9 @@ above are the only ones. The native iOS and Android apps are unmaintained
 - [ ] The scoped lanes above pass in the session — **the lanes are the gate, not CI**
 - [ ] Commit (conventional format), push, open the PR over REST: `gh api repos/tonimelisma/selko/pulls -f head=<branch> -f base=main -f title=… -f body=…` (`gh pr create` needs GraphQL, which the cloud proxy refuses)
 - [ ] `./scripts/merge-and-cleanup.sh <pr_number>` — squash-merges over REST and cleans up: GitHub deletes the remote branch itself, the script deletes the local branch, moves the clone to the merged `main` (cloud) or fast-forwards `main` and removes the worktree (Mac). **Does not wait on CI.**
-- [ ] **Check CI on `main` and fix forward if it ran and failed** — the `actions/runs?branch=main` query under "CI Ownership". On `main`, `image.yml` is what publishes `ghcr.io/tonimelisma/selko:<sha>`: a red image job means nothing new ships.
+- [ ] **Check CI on `main` and fix forward if it ran and failed** — the `actions/runs?branch=main` query under "CI Ownership". On `main`, `image.yml` is what publishes `ghcr.io/tonimelisma/selko:<sha>`: a red image job means nothing new ships, and an approved `release` job is what makes it production's.
 - [ ] If your change ships (`backend`/`frontend`/image), **report the `--gate prod` lane table and state a recommendation**. A bare "Should I deploy this to production?" with no evidence attached asks the operator to adjudicate a question the lane table already answers.
-- [ ] **Production deploys.** A merge to `main` publishes a signed image; the server that runs production pulls and verifies it (cosign identity: `image.yml` on `refs/heads/main`). Deployment itself lives outside this repository. **Never change what production runs without Toni's explicit yes for that SHA.** The first cutover from the previous hosted-Postgres build imports its data once, on the server, with the signed importer image `ghcr.io/tonimelisma/selko-import:<sha>` (`database` copies and checksums every table; `attachments` copies every Storage object and verifies its size and SHA-256; secrets are read from files, never a command line; database exit 3 = schema drift or leftover Google Photos data, 5 = verification failed, nothing written; attachments exit 6 = missing or mismatched objects, re-runnable) — `docs/specs/sqlite-single-process/04-data-cutover.md`.
+- [ ] **Production deploys.** A merge to `main` builds and checks the images and pushes them as `:<sha>`, unsigned. **Nothing ships until Toni approves the `release` job** (GitHub environment `production`, Toni the required reviewer): it signs both digests and moves `:main`, which the server follows within minutes and accepts only when signed (cosign identity: `image.yml` on `refs/heads/main`). Deployment itself lives outside this repository. **Never ask Toni to approve a release without the lane table, and never change what production runs without his explicit yes for that SHA.** The first cutover from the previous hosted-Postgres build imports its data once, on the server, with the signed importer image `ghcr.io/tonimelisma/selko-import:<sha>` (`database` copies and checksums every table; `attachments` copies every Storage object and verifies its size and SHA-256; secrets are read from files, never a command line; database exit 3 = schema drift or leftover Google Photos data, 5 = verification failed, nothing written; attachments exit 6 = missing or mismatched objects, re-runnable) — `docs/specs/sqlite-single-process/04-data-cutover.md`.
 - [ ] **After any production deploy, open a `docs/deploy-log/<date>-<sha>.md` entry from `TEMPLATE.md` and fill the T+0 and T+15m rows before reporting done.** The T+24h row is filled the next day. Config, real-data and elapsed-time failures are only observable here — a deploy is not finished when it is applied, it is finished when it has been watched. Always fill in "which gate should have caught it"; that is what turns an incident into a permanent gate improvement instead of folklore.
 
 See `docs/parallel-agents.md` for the full workflow. See `docs/ci-cd.md` for CI architecture details.
@@ -453,7 +453,8 @@ See `docs/parallel-agents.md` for the full workflow. See `docs/ci-cd.md` for CI 
 **CI runs on every push and PR, and it is never a merge gate.** The gate is the
 lanes in the session. Workflows: `test.yml` (the whole backend suite),
 `frontend-tests.yml` (web unit tests, `svelte-check`, build), `image.yml`
-(build, image check, and on `main` push + cosign sign).
+(build, image check, and on `main` push `:<sha>`; its `release` job waits for
+Toni's approval, then cosign-signs and moves `:main`).
 
 **A red CI is never left red.** A status nobody reads is worse than no status.
 
@@ -551,6 +552,12 @@ The script handles seeding, starting the API, capturing and resizing. See `docs/
   built web app, the API and the background workers on one port. All state is
   in `SELKO_DATA_DIR` (`/data` in the image): `selko.db` and `attachments/`.
   Settings come from an env file. The root filesystem is never written.
+- **One owner per data directory.** The server (`selko.api`, `selko.worker_app`)
+  and the importer hold an exclusive `flock` on `<SELKO_DATA_DIR>/.selko.lock`
+  for as long as they run (`selko.db.datalock`); a second owner refuses to start
+  (the importer exits 4). Operator commands (`selko.admin`) take no lock and run
+  beside the server. The host's tooling also prevents two containers on one
+  directory; the lock is the second safeguard.
 - **One writer, many readers.** `selko.db.Database` keeps one writer connection
   behind a lock with `BEGIN IMMEDIATE`, and reader connections in WAL mode
   (`query_only`). Every write is a `db.write()` transaction; `tx.now` is one
