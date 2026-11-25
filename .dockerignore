@@ -1,0 +1,20 @@
+# Only what the image builds from: backend/selko, frontend sources, the lockfiles.
+*
+!pyproject.toml
+!uv.lock
+!backend/pyproject.toml
+!backend/README.md
+!backend/selko/**
+!frontend/package.json
+!frontend/package-lock.json
+!frontend/jsconfig.json
+!frontend/svelte.config.js
+!frontend/vite.config.js
+!frontend/postcss.config.js
+!frontend/scripts/**
+!frontend/src/**
+!frontend/static/**
+**/__pycache__
+**/*.pyc
+**/__tests__/**
+**/*.test.js

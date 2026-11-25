@@ -11,10 +11,13 @@ drills = []
 
 # Single process, SQLite: the minimal Selko
 
-**Status:** Plan, nothing built. Written 2026-11-25. Every number below was
-measured in a cloud session against the local stack and the current code, or
-is quoted from a deploy log; what could not be measured from a session is
-listed in Q0 with how to measure it.
+**Status:** In progress. The detailed plan is in
+[`sqlite-single-process/`](sqlite-single-process/README.md): schema, every
+database function, the client API and auth, the data import and cutover, and
+verification, file by file. Its execution order (one branch straight to
+SQLite, merged when the signed image passes its CI job) supersedes §5's
+"ship each phase to today's production first"; §5's increments remain the
+map of the work. The foundation (S0) is built: `backend/selko/db/`.
 
 ## 1. Target
 

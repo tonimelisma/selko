@@ -20,6 +20,14 @@ DELIBERATELY_UNREACHABLE: dict[str, str] = {
     "selko.workers.photo_fetch": (
         "owner=photo-ingestion; Google Photos ingestion is parked and disabled"
     ),
+    # The SQLite data layer lands before the services move onto it
+    # (docs/specs/sqlite-single-process.md). These entries are removed by the
+    # increment that makes selko.api open the database.
+    "selko.db": "owner=sqlite-single-process; wired in when the services move to SQLite",
+    "selko.db.bus": "owner=sqlite-single-process; wired in when the services move to SQLite",
+    "selko.db.codec": "owner=sqlite-single-process; wired in when the services move to SQLite",
+    "selko.db.connection": "owner=sqlite-single-process; wired in when the services move to SQLite",
+    "selko.db.migrate": "owner=sqlite-single-process; wired in when the services move to SQLite",
 }
 
 
@@ -95,7 +103,7 @@ def _reachable(graph: dict[str, set[str]]) -> set[str]:
 
 
 def test_every_worker_and_service_module_is_reachable() -> None:
-    """Every service and worker must be transitively importable at runtime.
+    """Every service, worker and data-layer module must be importable at runtime.
 
     A module under ``selko/workers`` or ``selko/services`` with no caller can
     pass unit tests indefinitely. This graph check makes that failure visible
@@ -107,7 +115,7 @@ def test_every_worker_and_service_module_is_reachable() -> None:
     runtime_modules = {
         module
         for module in graph
-        if module.startswith(("selko.services.", "selko.workers."))
+        if module.startswith(("selko.services.", "selko.workers.", "selko.db"))
     }
     missing = sorted(runtime_modules - reachable - set(DELIBERATELY_UNREACHABLE))
 
