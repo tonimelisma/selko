@@ -5,8 +5,10 @@
 # loaded into the runner's Docker, checked by scripts/image-lane.sh, then
 # pushed by digest. Nothing is pushed unless every check passed.
 #
-# A server verifies a pulled image with:
-#   cosign verify ghcr.io/tonimelisma/selko:<sha> \
+# Tags: ghcr.io/tonimelisma/selko:<sha> and :main (the newest build of main);
+# the same for ghcr.io/tonimelisma/selko-import. A server verifies a pulled
+# image with:
+#   cosign verify ghcr.io/tonimelisma/selko:<sha or main> \
 #     --certificate-identity "https://github.com/tonimelisma/selko/.github/workflows/image.yml@refs/heads/main" \
 #     --certificate-oidc-issuer https://token.actions.githubusercontent.com
 name: Image
@@ -61,6 +63,13 @@ jobs:
           echo "$GH_TOKEN" | docker login ghcr.io -u "${GITHUB_ACTOR}" --password-stdin
           docker push -q "$IMAGE"
           docker push -q "$IMPORTER"
+          # A moving tag for pull-based updaters: always the newest checked and
+          # signed build of main. The signature is on the digest, so a puller
+          # verifies whatever :main resolves to.
+          docker tag "$IMAGE" "${IMAGE%:*}:main"
+          docker tag "$IMPORTER" "${IMPORTER%:*}:main"
+          docker push -q "${IMAGE%:*}:main"
+          docker push -q "${IMPORTER%:*}:main"
           digest="$(docker image inspect "$IMAGE" --format '{{index .RepoDigests 0}}')"
           importer_digest="$(docker image inspect "$IMPORTER" --format '{{index .RepoDigests 0}}')"
           echo "pushed $digest and $importer_digest"
