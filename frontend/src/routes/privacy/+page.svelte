@@ -100,8 +100,10 @@
 			<h2 class="text-xl font-bold">Who else handles your data</h2>
 			<p class="mt-3">We share data only with the service providers that run Selko for us:</p>
 			<ul class="mt-3 list-disc space-y-2 pl-6">
-				<li><strong>Supabase:</strong> database, file storage and sign-in.</li>
-				<li><strong>Render:</strong> hosting for the Selko web app and server.</li>
+				<li>
+					<strong>Google Cloud:</strong> hosting for Selko's server, where the database and files
+					are stored.
+				</li>
 				<li>
 					<strong>Anthropic:</strong> the AI model that extracts events from email content.
 				</li>

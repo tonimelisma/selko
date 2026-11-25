@@ -24,8 +24,17 @@ describe('Privacy Policy Page', () => {
 	it('names every service provider that handles user data', () => {
 		render(PrivacyPage);
 
-		for (const provider of ['Supabase:', 'Render:', 'Anthropic:', 'Google:', 'Microsoft:']) {
+		for (const provider of ['Google Cloud:', 'Anthropic:', 'Google:', 'Microsoft:']) {
 			expect(screen.getByText(provider)).toBeInTheDocument();
+		}
+	});
+
+	it('names no provider Selko no longer uses', () => {
+		const { container } = render(PrivacyPage);
+
+		// Selko runs on its own server with its own database and sign-in.
+		for (const gone of ['Supabase', 'Render']) {
+			expect(container.textContent).not.toContain(gone);
 		}
 	});
 

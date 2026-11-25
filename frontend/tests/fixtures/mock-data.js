@@ -191,7 +191,7 @@ export const mockUser = {
 	updated_at: '2024-01-01T00:00:00Z'
 };
 
-/** Mock Supabase errors for testing error handling */
+/** Mock API errors for testing error handling */
 export const mockErrors = {
 	notFound: {
 		code: 'PGRST116',
