@@ -36,7 +36,7 @@ export function isDownloadable(attachment) {
  * @param {string} attachmentId - The attachment UUID
  * @returns {Promise<{data: Blob | null, error: import('$lib/errors.js').AppError | null}>}
  */
-export async function fetchAttachmentContent(attachmentId) {
+async function fetchAttachmentContent(attachmentId) {
 	const { data, error } = await apiFetch(`/attachments/${encodeURIComponent(attachmentId)}/content`, {
 		responseType: 'blob',
 		headers: { Accept: '*/*' }

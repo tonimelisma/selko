@@ -258,8 +258,7 @@ Values are never handled by an agent.
 `SELKO_ANTHROPIC_API_KEY` (the Anthropic key; see above), `GEMINI_API_KEY`,
 `OPENAI_API_KEY`, `XAI_API_KEY`, `META_MODEL_API_KEY` (or `META_API_KEY` /
 `MODEL_API_KEY`), `MOONSHOT_API_KEY`, `ZAI_API_KEY` (or `ZHIPU_API_KEY`),
-`DEEPSEEK_API_KEY`, `ALIBABA_API_KEY`, `MINIMAX_API_KEY`, `TINKER_API_KEY`;
-plus `SMOKE_SENTRY_DSN` (a DSN for the synthetic, not production's).
+`DEEPSEEK_API_KEY`, `ALIBABA_API_KEY`, `MINIMAX_API_KEY`, `TINKER_API_KEY`.
 
 **Image signing needs no secret.** `image.yml` pushes with the workflow's
 `GITHUB_TOKEN` and signs keylessly with cosign through GitHub's OIDC token.

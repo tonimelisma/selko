@@ -182,38 +182,3 @@ export const mockIntegrations = [
 		updated_at: '2024-01-10T08:00:00Z'
 	}
 ];
-
-/** Mock user for auth tests */
-export const mockUser = {
-	id: '550e8400-e29b-41d4-a716-446655440000',
-	email: 'test@example.com',
-	created_at: '2024-01-01T00:00:00Z',
-	updated_at: '2024-01-01T00:00:00Z'
-};
-
-/** Mock API errors for testing error handling */
-export const mockErrors = {
-	notFound: {
-		code: 'PGRST116',
-		message: 'JSON object requested, multiple (or no) rows returned',
-		details: null,
-		hint: null
-	},
-	uniqueViolation: {
-		code: '23505',
-		message: 'duplicate key value violates unique constraint',
-		details: 'Key already exists',
-		hint: null
-	},
-	permissionDenied: {
-		code: '42501',
-		message: 'permission denied for table emails',
-		details: null,
-		hint: null
-	},
-	networkError: new Error('Failed to fetch'),
-	invalidCredentials: {
-		error: 'invalid_credentials',
-		error_description: 'Invalid login credentials'
-	}
-};

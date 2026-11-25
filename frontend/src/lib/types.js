@@ -180,14 +180,6 @@
  * @property {CalendarWorkItem[]} [calendar_work_items]
  */
 
-/**
- * @typedef {Object} ServiceResult
- * @template T
- * @property {T} data
- * @property {number | null} [count]
- * @property {import('./errors.js').AppError | null} error
- */
-
 // ============================================================================
 // Attachment Types
 // ============================================================================
@@ -269,35 +261,6 @@
  * @property {string | null} target_calendar_id
  * @property {string | null} default_invitees
  * @property {string} updated_at
- */
-
-// ============================================================================
-// Job Types
-// ============================================================================
-
-/**
- * @typedef {'email_fetch' | 'email_process' | 'calendar_sync'} JobType
- */
-
-/**
- * @typedef {'pending' | 'processing' | 'completed' | 'failed' | 'dead'} JobStatus
- */
-
-/**
- * @typedef {Object} Job
- * @property {string} id - UUID
- * @property {string} user_id - UUID
- * @property {JobType} job_type
- * @property {Object} payload
- * @property {JobStatus} status
- * @property {number} priority
- * @property {number} attempts
- * @property {number} max_attempts
- * @property {string | null} last_error
- * @property {string} [scheduled_at]
- * @property {string} [started_at]
- * @property {string} [completed_at]
- * @property {string} created_at
  */
 
 export {};

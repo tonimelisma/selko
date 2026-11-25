@@ -2,9 +2,6 @@ import { writable } from 'svelte/store';
 import { onAuthChange, restoreSession } from './auth.js';
 
 /**
- * @typedef {import('./types.js').Email} Email
- * @typedef {import('./types.js').CalendarEvent} CalendarEvent
- * @typedef {import('./types.js').Integration} Integration
  * @typedef {import('./types.js').AuthUser} AuthUser
  */
 
@@ -19,22 +16,6 @@ export const loading = writable(true);
  * @type {import('svelte/store').Writable<boolean>}
  */
 export const authUnavailable = writable(false);
-
-// Data stores
-/** @type {import('svelte/store').Writable<Email[]>} */
-export const emails = writable([]);
-/** @type {import('svelte/store').Writable<boolean>} */
-export const emailsLoading = writable(false);
-
-/** @type {import('svelte/store').Writable<CalendarEvent[]>} */
-export const pendingEvents = writable([]);
-/** @type {import('svelte/store').Writable<boolean>} */
-export const pendingEventsLoading = writable(false);
-
-/** @type {import('svelte/store').Writable<Integration[]>} */
-export const integrations = writable([]);
-/** @type {import('svelte/store').Writable<boolean>} */
-export const integrationsLoading = writable(false);
 
 /** @type {(() => void) | null} */
 let unsubscribeAuth = null;
