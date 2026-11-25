@@ -26,8 +26,11 @@ too, but that file never reaches a cloud session, so they are repeated here.
   can do), go on to the next unblocked one; stop only when every item is done
   or truly blocked, and list just the Toni-only steps at the end.
 - **Merge without asking.** Once the scoped lanes for a change pass, open the
-  PR and squash-merge it yourself; never stop to ask whether to merge. This
-  does not extend to production deploys, which still need an explicit yes.
+  PR and squash-merge it yourself; never stop to ask whether to merge. A merge
+  to `main` is a release and deploys to production automatically (Toni,
+  2026-11-25): the lanes passing is the gate. One-off production operations
+  (the data cutover, anything that deletes or rewrites production data) still
+  need an explicit yes.
 - **Live tests may write to Toni's real apps; every test removes what it made**
   in its own teardown, even when it fails, and confirms the removal. Never
   leave test data behind.
@@ -441,9 +444,9 @@ above are the only ones. The native iOS and Android apps are unmaintained
 - [ ] The scoped lanes above pass in the session — **the lanes are the gate, not CI**
 - [ ] Commit (conventional format), push, open the PR over REST: `gh api repos/tonimelisma/selko/pulls -f head=<branch> -f base=main -f title=… -f body=…` (`gh pr create` needs GraphQL, which the cloud proxy refuses)
 - [ ] `./scripts/merge-and-cleanup.sh <pr_number>` — squash-merges over REST and cleans up: GitHub deletes the remote branch itself, the script deletes the local branch, moves the clone to the merged `main` (cloud) or fast-forwards `main` and removes the worktree (Mac). **Does not wait on CI.**
-- [ ] **Check CI on `main` and fix forward if it ran and failed** — the `actions/runs?branch=main` query under "CI Ownership". On `main`, `image.yml` is what publishes `ghcr.io/tonimelisma/selko:<sha>`: a red image job means nothing new ships, and an approved `release` job is what makes it production's.
-- [ ] If your change ships (`backend`/`frontend`/image), **report the `--gate prod` lane table and state a recommendation**. A bare "Should I deploy this to production?" with no evidence attached asks the operator to adjudicate a question the lane table already answers.
-- [ ] **Production deploys.** A merge to `main` builds and checks the images and pushes them as `:<sha>`, unsigned. **Nothing ships until Toni approves the `release` job** (GitHub environment `production`, Toni the required reviewer): it signs both digests and moves `:main`, which the server follows within minutes and accepts only when signed (cosign identity: `image.yml` on `refs/heads/main`). Deployment itself lives outside this repository. **Never ask Toni to approve a release without the lane table, and never change what production runs without his explicit yes for that SHA.** The first cutover from the previous hosted-Postgres build imports its data once, on the server, with the signed importer image `ghcr.io/tonimelisma/selko-import:<sha>` (`database` copies and checksums every table; `attachments` copies every Storage object and verifies its size and SHA-256; secrets are read from files, never a command line; database exit 3 = schema drift or leftover Google Photos data, 5 = verification failed, nothing written; attachments exit 6 = missing or mismatched objects, re-runnable) — `docs/specs/sqlite-single-process/04-data-cutover.md`.
+- [ ] **Check CI on `main` and fix forward if it ran and failed** — the `actions/runs?branch=main` query under "CI Ownership". On `main`, `image.yml` is what publishes `ghcr.io/tonimelisma/selko:<sha>`: a red image job means nothing new ships; a green `release` job means production picks it up.
+- [ ] If your change ships (`backend`/`frontend`/image), **report the `--gate prod` lane table** with the merge: it is the evidence the release went out on.
+- [ ] **Production deploys are automatic.** A merge to `main` builds and checks the images, pushes them as `:<sha>`, and the `release` job signs both digests and moves `:main`; the server follows `:main` within minutes and accepts only signed digests (cosign identity: `image.yml` on `refs/heads/main`). Deployment itself lives outside this repository. So the lanes passing before the merge *is* the release decision: never merge red. The first cutover from the previous hosted-Postgres build imports its data once, on the server, with the signed importer image `ghcr.io/tonimelisma/selko-import:<sha>` (`database` copies and checksums every table; `attachments` copies every Storage object and verifies its size and SHA-256; secrets are read from files, never a command line; database exit 3 = schema drift or leftover Google Photos data, 5 = verification failed, nothing written; attachments exit 6 = missing or mismatched objects, re-runnable) — `docs/specs/sqlite-single-process/04-data-cutover.md`.
 - [ ] **After any production deploy, open a `docs/deploy-log/<date>-<sha>.md` entry from `TEMPLATE.md` and fill the T+0 and T+15m rows before reporting done.** The T+24h row is filled the next day. Config, real-data and elapsed-time failures are only observable here — a deploy is not finished when it is applied, it is finished when it has been watched. Always fill in "which gate should have caught it"; that is what turns an incident into a permanent gate improvement instead of folklore.
 
 See `docs/parallel-agents.md` for the full workflow. See `docs/ci-cd.md` for CI architecture details.
@@ -453,8 +456,8 @@ See `docs/parallel-agents.md` for the full workflow. See `docs/ci-cd.md` for CI 
 **CI runs on every push and PR, and it is never a merge gate.** The gate is the
 lanes in the session. Workflows: `test.yml` (the whole backend suite),
 `frontend-tests.yml` (web unit tests, `svelte-check`, build), `image.yml`
-(build, image check, and on `main` push `:<sha>`; its `release` job waits for
-Toni's approval, then cosign-signs and moves `:main`).
+(build, image check, and on `main` push `:<sha>`; its `release` job then
+cosign-signs both images and moves `:main`, which production follows).
 
 **A red CI is never left red.** A status nobody reads is worse than no status.
 

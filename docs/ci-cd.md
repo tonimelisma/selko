@@ -24,7 +24,7 @@ cost nothing.
 |----------|---------|------|
 | `test.yml` | push to `main`, PRs (path-filtered: `backend/**`, `selko_import/**`, `scripts/seed_screenshot_data.py`, `pyproject.toml`, `uv.lock`) | `unit-tests`: the whole backend suite, unit + integration (SQLite needs no service) |
 | `frontend-tests.yml` | push to `main`, PRs touching `frontend/**` | `unit-tests` (Vitest), `build` (build + `svelte-check`) |
-| `image.yml` | push to `main`, PRs, manual | `image`: build both images → `scripts/image-lane.sh` → on `main` only, push `:<sha>` unsigned; `release` (environment `production`, waits for Toni's approval): cosign-sign both digests, move `:main` |
+| `image.yml` | push to `main`, PRs, manual | `image`: build both images → `scripts/image-lane.sh` → on `main` only, push `:<sha>` unsigned; `release`: cosign-sign both digests, move `:main` (production follows it) |
 
 ## image.yml
 
@@ -44,18 +44,15 @@ image (every push and PR)
         |
     main only: docker push :<sha> for both (unsigned)
 
-release (main only; GitHub environment `production`, required reviewer Toni)
-    waits for approval in the Actions tab
+release (main only, after image passes)
     cosign sign --yes <digest>, cosign verify <digest>   (both images)
     docker buildx imagetools create --tag :main <digest>  (both images)
 ```
 
 The image that is checked is the image that is pushed: one build, loaded into
 the runner's Docker, checked, then pushed by digest. Nothing is pushed unless
-every check passed, and nothing is signed or tagged `:main` until Toni
-approves the release. A newer merge replaces a release still waiting for
-approval. The production server follows `:main` and accepts only a signed
-digest:
+every check passed. A merge to `main` is a release: the production server
+follows `:main` and accepts only a signed digest:
 
 ```bash
 cosign verify ghcr.io/tonimelisma/selko:main \
@@ -64,9 +61,7 @@ cosign verify ghcr.io/tonimelisma/selko:main \
 ```
 
 No secret is involved: the workflow's `GITHUB_TOKEN` pushes and GitHub's OIDC
-token signs. The environment's reviewer rule is a repository setting (Settings →
-Environments → `production` → Required reviewers); without it the release job
-runs unapproved.
+token signs.
 
 ## Migrations
 

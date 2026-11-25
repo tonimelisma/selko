@@ -1,24 +1,21 @@
 # The Selko images: build them, check them the way the server runs them, and on
-# main publish them -- but only release them after Toni approves.
+# main release them. A merge to main is a release: production follows :main
+# automatically (Toni, 2026-11-25).
 #
 # image   (every push and PR) builds ghcr.io/tonimelisma/selko and the one-time
 #         importer ghcr.io/tonimelisma/selko-import, and checks them with
 #         scripts/image-lane.sh. On main it pushes both as :<sha>, unsigned.
 #         Nothing is pushed unless every check passed, and the image that was
 #         checked is the image that is pushed (one build, pushed by digest).
-# release (main only) runs in the GitHub environment `production`, whose
-#         required reviewer is Toni: the job waits for his approval in the
-#         Actions tab. It then signs both digests with cosign (keyless) and
-#         moves :main to them. The server follows :main and accepts only signed
-#         digests, so nothing reaches production before that approval. A newer
-#         merge replaces a release still waiting for approval.
+# release (main only, after image passes) signs both digests with cosign
+#         (keyless) and moves :main to them. The server follows :main and
+#         accepts only signed digests, so only images that passed every check
+#         reach production.
 #
 # A server verifies a pulled image with:
 #   cosign verify ghcr.io/tonimelisma/selko:<sha or main> \
 #     --certificate-identity "https://github.com/tonimelisma/selko/.github/workflows/image.yml@refs/heads/main" \
 #     --certificate-oidc-issuer https://token.actions.githubusercontent.com
-# The identity is this file on refs/heads/main; the environment does not change
-# it, so moving signing into the release job keeps the server's check valid.
 name: Image
 
 on:
@@ -64,7 +61,7 @@ jobs:
           SELKO_FIXTURE_POSTGRES_IMAGE: postgres:17
         run: ./scripts/image-lane.sh "$IMAGE" "$IMPORTER"
 
-      - name: Push :<sha> (unsigned until released)
+      - name: Push :<sha>
         id: push
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
@@ -84,13 +81,9 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.image.outputs.digest != ''
     runs-on: ubuntu-24.04
     timeout-minutes: 15
-    # Toni is this environment's required reviewer (repository Settings ->
-    # Environments -> production). Without that setting the job runs unapproved:
-    # the environment is what turns a merge into a release.
-    environment: production
     concurrency:
       group: release-production
-      cancel-in-progress: true
+      cancel-in-progress: false
     permissions:
       contents: read
       packages: write   # move :main

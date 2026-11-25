@@ -1186,7 +1186,7 @@ are dead letters, so an update during such a period rolls back.
 | P-9 | on the server | Rehearsal: run `database` into a throwaway directory, boot the app image on it with background processing **off** (it would otherwise poll mailboxes and write calendars beside production), sign in, compare counts, delete the directory (it holds real user data) | exit 0, sign-in works, directory deleted |
 | P-10 | operator | Lower the DNS TTL of `selkoapp.com`, `www` and `api` to 1 min (Cloudflare → DNS) a day ahead | TTL ≤ 60 s |
 | P-11 | on the server | Capacity: free disk ≥ 4 × the Q0.3 uncompressed total + 1.2 × the Q0.4 attachment bytes + 2 GiB; NTP synchronised | both true |
-| P-12 | operator | **Release approved**: the commit to run is on `main`, its `release` job approved in GitHub (environment `production`), so `:main` and both images of that commit are signed. Use the importer image of the same commit | `:main` = that commit |
+| P-12 | operator | **Release in place**: the commit to run is on `main` and its `release` job is green, so `:main` and both images of that commit are signed. Use the importer image of the same commit | `:main` = that commit |
 | P-13 | on the server | Warm attachment copy while production is live: `attachments …` (re-runnable) | exit 0, or exit 6 with the missing count recorded as pre-existing loss |
 | P-14 | operator | Go/no-go at the lowest-traffic hour | go |
 

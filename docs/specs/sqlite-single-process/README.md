@@ -57,8 +57,8 @@ SQLite instead:**
    production stays on the last Postgres build until the cutover
    ([04 §C](04-data-cutover.md)). The `deploy-production` operation was
    removed with `ops.yml`; a merge now pushes the images as `:<sha>`, and
-   only an approved `release` job (GitHub environment `production`) signs
-   them and moves `:main`, which the server follows.
+   the `release` job signs them and moves `:main`, which the server follows:
+   a merge to `main` is a release.
 3. Steps that only existed for the Postgres interim are dropped: Q2's dual
    `realtime.send` + `pg_notify`, Q3's revoke migration, Q5's `accounts` on
    Postgres with its mirror trigger. Everything else in the parts applies,
