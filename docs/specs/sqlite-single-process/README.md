@@ -55,8 +55,10 @@ SQLite instead:**
 2. The branch merges once, when the image job in the end-state table passes.
    From that merge, `main` is SQLite-only and can no longer deploy to Render;
    production stays on the last Postgres build until the cutover
-   ([04 §C](04-data-cutover.md)). The `deploy-production` operation refuses
-   in that window instead of deploying something broken ([05 §C.7](05-verification.md)).
+   ([04 §C](04-data-cutover.md)). The `deploy-production` operation was
+   removed with `ops.yml`; a merge now pushes the images as `:<sha>`, and
+   only an approved `release` job (GitHub environment `production`) signs
+   them and moves `:main`, which the server follows.
 3. Steps that only existed for the Postgres interim are dropped: Q2's dual
    `realtime.send` + `pg_notify`, Q3's revoke migration, Q5's `accounts` on
    Postgres with its mirror trigger. Everything else in the parts applies,
@@ -108,7 +110,8 @@ tested there). None depends on the migration.
 
 - ~~**Real-Gmail tests after staging is gone**~~ — removed with staging and the
   dev↔staging token copier; Gmail is mocked in the suite.
-- ~~**Google Photos code (parked)**~~ — ported to `selko.db` (parked, not deleted);
-  its unused claim functions were dropped.
+- ~~**Google Photos code (parked)**~~ — removed (#425); the importer refuses a
+  source that still holds its data (exit 3).
 - **Q0 measurements** (production sizes, users, auth settings, plans) are
-  needed for the cutover, not for the build ([04 §C.0](04-data-cutover.md)).
+  needed for the cutover, not for the build ([04 §C.0](04-data-cutover.md));
+  the operator runs them read-only in the Supabase SQL editor.
