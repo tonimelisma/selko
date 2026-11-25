@@ -27,8 +27,6 @@ def mock_config():
     """Create a mock Config with Gemini API key."""
     return Config(
         environment="development",
-        supabase_url="http://localhost:54321",
-        supabase_key="test-key",
         gemini_api_key="test-gemini-key",
     )
 
@@ -756,8 +754,6 @@ class TestBuildContentPartsPerTypeLimits:
 
         config = Config(
             environment="development",
-            supabase_url="http://localhost:54321",
-            supabase_key="test-key",
         )
 
         attachments = [{
@@ -778,8 +774,6 @@ class TestBuildContentPartsPerTypeLimits:
 
         config = Config(
             environment="development",
-            supabase_url="http://localhost:54321",
-            supabase_key="test-key",
             max_image_size_for_llm=10 * 1024 * 1024,
         )
 
@@ -813,8 +807,6 @@ class TestBuildContentPartsPerTypeLimits:
 
         config = Config(
             environment="development",
-            supabase_url="http://localhost:54321",
-            supabase_key="test-key",
         )
 
         attachments = [{

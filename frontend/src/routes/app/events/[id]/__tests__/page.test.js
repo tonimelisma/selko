@@ -39,12 +39,6 @@ vi.mock('$lib/services/events.js', () => ({
 	 isNewReviewEvent: (event) => event.review_status === 'pending_review' || event.status === 'pending_review'
 }));
 
-const mockFetchEventSources = vi.fn();
-
-vi.mock('$lib/services/event-sources.js', () => ({
-	fetchEventSources: (...args) => mockFetchEventSources(...args)
-}));
-
 const mockGetEmail = vi.fn();
 
 vi.mock('$lib/services/emails.js', () => ({
@@ -54,8 +48,11 @@ vi.mock('$lib/services/emails.js', () => ({
 const mockFetchAttachments = vi.fn();
 const mockFetchIntegrations = vi.fn();
 
+const mockDownloadAttachment = vi.fn();
 vi.mock('$lib/services/attachments.js', () => ({
-	fetchAttachments: (...args) => mockFetchAttachments(...args)
+	fetchAttachments: (...args) => mockFetchAttachments(...args),
+	downloadAttachment: (...args) => mockDownloadAttachment(...args),
+	isDownloadable: (attachment) => attachment?.ingestion_status === 'stored'
 }));
 
  vi.mock('$lib/services/integrations.js', () => ({
@@ -100,17 +97,6 @@ describe('Event Detail Page', () => {
 			},
 			error: null
 		});
-		mockFetchEventSources.mockResolvedValue({
-			data: [
-				{
-					id: 'src-1',
-					event_id: 'evt-1',
-					email_id: 'email-1',
-					emails: { id: 'email-1', subject: 'Meeting', from_email: 'boss@co.com' }
-				}
-			],
-			error: null
-		});
 		mockGetEmail.mockResolvedValue({
 			data: {
 				id: 'email-1',
@@ -140,7 +126,6 @@ describe('Event Detail Page', () => {
 
 	it('shows loading spinner initially', () => {
 		mockGetEvent.mockReturnValue(new Promise(() => {}));
-		mockFetchEventSources.mockReturnValue(new Promise(() => {}));
 
 		render(EventDetailPage);
 
@@ -176,10 +161,31 @@ describe('Event Detail Page', () => {
 		});
 	});
 
+	it('offers stored attachments for download and lists the rest as names', async () => {
+		mockFetchAttachments.mockResolvedValue({
+			data: [
+				{ id: 'att-1', email_id: 'email-1', filename: 'ticket.pdf', ingestion_status: 'stored' },
+				{ id: 'att-2', email_id: 'email-1', filename: 'movie.mov', ingestion_status: 'unsupported' }
+			],
+			error: null
+		});
+		mockDownloadAttachment.mockResolvedValue({ error: null });
+
+		render(EventDetailPage);
+
+		const buttons = await screen.findAllByRole('button', { name: 'Download ticket.pdf' });
+		expect(screen.queryAllByRole('button', { name: /movie\.mov/ })).toHaveLength(0);
+		expect(screen.getAllByText('movie.mov').length).toBeGreaterThan(0);
+		buttons[0].click();
+		await waitFor(() =>
+			expect(mockDownloadAttachment).toHaveBeenCalledWith(expect.objectContaining({ id: 'att-1' }))
+		);
+	});
+
 	it('shows error when event not found', async () => {
 		mockGetEvent.mockResolvedValue({
 			data: null,
-			error: { message: 'Event not found', code: 'PGRST116' }
+			error: { message: 'Event not found', status: 404 }
 		});
 
 		render(EventDetailPage);

@@ -2,8 +2,7 @@
 
 These tests make real calls to the LLM API and require:
 - The active provider API key in environment (see LLM_PROVIDER)
-- Local Supabase running (for database tests)
-- TEST_USER_EMAIL and TEST_USER_PASSWORD configured
+- a real SQLite database (the `db` fixture) for the database tests
 """
 
 import json
@@ -45,7 +44,6 @@ def load_fixture(fixtures_dir: Path, fixture_name: str) -> dict:
 
 
 @pytest.mark.integration
-@pytest.mark.development
 @pytest.mark.llm
 class TestLlmRealAPI:
     """Test calendar extraction with real LLM API calls.
@@ -208,49 +206,30 @@ class TestLlmRealAPI:
 
 
 @pytest.mark.integration
-@pytest.mark.development
 @pytest.mark.llm
 class TestLlmWithDatabase:
     """Test LLM extraction with real database emails.
 
-    These tests require local Supabase running and at least one email
-    in the database for the authenticated test user.
+    The email is seeded into a real SQLite database (`db`/`factory`).
 
     These tests require --run-llm flag to run (costs money).
     """
 
-    def test_fetch_and_extract_from_database(
-        self, llm_gateway, authenticated_client
-    ):
-        """Test fetching email from database and extracting events.
-
-        Note: This test requires at least one email in the database.
-        """
-        # Fetch a recent email
-        result = (
-            authenticated_client.table("emails")
-            .select("id, subject")
-            .order("date_sent", desc=True)
-            .limit(1)
-            .execute()
+    def test_fetch_and_extract_from_database(self, llm_gateway, db, factory):
+        """Fetch an email from the database and extract events from it."""
+        user = factory.user()
+        email_id = factory.email(
+            user, provider_message_id="llm-db-probe", subject="Birthday Party Invitation",
+            from_email="friend@example.com", from_name="Best Friend",
+            date_sent="2026-02-15T12:00:00.000000Z",
+            body_text="You're invited to Sarah's birthday party on Feb 20th at 2pm!",
         )
 
-        if not result.data:
-            pytest.skip("No emails in database for testing")
+        email_metadata, email_text, attachments = fetch_email_with_attachments(db, email_id)
 
-        email_id = result.data[0]["id"]
-        subject = result.data[0]["subject"]
+        assert email_metadata["provider_message_id"] == "llm-db-probe"
+        assert email_metadata["subject"] == "Birthday Party Invitation"
 
-        # Fetch email with attachments
-        email_metadata, email_text, attachments = fetch_email_with_attachments(
-            authenticated_client, email_id
-        )
-
-        # Verify fetch succeeded
-        assert email_metadata["provider_message_id"]
-        assert email_metadata["subject"] == subject
-
-        # Extract events
         extraction_result = extract_calendar_events(
             gateway=llm_gateway,
             email_text=email_text,
@@ -258,24 +237,22 @@ class TestLlmWithDatabase:
             attachments=attachments,
         )
 
-        # Verify extraction completed
         assert isinstance(extraction_result, CalendarEventExtraction)
         # email_message_id should match the provider_message_id from the email
         assert extraction_result.email_message_id == email_metadata["provider_message_id"]
         assert extraction_result.sender_email == email_metadata["from_email"]
 
-    def test_fetch_nonexistent_email(self, authenticated_client):
+    def test_fetch_nonexistent_email(self, db):
         """Test error handling for nonexistent email."""
         fake_uuid = "00000000-0000-0000-0000-000000000000"
 
         with pytest.raises(LLMGatewayError) as exc_info:
-            fetch_email_with_attachments(authenticated_client, fake_uuid)
+            fetch_email_with_attachments(db, fake_uuid)
 
         assert "Email not found" in str(exc_info.value)
 
 
 @pytest.mark.integration
-@pytest.mark.development
 @pytest.mark.llm
 class TestLLMGatewayErrorHandling:
     """Test LLM provider/gateway error handling.
@@ -289,8 +266,6 @@ class TestLLMGatewayErrorHandling:
 
         bad_config = Config(
             environment=config.environment,
-            supabase_url=config.supabase_url,
-            supabase_key=config.supabase_key,
             llm_provider="gemini",
             llm_model="gemini-3.5-flash-lite",
             gemini_api_key="invalid-key-12345",
@@ -320,8 +295,6 @@ class TestLLMGatewayErrorHandling:
 
         config_no_key = Config(
             environment="development",
-            supabase_url="http://localhost:54321",
-            supabase_key="test-key",
             llm_provider="gemini",
             llm_model="gemini-3.5-flash-lite",
             gemini_api_key=None,
@@ -329,3 +302,10 @@ class TestLLMGatewayErrorHandling:
 
         with pytest.raises(LLMProviderError, match="API key not configured"):
             create_provider(config_no_key)
+
+
+@pytest.mark.integration
+def test_fetching_a_missing_email_is_email_not_found(db):
+    """No LLM needed: the database read answers None and the service says so."""
+    with pytest.raises(LLMGatewayError, match="Email not found"):
+        fetch_email_with_attachments(db, "00000000-0000-0000-0000-000000000000")

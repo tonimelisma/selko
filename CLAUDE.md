@@ -63,6 +63,13 @@ This is the whole loop. Do not invent a different one per task.
    row, which is how three logs shipped with it blank. A window that passed
    unobserved is written as `missed`, never left empty.
 
+| Lane | Gate | What it proves |
+|---|---|---|
+| `backend` | prod | `./scripts/verify.sh backend`: unit + integration suites; every database test gets a fresh SQLite file with every migration applied |
+| `frontend` | prod | `./scripts/verify.sh frontend`: web unit tests and `svelte-check` |
+| `image` | prod | `./scripts/image-lane.sh`: builds the image and runs it the way the server does — read-only root, no capabilities, 400 MB, `/data` the only volume — then checks health and the production invariants, sign-up/sign-in/refresh, review + live update, attachment download, and a database imported from a Postgres fixture |
+| `prod-health` | observe | `./scripts/check-production-health.sh`: the invariants below against running production |
+
 ### Checking that production is actually healthy
 
 ```bash
@@ -75,23 +82,20 @@ It runs the invariants in `scripts/assert-health.sh` — the standard list:
 | Surface | Must hold |
 |---|---|
 | `work-state` | `items_dead_letter`, `attachments_dead_letter`, `stale_processing_emails`, `unclaimable_pending` are **all zero**, whatever the worker posture. `failed_emails` is *not* asserted — terminal failures are permanent history, and requiring them to be zero made this check unsatisfiable forever after the first one |
-| `ingestion` | status ok, background processing on, every task alive, pg listener connected |
+| `ingestion` | status ok, background processing on, every task alive, the in-process work listener bound (`listener.kind == "in_process"`, `bound`) |
 | `root` | publishes a 40-character build SHA (which build answered), and `requests.server_errors_per_hour` is **zero** — a deployment answering 5xx is not healthy, whatever its queues look like |
-| `egress` | worker transport is asyncpg |
+| `egress` | worker transport is `sqlite` |
 
-Those assertions existed for months but were wired only to
-staging — `verify-staging.sh` and CI called them and nothing else. Pointed at
-production for the first time, they immediately went red — and the red was
-partly the check's own fault: the count conflated terminal failures (permanent,
-expected) with stuck pending rows (actionable). `20260901000001` split them.
-**A check that never runs against the environment that matters is not a check**,
-and one that cannot return to green is ignored just as fast as one that cannot
-go red.
+The image lane runs the same script against the container it starts, so the
+image is held to production's rules before it ships. **A check that never runs
+against the environment that matters is not a check**, and one that cannot
+return to green is ignored just as fast as one that cannot go red.
 
-**Production is `https://api.selkoapp.com`.** The `.onrender.com` host 404s and
-the primary domain appears only in Render's deploy logs. `selko.onrender.com` is
-*staging*, on the free plan, so it spins down and reports degraded — its state
-has already been mistaken for production's twice.
+**Production is `https://api.selkoapp.com`.** Until the cutover to the signed
+image, it still runs the previous (hosted-Postgres) build, whose listener and
+transport fields differ: this branch's `check-production-health.sh` is red
+against it by construction. For that deployment's deploy-log observations use
+its own assertions: `git show 7207aac5:scripts/assert-health.sh`.
 
 ### Long-running commands: one at a time, stop what you start
 
@@ -160,7 +164,7 @@ files, claiming review comments, or making other implementation writes.
 │      cloud session: in its own clone (no worktree)                     │
 │      Mac: in a worktree                                                │
 │                                                                         │
-│  Config files (.env, docs/, CLAUDE.md, scripts/, supabase/)            │
+│  Config files (.env, docs/, CLAUDE.md, scripts/)                       │
 │    → Mac: CAN edit directly in main repo                               │
 │      cloud session: session branch + PR like everything else           │
 └─────────────────────────────────────────────────────────────────────────┘
@@ -199,29 +203,18 @@ BLOCKED: Cannot edit source code in the main repository.
 
 A cloud session (`CLAUDE_CODE_REMOTE=true`) runs in an Ubuntu 24.04 x86_64 VM
 with a throwaway clone of this repo. **This is the default way to work**: nothing
-in Selko needs the Mac. Everything above still applies,
-with these differences.
+in Selko needs the Mac. Everything above still applies, with these differences.
 
 **Setup is automatic.** The SessionStart hook `scripts/cloud-setup.sh` (a no-op
-anywhere else) installs uv + Python 3.14, the pinned Supabase CLI, jq/lsof, the
-frontend's npm deps, points Playwright at the preinstalled Chrome
-(`$CHROME_PATH`), sets `core.hooksPath=.githooks`, starts `dockerd` and
-`supabase start` (Studio/analytics excluded), and writes `.env` and
-`frontend/.env` holding **only the local Supabase demo keys**, a throwaway
-test-user password and labelled non-functional placeholders for the OAuth
-client IDs and for any LLM key the environment does not provide (routes build
-the gateway and sign-in URL before deciding anything; no test reaches a
-provider with them). Image pulls run
-detached, so the stack may still be coming up when the session starts:
-`scripts/cloud-setup.sh --status` says what is ready, `scripts/cloud-setup.sh
---db` finishes it in the foreground. Full log: `.verify/cloud-setup.log`.
-The hook stops waiting at 480 s, under Claude Code's 600 s cancellation.
-Measured on a real cloud VM (2026-11-22, 4 CPUs, 15 GB): the whole hook took
-73 s with Supabase healthy inside it (pulls + every migration ≈ 63 s). The VM's
-Node was already ≥ 22.12, so no Node download. public.ecr.aws refused several
-pulls with `Data limit exceeded`; the Supabase CLI's own retry fetched those
-images from ghcr.io, so the script's docker.io/ghcr.io loop was never needed.
-(A throttled 1.5-CPU container took ~9 + ~5 min; that is the worst case.)
+anywhere else) installs uv + Python 3.14, the frontend's npm deps (Node ≥ 22.12;
+older Node silently skips rolldown's native binding), points Playwright at the
+preinstalled Chrome (`$CHROME_PATH`), sets `core.hooksPath=.githooks`, starts
+`dockerd` (the image lane only), and writes a local `.env`: a random
+`SELKO_JWT_SECRET`, `SELKO_DATA_DIR=data`, local `ALLOWED_ORIGINS` and labelled
+non-functional placeholders for the OAuth client IDs and for any LLM key the
+environment does not provide. The backend needs no database service.
+`scripts/cloud-setup.sh --status` says what is ready; full log:
+`.verify/cloud-setup.log`.
 
 **Worktrees: not used.** The clone is already private to the session. Work on
 a feature branch (`git switch -c <type>/<task>`); the edit-guard hook blocks
@@ -230,99 +223,50 @@ its own session branch (`branch/<name>`, same commit as `main`), so the guard
 allows edits from the start; push to that branch. `merge-and-cleanup.sh` moves
 the clone onto the merged `main` instead of removing a worktree.
 
-**Where each lane and task runs.** Everything runs from the cloud session
-except what is physically macOS. Work that needs Postgres over TCP (5432/6543
-is refused from the VM), a hosted-database password, the Render deploy hooks
-or KVM is an **operation** of `.github/workflows/ops.yml`, started by
-`repository_dispatch` through `scripts/ops.py` — which validates a typed
-payload, dispatches, waits for the run and exits with its conclusion, printing
-each job's result and the tail of a failed job's log. Run conclusions,
-check-runs and job logs are readable over REST from the VM (verified
-2026-11-22: `actions/runs`, `actions/runs/<id>/jobs`, `actions/jobs/<id>/logs`,
-`commits/<sha>/check-runs`). The repo is public, so those logs are public:
-production-reading steps print counts, versions and migration names, and pipe
-through `scripts/ops.py redact` (UUIDs, emails).
+**Where each lane and task runs: all on the VM.**
 
-| Lane / task | Where | Command |
-|---|---|---|
-| backend (Tier 1) | VM | `./scripts/verify.sh backend --accept-stale-gmail-token` (or `ACCEPT_STALE_GMAIL_TOKEN=1 ./scripts/verify-lanes.py --gate prod`). Real local Postgres in Docker; the flag records the `real-gmail-token-unavailable` degradation while staging is paused |
-| frontend | VM | `./scripts/verify.sh frontend`. Needs Node ≥ 22.12 (older Node silently skips rolldown's native binding: `Cannot find module '@rolldown/binding-linux-x64-gnu'`); setup installs 22.12 into `~/.local/node` when needed |
-| migration-order | VM | `./scripts/check-migration-order.sh` |
-| web screenshots | VM | `./scripts/capture-all-screenshots.sh web` (Chrome for Testing via `$CHROME_PATH`) |
-| schema-compat (prod gate) | Actions | `./scripts/ops.py dispatch schema-compat` (what the lane runs): `supabase db push --dry-run` against production must succeed and lists what a deploy would apply. `when=post-deploy` runs R5 (`assert-schema-code-compat.sh --linked`) |
-| production deploy | Actions | `./scripts/ops.py dispatch deploy-production sha=<main's tip> confirm="deploy <sha>"` — only after the owner's explicit yes for that SHA (see "Ship it") |
-| cutover rehearsal | Actions | `./scripts/ops.py dispatch rehearse-cutover` (`faithful=false` for the status-shape-only variant). Scratch database on the runner's local Supabase; reads production with the read-only URL |
-| review-queue repair | Actions | dry run: `./scripts/ops.py dispatch repair-review-queue --payload-file <request.json>` with `{"manifest": {...}}`. Apply adds `"apply": true, "confirm_user": "<uuid>", "confirm": "apply <uuid>"` — and needs the owner's explicit yes first. The reverse-operation artifact is kept 7 days |
-| Tier 2 (staging) | Actions | `./scripts/ops.py dispatch staging-tier2` (`verify-staging.sh` + worker drill). **Staging is paused (owner decision)**, so this is red today; the push-triggered `deploy-staging` job reports "paused, nothing verified" instead of failing every push |
-| prod-health (observe), deploy-log windows | VM | `./scripts/check-production-health.sh` (`api.selkoapp.com` is reachable from the VM) |
-| Supabase Management API / MCP | VM | `api.supabase.com` with the network secret below, e.g. `./scripts/supabase-project-status.sh <ref>` |
-| Render API | VM | `curl https://api.render.com/v1/services` with the network secret below (deploys stay in `deploy-production`) |
-| Sentry synthetic | VM | `SMOKE_SENTRY_DSN` env var, then `uv run python scripts/smoke-ingestion.py --base-url https://api.selkoapp.com --check-sentry` |
-| LLM evals / real-model tests | VM, "selko" environment | `uv run python -m backend.tests.eval.run_eval --fixture <category/name>` (or `--all --all-operations`, per `docs/evals-process.md`); `uv run pytest backend/tests/<file> --run-llm`. Needs the provider keys as environment variables (Owner setup) |
+| Lane / task | Command |
+|---|---|
+| backend | `./scripts/verify.sh backend` |
+| frontend | `./scripts/verify.sh frontend` |
+| image | `./scripts/image-lane.sh` (Docker; builds through the session proxy with `scripts/build-image.sh`) |
+| web screenshots | `./scripts/capture-all-screenshots.sh web` |
+| prod-health, deploy-log windows | `./scripts/check-production-health.sh` |
+| LLM evals / real-model tests | `uv run python -m backend.tests.eval.run_eval --fixture <category/name>` (or `--all --all-operations`, per `docs/evals-process.md`); `uv run pytest backend/tests/<file> --run-llm`. Needs the provider keys (Owner setup) |
 
 **LLM keys are the one credential kept as environment variables** (owner
 decision), in the dedicated personal "selko" cloud environment. setup never
 copies one into a file: `.env` gets a placeholder only for a key the
 environment does *not* provide, and a placeholder left from an earlier session
-is dropped once the key appears (the integration conftest reloads `.env` with
-`override=True`, so a placeholder would otherwise replace the real key).
-**Claude Code removes `ANTHROPIC_API_KEY` from the shells it starts**, so that
-key is stored as `SELKO_ANTHROPIC_API_KEY` and mapped back by reference in
-`CLAUDE_ENV_FILE`. Every other credential is a **network secret** (the proxy
-adds the header to requests for its host) or a GitHub Actions secret — never an
-environment variable, never committed.
+is dropped once the key appears. **Claude Code removes `ANTHROPIC_API_KEY` from
+the shells it starts**, so that key is stored as `SELKO_ANTHROPIC_API_KEY` and
+mapped back by reference in `CLAUDE_ENV_FILE`.
 
 **GitHub from the VM.** `gh api` REST works (pulls, merges, check-runs,
-issues, `repos/<this repo>/dispatches`); GraphQL is refused, so `gh pr
+issues, Actions runs and job logs); GraphQL is refused, so `gh pr
 create/list/view/merge` fail — use `gh api repos/tonimelisma/selko/pulls …`.
 Pushing tags, deleting refs, releases, repository settings and Actions
-secrets/variables are refused too; anything of that kind belongs in a
-workflow. Merged branches are deleted by GitHub ("Automatically delete head
-branches").
+secrets/variables are refused too. Merged branches are deleted by GitHub
+("Automatically delete head branches").
 
 ### Owner setup (Toni only)
 
-Values are never handled by an agent. Each item names where it goes.
+Values are never handled by an agent.
 
-**Cloud environment "selko"** (claude.ai → environment settings; personal):
+**Cloud environment "selko"** (claude.ai → environment settings; personal),
+*environment variables* — the LLM keys config.py reads, only those you use:
+`SELKO_ANTHROPIC_API_KEY` (the Anthropic key; see above), `GEMINI_API_KEY`,
+`OPENAI_API_KEY`, `XAI_API_KEY`, `META_MODEL_API_KEY` (or `META_API_KEY` /
+`MODEL_API_KEY`), `MOONSHOT_API_KEY`, `ZAI_API_KEY` (or `ZHIPU_API_KEY`),
+`DEEPSEEK_API_KEY`, `ALIBABA_API_KEY`, `MINIMAX_API_KEY`, `TINKER_API_KEY`;
+plus `SMOKE_SENTRY_DSN` (a DSN for the synthetic, not production's).
 
-- *Environment variables* — LLM keys config.py reads, only those you use:
-  `SELKO_ANTHROPIC_API_KEY` (the Anthropic key; see above), `GEMINI_API_KEY`,
-  `OPENAI_API_KEY`, `XAI_API_KEY`, `META_MODEL_API_KEY` (or `META_API_KEY` /
-  `MODEL_API_KEY`), `MOONSHOT_API_KEY`, `ZAI_API_KEY` (or `ZHIPU_API_KEY`),
-  `DEEPSEEK_API_KEY`, `ALIBABA_API_KEY`, `MINIMAX_API_KEY`, `TINKER_API_KEY`;
-  plus `SMOKE_SENTRY_DSN` (a DSN for the synthetic, not production's).
-- *Network secrets* — `api.supabase.com`: `Authorization: Bearer <Supabase
-  personal access token>`; `api.render.com`: `Authorization: Bearer <Render
-  API key>`.
-- *Allowed hosts*, if the environment is ever switched from unrestricted to
-  limited: `api.selkoapp.com`, `api.supabase.com`, `api.render.com`, Sentry's
-  ingest host from the DSN; the LLM hosts
-  `generativelanguage.googleapis.com`, `api.openai.com`, `api.x.ai`,
-  `api.meta.ai`, `api.moonshot.ai`, `api.z.ai`, `api.deepseek.com`,
-  `dashscope-intl.aliyuncs.com`, `api.minimax.io`,
-  `tinker.thinkingmachines.dev`; and setup's `nodejs.org`, `public.ecr.aws`,
-  `ghcr.io`, `registry-1.docker.io`, `github.com` /
-  `release-assets.githubusercontent.com` (Supabase CLI, Python builds).
+**Image signing needs no secret.** `image.yml` pushes with the workflow's
+`GITHUB_TOKEN` and signs keylessly with cosign through GitHub's OIDC token.
 
-**GitHub Actions secrets** (repository → Settings → Secrets and variables →
-Actions). Already used by the old jobs and expected to exist:
-`SUPABASE_ACCESS_TOKEN`, `PRODUCTION_SUPABASE_DB_PASSWORD`,
-`RENDER_DEPLOY_HOOK_APP_PRODUCTION`, `RENDER_DEPLOY_HOOK_WEB_PRODUCTION`,
-`STAGING_SUPABASE_DB_PASSWORD`, `RENDER_DEPLOY_HOOK_APP_STAGING`,
-`STAGING_SUPABASE_URL`, `STAGING_SUPABASE_PUBLISHABLE_KEY`,
-`STAGING_SUPABASE_SERVICE_ROLE_KEY`, `STAGING_TEST_USER_EMAIL`,
-`STAGING_TEST_USER_PASSWORD`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`.
-New, for the operations that replace Mac-only steps:
-
-- `PRODUCTION_SUPABASE_READONLY_DB_URL` — session-pooler URL of a read-only
-  role (`rehearse-cutover`).
-- `PRODUCTION_SUPABASE_DB_URL` and `PRODUCTION_SUPABASE_PUBLISHABLE_KEY` —
-  service connection for `repair-review-queue` (dry run and apply).
-- `STAGING_SUPABASE_DB_URL` — staging session pooler, for the worker drill in
-  `staging-tier2` (only once staging is unpaused).
-
----
+**Production's settings** (its env file: `SELKO_JWT_SECRET`, OAuth clients, LLM
+keys, `ALLOWED_ORIGINS`, …) live with the server that runs the image, outside
+this repository.
 
 ---
 
@@ -350,48 +294,32 @@ This keeps stale review feedback from silently rotting once a PR is merged and o
 
 CI is not a tier. It runs on every push and PR (the repo is public, so
 hosted-runner minutes cost nothing) and is never left red, but the gate is the
-two tiers below, not a green tick.
+lanes, not a green tick.
 
-**Tier 1 — in the session, before the PR merges.** `./scripts/verify.sh backend`.
-Real Postgres via `supabase start` (Docker in the cloud VM), all migrations
-applied, unit + integration tests. This is the merge gate.
+**Tier 1 — in the session, before the PR merges.** `./scripts/verify.sh backend`
+(unit + integration over SQLite; no service), plus the `frontend` and `image`
+lanes when their inputs changed. This is the merge gate.
 
-**Tier 2 — staging, immediately after the PR merges.**
-`./scripts/ops.py dispatch staging-tier2` (runs `verify-staging.sh` and the
-worker drill in GitHub Actions; `./scripts/verify.sh staging` is the same
-script for a machine that holds the staging credentials). Real Supavisor
-pooler, real Render, real OAuth, real Realtime, real egress. **Staging is
-paused by owner decision**, so Tier 2 cannot run today: say so in the report
-(an operator waiver per deploy, below), never call it green.
+**There is no staging tier any more.** What staging used to stand for — the
+shape that actually runs — is now the image lane: the exact image, under the
+server's limits, with the production health invariants asserted against it. CI
+runs the same check on `main` before it pushes and signs the image.
 
-Tier 2 is not optional and not deferrable, because Tier 1 *cannot* reach what
-Tier 2 covers:
-
-- Local Supabase has **no Supavisor**. `.env` points at port 54322, direct
-  Postgres. Every session-pooler property — LISTEN/NOTIFY survival, host
-  resolution, idle-timeout behaviour — is unreachable locally by construction.
-- A missing environment variable is invisible locally and invisible in a diff.
-  `SUPABASE_DB_URL` was absent from `.env.test` and `.env.production` while
-  `ENABLE_BACKGROUND_PROCESSING=true`; every test passed and the deploy would
-  have hard-failed at startup.
-- Egress, memory ceilings and token expiry do not exist on a laptop.
-
-**A red Tier 2 run is the top-priority next increment**, ahead of new feature
-work. Fix forward. Never let a second increment merge on top of a red staging.
-An explicit user instruction to deploy to production after the Tier 2 gap has
-been disclosed is an operator waiver for that deployment: report the waiver,
-then proceed without another staging detour or approval loop. The waiver does
-not authorize unrelated production-data mutations.
+What no local lane can reach stays real: production data shape, elapsed time
+(memory growth, token expiry) and configuration on the server. Those are
+observed after deploy, in the deploy log (see "Pick verification by risk
+dimension").
 
 ### 1. Scope your change
 
-| You changed | Required before merge (Tier 1) | Required after merge (Tier 2) |
-|-------------|-------------------------------|-------------------------------|
-| `backend/**` | `./scripts/verify.sh backend` — unit **+** integration against local Supabase | `./scripts/ops.py dispatch staging-tier2` |
-| `supabase/**` (schema/migrations) | `./scripts/verify.sh backend` — the integration run is what proves the migration executes | `./scripts/ops.py dispatch staging-tier2` — **required**, migrations must reach staging before prod (paused: disclose the gap) |
-| `frontend/src/**` | Frontend unit tests + `npm run check` + **web** screenshots |
+| You changed | Required before merge |
+|-------------|-----------------------|
+| `backend/**` | `./scripts/verify.sh backend` |
+| `backend/selko/db/migrations/**` | `./scripts/verify.sh backend` — every database test applies every migration to a fresh file, so this is what proves the migration executes; plus a run on a production-shaped copy when it touches a populated table |
+| `frontend/src/**` | `./scripts/verify.sh frontend` + **web** screenshots |
+| `Dockerfile`, `.dockerignore`, `scripts/build-image.sh`, `scripts/image-*.sh`, `selko_import/**` | `./scripts/image-lane.sh` (its inputs include `backend/selko/**` and `frontend/src/**` too; `verify-lanes.py` runs it when any changed) |
 | `legacy/**` (the unmaintained iOS and Android apps) | Nothing: don't change them (`legacy/README.md`) |
-| `docs/`, `*.md`, `.env*`, `scripts/`, `.claude/`, config only | Nothing to test — commit & push |
+| `docs/`, `*.md`, `.env*`, other `scripts/`, `.claude/`, config only | Nothing to test — commit & push |
 
 - **Only what you edited counts.** Editing `backend/` requires no web tests or screenshots.
 - **Bug fixes MUST include a regression test** in the module you fixed.
@@ -400,10 +328,12 @@ not authorize unrelated production-data mutations.
   specific fixture before shipping; if the prompt changes, run the broader eval
   suite required by `docs/evals-process.md` to check for regressions.
 - **Screenshots** only for the platform whose UI you changed (see "Screenshot Updates"). Skip for backend/docs/config.
-- **Every new table in a migration MUST include `ENABLE ROW LEVEL SECURITY` in
-  the same migration.** `emails_body_html_backup` reached production holding
-  email bodies with RLS off because a spec said "create a backup table" and
-  nobody asked whether it needed securing (#277).
+- **Every read and write of a user-owned table takes the owner.** There is no
+  row-level security: ownership is the `user_id` argument of every public
+  `selko.db` function that touches a user-owned table, and
+  `backend/tests/db/test_ownership.py` fails on one that lacks it (worker-wide
+  functions are allowlisted by name with a reason). A route answers another
+  user's row with 404, never 403.
 - **An increment is not implemented until its call sites are wired.** Do not
   mark a spec increment done, and do not write "next PR wires the call sites",
   when the new code has no callers. Direct-pg increments 3–5 shipped this way:
@@ -412,40 +342,36 @@ not authorize unrelated production-data mutations.
   test suite. If you add a code path behind a flag or an injected dependency,
   add a test that asserts the dependency actually reaches the call.
 - **Unreachable code fails the build.** A new module under `backend/selko/`
-  must be transitively importable from `selko.api` or `selko.worker_app`
-  (`backend/tests/test_reachability.py`). This rule exists because the call-site
-  rule above was stated three times and broken three times: direct-pg Inc3–5,
-  and then `workers/event_resolution.py` (#307), which merged as "fenced
-  per-user event resolution" with zero call sites and a green gate. Mocks cannot
-  notice a module nobody imports; an import graph can.
+  must be transitively importable from `selko.api`, `selko.worker_app` or
+  `selko.admin` (`backend/tests/test_reachability.py`). The call-site rule
+  above was stated three times and broken three times; mocks cannot notice a
+  module nobody imports, an import graph can.
+- **Nothing reaches a hosted database.** `backend/tests/test_no_hosted_database.py`
+  fails if any module under `backend/selko` imports supabase, postgrest,
+  asyncpg or psycopg. `selko_import` (outside the package, never in the image) is
+  the one reader of the old Postgres database.
 - **Never narrow a CHECK constraint without checking its writers.** Enumerated
-  text domains are pinned in
-  `backend/tests/integration/test_schema_contract.py::EXPECTED_CHECK_DOMAINS`.
-  R2 dropped `'skipped'` from `emails.processing_status`; event delivery is
-  now derived from `events.review_status` and `calendar_work_items`, so there
-  is no legacy `events.status` domain or writer to keep in sync.
+  text domains are pinned in `backend/tests/schema_domains.py`
+  (`EXPECTED_CHECK_DOMAINS`, asserted by `test_sqlite_schema.py`).
+- **Events are written only by the fenced commit.** Any SQL that writes `events`
+  outside `selko.db.events` (and its listed exceptions) fails
+  `backend/tests/test_single_data_layer.py`.
 - **SQL that has never been executed has not been tested.** A migration is not
-  done because it applies cleanly. It is done when a test has called the
-  function it defines or fired the trigger it creates, against a real database.
-  `20260809000001` (inserted into `attachments` columns that have never existed)
-  and `20260809000003` (referenced `NEW.sync_status` on `events`, breaking every
-  UPDATE) both applied cleanly, passed the full mocked suite, and were broken on
-  their first real call.
-- **A client query string is schema, not text.** Frontend PostgREST `.select()`
-  strings are pinned against the live database by
-  `backend/tests/integration/test_schema_contract.py::test_frontend_select_columns_exist_in_the_live_schema`.
-  The frontend unit tests stub `supabase.from` wholesale, so a select string is
-  otherwise only ever asserted against itself and stays green after the column
-  it names is dropped. That is how `event_sources.is_undone` survived
-  `20260826000001` and made every History load answer 400 (#380) — PostgREST
-  names embedded relations `<relation>_1`, so the error named a table that
-  appears nowhere in the source. The regression also arrived by stale branch
-  rather than by a bad edit: a squash-merge of a branch cut before its
-  neighbour silently restores the lines that neighbour changed.
+  done because it applies cleanly. It is done when a test has exercised the
+  trigger it creates or the column it adds, against a real file. Two Postgres
+  migrations once applied cleanly, passed the mocked suite, and broke every
+  UPDATE on their first real call. Every database test here runs on a real
+  migrated SQLite file, so mock the provider, never the database.
+- **A client request is schema, not text.** The web app reads through the
+  client API (`backend/selko/api/routes/client.py`); its routes are tested over
+  a real database (`backend/tests/db/test_client_routes.py`), and the frontend
+  unit tests stub `fetch`. A field a page reads that no route test returns is
+  untested — add it to the route test.
 - **Configuration is part of the change.** If your increment adds a required
   environment variable, it is not done until that variable is set in every
-  environment that runs the code. A correct diff plus a missing value is an
-  outage. Verify on staging (Tier 2), not by reading `.env.example`.
+  environment that runs the code (`.env.example`, `cloud-setup.sh`, the image
+  check's env file, and production's env file — tell Toni). A correct diff plus
+  a missing value is an outage.
 
 ### 1a. Pick verification by risk dimension, not just by file path
 
@@ -468,9 +394,9 @@ these numbers. Match the dimension instead:
 | Dimension your change touches | Required beyond the lanes |
 |---|---|
 | A one-line config or env var | Verify the value **in the target environment**. A correct diff plus a missing value is an outage; `.env.example` proves nothing |
-| Migration touching a populated table | `scripts/rehearse_cutover.py --faithful` against production row shapes. A migration that applies cleanly to an empty table has not been tested |
+| Migration touching a populated table | Run it on a copy of a production-shaped database (`selko_import` output, or the fixture in `selko_import/fixture/`). A migration that applies cleanly to an empty file has not been tested |
 | Worker, loop, or long-running path | Watch RSS and `/health/egress` over hours, recorded in the deploy log. A laptop has no memory ceiling and no token expiry |
-| New table | `ENABLE ROW LEVEL SECURITY` in the same migration |
+| New user-owned table | Its `selko.db` functions take `user_id` (`backend/tests/db/test_ownership.py` fails otherwise) |
 | New code path behind a flag or injected dependency | A test asserting the dependency actually reaches the call site |
 | Pure logic, no schema/config change | The lanes are sufficient |
 
@@ -503,14 +429,12 @@ what makes verification improvable: `verify-report.py` shows which lanes have
 ever caught a real failure and what each costs, so a lane that has never fired
 across many runs can be demoted on evidence rather than kept on faith.
 
-**A lane that cannot run is RED, never skipped.** `schema-compat` is red when
-its dispatch cannot be sent, its run never appears, or the run lacks the
-production credentials, because a local-only check proves nothing. Silence is
-not success.
+**A lane that cannot run is RED, never skipped.** The image lane is red when
+Docker is unavailable. Silence is not success.
 
-**Production is backend + supabase + frontend**, and those are the only lanes.
-The native iOS and Android apps are unmaintained (`legacy/README.md`): no lane,
-CI job, hook or setup step builds or tests them.
+**Production is the image** (backend + web app in one process), and the lanes
+above are the only ones. The native iOS and Android apps are unmaintained
+(`legacy/README.md`): no lane, CI job, hook or setup step builds or tests them.
 
 ### 2. Ship it
 
@@ -518,27 +442,23 @@ CI job, hook or setup step builds or tests them.
 - [ ] The scoped lanes above pass in the session — **the lanes are the gate, not CI**
 - [ ] Commit (conventional format), push, open the PR over REST: `gh api repos/tonimelisma/selko/pulls -f head=<branch> -f base=main -f title=… -f body=…` (`gh pr create` needs GraphQL, which the cloud proxy refuses)
 - [ ] `./scripts/merge-and-cleanup.sh <pr_number>` — squash-merges over REST and cleans up: GitHub deletes the remote branch itself, the script deletes the local branch, moves the clone to the merged `main` (cloud) or fast-forwards `main` and removes the worktree (Mac). **Does not wait on CI.**
+- [ ] **Check CI on `main` and fix forward if it ran and failed** — the `actions/runs?branch=main` query under "CI Ownership". On `main`, `image.yml` is what publishes `ghcr.io/tonimelisma/selko:<sha>`: a red image job means nothing new ships.
+- [ ] If your change ships (`backend`/`frontend`/image), **report the `--gate prod` lane table and state a recommendation**. A bare "Should I deploy this to production?" with no evidence attached asks the operator to adjudicate a question the lane table already answers.
+- [ ] **Production deploys.** A merge to `main` publishes a signed image; the server that runs production pulls and verifies it (cosign identity: `image.yml` on `refs/heads/main`). Deployment itself lives outside this repository. **Never change what production runs without Toni's explicit yes for that SHA.** The first cutover from the previous hosted-Postgres build imports its data once with `selko_import` (`uv run python -m selko_import --source-url-file <file> --target <path>/selko.db`; the URL carries a password, so it is read from a file, never a command line; exit 3 = schema drift, 5 = verification failed, nothing replaced) — `docs/specs/sqlite-single-process/04-data-cutover.md`.
 - [ ] **After any production deploy, open a `docs/deploy-log/<date>-<sha>.md` entry from `TEMPLATE.md` and fill the T+0 and T+15m rows before reporting done.** The T+24h row is filled the next day. Config, real-data and elapsed-time failures are only observable here — a deploy is not finished when it is applied, it is finished when it has been watched. Always fill in "which gate should have caught it"; that is what turns an incident into a permanent gate improvement instead of folklore.
-- [ ] **Check CI on `main` and fix forward if it ran and failed** — the `actions/runs?branch=main` query under "CI Ownership". Not a merge gate, but never left red. See "CI Ownership" below.
-- [ ] If your change ships to a server (`backend`/`supabase`/`frontend`), **report the `--gate prod` lane table and state a recommendation**, then ask whether to deploy. A bare "Should I deploy this to production?" with no evidence attached asks the operator to adjudicate a question the lane table already answers. Never deploy to prod without an explicit yes **for that SHA**. Once the user says yes, deploy: `./scripts/ops.py dispatch deploy-production sha=<main's tip> confirm="deploy <sha>"`. That one job runs `supabase db push --dry-run`, `supabase db push`, R5 (`assert-schema-code-compat.sh --linked`), the secret Render hooks, waits until `api.selkoapp.com/health` serves the SHA and runs the health invariants (your T+0 evidence) — there is no separate "push migrations first" step. It refuses a SHA that is not main's tip, because Render's hook builds the branch tip. A previously disclosed staging failure does not require another confirmation.
 
 See `docs/parallel-agents.md` for the full workflow. See `docs/ci-cd.md` for CI architecture details.
 
 ### CI Ownership — never a gate, but never ignored
 
 **CI runs on every push and PR, and it is never a merge gate.** The gate is the
-lanes: Tier 1 in the session before merge, Tier 2 (staging) after. See
-"Verification tiers" above.
+lanes in the session. Workflows: `test.yml` (the whole backend suite),
+`frontend-tests.yml` (web unit tests, `svelte-check`, build), `image.yml`
+(build, image check, and on `main` push + cosign sign).
 
-**A red CI is never left red.** An earlier version of this file claimed the
-staging jobs "require Actions minutes and therefore do not run." That was
-false: they ran on every push to `main`, and `deploy-staging` failed on `main`
-across three consecutive runs while this file said it could not execute — and
-later failed every backend push because staging was paused. It now reports a
-paused staging as exactly that. A status nobody reads is worse than no status.
+**A red CI is never left red.** A status nobody reads is worse than no status.
 
-**MANDATORY — after every merge to `main`, check CI and fix forward.** This is
-step 3 of "Ship it" and is not optional. Never leave `main` red.
+**MANDATORY — after every merge to `main`, check CI and fix forward.**
 
 ```bash
 gh api "repos/tonimelisma/selko/actions/runs?branch=main&per_page=3" \
@@ -548,23 +468,12 @@ gh api "repos/tonimelisma/selko/actions/runs?branch=main&per_page=3" \
 If it failed:
 1. **Diagnose** — `gh api repos/tonimelisma/selko/actions/runs/<id>/jobs --jq '.jobs[] | [.id,.name,.conclusion] | @tsv'`,
    then `gh api repos/tonimelisma/selko/actions/jobs/<job id>/logs | tail -80`
-2. **Missing configuration** — the most common cause, and the one a diff cannot
-   show. A referenced secret that does not exist expands to the empty string
-   silently. The secrets list is not readable from a cloud session, so the
-   jobs check their own secrets and say which one is missing; tell the
-   operator which secret to add (Owner setup) — do not paper over it by
-   disabling the check.
-3. **Google OAuth expired** (`RefreshError: invalid_grant`): run `uv run python scripts/seed_test_tokens.py --sync --provider gmail` (copies working dev↔staging token to stale side); only if both are stale, reconnect Gmail for the test user in one side's web app, then re-run `--sync`.
-4. **Code issue** — follow-up PR.
+2. **Code issue** — follow-up PR.
 
 **A CI job may never imply coverage it does not have.** If a job cannot run part
-of its verification, it says so in its own output rather than passing quietly —
-`deploy-staging` prints exactly what it did and did not verify. A green tick
-that reads as more than it is has caused more damage here than a red one.
-
-Production migrations and code ship together in ops.yml's `deploy-production`
-(`./scripts/ops.py dispatch deploy-production …`): dry run, push, R5, Render
-hooks, then the served-SHA and health checks. It depends on no other job.
+of its verification, it says so in its own output rather than passing quietly.
+A green tick that reads as more than it is has caused more damage here than a
+red one.
 
 ### Worktree Cleanup Rules
 
@@ -582,10 +491,11 @@ hooks, then the served-SHA and health checks. It depends on no other job.
 
 | Command | Purpose |
 |---------|---------|
-| `supabase start` / `supabase db reset` | Local Supabase |
-| `uv run pytest backend/tests/ -v` | Backend tests |
+| `./scripts/verify.sh backend` | Backend tests (unit + integration over SQLite) |
 | `npm run test:unit -- --reporter=json --outputFile=test-results.json` | Frontend tests (from `frontend/`) |
-| `uv run python -m selko.api` | Start FastAPI server |
+| `uv run uvicorn selko.api.app:app --port 8000` | Local API over `SELKO_DATA_DIR` (migrates at startup; serves `SELKO_WEB_DIR` when set) |
+| `uv run python -m selko.admin migrate \| delete-account <uuid> \| seed-demo <email>` | Operator commands (also inside the image) |
+| `./scripts/build-image.sh [tag]` | Build the image locally |
 
 See `docs/testing-guide.md` for the full test guide.
 
@@ -594,7 +504,7 @@ See `docs/testing-guide.md` for the full test guide.
 ## Platform Preferences
 
 **The web app is Selko's only client.** There is no CLI and no MCP connector
-(both removed 2026-11-25), and Supabase's OAuth server is off. The native apps in `legacy/ios/` and
+(both removed 2026-11-25). The native apps in `legacy/ios/` and
 `legacy/android/` are unmaintained (owner decision, 2026-11-25): never edit,
 build or test them, and don't read them as a description of how Selko works.
 
@@ -630,7 +540,7 @@ build or test them, and don't read them as a description of how Selko works.
 | Changed files | Command |
 |---------------|---------|
 | `frontend/src/` | `./scripts/capture-all-screenshots.sh web` |
-| Shared code (Supabase schema, seed data) affecting the UI | `./scripts/capture-all-screenshots.sh web` |
+| Shared code (schema, seed data) affecting the UI | `./scripts/capture-all-screenshots.sh web` |
 
 The script handles seeding, starting the API, capturing and resizing. See `docs/screenshot-guide.md` for details.
 
@@ -638,17 +548,56 @@ The script handles seeding, starting the API, capturing and resizing. See `docs/
 
 ## Architecture Principles
 
-- **Direct Supabase Access:** Frontends query Supabase directly. Python API only for operations requiring secrets (OAuth, Gmail sync, LLM processing).
-- **Two transports, no fallback between them.** RLS-scoped client and API traffic uses PostgREST with the *user's* JWT. Trusted-worker coordination (claim/heartbeat/complete/lease) uses asyncpg over the Supavisor **session pooler, port 5432** — PostgREST costs ~1,690 B/call of pure envelope for a service-role caller that bypasses RLS anyway. **An operation has exactly one implementation.** Never write `if pg_pool is not None: ... else: ...`; never add a `_via_pool` twin. This is enforced by the guard tests in `backend/tests/test_workers.py` (`test_no_worker_module_retains_a_postgrest_fallback`, `test_no_compat_shims_in_workers`) and the wiring test `test_worker_pool_claims_over_the_pool`.
-- **Reliable email ingestion:** Gmail uses paginated initial scans plus History cursors; Outlook resolves immutable well-known folder IDs before traversing and uses one delta cursor per included folder. Eligible provider folders are scannable but hidden from Settings, permanent/hidden trees are excluded, and folder preferences use the restricted `set_email_folder_preference` RPC. Email outcomes/reprocessing are exposed through the paginated History workflow.
-- **Calendar component capture:** Email acquisition parses every inline/attachment Gmail `text/calendar` part and Outlook meeting metadata into service-only `email_calendar_components` through the single atomic `save_email_with_attachment_descriptors` RPC. Empty component payloads never erase an earlier parse.
-- **Calendar identity matching:** `event_identity.py` canonicalizes content-free UID, provider-thread, join, and management hints. The resolution ladder applies authoritative UID/revision matching, exact join/time duplicates, and only two-signal supporting correlation before the local-day LLM fallback. Hints are written only by the fenced `commit_email_extraction` RPC, whose hint lookup set is fingerprinted and advisory-locked with the local-day band.
-- **Event review integrity:** `event_change_proposals` is the authoritative owner of update/cancellation review state; `event_sources` retains provenance only. Pending proposals require `events.review_status='active'`; event `status` never represents the Changes lane. Apply, reject, reopen, and repair transitions use service-only proposal RPCs, and review clients fail closed when proposal details are unavailable. **Every extraction decision states an explicit `intent`** (`no_change`/`apply`/`review`/`record_only`) and, except for `record_only`, an explicit `fields.review_status`; `commit_email_extraction` raises rather than defaulting either. It used to derive auto-apply from `review_status='active'` — the same value a pending proposal requires — so an unstated decision silently applied the change and wrote to the user's calendar. Delivery follows `review_status`, never `intent`. **Updates to an approved event Selko created apply automatically** (`intent="apply"`, calendar upsert, an applied proposal kept for History/undo); only an event adopted from the user's own calendar (`event_sources.source_origin='google_calendar'`) — or a change the model reads as a cancellation — waits in the Changes lane. An unknown provenance fails closed to review. A **declined event (`rejected`/`cancelled`) is terminal**: later emails still record provenance and identity hints, which is what keeps the match working and prevents a duplicate in the New lane, but never revive it (`docs/specs/review-queue-integrity.md` §8.2). **One exception:** an email the extractor flags `booking_confirmed` (ticket receipt, completed registration, accepted RSVP) reopens a `rejected` event into the New lane — never to the calendar — because buying tickets reverses the user's own decision. A school-play receipt was swallowed this way. `cancelled` (the organizer's word) stays terminal. `_enqueue_calendar_work` no longer promotes review status and refuses an upsert for a declined event.
-- **Durable email polling:** the only email ingestion path. `IngestionRuntime` starts inside the FastAPI process (async monolith — no separate Render service) whenever `ENABLE_BACKGROUND_PROCESSING` is on, and owns leased provider discovery, durable identity acquisition, independent attachment retries, reconciliation, and safe health notifications. Single ownership comes from database leases (`FOR UPDATE SKIP LOCKED` + lease expiry), not process topology. There is no APScheduler and no `email_fetch` task — the coordinator owns its own cadence. New integrations become pollable via the `integrations_ensure_email_sync_state` trigger; `request_email_sync_now` asks for a prompt poll. `selko.worker_app` runs the identical task set standalone for staging drills.
-- **Durable email work state:** a `pending` email is invariant-guaranteed claimable (`emails_pending_is_claimable_check`: `attempts < max_attempts`, no owner, no unexpired lock). `claim_unprocessed_email` opportunistically reclaims one expired `processing` lease per call before claiming fresh work, so a crashed worker's row recovers on the next claim, never on a restart or a periodic sweep. `fail_email_processing` is the single fenced retry-or-terminate RPC; a stale `(worker_id, lock_generation)` is a no-op. Provider discovery leases (`email_sync_state`/`email_sync_runs`) are generation-fenced end to end via claim → heartbeat → complete/fail, and at most one `running` run exists per integration by a partial unique index. `health_work_state` is the single counted health RPC behind both `/health` and `/health/ingestion`; it reports `unclaimable_pending` (actionable, degrades the rollup) separately from `failed_emails` (terminal history, never degrades it) — merging them made `degraded` permanent after the first exhausted retry; see `docs/specs/state-ownership-and-deterministic-recovery.md` S1–S5 for the implemented current model. Local real-Postgres evidence and production observation/cutover remain explicit operator gates.
+- **One process, one file.** The image runs one uvicorn worker that serves the
+  built web app, the API and the background workers on one port. All state is
+  in `SELKO_DATA_DIR` (`/data` in the image): `selko.db` and `attachments/`.
+  Settings come from an env file. The root filesystem is never written.
+- **One writer, many readers.** `selko.db.Database` keeps one writer connection
+  behind a lock with `BEGIN IMMEDIATE`, and reader connections in WAL mode
+  (`query_only`). Every write is a `db.write()` transaction; `tx.now` is one
+  strictly increasing UTC timestamp per transaction; timestamps are stored as
+  fixed-width `YYYY-MM-DDTHH:MM:SS.ffffffZ` text. Tables are `STRICT`; JSON
+  columns are `CHECK (json_valid(...))`. Migrations live in
+  `backend/selko/db/migrations/` and apply at startup (`selko.db.migrate`, with
+  a hash-checked ledger and a `VACUUM INTO` backup before each).
+- **Typed errors, not driver errors.** `selko.db.errors` translates SQLite
+  failures into `NotFound`, `NotOwned`, `InvalidArgument`, `UniqueViolation`,
+  `CheckViolation`, `ForeignKeyViolation`, `NotNullViolation`, `DbBusy` and the
+  proposal-state errors; services and routes catch those.
+- **An operation has exactly one implementation.** Services keep their old
+  parameter names (`client`, `supabase_client`, `pg_pool`) but the value is the
+  `Database`. Never write a second path for the same operation; the guards in
+  `backend/tests/test_workers.py` (`test_no_compat_shims_in_workers`) and
+  `test_single_data_layer.py` enforce it.
+- **Work arrives by signal, not by polling.** A committed write that creates
+  work calls `tx.emit_work(...)`; `selko.db.bus.WorkSignals` wakes the waiting
+  worker after commit (it replaced Postgres `LISTEN/NOTIFY`). Changes a user
+  should see call `tx.emit_live(user, resource)`; the in-process `Bus` fans them
+  out to `GET /live`, a Server-Sent Events stream (Bearer token, 25 s heartbeat,
+  re-auth at expiry, at most 5 streams per user). The safety-net poll is a
+  floor, not a schedule.
+- **Own sign-in.** `selko.services.accounts`: bcrypt passwords (imported GoTrue
+  `$2a$10$` hashes verify unchanged), HS256 access tokens signed with
+  `SELKO_JWT_SECRET` (`SELKO_JWT_SECRET_PREVIOUS` verifies during a rotation),
+  and a rotating refresh token in the `selko_refresh` cookie (HttpOnly,
+  SameSite=Strict, Path=/auth; only its SHA-256 is stored; reusing a rotated
+  token revokes the session). Cookie endpoints check `Origin`. Password
+  sign-ins are rate-limited per address separately from refreshes.
+- **The web app talks only to the API.** There is no database client in the
+  browser: `frontend/src/lib/api/client.js` sends the Bearer token and does one
+  shared refresh on 401; the access token lives in memory only.
+- **Attachments are files.** Stored under `<SELKO_DATA_DIR>/attachments/` as
+  `{user_id}/{uuid12}_{filename}` (written to a temp file, fsynced, renamed;
+  paths outside the directory are refused), served owner-only by
+  `GET /attachments/{id}/content`.
+- **Reliable email ingestion:** Gmail uses paginated initial scans plus History cursors; Outlook resolves immutable well-known folder IDs before traversing and uses one delta cursor per included folder. Eligible provider folders are scannable but hidden from Settings, permanent/hidden trees are excluded, and folder preferences go through `selko.db.email_sync.set_email_folder_preference`. Email outcomes/reprocessing are exposed through the paginated History workflow.
+- **Calendar component capture:** Email acquisition parses every inline/attachment Gmail `text/calendar` part and Outlook meeting metadata into `email_calendar_components` through the single atomic `selko.db.emails.save_email_with_attachment_descriptors`. Empty component payloads never erase an earlier parse.
+- **Calendar identity matching:** `event_identity.py` canonicalizes content-free UID, provider-thread, join, and management hints. The resolution ladder applies authoritative UID/revision matching, exact join/time duplicates, and only two-signal supporting correlation before the local-day LLM fallback. Hints are written only by the fenced `selko.db.events.commit_email_extraction`, whose hint lookup set is fingerprinted together with the local-day band (producer and commit share `hint_fingerprint`).
+- **Event review integrity:** `event_change_proposals` is the authoritative owner of update/cancellation review state; `event_sources` retains provenance only. Pending proposals require `events.review_status='active'`; event `status` never represents the Changes lane. Apply, reject, reopen, and repair transitions go through `selko.db.proposals`, and review clients fail closed when proposal details are unavailable. **Every extraction decision states an explicit `intent`** (`no_change`/`apply`/`review`/`record_only`) and, except for `record_only`, an explicit `fields.review_status`; `commit_email_extraction` raises rather than defaulting either. It used to derive auto-apply from `review_status='active'` — the same value a pending proposal requires — so an unstated decision silently applied the change and wrote to the user's calendar. Delivery follows `review_status`, never `intent`. **Updates to an approved event Selko created apply automatically** (`intent="apply"`, calendar upsert, an applied proposal kept for History/undo); only an event adopted from the user's own calendar (`event_sources.source_origin='google_calendar'`) — or a change the model reads as a cancellation — waits in the Changes lane. An unknown provenance fails closed to review. A **declined event (`rejected`/`cancelled`) is terminal**: later emails still record provenance and identity hints, which is what keeps the match working and prevents a duplicate in the New lane, but never revive it (`docs/specs/review-queue-integrity.md` §8.2). **One exception:** an email the extractor flags `booking_confirmed` (ticket receipt, completed registration, accepted RSVP) reopens a `rejected` event into the New lane — never to the calendar — because buying tickets reverses the user's own decision. A school-play receipt was swallowed this way. `cancelled` (the organizer's word) stays terminal. `_enqueue_calendar_work` no longer promotes review status and refuses an upsert for a declined event.
+- **Durable email polling:** the only email ingestion path. `IngestionRuntime` starts inside the FastAPI process (one process: web app, API and workers) whenever `ENABLE_BACKGROUND_PROCESSING` is on, and owns leased provider discovery, durable identity acquisition, independent attachment retries, reconciliation, and safe health notifications. Single ownership comes from leases written under the single writer (lease expiry plus a generation fence), not process topology. There is no APScheduler and no `email_fetch` task — the coordinator owns its own cadence. New integrations become pollable via the `integrations_ensure_email_sync_state_*` triggers; `request_email_sync_now` asks for a prompt poll. `selko.worker_app` runs the identical task set standalone.
+- **Durable email work state:** a `pending` email is invariant-guaranteed claimable (`emails_pending_is_claimable_check`: `attempts < max_attempts`, no owner, no unexpired lock). `claim_unprocessed_email` opportunistically reclaims one expired `processing` lease per call before claiming fresh work, so a crashed worker's row recovers on the next claim, never on a restart or a periodic sweep. `fail_email_processing` is the single fenced retry-or-terminate transition; a stale `(worker_id, lock_generation)` is a no-op. Provider discovery leases (`email_sync_state`/`email_sync_runs`) are generation-fenced end to end via claim → heartbeat → complete/fail, and at most one `running` run exists per integration by a partial unique index. `selko.db.health.health_work_state` is the single counted health query behind both `/health` and `/health/ingestion`; it reports `unclaimable_pending` (actionable, degrades the rollup) separately from `failed_emails` (terminal history, never degrades it) — merging them made `degraded` permanent after the first exhausted retry; see `docs/specs/state-ownership-and-deterministic-recovery.md` S1–S5 for the implemented current model.
 - **Single-owner calendar sync:** Approval and proposal application enqueue `calendar_work_items`; the item owns action, generation, attempts, lease, error, and provider-write fencing. `events.review_status` owns the user decision — queueing calendar work never writes it, so each caller states the decision itself before enqueueing — while API and clients derive delivery state from the latest non-superseded work item. Automatic cancellation enqueues an item with `action='cancel'`. Background workers are the sole Google Calendar writers for both upserts and cancellations. Explicit `/events/{id}/sync` requests idempotently observe or requeue worker-owned work.
-- **Two calendar providers, one code path:** events are written to Google Calendar *or* Outlook Calendar. `selko/services/calendar_providers.py` holds both adapters, and both speak Google Calendar's event shape, so the writer, mirror, dedup read-back and undo divergence checks never branch on provider. **Provider identity lives in the ids:** Google ids stay bare, Outlook ids are stored qualified as `outlook:<graph id>` — in `user_calendar_settings.target_calendar_id`, `events.google_calendar_event_id` (historical name, kept because renaming it breaks every plpgsql body silently) and `calendar_entries.provider_event_id`. Routing (`calendar_write_provider`, migration `20261031000001`): an event already in a calendar stays there, otherwise the target calendar's provider, otherwise Google if connected. The claim stamps `calendar_work_items.provider`, only claims items whose provider is writable, and takes the providers whose circuit is closed (`BREAKER_KEYS`: `google_calendar`, `outlook_calendar`). One Microsoft consent covers mail and calendar (`Calendars.ReadWrite`); **a mail-only Outlook grant is not a writable calendar**, and its refresh must request only the scopes it holds (`outlook.refresh_scopes`) — asking for more fails the refresh and would expire mail too. Never mark the Outlook integration expired from a calendar failure: that row also carries mail.
-- **Reviewed repair tooling:** `scripts/repair_review_queue_integrity.py` is dry-run by default; production mutation requires an absolute manifest, exact confirmed user, `--environment production`, `--apply`, and a redacted reverse-operation artifact. It uses the service-only `event_repair_audit` table and `queue_event_cancellation` transition; never run production apply without explicit approval. **A fix to the sync path cannot heal history**: `reprocess_email` re-runs extraction on stored data and never re-fetches, so Reprocess appears to do nothing on a row saved with a placeholder body (#381). The re-fetch tool for that class was part of the CLI, removed 2026-11-25; a new repair needs its own reviewed script.
+- **Two calendar providers, one code path:** events are written to Google Calendar *or* Outlook Calendar. `selko/services/calendar_providers.py` holds both adapters, and both speak Google Calendar's event shape, so the writer, mirror, dedup read-back and undo divergence checks never branch on provider. **Provider identity lives in the ids:** Google ids stay bare, Outlook ids are stored qualified as `outlook:<graph id>` — in `user_calendar_settings.target_calendar_id`, `events.google_calendar_event_id` (historical name, kept so imported rows and the code keep one vocabulary) and `calendar_entries.provider_event_id`. Routing (`selko.db.calendar_work.calendar_write_provider`): an event already in a calendar stays there, otherwise the target calendar's provider, otherwise Google if connected. The claim stamps `calendar_work_items.provider`, only claims items whose provider is writable, and takes the providers whose circuit is closed (`BREAKER_KEYS`: `google_calendar`, `outlook_calendar`). One Microsoft consent covers mail and calendar (`Calendars.ReadWrite`); **a mail-only Outlook grant is not a writable calendar**, and its refresh must request only the scopes it holds (`outlook.refresh_scopes`) — asking for more fails the refresh and would expire mail too. Never mark the Outlook integration expired from a calendar failure: that row also carries mail.
 - **Measure what the API answers, not only what the workers are doing.** Every
   health invariant here was internal — dead letters, worker liveness, listener,
   transport — so `POST /events/{id}/apply-change` could return 500 to *every*
@@ -658,8 +607,8 @@ The script handles seeding, starting the API, capturing and resizing. See `docs/
 - **A route no test calls has not been tested.** The service function under
   `apply-change` was well covered; the route itself had no test, so
   `applied["status"]` was never executed and survived the deletion of
-  `events.status` in `20260829000001`. This is the HTTP twin of the SQL rule
-  above: coverage of the layer underneath proves nothing about the layer users
+  `events.status` in the removal of `events.status`. This is the HTTP twin of the SQL rule
+  in the Definition of Done: coverage of the layer underneath proves nothing about the layer users
   actually reach.
 - **An unhandled exception must still return a CORS-bearing response.**
   Starlette's `ServerErrorMiddleware` sits outside `CORSMiddleware`, so a bare
@@ -670,20 +619,20 @@ The script handles seeding, starting the API, capturing and resizing. See `docs/
   read zero is ignored exactly as fast as one that can never go red, and this
   codebase has shipped both. `unclaimable_emails` counted permanent terminal
   failures alongside actionable stuck rows, so one failed email pinned
-  production to `degraded` forever (fixed by `20260901000001`, which splits
+  production to `degraded` forever (fixed by splitting
   `unclaimable_pending` from `failed_emails`). The incident evaluator raised a
   *critical* `stale_poll` against integrations that are deliberately not polled,
   so an expired OAuth token did the same for 18 days. Before adding a health
   signal, ask what makes it go back to green, and whether that is something the
   system does on its own.
-- **Reconnect recovery:** Google Calendar reauthorization atomically creates a durable `integration_recoveries` generation (via `complete_integration_reauthorization`) that requeues OAuth-blocked calendar work items; email resumes from provider cursors via the `integrations_ensure_email_sync_state` trigger with no recovery record. Auth failures are classified on `calendar_work_items.failure_code` (`oauth_required`/`oauth_scope_required`) and never trip the global provider circuit breaker. The ConnectionRecovery card on the web shows catch-up progress (`integration_recoveries` is RLS-readable by the owner).
-- **Outbound traffic is metered:** `selko.services.egress` attributes every outbound byte to a destination (`supabase`/`gmail`/`graph`) and a bounded operation template, exposed at `/health/egress` and logged every `EGRESS_LOG_INTERVAL_SECONDS`. Supabase traffic is captured by an httpx response hook on the single shared service client in `get_service_client`, so it cannot be bypassed by a new call site — do not construct a second service client without that hook. This exists because a platform bandwidth alert reports a total with no attribution, which cannot tell constant polling apart from real provider downloads. Idle loops must not exist. Work arrives by notification; the safety-net poll is a floor, not a schedule. Any new unconditional periodic database call must be justified in the PR body against the two rules above: work arrives by notification, and the safety-net poll is a floor rather than a schedule.
-- **Fenced-resolution health:** `/health` exposes content-free, process-local resolution conflicts-per-hour, retry histogram, fenced-write count, conflict-exhaustion count, and pending-email age gauges. Event extraction writes are committed only through `commit_email_extraction`; direct event inserts in services/workers are guarded by AST tests. Google Photos ingestion remains parked.
+- **Reconnect recovery:** Google Calendar reauthorization atomically creates a durable `integration_recoveries` generation (`selko.db.recovery.complete_integration_reauthorization`) that requeues OAuth-blocked calendar work items; email resumes from provider cursors via the `integrations_ensure_email_sync_state_*` triggers with no recovery record. Auth failures are classified on `calendar_work_items.failure_code` (`oauth_required`/`oauth_scope_required`) and never trip the global provider circuit breaker. The ConnectionRecovery card on the web shows catch-up progress (`GET /integrations/recovery`, owner-scoped).
+- **Outbound traffic is metered:** `selko.services.egress` attributes every outbound byte to a destination (`gmail`/`graph`/`llm`) and a bounded operation template, exposed at `/health/egress` and logged every `EGRESS_LOG_INTERVAL_SECONDS`. The database is a local file, so it has no egress; `/health/egress` reports the worker transport as `sqlite`. This exists because a platform bandwidth alert reports a total with no attribution, which cannot tell constant polling apart from real provider downloads. Idle loops must not exist. Work arrives by notification; the safety-net poll is a floor, not a schedule. Any new unconditional periodic call must be justified in the PR body against the two rules above: work arrives by notification, and the safety-net poll is a floor rather than a schedule.
+- **Fenced-resolution health:** `/health` exposes content-free, process-local resolution conflicts-per-hour, retry histogram, fenced-write count, conflict-exhaustion count, and pending-email age gauges. Event extraction writes are committed only through `commit_email_extraction`; any other SQL that writes `events` fails `backend/tests/test_single_data_layer.py`. Google Photos ingestion remains parked.
 - **End-to-End First:** Complete full journeys before expanding scope. First journey: Email → Calendar Event.
 - **LLM-Centric AI:** All intelligence uses multimodal LLMs (multi-provider registry; production runs `claude-haiku-5-5` only, `LLM_FALLBACK_PROVIDER=none`; an unset fallback is auto-filled, so `none` must stay explicit). Every provider that can receive email content is named in the public privacy policy at `/privacy`, so changing either is a policy change.
 - **YAGNI:** Add complexity only when measured need exists.
 
-**Details:** `PRD_ARCH.md`
+**Details:** `PRD_ARCH.md`, `docs/specs/sqlite-single-process/`
 
 ---
 
@@ -697,34 +646,26 @@ The script handles seeding, starting the API, capturing and resizing. See `docs/
 
 | File | Purpose |
 |------|---------|
-| `.env` | Local development (Docker) |
-| `.env.test` | Staging values — Mac only, optional. Cloud sessions and ops.yml use the `STAGING_*` Actions secrets |
-| `.env.production` | Production values — Mac only, optional. Cloud sessions and ops.yml use the `PRODUCTION_*` Actions secrets |
+| `.env` | Local development (`ENVIRONMENT=development`) |
+| `.env.production` | Production values on a machine that runs production locally, optional; the image reads its env file through the process environment |
 | `.env.example` | Template for setup |
 
-**Supabase Instances:** Local (`localhost:54321`), Staging (`lxmysergoeaegxlyfzwk`), Production (`khahcozfbnpykspvatrg`)
-
+Key settings: `SELKO_DATA_DIR` (database and attachments), `SELKO_JWT_SECRET`
+(≥ 32 bytes; `openssl rand -hex 32`) and `SELKO_JWT_SECRET_PREVIOUS` during a
+rotation, `ALLOWED_ORIGINS` (cookie endpoints refuse any other `Origin`),
+`API_PUBLIC_URL`, `FRONTEND_URL`, `ENABLE_BACKGROUND_PROCESSING`,
+`GIT_COMMIT_SHA` (set by the image build; published by `/health`).
 Microsoft Outlook OAuth uses `MICROSOFT_CLIENT_ID` and `MICROSOFT_CLIENT_SECRET`
 from a Microsoft Entra app registration.
 
 ### MANDATORY: Environment separation
 
-**Never move production credentials or data into staging or development, and
-never seed burner tokens into production.** Production holds real users' OAuth
-refresh tokens; a lower-trust environment is a lower-trust environment.
-
-- `scripts/seed_test_tokens.py` (the test gates' token copier) is
-  **development ↔ staging only**. Production is rejected by its argument parser
-  and inside `seed_tokens()` (tests import the function directly, so the parser
-  alone is not enough). Do not reintroduce it.
-- When a development or staging OAuth token dies, **do not ask the user to reauth** —
-  check both dev and staging and copy the working token to the stale side:
-  `uv run python scripts/seed_test_tokens.py --sync --provider gmail` (checks both
-  envs, copies `development→staging` or `staging→development` whichever is
-  working→stale; no-op if both fresh). If both are stale, reconnect Gmail for
-  the test user in one side's web app, then run `--sync` again. Also supports `--all-providers`.
-- Reading production state for diagnosis is fine (status, expiry, row counts).
-  Print no tokens and copy nothing.
+**Never move production credentials or data into development.** Production
+holds real users' OAuth refresh tokens and mail; a development machine is a
+lower-trust environment. Never copy production's `selko.db`, its attachments or
+an import of its old database anywhere but the server that runs production.
+Reading production state for diagnosis is fine (health endpoints, counts).
+Print no tokens and copy nothing.
 
 ---
 
@@ -732,25 +673,22 @@ refresh tokens; a lower-trust environment is a lower-trust environment.
 
 | Topic | Document | When to Read |
 |-------|----------|--------------|
+| **SQLite single process** | `docs/specs/sqlite-single-process/` | **Read first** for anything about storage, auth, the client API, `/live`, the image or the data cutover. Schema (01), data layer (02), API/auth/web (03), cutover (04), verification (05) |
 | **Worktree workflow** | `docs/parallel-agents.md` | Before any source code task |
 | **Testing** | `docs/testing-guide.md` | Before running tests |
 | **Database schema** | `docs/database-schema.md` | When working with data |
-| **Frontend queries** | `docs/supabase-frontend-queries.md` | When building UI features |
 | **API workflow** | `docs/api-workflow.md` | When working with Python API |
-| **CI/CD** | `docs/ci-cd.md` | When troubleshooting CI |
+| **CI/CD** | `docs/ci-cd.md` | When troubleshooting CI or the image |
 | **Job queue** | `docs/job-queue.md` | When working with background jobs |
 | **Gmail integration** | `docs/gmail-integration.md` | When working with email sync |
 | **Microsoft Graph failure ledger** | `docs/microsoft-graph-failure-ledger.md` | Before changing Graph request/retry/resync behavior or after any production Graph failure |
 | **OAuth reconnect catch-up** | `docs/specs/oauth-reconnect-catch-up.md` | When implementing automatic email/calendar recovery after OAuth reauthorization |
-| **Deploy log** | `docs/deploy-log/` | Before and after every production deploy. Config, real production data, and elapsed-time failures are invisible to local tests; two of those categories are only observable after deploy. Records what shipped, T+0/T+15m/T+24h observations, and **which gate should have caught** anything that broke |
-| **Executable truth** | `docs/specs/executable-truth.md` | **Read before trusting any gate, drill, or spec status.** V1–V8 make gates incapable of reporting success without evidence, then fix what they were hiding: unattributed Graph egress, a Graph failure ledger with no writer, an unconditional idle poll, fencing implemented as a branch, and the half of the S5 state collapse left undone. Carries decisions D1–D3 |
-| **Cutover verification** | `docs/specs/cutover-verification-20260807.md` | The single ordered production cutover checklist (migrations → code → flag last). Execute it through foundation-integrity F7–F8, never directly |
-| **Foundation integrity** | `docs/specs/foundation-integrity.md` | Read after the stub-rollback plan above. Builds a real execution gate (integration tests against local Postgres) because the mocked-only DoD gate is why broken SQL, unreachable code and a non-functional schema gate all shipped green. Carries the six open defects (D1–D6) from the C1–C9 review and the production cutover |
-| **Stub rollback and gate repair** | `docs/specs/stub-rollback-and-gate-repair.md` | Gate-repair record for G1–G7; G1–G5 are merged, while G6/G7 and the production checks remain tracked. Read before changing the execution gates. |
-| **Parallel extraction, fenced commit** | `docs/specs/parallel-extraction-fenced-commit.md` | Before touching worker concurrency, `save_extracted_events`, or how extracted events are persisted. Extraction stays parallel; the commit is fenced on the candidate band it was computed against. Replaces review-queue-integrity R2 |
-| **Calendar identity and cancellation** | `docs/specs/calendar-identity-and-cancellation.md` | Before touching iCalendar parsing, event identity/dedup, or cancellation. Replaces review-queue-integrity R3–R4 |
-| **Review queue integrity** | `docs/specs/review-queue-integrity.md` | Normative requirements for web Review (§5), identity (§7), cancellation (§8) and the production repair (§9). Decisions 6–7 stand; **§6's fenced-lane mechanism is superseded** — see parallel-extraction-fenced-commit |
-| **Event identity reach** | `docs/specs/event-identity-reach.md` | Before touching dedup, invite handling, or why an event the user already has appears as New. Measured from production: ~4% of events carry any identity hint and none carry an iCalendar UID, so matching falls back to a one-local-day window plus LLM text comparison. Carries the S1–S15 scenario matrix |
+| **Deploy log** | `docs/deploy-log/` | Before and after every production deploy. Records what shipped, T+0/T+15m/T+24h observations, and **which gate should have caught** anything that broke |
+| **Executable truth** | `docs/specs/executable-truth.md` | Before trusting any gate or spec status (historical record; the Postgres mechanics it names are gone, the rules stand) |
+| **Parallel extraction, fenced commit** | `docs/specs/parallel-extraction-fenced-commit.md` | Before touching worker concurrency, `save_extracted_events`, or how extracted events are persisted |
+| **Calendar identity and cancellation** | `docs/specs/calendar-identity-and-cancellation.md` | Before touching iCalendar parsing, event identity/dedup, or cancellation |
+| **Review queue integrity** | `docs/specs/review-queue-integrity.md` | Normative requirements for web Review (§5), identity (§7), cancellation (§8). **§6's fenced-lane mechanism is superseded** — see parallel-extraction-fenced-commit |
+| **Event identity reach** | `docs/specs/event-identity-reach.md` | Before touching dedup, invite handling, or why an event the user already has appears as New |
 | **LLM integration** | `docs/llm-integration.md` | When working with LLM features |
 | **Architecture** | `PRD_ARCH.md` | For product requirements and architecture |
 | **UI user journeys** | `docs/ui/01-user-journeys.md` | When planning frontend work or understanding user flows |
@@ -761,7 +699,7 @@ refresh tokens; a lower-trust environment is a lower-trust environment.
 | **Screenshot capture** | `docs/screenshot-guide.md` | When capturing web screenshots |
 | **LLM eval system** | `backend/tests/eval/README.md` | When working with LLM evaluation or benchmarking |
 | **Evals process** | `docs/evals-process.md` | When running evals, interpreting results, or iterating on prompts |
-| **Implementation specs** | `docs/specs/` | When planning or implementing a new feature (detailed build plans; see `docs/specs/README.md`) |
+| **Implementation specs** | `docs/specs/` | When planning or implementing a new feature (see `docs/specs/README.md`) |
 
 ---
 

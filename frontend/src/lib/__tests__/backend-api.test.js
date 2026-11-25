@@ -1,36 +1,26 @@
 // @ts-nocheck
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-// Mock Supabase client
-const mockSupabase = {
-	auth: {
-		getSession: vi.fn()
-	}
+// The in-memory session (vitest.config.js pins VITE_API_URL to localhost:8000)
+const mockAuth = {
+	getAccessToken: vi.fn(),
+	refresh: vi.fn()
 };
 
-vi.mock('$lib/supabase.js', () => ({
-	supabase: mockSupabase
+vi.mock('$lib/auth.js', () => ({
+	getAccessToken: (...args) => mockAuth.getAccessToken(...args),
+	refresh: (...args) => mockAuth.refresh(...args)
 }));
 
 // Mock fetch
 const mockFetch = vi.fn();
 vi.stubGlobal('fetch', mockFetch);
 
-// Mock import.meta.env
-vi.stubGlobal('import', {
-	meta: {
-		env: {
-			VITE_API_URL: 'http://localhost:8000'
-		}
-	}
-});
-
 describe('Backend API Client', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		mockSupabase.auth.getSession.mockResolvedValue({
-			data: { session: { access_token: 'test-token' } }
-		});
+		mockAuth.getAccessToken.mockReturnValue('test-token');
+		mockAuth.refresh.mockResolvedValue(null);
 	});
 
 	afterEach(() => {
@@ -137,13 +127,13 @@ describe('Backend API Client', () => {
 		});
 
 		it('returns error when not authenticated', async () => {
-			mockSupabase.auth.getSession.mockResolvedValue({
-				data: { session: null }
-			});
+			mockAuth.getAccessToken.mockReturnValue(null);
 
 			const { syncEmails } = await import('../api/backend.js');
 			const result = await syncEmails();
 
+			expect(mockAuth.refresh).toHaveBeenCalledTimes(1);
+			expect(mockFetch).not.toHaveBeenCalled();
 			expect(result.data).toBeNull();
 			expect(result.error.message).toBe('Not authenticated');
 		});

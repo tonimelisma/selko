@@ -1,46 +1,34 @@
-"""Real-Postgres proof for the C2 hint writer and hint read-set fence."""
+"""The C2 hint writer and the hint read-set fence, on a real SQLite database."""
 
-import json
-from datetime import datetime, timezone
 from hashlib import md5
-from uuid import uuid4
 
-import pytest
+from selko.db import events as db_events
 
-pytestmark = pytest.mark.integration
+EMPTY = md5(b"").hexdigest()
 
 
-async def test_commit_writes_identity_hints_in_same_transaction(pg_pool, temp_user):
-    user_id, _, _ = temp_user
-    email_id = uuid4()
-    worker = f"identity-{email_id}"
+def _claimed(factory, user, **extra):
+    return factory.email(user, processing_status="processing", locked_by="identity-worker",
+                         locked_until="2099-01-01T00:00:00.000000Z", lock_generation=1, **extra)
+
+
+def test_commit_writes_identity_hints_in_same_transaction(db, factory):
+    user = factory.user()
+    email_id = _claimed(factory, user, email_provider="gmail", thread_id="thread-c2",
+                        date_sent="2035-01-01T09:00:00.000000Z")
     value_hash = "a" * 64
-    await pg_pool.execute(
-        """
-        INSERT INTO public.emails
-            (id, user_id, email_provider, provider_message_id, thread_id,
-             processing_status, locked_by, lock_generation, date_sent)
-        VALUES ($1, $2, 'gmail', $3, 'thread-c2', 'processing', $4, 1, $5)
-        """,
-        email_id, user_id, f"identity-{email_id}", worker,
-        datetime.now(timezone.utc),
-    )
     decision = {
         "action": "create",
         "event_id": None,
         "intent": "no_change",
         "window_start": "2035-01-02T00:00:00Z",
         "window_end": "2035-01-03T00:00:00Z",
-        "expected_fingerprint": md5(b"").hexdigest(),
+        "expected_fingerprint": EMPTY,
         "hint_keys": [f"ical_uid|{value_hash}|"],
-        "expected_hint_fingerprint": md5(b"").hexdigest(),
+        "expected_hint_fingerprint": EMPTY,
         "hints": [{
-            "kind": "ical_uid",
-            "value_hash": value_hash,
-            "recurrence_id": "",
-            "strength": "authoritative",
-            "sequence": 1,
-            "dtstamp": "2035-01-01T12:00:00Z",
+            "kind": "ical_uid", "value_hash": value_hash, "recurrence_id": "",
+            "strength": "authoritative", "sequence": 1, "dtstamp": "2035-01-01T12:00:00Z",
         }],
         "fields": {
             "title": "C2 identity event",
@@ -48,69 +36,46 @@ async def test_commit_writes_identity_hints_in_same_transaction(pg_pool, temp_us
             "end_datetime": "2035-01-02T11:00:00Z",
             "review_status": "pending_review",
         },
-        "source": {"email_id": str(email_id), "extracted_data": {}},
+        "source": {"email_id": email_id, "extracted_data": {}},
     }
-    try:
-        result = json.loads(await pg_pool.fetchval(
-            "SELECT public.commit_email_extraction($1, $2, 1, $3::jsonb, 'processed')",
-            email_id, worker, json.dumps([decision]),
-        ))
-        assert result["applied"] == 1
-        event_id = result["event_ids"][0]
-        hint = await pg_pool.fetchrow(
-            "SELECT event_id, kind, value_hash, sequence, dtstamp FROM public.event_identity_hints WHERE event_id = $1",
-            event_id,
-        )
-        assert str(hint["event_id"]) == event_id
-        assert hint["kind"] == "ical_uid"
-        assert hint["value_hash"] == value_hash
-        assert hint["sequence"] == 1
-        assert hint["dtstamp"].isoformat().startswith("2035-01-01T12:00:00")
-    finally:
-        await pg_pool.execute("DELETE FROM public.emails WHERE id = $1", email_id)
-        await pg_pool.execute("DELETE FROM public.events WHERE user_id = $1 AND title = $2", user_id, "C2 identity event")
+
+    result = db_events.commit_email_extraction(db, email_id, "identity-worker", 1, [decision], "processed")
+
+    assert result["applied"] == 1
+    event_id = result["event_ids"][0]
+    hint = db.query_one(
+        "SELECT event_id, source_email_id, kind, value_hash, sequence, dtstamp "
+        "FROM event_identity_hints WHERE event_id = ?", (event_id,))
+    assert hint["event_id"] == event_id
+    assert hint["source_email_id"] == email_id
+    assert (hint["kind"], hint["value_hash"], hint["sequence"]) == ("ical_uid", value_hash, 1)
+    assert hint["dtstamp"].startswith("2035-01-01T12:00:00")
 
 
-async def test_hint_lookup_is_part_of_the_commit_fence(pg_pool, temp_user):
-    user_id, _, _ = temp_user
-    existing_event_id = uuid4()
-    existing_email_id = uuid4()
-    email_id = uuid4()
-    worker = f"identity-fence-{email_id}"
+def test_hint_lookup_is_part_of_the_commit_fence(db, factory):
+    """A hint naming an event outside the band still fences the decision."""
+    user = factory.user()
+    existing_email = factory.email(user, processing_status="processed")
+    email_id = _claimed(factory, user)
+    existing_event = factory.event(user, title="outside local day",
+                                   start_datetime="2036-02-02T10:00:00.000000Z",
+                                   end_datetime="2036-02-02T11:00:00.000000Z")
     value_hash = "b" * 64
-    await pg_pool.execute(
-        """
-        INSERT INTO public.emails
-            (id, user_id, provider_message_id, processing_status, locked_by, lock_generation)
-        VALUES ($1, $2, $3, 'processing', $4, 1), ($5, $2, $6, 'processed', NULL, 0)
-        """,
-        email_id, user_id, f"identity-fence-{email_id}", worker,
-        existing_email_id, f"identity-source-{existing_email_id}",
-    )
-    await pg_pool.execute(
-        """
-        INSERT INTO public.events (id, user_id, title, start_datetime, end_datetime, review_status)
-        VALUES ($1, $2, 'outside local day', '2036-02-02T10:00:00Z', '2036-02-02T11:00:00Z', 'pending_review')
-        """,
-        existing_event_id, user_id,
-    )
-    await pg_pool.execute(
-        """
-        INSERT INTO public.event_identity_hints
-            (user_id, event_id, source_email_id, kind, value_hash, strength)
-        VALUES ($1, $2, $3, 'join_url', $4, 'supporting')
-        """,
-        user_id, existing_event_id, existing_email_id, value_hash,
-    )
+    factory._insert("event_identity_hints", {
+        "id": "00000000-0000-4000-8000-000000000001", "user_id": user, "event_id": existing_event,
+        "source_email_id": existing_email, "kind": "join_url", "value_hash": value_hash,
+        "strength": "supporting",
+    })
     decision = {
         "action": "create",
         "event_id": None,
         "intent": "no_change",
         "window_start": "2036-02-03T00:00:00Z",
         "window_end": "2036-02-04T00:00:00Z",
-        "expected_fingerprint": md5(b"").hexdigest(),
+        "expected_fingerprint": EMPTY,
         "hint_keys": [f"join_url|{value_hash}|"],
-        "expected_hint_fingerprint": md5(b"").hexdigest(),
+        # Computed as if the hint named nothing: stale.
+        "expected_hint_fingerprint": EMPTY,
         "hints": [{"kind": "join_url", "value_hash": value_hash, "strength": "supporting"}],
         "fields": {
             "title": "must be fenced",
@@ -118,17 +83,14 @@ async def test_hint_lookup_is_part_of_the_commit_fence(pg_pool, temp_user):
             "end_datetime": "2036-02-03T11:00:00Z",
             "review_status": "pending_review",
         },
-        "source": {"email_id": str(email_id), "extracted_data": {}},
+        "source": {"email_id": email_id, "extracted_data": {}},
     }
-    try:
-        result = json.loads(await pg_pool.fetchval(
-            "SELECT public.commit_email_extraction($1, $2, 1, $3::jsonb, 'processed')",
-            email_id, worker, json.dumps([decision]),
-        ))
-        assert result["conflict"] is True
-        assert await pg_pool.fetchval(
-            "SELECT count(*) FROM public.events WHERE title = 'must be fenced'"
-        ) == 0
-    finally:
-        await pg_pool.execute("DELETE FROM public.emails WHERE id IN ($1, $2)", email_id, existing_email_id)
-        await pg_pool.execute("DELETE FROM public.events WHERE id = $1", existing_event_id)
+
+    result = db_events.commit_email_extraction(db, email_id, "identity-worker", 1, [decision], "processed")
+
+    assert result["conflict"] is True
+    assert db.query_one("SELECT count(*) FROM events WHERE title = 'must be fenced'")[0] == 0
+    # With the producer's real value the same decision commits.
+    decision["expected_hint_fingerprint"] = db_events.hint_fingerprint(db, user, decision["hint_keys"])
+    assert db_events.commit_email_extraction(
+        db, email_id, "identity-worker", 1, [decision], "processed")["applied"] == 1

@@ -52,48 +52,58 @@ def test_request_metrics_records_route_templates_not_paths():
     assert all("{" in route for route in routes), "a concrete path would leak an id"
 
 
-def test_transport_probe_reports_unavailable_for_a_pool_that_cannot_answer():
-    """assert-health.sh asserts `transport == "asyncpg"` to prove the worker
-    transport is live. That assertion used to read `pool is not None`, which is
-    equally true of a pool whose every connection is wedged -- so the gate
-    could not fail for the one reason worth gating on.
-
-    A hung `pool.acquire()` (asyncpg has no default acquire timeout) inside an
-    unbounded executor is how acquisition stalled for 19 days.
+def test_transport_probe_reports_unavailable_for_a_database_that_cannot_answer(db, monkeypatch):
+    """assert-health.sh asserts the egress transport to prove the worker data
+    path is live. That assertion once read `pool is not None`, which is equally
+    true of a connection that cannot answer -- so the gate could not fail for
+    the one reason worth gating on. The probe runs a real query.
     """
     import asyncio
-    from unittest.mock import AsyncMock
 
-    from selko.api.routes.health import _pg_transport_state
+    from selko.api.routes.health import _db_transport_state
+    from selko.db.errors import DbError
 
-    working = AsyncMock()
-    working.fetchval = AsyncMock(return_value=1)
-    assert asyncio.run(_pg_transport_state(working)) == "asyncpg"
+    assert asyncio.run(_db_transport_state(db)) == "sqlite"
+    assert asyncio.run(_db_transport_state(None)) == "none"
 
-    broken = AsyncMock()
-    broken.fetchval = AsyncMock(side_effect=OSError("connection reset"))
-    assert asyncio.run(_pg_transport_state(broken)) == "unavailable"
+    def broken(*_args, **_kwargs):
+        raise DbError("database file is unreadable")
 
-    assert asyncio.run(_pg_transport_state(None)) == "none"
+    monkeypatch.setattr(db, "query_one", broken)
+    assert asyncio.run(_db_transport_state(db)) == "unavailable"
 
 
-def test_transport_probe_cannot_hang_the_health_route():
-    """The probe is bounded, or a wedged pool takes the health check with it."""
+def test_transport_probe_cannot_hang_the_health_route(db, monkeypatch):
+    """The probe is bounded, or a wedged database takes the health check with it."""
     import asyncio
-    from unittest.mock import AsyncMock
 
-    from selko.api.routes.health import _pg_transport_state
+    from selko.api.routes.health import _db_transport_state
 
     async def scenario():
         never_returns = asyncio.Event()
-        pool = AsyncMock()
 
-        async def hang(*_args):
+        async def hang(*_args, **_kwargs):
             await never_returns.wait()
 
-        pool.fetchval = hang
+        monkeypatch.setattr(db, "run", hang)
         # Well inside the probe's own 5s bound, so a pass here means the bound
         # fired rather than the test merely being patient.
-        return await asyncio.wait_for(_pg_transport_state(pool), timeout=20)
+        return await asyncio.wait_for(_db_transport_state(db), timeout=20)
 
     assert asyncio.run(scenario()) == "unavailable"
+
+
+def test_pending_email_metrics_count_and_age(db, factory):
+    """/health's queue gauges come from the database, content-free."""
+    from datetime import datetime, timezone
+
+    from selko.db import health as db_health
+
+    assert db_health.pending_email_metrics(db) == {"pending_emails": 0, "oldest_pending_age_seconds": None}
+    user = factory.user()
+    factory.email(user, processing_status="pending", created_at="2026-01-01T00:00:00.000000Z")
+    factory.email(user, processing_status="processed")
+    now = datetime(2026, 1, 1, 0, 10, tzinfo=timezone.utc)
+    assert db_health.pending_email_metrics(db, now=now) == {
+        "pending_emails": 1, "oldest_pending_age_seconds": 600,
+    }

@@ -1,20 +1,45 @@
-"""Unit tests for events service.
+"""Unit tests for the events service, on a real database.
 
-Tests the business logic functions in events.py with mocked dependencies.
+The reads (events, mirrored calendar entries, sender rules, sources) run
+against a migrated SQLite file (`db`/`factory`). Only the LLM comparison and
+the calendar provider's live read are mocked.
 """
 
-from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
 
+from selko.db.codec import new_id
 from selko.services.events import (
-    EventsError,
     check_sender_rules,
     derive_delivery_status,
     find_matching_event,
     generate_source_attribution,
 )
+from tests.event_pipeline import providers_offline
+
+
+def _rule(factory, user, **values):
+    return factory._insert("sender_rules", {"id": new_id(), "user_id": user, **values})
+
+
+def _entry(factory, user, provider_event_id, *, title="", start, end=None, calendar_id="primary",
+           integration=None, **extra):
+    """A mirrored calendar entry (calendar_entries row)."""
+    integration = integration or factory.integration(user)
+    return factory._insert("calendar_entries", {
+        "id": new_id(), "user_id": user, "integration_id": integration, "calendar_id": calendar_id,
+        "provider_event_id": provider_event_id, "title": title, "start_at": start, "end_at": end,
+        **extra,
+    })
+
+
+def _match(db, user, event_data, *, live=None, matched_id=None, compare_error=None, **kwargs):
+    with providers_offline(live) as read, \
+         patch("selko.services.events.event_processing.compare_events",
+               return_value=matched_id, side_effect=compare_error) as compare:
+        result = find_matching_event(db, MagicMock(), user, event_data, **kwargs)
+    return result, compare, read
 
 
 class TestDeliveryStatus:
@@ -50,417 +75,166 @@ class TestDeliveryStatus:
         assert derive_delivery_status(event) == "sync_failed"
 
 
+
+
 class TestCheckSenderRules:
-    """Tests for sender rule matching logic."""
+    """Sender rule matching reads the user's own rules."""
 
-    def test_exact_email_match(self):
-        """Test exact email address match."""
-        mock_client = MagicMock()
+    def test_exact_email_match(self, db, factory):
+        user = factory.user()
+        _rule(factory, user, sender_email="school@example.edu", action="auto_approve")
 
-        # First query (exact email) returns a match
-        mock_exact_result = MagicMock()
-        mock_exact_result.data = [{
-            "id": "rule-1",
-            "sender_email": "school@example.edu",
-            "action": "auto_approve",
-        }]
-
-        mock_client.table.return_value.select.return_value.eq.return_value.eq.return_value.execute.return_value = mock_exact_result
-
-        rule = check_sender_rules(mock_client, "user-123", "school@example.edu")
+        rule = check_sender_rules(db, user, "school@example.edu")
 
         assert rule is not None
         assert rule["action"] == "auto_approve"
         assert rule["sender_email"] == "school@example.edu"
 
-    def test_domain_match_when_no_exact(self):
-        """Test domain wildcard match when exact email not found."""
-        mock_client = MagicMock()
+    def test_domain_match_when_no_exact(self, db, factory):
+        user = factory.user()
+        _rule(factory, user, sender_domain="example.edu", action="ignore")
 
-        # First query (exact email) returns empty
-        mock_exact_result = MagicMock()
-        mock_exact_result.data = []
-
-        # Second query (domain) returns a match
-        mock_domain_result = MagicMock()
-        mock_domain_result.data = [{
-            "id": "rule-2",
-            "sender_domain": "example.edu",
-            "action": "ignore",
-        }]
-
-        # Setup mock chain: first call returns empty, second returns domain match
-        mock_table = MagicMock()
-        mock_select = MagicMock()
-        mock_eq_user = MagicMock()
-
-        mock_client.table.return_value = mock_table
-        mock_table.select.return_value = mock_select
-        mock_select.eq.return_value = mock_eq_user
-
-        # First call for exact email returns empty
-        mock_exact_execute = MagicMock()
-        mock_exact_execute.execute.return_value = mock_exact_result
-
-        # Second call for domain returns match
-        mock_domain_execute = MagicMock()
-        mock_domain_execute.execute.return_value = mock_domain_result
-
-        mock_eq_user.eq.side_effect = [mock_exact_execute, mock_domain_execute]
-
-        rule = check_sender_rules(mock_client, "user-123", "newsletter@example.edu")
+        rule = check_sender_rules(db, user, "newsletter@example.edu")
 
         assert rule is not None
         assert rule["action"] == "ignore"
 
-    def test_no_match_returns_none(self):
-        """Test that no matching rule returns None."""
-        mock_client = MagicMock()
+    def test_exact_email_wins_over_domain(self, db, factory):
+        user = factory.user()
+        _rule(factory, user, sender_domain="example.edu", action="ignore")
+        _rule(factory, user, sender_email="school@example.edu", action="auto_approve")
 
-        # Both queries return empty
-        mock_empty_result = MagicMock()
-        mock_empty_result.data = []
+        assert check_sender_rules(db, user, "school@example.edu")["action"] == "auto_approve"
 
-        mock_table = MagicMock()
-        mock_select = MagicMock()
-        mock_eq_user = MagicMock()
-        mock_eq_field = MagicMock()
+    def test_no_match_returns_none(self, db, factory):
+        user = factory.user()
+        _rule(factory, factory.user(), sender_email="unknown@random.com", action="ignore")
 
-        mock_client.table.return_value = mock_table
-        mock_table.select.return_value = mock_select
-        mock_select.eq.return_value = mock_eq_user
-        mock_eq_user.eq.return_value = mock_eq_field
-        mock_eq_field.execute.return_value = mock_empty_result
+        assert check_sender_rules(db, user, "unknown@random.com") is None
 
-        rule = check_sender_rules(mock_client, "user-123", "unknown@random.com")
+    def test_email_without_domain(self, db, factory):
+        """A malformed address without @ matches no domain rule."""
+        user = factory.user()
+        _rule(factory, user, sender_domain="malformed-email", action="ignore")
 
-        assert rule is None
-
-    def test_email_without_domain(self):
-        """Test handling of malformed email without @ symbol."""
-        mock_client = MagicMock()
-
-        mock_empty_result = MagicMock()
-        mock_empty_result.data = []
-
-        mock_client.table.return_value.select.return_value.eq.return_value.eq.return_value.execute.return_value = mock_empty_result
-
-        # Malformed email - no @ symbol
-        rule = check_sender_rules(mock_client, "user-123", "malformed-email")
-
-        assert rule is None
+        assert check_sender_rules(db, user, "malformed-email") is None
 
 
 class TestFindMatchingEvent:
-    """Tests for event deduplication matching."""
+    """Event deduplication matching against stored events."""
 
-    def test_returns_none_when_no_start_datetime(self):
-        """Test that events without start_datetime return None."""
-        mock_client = MagicMock()
-        mock_gemini = MagicMock()
-
-        event_data = {
-            "title": "Some event",
-            "location": "Somewhere",
-        }
-
-        result = find_matching_event(mock_client, mock_gemini, "user-123", event_data)
+    def test_returns_none_when_no_start_datetime(self, db, factory):
+        user = factory.user()
+        result, compare, _ = _match(db, user, {"title": "Some event", "location": "Somewhere"})
 
         assert result is None
+        compare.assert_not_called()
 
-    def test_returns_none_when_no_candidates(self):
-        """Test that no candidates on same date returns None."""
-        mock_client = MagicMock()
-        mock_gemini = MagicMock()
+    def test_returns_none_when_no_candidates(self, db, factory):
+        user = factory.user()
+        factory.event(user, start_datetime="2026-03-16T14:00:00.000000Z")  # another day
 
-        # Query returns no events on same date
-        mock_result = MagicMock()
-        mock_result.data = []
-        mock_client.table.return_value.select.return_value.eq.return_value.gte.return_value.lt.return_value.execute.return_value = mock_result
-
-        event_data = {
-            "title": "Birthday Party",
-            "start_datetime": "2026-03-15T14:00:00Z",
-        }
-
-        with patch("selko.services.events.calendars.fetch_calendar_events_for_date_range", return_value=[]):
-            result = find_matching_event(mock_client, mock_gemini, "user-123", event_data)
+        result, compare, _ = _match(
+            db, user, {"title": "Birthday Party", "start_datetime": "2026-03-15T14:00:00Z"},
+        )
 
         assert result is None
+        compare.assert_not_called()
 
-    def test_calls_gemini_compare_when_candidates_exist(self):
-        """Test that LLM comparison is called when candidates exist."""
-        mock_client = MagicMock()
-        mock_gemini = MagicMock()
+    def test_calls_compare_when_candidates_exist(self, db, factory):
+        user = factory.user()
+        event = factory.event(user, title="Birthday Party", start_datetime="2026-03-15T14:00:00.000000Z")
 
-        # Query returns candidate events
-        mock_result = MagicMock()
-        mock_result.data = [{
-            "id": "event-123",
-            "title": "Birthday Party",
-            "start_datetime": "2026-03-15T14:00:00Z",
-        }]
-        mock_client.table.return_value.select.return_value.eq.return_value.gte.return_value.lt.return_value.execute.return_value = mock_result
+        result, compare, _ = _match(
+            db, user, {"title": "Jake's Birthday Party", "start_datetime": "2026-03-15T14:00:00Z"},
+            matched_id=event,
+        )
 
-        event_data = {
-            "title": "Jake's Birthday Party",
-            "start_datetime": "2026-03-15T14:00:00Z",
-        }
+        compare.assert_called_once()
+        assert [c["id"] for c in compare.call_args.args[2]] == [event]
+        assert result is not None
+        assert result.match_id == event
+        assert result.baseline["title"] == "Birthday Party"
 
-        with patch("selko.services.events.event_processing.compare_events", return_value="event-123") as mock_compare, \
-             patch("selko.services.events.calendars.fetch_calendar_events_for_date_range", return_value=[]):
-            result = find_matching_event(mock_client, mock_gemini, "user-123", event_data)
+    def test_another_users_event_is_never_a_candidate(self, db, factory):
+        user = factory.user()
+        factory.event(factory.user(), title="Birthday Party", start_datetime="2026-03-15T14:00:00.000000Z")
 
-            mock_compare.assert_called_once()
-            assert result is not None
-            assert result.match_id == "event-123"
+        result, compare, _ = _match(
+            db, user, {"title": "Birthday Party", "start_datetime": "2026-03-15T14:00:00Z"},
+        )
 
-    def test_handles_llm_comparison_failure(self):
-        """Test graceful handling of LLM comparison failure."""
-        mock_client = MagicMock()
-        mock_gemini = MagicMock()
-
-        # Query returns candidate events
-        mock_result = MagicMock()
-        mock_result.data = [{
-            "id": "event-123",
-            "title": "Some Event",
-            "start_datetime": "2026-03-15T14:00:00Z",
-        }]
-        mock_client.table.return_value.select.return_value.eq.return_value.gte.return_value.lt.return_value.execute.return_value = mock_result
-
-        event_data = {
-            "title": "Some Event",
-            "start_datetime": "2026-03-15T14:00:00Z",
-        }
-
-        with patch("selko.services.events.event_processing.compare_events", side_effect=Exception("LLM error")), \
-             patch("selko.services.events.calendars.fetch_calendar_events_for_date_range", return_value=[]):
-            result = find_matching_event(mock_client, mock_gemini, "user-123", event_data)
-
-            # Should return None on failure, not raise
-            assert result is None
-
-    def test_parses_datetime_string(self):
-        """Test parsing of ISO datetime string."""
-        mock_client = MagicMock()
-        mock_gemini = MagicMock()
-
-        mock_result = MagicMock()
-        mock_result.data = []
-        mock_client.table.return_value.select.return_value.eq.return_value.gte.return_value.lt.return_value.execute.return_value = mock_result
-
-        event_data = {
-            "title": "Test Event",
-            "start_datetime": "2026-03-15T14:00:00+00:00",
-        }
-
-        with patch("selko.services.events.calendars.fetch_calendar_events_for_date_range", return_value=[]):
-            result = find_matching_event(mock_client, mock_gemini, "user-123", event_data)
-
-        # Should parse without error
         assert result is None
-        # Verify the date query was made
-        mock_client.table.assert_any_call("events")
+        compare.assert_not_called()
 
-    def test_parses_datetime_with_z_suffix(self):
-        """Test parsing of datetime string with Z suffix."""
-        mock_client = MagicMock()
-        mock_gemini = MagicMock()
+    def test_handles_llm_comparison_failure(self, db, factory):
+        user = factory.user()
+        factory.event(user, title="Some Event", start_datetime="2026-03-15T14:00:00.000000Z")
 
-        mock_result = MagicMock()
-        mock_result.data = []
-        mock_client.table.return_value.select.return_value.eq.return_value.gte.return_value.lt.return_value.execute.return_value = mock_result
+        result, _, _ = _match(
+            db, user, {"title": "Some Event", "start_datetime": "2026-03-15T14:00:00Z"},
+            compare_error=Exception("LLM error"),
+        )
 
-        event_data = {
-            "title": "Test Event",
-            "start_datetime": "2026-03-15T14:00:00Z",
-        }
+        assert result is None  # a failure is no match, not an error
 
-        with patch("selko.services.events.calendars.fetch_calendar_events_for_date_range", return_value=[]):
-            result = find_matching_event(mock_client, mock_gemini, "user-123", event_data)
+    @pytest.mark.parametrize("start", ["2026-03-15T14:00:00+00:00", "2026-03-15T14:00:00Z"])
+    def test_parses_offset_and_z_suffix(self, db, factory, start):
+        user = factory.user()
+        event = factory.event(user, start_datetime="2026-03-15T09:00:00.000000Z")
 
-        # Should parse Z suffix correctly
+        result, compare, _ = _match(db, user, {"title": "Test Event", "start_datetime": start},
+                                    matched_id=None, user_timezone="UTC")
+
         assert result is None
+        assert [c["id"] for c in compare.call_args.args[2]] == [event], "same UTC day, so a candidate"
+
+    def test_the_band_fingerprint_is_the_commits(self, db, factory):
+        """The producer fingerprints exactly the band the commit re-checks."""
+        from selko.db import events as db_events
+
+        user = factory.user()
+        factory.event(user, start_datetime="2026-03-15T14:00:00.000000Z")
+        factory.event(user, start_datetime="2026-03-16T14:00:00.000000Z")
+
+        (_, window), _, _ = _match(
+            db, user, {"title": "x", "start_datetime": "2026-03-15T14:00:00Z"},
+            user_timezone="UTC", with_window=True,
+        )
+
+        assert window.fingerprint == db_events.band_fingerprint(
+            db, user, window.window_start, window.window_end
+        )
 
 
 class TestGenerateSourceAttribution:
-    """Tests for source attribution generation."""
+    """Source attribution reads the event's sources and their emails."""
 
-    def test_empty_sources_returns_empty_string(self):
-        """Test that empty sources list returns empty string."""
-        mock_client = MagicMock()
+    def test_empty_sources_returns_empty_string(self, db, factory):
+        assert generate_source_attribution(db, factory.event(factory.user())) == ""
 
-        mock_result = MagicMock()
-        mock_result.data = []
-        mock_client.table.return_value.select.return_value.eq.return_value.order.return_value.execute.return_value = mock_result
+    def test_single_invitation_source(self, db, factory):
+        user = factory.user()
+        event = factory.event(user)
+        email = factory.email(user, from_email="organizer@example.com", from_name="Event Organizer",
+                              date_sent="2026-01-25T13:30:00.000000Z")
+        factory.event_source(event, email, source_type="new_invitation")
 
-        attribution = generate_source_attribution(mock_client, "event-123")
-
-        assert attribution == ""
-
-    def test_single_invitation_source(self):
-        """Test attribution for single invitation source."""
-        mock_client = MagicMock()
-
-        mock_result = MagicMock()
-        mock_result.data = [{
-            "source_type": "new_invitation",
-            "created_at": "2026-01-25T13:30:00Z",
-            "is_undone": False,
-            "emails": {
-                "from_email": "organizer@example.com",
-                "from_name": "Event Organizer",
-                "date_sent": "2026-01-25T13:30:00Z",
-            }
-        }]
-        mock_client.table.return_value.select.return_value.eq.return_value.order.return_value.execute.return_value = mock_result
-
-        attribution = generate_source_attribution(mock_client, "event-123")
+        attribution = generate_source_attribution(db, event)
 
         assert "Event Organizer" in attribution
         assert "January" in attribution or "Jan" in attribution
         assert "automatically created" in attribution
 
-    @pytest.mark.skip(reason="event_sources is provenance-only; undo is now a proposal decision")
-    def test_skips_undone_sources(self):
-        """Test that undone sources are excluded from attribution."""
-        mock_client = MagicMock()
+    def test_handles_calendar_source(self, db, factory):
+        """A calendar-sourced entry has no email."""
+        event = factory.event(factory.user())
+        factory.event_source(event, source_type="new_invitation")
 
-        mock_result = MagicMock()
-        # Return undone source followed by active source
-        mock_result.data = [
-            {
-                "source_type": "new_invitation",
-                "created_at": "2026-01-20T10:00:00Z",
-                "is_undone": True,  # Should be skipped
-                "emails": {
-                    "from_email": "old@example.com",
-                    "from_name": "Old Sender",
-                    "date_sent": "2026-01-20T10:00:00Z",
-                }
-            },
-            {
-                "source_type": "new_invitation",
-                "created_at": "2026-01-25T13:30:00Z",
-                "is_undone": False,
-                "emails": {
-                    "from_email": "active@example.com",
-                    "from_name": "Active Sender",
-                    "date_sent": "2026-01-25T13:30:00Z",
-                }
-            }
-        ]
-        mock_client.table.return_value.select.return_value.eq.return_value.order.return_value.execute.return_value = mock_result
+        attribution = generate_source_attribution(db, event)
 
-        attribution = generate_source_attribution(mock_client, "event-123")
-
-        # Should include active sender, not old sender
-        assert "Active Sender" in attribution
-        assert "Old Sender" not in attribution
-
-
-@pytest.mark.skip(reason="legacy event_source undo API removed in S5")
-class TestUndoEmailContribution:
-    """Tests for undo functionality."""
-
-    def test_raises_error_when_no_snapshot(self):
-        """Test that undo raises error when no snapshot available."""
-        mock_client = MagicMock()
-
-        # Return event_source without snapshot
-        mock_result = MagicMock()
-        mock_result.data = {
-            "id": "source-123",
-            "event_id": "event-456",
-            "event_snapshot_before": None,  # No snapshot
-        }
-        mock_client.table.return_value.select.return_value.eq.return_value.single.return_value.execute.return_value = mock_result
-
-        with pytest.raises(EventsError) as exc_info:
-            undo_email_contribution(mock_client, "source-123")
-
-        assert "No snapshot available" in str(exc_info.value)
-
-    def test_restores_snapshot_and_marks_undone(self):
-        """Test that undo restores snapshot and marks source as undone."""
-        mock_client = MagicMock()
-
-        snapshot = {
-            "title": "Original Title",
-            "start_datetime": "2026-03-15T14:00:00Z",
-            "end_datetime": "2026-03-15T15:00:00Z",
-            "all_day": False,
-            "location": "Original Location",
-            "description": "Original description",
-        }
-
-        # Return event_source with snapshot
-        mock_source_result = MagicMock()
-        mock_source_result.data = {
-            "id": "source-123",
-            "event_id": "event-456",
-            "event_snapshot_before": snapshot,
-        }
-
-        # Setup mock chain for the sequence of calls
-        mock_table = MagicMock()
-        mock_client.table.return_value = mock_table
-
-        # First call: select event_source
-        mock_select = MagicMock()
-        mock_table.select.return_value = mock_select
-        mock_eq = MagicMock()
-        mock_select.eq.return_value = mock_eq
-        mock_single = MagicMock()
-        mock_eq.single.return_value = mock_single
-        mock_single.execute.return_value = mock_source_result
-
-        # Subsequent calls: update event, update event_source, generate attribution
-        mock_update = MagicMock()
-        mock_table.update.return_value = mock_update
-        mock_update.eq.return_value.execute.return_value = MagicMock()
-
-        with patch("selko.services.events.generate_source_attribution", return_value="Updated attribution"):
-            undo_email_contribution(mock_client, "source-123")
-
-        # Verify update was called to restore snapshot
-        assert mock_table.update.called
-
-
-@pytest.mark.skip(reason="legacy event_source redo API removed in S5")
-class TestRedoEmailContribution:
-    """Tests for redo functionality."""
-
-    def test_marks_source_as_not_undone(self):
-        """Test that redo marks source as not undone."""
-        mock_client = MagicMock()
-
-        # First call: update event_source
-        mock_table = MagicMock()
-        mock_client.table.return_value = mock_table
-
-        mock_update = MagicMock()
-        mock_table.update.return_value = mock_update
-        mock_update.eq.return_value.execute.return_value = MagicMock()
-
-        # Second call: select event_id
-        mock_select = MagicMock()
-        mock_table.select.return_value = mock_select
-        mock_eq = MagicMock()
-        mock_select.eq.return_value = mock_eq
-        mock_single = MagicMock()
-        mock_eq.single.return_value = mock_single
-        mock_result = MagicMock()
-        mock_result.data = {"event_id": "event-456"}
-        mock_single.execute.return_value = mock_result
-
-        with patch("selko.services.events.generate_source_attribution", return_value="Updated attribution"):
-            redo_email_contribution(mock_client, "source-123")
-
-        # Verify update was called with is_undone: False
-        update_calls = [call for call in mock_table.update.call_args_list]
-        assert len(update_calls) >= 1
+        assert "your Google Calendar" in attribution
+        assert "automatically created" in attribution
 
 
 class TestDedupCandidateIntegrity:
@@ -473,108 +247,98 @@ class TestDedupCandidateIntegrity:
     shared calendar -- and adopting it created a new event anyway.
     """
 
-    PARADE_ROW = {
-        "id": "event-parade",
-        "title": "Halloween Parade",
-        "start_datetime": "2026-10-30T15:00:00+00:00",
-        "end_datetime": "2026-10-30T16:00:00+00:00",
-        "google_calendar_event_id": "own-parade",
-        "review_status": "active",
-    }
     NEW_EVENT = {
         "title": "Morning Halloween Parade",
         "start_datetime": "2026-10-30T08:00:00-07:00",
         "end_datetime": "2026-10-30T09:00:00-07:00",
     }
 
-    def _mirror(self, provider_id, title):
-        return {
-            "id": f"gcal:{provider_id}",
-            "title": title,
-            "start_datetime": "2026-10-30T15:30:00+00:00",
-            "end_datetime": "2026-10-30T16:30:00+00:00",
-            "location": "",
-            "_source": "calendar_mirror",
-        }
-
-    def _match(self, rows, mirror, live, matched_id):
-        client = MagicMock()
-        client.table.return_value.select.return_value.eq.return_value.gte.return_value.lt.return_value.execute.return_value = MagicMock(data=rows)
-        # No Selko row of this user is linked to the matched provider event.
-        client.table.return_value.select.return_value.eq.return_value.eq.return_value.order.return_value.limit.return_value.execute.return_value = MagicMock(data=[])
-        with patch("selko.services.events._mirror_candidates_in_window", return_value=mirror), \
-             patch("selko.services.events.calendars.fetch_calendar_events_for_date_range", return_value=live), \
-             patch("selko.services.events.event_processing.compare_events", return_value=matched_id) as compare:
-            result = find_matching_event(
-                client, MagicMock(), "user-1", dict(self.NEW_EVENT),
-                user_timezone="America/Los_Angeles",
-            )
-        return result, compare
-
-    def test_a_synced_events_own_mirror_entry_is_not_a_second_candidate(self):
-        _, compare = self._match(
-            [dict(self.PARADE_ROW)],
-            [self._mirror("own-parade", "Halloween Parade")],
-            [],
-            None,
+    def _parade(self, factory, user):
+        return factory.event(
+            user, review_status="active", title="Halloween Parade",
+            start_datetime="2026-10-30T15:00:00.000000Z", end_datetime="2026-10-30T16:00:00.000000Z",
+            google_calendar_event_id="own-parade",
         )
 
-        assert [c["id"] for c in compare.call_args[0][2]] == ["event-parade"]
+    def _mirror(self, factory, user, provider_id, title, **kwargs):
+        return _entry(factory, user, provider_id, title=title, start="2026-10-30T15:30:00.000000Z",
+                      end="2026-10-30T16:30:00.000000Z", **kwargs)
 
-    def test_one_provider_event_on_two_calendars_is_one_candidate(self):
+    def _match(self, db, user, live, matched_id):
+        return _match(db, user, dict(self.NEW_EVENT), live=live, matched_id=matched_id,
+                      user_timezone="America/Los_Angeles")
+
+    def test_a_synced_events_own_mirror_entry_is_not_a_second_candidate(self, db, factory):
+        user = factory.user()
+        parade = self._parade(factory, user)
+        self._mirror(factory, user, "own-parade", "Halloween Parade")
+
+        _, compare, _ = self._match(db, user, [], None)
+
+        assert [c["id"] for c in compare.call_args.args[2]] == [parade]
+
+    def test_one_provider_event_on_two_calendars_is_one_candidate(self, db, factory):
+        user = factory.user()
+        integration = factory.integration(user)
+        for calendar in ("family", "me@example.com"):
+            self._mirror(factory, user, "shared-recurring", "Evening chores",
+                         calendar_id=calendar, integration=integration)
         live_copy = {
             "id": "shared-recurring",
             "summary": "Evening chores",
             "start": {"dateTime": "2026-10-30T19:00:00-07:00"},
             "end": {"dateTime": "2026-10-30T19:15:00-07:00"},
         }
-        _, compare = self._match(
-            [],
-            [self._mirror("shared-recurring", "Evening chores")] * 2,
-            [live_copy],
-            None,
-        )
 
-        candidates = compare.call_args[0][2]
+        _, compare, _ = self._match(db, user, [live_copy], None)
+
+        candidates = compare.call_args.args[2]
         assert [c["id"] for c in candidates] == ["gcal:shared-recurring"]
         # The live copy wins: it is the one proven to be on the write calendar.
         assert candidates[0]["_source"] == "google_calendar"
 
-    def test_the_comparison_is_told_the_users_timezone(self):
-        _, compare = self._match([dict(self.PARADE_ROW)], [], [], None)
+    def test_the_comparison_is_told_the_users_timezone(self, db, factory):
+        user = factory.user()
+        self._parade(factory, user)
+
+        _, compare, _ = self._match(db, user, [], None)
 
         assert compare.call_args.kwargs["user_timezone"] == "America/Los_Angeles"
 
-    def test_a_match_on_another_calendar_is_not_adopted(self):
-        result, _ = self._match(
-            [],
-            [self._mirror("spouse-parade", "Costume Parade and Class Party")],
-            [],
-            "gcal:spouse-parade",
-        )
+    def test_a_match_on_another_calendar_is_not_adopted(self, db, factory):
+        user = factory.user()
+        self._mirror(factory, user, "spouse-parade", "Costume Parade and Class Party")
+
+        result, _, _ = self._match(db, user, [], "gcal:spouse-parade")
 
         assert result is not None
         assert result.on_other_calendar is True
 
-    def test_a_match_on_the_write_calendar_is_still_adopted(self):
+    def test_a_match_on_the_write_calendar_is_still_adopted(self, db, factory):
+        user = factory.user()
+        self._mirror(factory, user, "own-external", "Costume Parade")
         live = {
             "id": "own-external",
             "summary": "Costume Parade",
             "start": {"dateTime": "2026-10-30T08:30:00-07:00"},
             "end": {"dateTime": "2026-10-30T09:00:00-07:00"},
         }
-        result, _ = self._match(
-            [], [self._mirror("own-external", "Costume Parade")], [live],
-            "gcal:own-external",
-        )
+
+        result, _, _ = self._match(db, user, [live], "gcal:own-external")
 
         assert result.on_other_calendar is False
         assert result.gcal_raw == live
 
-    def test_saving_a_match_on_another_calendar_creates_nothing(self):
+    def test_saving_a_match_on_another_calendar_creates_nothing(self, db, factory):
         from selko.api.schemas.calendar import CalendarEventExtraction
-        from selko.services.events import EventMatch, save_extracted_events
+        from selko.services.events import save_extracted_events
+        from tests.event_pipeline import claimed_email, gateway, lease
 
+        user = factory.user()
+        factory._insert("user_calendar_settings", {"user_id": user, "timezone": "America/Los_Angeles"})
+        _entry(factory, user, "spouse-parade", title="Costume Parade and Class Party",
+               start="2099-10-30T15:30:00.000000Z", end="2099-10-30T16:30:00.000000Z")
+        email = claimed_email(factory, user)
         extraction = CalendarEventExtraction.model_validate({
             "email_message_id": "msg-1",
             "sender_email": "teacher@example.com",
@@ -586,365 +350,109 @@ class TestDedupCandidateIntegrity:
                 "description": "Parade on the blacktop, then the class party.",
             }],
         })
-        match = EventMatch(
-            match_id="gcal:spouse-parade", baseline={}, on_other_calendar=True
-        )
-        with patch("selko.services.events.calendars.get_all_day_policy_and_timezone",
-                   return_value=("timed", "America/Los_Angeles")), \
-             patch("selko.services.events._load_identity_context", return_value=({}, [])), \
-             patch("selko.services.events.find_matching_event", return_value=(match, None)), \
-             patch("selko.services.events._commit_email_extraction",
-                   return_value={"conflict": False}) as commit:
+
+        with providers_offline(), \
+             patch("selko.services.events.event_processing.compare_events",
+                   return_value="gcal:spouse-parade"):
             created, updated = save_extracted_events(
-                MagicMock(), MagicMock(), "user-1", "email-1", extraction,
+                db, gateway(), user, email, extraction, **lease(db, email),
             )
 
         assert (created, updated) == (0, 0)
-        assert commit.call_args[0][4] == []
+        assert db.query("SELECT 1 FROM events") == []
 
 
 class TestFindMatchingEventGCal:
-    """Tests for GCal read-back during deduplication."""
+    """GCal read-back during deduplication."""
 
-    def test_includes_gcal_candidates(self):
-        """Test that GCal events are added to LLM comparison candidates."""
-        mock_client = MagicMock()
-        mock_gemini = MagicMock()
+    LIVE = [{
+        "id": "gcal-abc",
+        "summary": "Team Meeting",
+        "start": {"dateTime": "2026-03-15T14:00:00Z"},
+        "end": {"dateTime": "2026-03-15T15:00:00Z"},
+        "location": "Room A",
+        "description": "Weekly sync",
+    }]
+    EVENT = {"title": "Team Meeting", "start_datetime": "2026-03-15T14:00:00Z"}
 
-        # No local events
-        mock_result = MagicMock()
-        mock_result.data = []
-        mock_client.table.return_value.select.return_value.eq.return_value.gte.return_value.lt.return_value.execute.return_value = mock_result
-        # No existing Selko row already linked to this GCal event
-        mock_client.table.return_value.select.return_value.eq.return_value.eq.return_value.order.return_value.limit.return_value.execute.return_value = MagicMock(data=[])
+    def test_includes_gcal_candidates(self, db, factory):
+        user = factory.user()
 
-        event_data = {
-            "title": "Team Meeting",
-            "start_datetime": "2026-03-15T14:00:00Z",
-        }
+        result, compare, _ = _match(db, user, dict(self.EVENT), live=self.LIVE, matched_id="gcal:gcal-abc")
 
-        gcal_events = [{
-            "id": "gcal-abc",
-            "summary": "Team Meeting",
-            "start": {"dateTime": "2026-03-15T14:00:00Z"},
-            "end": {"dateTime": "2026-03-15T15:00:00Z"},
-            "location": "Room A",
-            "description": "Weekly sync",
-        }]
-
-        with patch("selko.services.events.calendars.fetch_calendar_events_for_date_range", return_value=gcal_events), \
-             patch("selko.services.events.event_processing.compare_events", return_value="gcal:gcal-abc") as mock_compare:
-            result = find_matching_event(mock_client, mock_gemini, "user-123", event_data)
-
-            # Should have called compare with the GCal candidate
-            mock_compare.assert_called_once()
-            candidates = mock_compare.call_args[0][2]
-            assert len(candidates) == 1
-            assert candidates[0]["id"] == "gcal:gcal-abc"
-            assert candidates[0]["_source"] == "google_calendar"
-            assert result is not None
-            assert result.match_id == "gcal:gcal-abc"
-            assert result.is_gcal is True
-
-    def test_skips_selko_managed_gcal_events(self):
-        """Test that GCal events already managed by Selko are excluded."""
-        mock_client = MagicMock()
-        mock_gemini = MagicMock()
-
-        # No local events
-        mock_result = MagicMock()
-        mock_result.data = []
-        mock_client.table.return_value.select.return_value.eq.return_value.gte.return_value.lt.return_value.execute.return_value = mock_result
-
-        event_data = {
-            "title": "Team Meeting",
-            "start_datetime": "2026-03-15T14:00:00Z",
-        }
-
-        # GCal event has selko_event_id (already managed)
-        gcal_events = [{
-            "id": "gcal-abc",
-            "summary": "Team Meeting",
-            "start": {"dateTime": "2026-03-15T14:00:00Z"},
-            "end": {"dateTime": "2026-03-15T15:00:00Z"},
-            "extendedProperties": {
-                "private": {"selko_event_id": "event-123"}
-            },
-        }]
-
-        with patch("selko.services.events.calendars.fetch_calendar_events_for_date_range", return_value=gcal_events):
-            result = find_matching_event(mock_client, mock_gemini, "user-123", event_data)
-
-        # No candidates after filtering, should return None
-        assert result is None
-
-    def test_graceful_gcal_failure(self):
-        """Test that GCal API failure doesn't break dedup."""
-        mock_client = MagicMock()
-        mock_gemini = MagicMock()
-
-        # Local events exist
-        mock_result = MagicMock()
-        mock_result.data = [{
-            "id": "event-123",
-            "title": "Team Meeting",
-            "start_datetime": "2026-03-15T14:00:00Z",
-        }]
-        mock_client.table.return_value.select.return_value.eq.return_value.gte.return_value.lt.return_value.execute.return_value = mock_result
-
-        event_data = {
-            "title": "Team Meeting",
-            "start_datetime": "2026-03-15T14:00:00Z",
-        }
-
-        with patch("selko.services.events.calendars.fetch_calendar_events_for_date_range", side_effect=Exception("API error")), \
-             patch("selko.services.events.event_processing.compare_events", return_value="event-123"):
-            result = find_matching_event(mock_client, mock_gemini, "user-123", event_data)
-
-        # Should still match local event despite GCal failure
+        compare.assert_called_once()
+        candidates = compare.call_args.args[2]
+        assert len(candidates) == 1
+        assert candidates[0]["id"] == "gcal:gcal-abc"
+        assert candidates[0]["_source"] == "google_calendar"
         assert result is not None
-        assert result.match_id == "event-123"
+        assert result.match_id == "gcal:gcal-abc"
+        assert result.is_gcal is True
 
-    def test_evening_event_queries_local_day_not_utc_day(self):
+    def test_skips_selko_managed_gcal_events(self, db, factory):
+        user = factory.user()
+        managed = [{**self.LIVE[0], "extendedProperties": {"private": {"selko_event_id": "event-123"}}}]
+
+        result, compare, _ = _match(db, user, dict(self.EVENT), live=managed)
+
+        assert result is None
+        compare.assert_not_called()
+
+    def test_graceful_gcal_failure(self, db, factory):
+        user = factory.user()
+        event = factory.event(user, title="Team Meeting", start_datetime="2026-03-15T14:00:00.000000Z")
+
+        with patch("selko.services.events.calendars.fetch_calendar_events_for_date_range",
+                   side_effect=Exception("API error")), \
+             patch("selko.services.events.event_processing.compare_events", return_value=event):
+            result = find_matching_event(db, MagicMock(), user, dict(self.EVENT))
+
+        assert result is not None
+        assert result.match_id == event
+
+    def test_evening_event_queries_local_day_not_utc_day(self, db, factory):
         """Regression: an evening local event must not query the next UTC day.
 
         2026-07-27T20:00:00-07:00 (8pm Pacific) is 2026-07-28T03:00:00Z — the
         old code queried the UTC calendar day (07-27T00:00Z-07-27T23:59Z) and
         never saw same-evening duplicates stored as 07-28T03:00:00Z.
         """
-        mock_client = MagicMock()
-        mock_gemini = MagicMock()
+        user = factory.user()
+        evening = factory.event(user, title="Application Deadline", start_datetime="2026-07-28T03:00:00.000000Z")
+        mirrored = _entry(factory, user, "deadline-entry", title="Deadline",
+                          start="2026-07-28T03:30:00.000000Z")
+        factory.event(user, title="Next local day", start_datetime="2026-07-28T07:00:00.000000Z")
 
-        mock_result = MagicMock()
-        mock_result.data = []
-        mock_client.table.return_value.select.return_value.eq.return_value.gte.return_value.lt.return_value.execute.return_value = mock_result
-        # The mirrored-entry read walks the same window and then filters out
-        # soft-deleted rows.
-        mock_client.table.return_value.select.return_value.eq.return_value.gte.return_value.lt.return_value.is_.return_value.execute.return_value = mock_result
-
-        event_data = {
-            "title": "Application Deadline",
-            "start_datetime": "2026-07-27T20:00:00-07:00",
-        }
-
-        with patch(
-            "selko.services.events.calendars.fetch_calendar_events_for_date_range",
-            return_value=[],
-        ) as mock_gcal_fetch, patch(
-            "selko.services.events.get_user_timezone",
-            return_value="America/Los_Angeles",
-        ):
-            find_matching_event(
-                mock_client, mock_gemini, "user-123", event_data,
-                user_timezone="America/Los_Angeles",
-            )
-
-        eq_mock = mock_client.table.return_value.select.return_value.eq.return_value
-        # Two reads share the band: stored events, and the mirrored calendar
-        # entries that are now part of the same candidate set. Asserting both
-        # is what keeps the mirror read from drifting onto a different window
-        # than the fence was computed against.
-        assert [c.args for c in eq_mock.gte.call_args_list] == [
-            ("start_datetime", "2026-07-27T07:00:00+00:00"),
-            ("start_at", "2026-07-27T07:00:00+00:00"),
-        ]
-        assert [c.args for c in eq_mock.gte.return_value.lt.call_args_list] == [
-            ("start_datetime", "2026-07-28T07:00:00+00:00"),
-            ("start_at", "2026-07-28T07:00:00+00:00"),
-        ]
-        assert mock_gcal_fetch.call_args[0][2] == "2026-07-27T07:00:00+00:00"
-        assert mock_gcal_fetch.call_args[0][3] == "2026-07-28T07:00:00+00:00"
-
-    def test_reuses_existing_row_linked_to_matched_gcal_event(self):
-        """Regression: a second email matching the same GCal event must reuse
-        the Selko row already tracking it, not stack a second change card."""
-        mock_client = MagicMock()
-        mock_gemini = MagicMock()
-
-        mock_result = MagicMock()
-        mock_result.data = []
-        mock_client.table.return_value.select.return_value.eq.return_value.gte.return_value.lt.return_value.execute.return_value = mock_result
-
-        existing_row = {
-            "id": "existing-event-uuid",
-            "title": "Team Meeting",
-            "start_datetime": "2026-03-15T14:00:00Z",
-            "end_datetime": "2026-03-15T15:00:00Z",
-            "all_day": False,
-            "location": "Room A",
-            "description": "Weekly sync",
-            "importance": "action_required",
-            "status": "synced",
-            "google_calendar_event_id": "gcal-abc",
-        }
-        mock_client.table.return_value.select.return_value.eq.return_value.eq.return_value.order.return_value.limit.return_value.execute.return_value = MagicMock(
-            data=[existing_row]
+        (_, window), compare, read = _match(
+            db, user, {"title": "Application Deadline", "start_datetime": "2026-07-27T20:00:00-07:00"},
+            user_timezone="America/Los_Angeles", with_window=True,
         )
 
-        event_data = {
-            "title": "Team Meeting",
-            "start_datetime": "2026-03-15T14:00:00Z",
-        }
+        # Stored events and mirrored entries share the one band the fence covers.
+        assert (window.window_start, window.window_end) == (
+            "2026-07-27T07:00:00+00:00", "2026-07-28T07:00:00+00:00",
+        )
+        ids = {c["id"] for c in compare.call_args.args[2]}
+        assert ids == {evening, "gcal:deadline-entry"}
+        assert mirrored
+        assert read.call_args.args[2] == "2026-07-27T07:00:00+00:00"
+        assert read.call_args.args[3] == "2026-07-28T07:00:00+00:00"
 
-        gcal_events = [{
-            "id": "gcal-abc",
-            "summary": "Team Meeting",
-            "start": {"dateTime": "2026-03-15T14:00:00Z"},
-            "end": {"dateTime": "2026-03-15T15:00:00Z"},
-        }]
+    def test_reuses_existing_row_linked_to_matched_gcal_event(self, db, factory):
+        """Regression: a second email matching the same GCal event must reuse
+        the Selko row already tracking it, not stack a second change card."""
+        user = factory.user()
+        existing = factory.event(
+            user, review_status="active", title="Team Meeting",
+            start_datetime="2026-03-14T14:00:00.000000Z", google_calendar_event_id="gcal-abc",
+        )
 
-        with patch("selko.services.events.calendars.fetch_calendar_events_for_date_range", return_value=gcal_events), \
-             patch("selko.services.events.event_processing.compare_events", return_value="gcal:gcal-abc"):
-            result = find_matching_event(mock_client, mock_gemini, "user-123", event_data)
+        result, _, _ = _match(db, user, dict(self.EVENT), live=self.LIVE, matched_id="gcal:gcal-abc")
 
         assert result is not None
-        assert result.match_id == "existing-event-uuid"
+        assert result.match_id == existing
         assert result.is_gcal is False
         assert result.baseline["title"] == "Team Meeting"
-
-
-@pytest.mark.skip(reason="legacy direct event creation API removed in S5")
-class TestCreateEventFromGCalMatch:
-    """Tests for creating events from GCal matches."""
-
-    def test_creates_event_with_gcal_id_and_two_sources(self):
-        """Test that adopting a GCal event creates proper records."""
-        mock_client = MagicMock()
-
-        # Mock event insert
-        mock_table = MagicMock()
-        mock_client.table.return_value = mock_table
-
-        mock_insert = MagicMock()
-        mock_table.insert.return_value = mock_insert
-        mock_insert.execute.return_value = MagicMock(data=[{"id": "new-event-id"}])
-
-        # Mock update for attribution
-        mock_update = MagicMock()
-        mock_table.update.return_value = mock_update
-        mock_update.eq.return_value.execute.return_value = MagicMock()
-
-        # Mock select for attribution generation
-        mock_select = MagicMock()
-        mock_table.select.return_value = mock_select
-        mock_select.eq.return_value.eq.return_value.order.return_value.execute.return_value = MagicMock(data=[])
-
-        event_data = {
-            "title": "Team Meeting",
-            "start_datetime": "2026-03-15T14:00:00Z",
-        }
-
-        with pytest.raises(EventsError, match="removed"):
-            create_event_from_gcal_match(
-                mock_client, "user-123", event_data, "email-456", "gcal-abc"
-            )
-
-
-@pytest.mark.skip(reason="legacy direct event update API removed in S5")
-class TestUpdateEventResync:
-    """Tests for re-sync logic in update_event."""
-
-    def test_requeues_synced_for_resync(self):
-        """Test that updating a synced event sets status to approved."""
-        mock_client = MagicMock()
-        mock_gateway = MagicMock()
-
-        # Existing event is synced
-        mock_event_result = MagicMock()
-        mock_event_result.data = {
-            "id": "event-123",
-            "title": "Meeting",
-            "start_datetime": "2026-03-15T14:00:00Z",
-            "end_datetime": "2026-03-15T15:00:00Z",
-            "all_day": False,
-            "location": "Room A",
-            "description": "Weekly sync",
-            "status": "synced",
-        }
-
-        mock_table = MagicMock()
-        mock_client.table.return_value = mock_table
-
-        # First call: select existing event
-        mock_select = MagicMock()
-        mock_table.select.return_value = mock_select
-        mock_select.eq.return_value.single.return_value.execute.return_value = mock_event_result
-        mock_select.eq.return_value.eq.return_value.order.return_value.execute.return_value = MagicMock(data=[])
-
-        # Mock update
-        mock_update = MagicMock()
-        mock_table.update.return_value = mock_update
-        mock_update.eq.return_value.execute.return_value = MagicMock()
-
-        # Mock insert for event_source
-        mock_insert = MagicMock()
-        mock_table.insert.return_value = mock_insert
-        mock_insert.execute.return_value = MagicMock()
-
-        with pytest.raises(EventsError, match="removed"):
-            update_event(mock_client, mock_gateway, "event-123", {}, "email-456", "update")
-
-
-    def test_preserves_pending_review(self):
-        """Test that updating a pending_review event doesn't change status."""
-        mock_client = MagicMock()
-        mock_gateway = MagicMock()
-
-        # Existing event is pending_review
-        mock_event_result = MagicMock()
-        mock_event_result.data = {
-            "id": "event-123",
-            "title": "Meeting",
-            "start_datetime": "2026-03-15T14:00:00Z",
-            "end_datetime": "2026-03-15T15:00:00Z",
-            "all_day": False,
-            "location": "Room A",
-            "description": "Weekly sync",
-            "status": "pending_review",
-        }
-
-        mock_table = MagicMock()
-        mock_client.table.return_value = mock_table
-
-        mock_select = MagicMock()
-        mock_table.select.return_value = mock_select
-        mock_select.eq.return_value.single.return_value.execute.return_value = mock_event_result
-        mock_select.eq.return_value.eq.return_value.order.return_value.execute.return_value = MagicMock(data=[])
-
-        mock_update = MagicMock()
-        mock_table.update.return_value = mock_update
-        mock_update.eq.return_value.execute.return_value = MagicMock()
-
-        mock_insert = MagicMock()
-        mock_table.insert.return_value = mock_insert
-        mock_insert.execute.return_value = MagicMock()
-
-        with pytest.raises(EventsError, match="removed"):
-            update_event(mock_client, mock_gateway, "event-123", {}, "email-456", "update")
-
-
-
-class TestGenerateAttributionWithCalendarSource:
-    """Tests for attribution with calendar-sourced events."""
-
-    def test_handles_calendar_source(self):
-        """Test attribution for calendar-sourced event."""
-        mock_client = MagicMock()
-
-        mock_result = MagicMock()
-        mock_result.data = [{
-            "source_type": "new_invitation",
-            "source_origin": "google_calendar",
-            "created_at": "2026-01-25T13:30:00Z",
-            "is_undone": False,
-            "emails": None,  # No email for calendar sources
-        }]
-        mock_client.table.return_value.select.return_value.eq.return_value.order.return_value.execute.return_value = mock_result
-
-        attribution = generate_source_attribution(mock_client, "event-123")
-
-        assert "your Google Calendar" in attribution
-        assert "automatically created" in attribution
 
 
 class TestMirroredEntriesAreCandidates:
@@ -957,60 +465,47 @@ class TestMirroredEntriesAreCandidates:
     to name one with.
     """
 
-    def _client_with_mirror(self, entries):
-        client = MagicMock()
-        events_result = MagicMock()
-        events_result.data = []
-        mirror_result = MagicMock()
-        mirror_result.data = entries
-        chain = client.table.return_value.select.return_value.eq.return_value.gte.return_value.lt.return_value
-        chain.execute.return_value = events_result
-        chain.is_.return_value.execute.return_value = mirror_result
-        return client
+    WINDOW = ("2026-09-09T07:00:00+00:00", "2026-09-10T07:00:00+00:00")
 
-    def test_a_mirrored_entry_is_offered_to_matching(self):
+    def test_a_mirrored_entry_is_offered_to_matching(self, db, factory):
         from selko.services.events import _mirror_candidates_in_window
 
-        client = self._client_with_mirror([{
-            "title": "Snowflake Behavioral Interview",
-            "start_at": "2026-09-09T17:00:00+00:00",
-            "end_at": "2026-09-09T18:00:00+00:00",
-            "location": "",
-            "provider_event_id": "abc123",
-        }])
+        user = factory.user()
+        _entry(factory, user, "abc123", title="Snowflake Behavioral Interview",
+               start="2026-09-09T17:00:00.000000Z", end="2026-09-09T18:00:00.000000Z", location="")
 
-        candidates = _mirror_candidates_in_window(
-            client, "user-1", "2026-09-09T07:00:00+00:00", "2026-09-10T07:00:00+00:00"
-        )
+        candidates = _mirror_candidates_in_window(db, user, *self.WINDOW)
 
         assert candidates == [{
             "id": "gcal:abc123",
             "title": "Snowflake Behavioral Interview",
-            "start_datetime": "2026-09-09T17:00:00+00:00",
-            "end_datetime": "2026-09-09T18:00:00+00:00",
+            "start_datetime": "2026-09-09T17:00:00.000000Z",
+            "end_datetime": "2026-09-09T18:00:00.000000Z",
             "location": "",
             "_source": "calendar_mirror",
         }]
 
-    def test_an_entry_without_a_provider_id_is_not_a_candidate(self):
-        """Without a provider id there is no stable identity to adopt."""
+    def test_deleted_and_out_of_band_entries_are_not_candidates(self, db, factory):
         from selko.services.events import _mirror_candidates_in_window
 
-        client = self._client_with_mirror([
-            {"title": "Orphan", "start_at": "2026-09-09T17:00:00+00:00"},
-        ])
+        user = factory.user()
+        integration = factory.integration(user)
+        _entry(factory, user, "gone", start="2026-09-09T17:00:00.000000Z", integration=integration,
+               deleted_at="2026-09-01T00:00:00.000000Z")
+        _entry(factory, user, "tomorrow", start="2026-09-10T07:00:00.000000Z", integration=integration)
+        _entry(factory, factory.user(), "someone-else", start="2026-09-09T17:00:00.000000Z")
 
-        assert _mirror_candidates_in_window(
-            client, "user-1", "2026-09-09T07:00:00+00:00", "2026-09-10T07:00:00+00:00"
-        ) == []
+        assert _mirror_candidates_in_window(db, user, *self.WINDOW) == []
 
-    def test_a_failed_mirror_read_does_not_lose_the_extraction(self):
+    def test_a_failed_mirror_read_does_not_lose_the_extraction(self, tmp_path):
         """Fail toward a duplicate the user can reject, never toward silence."""
+        from selko.db.connection import Database
         from selko.services.events import _mirror_candidates_in_window
 
-        client = MagicMock()
-        client.table.side_effect = RuntimeError("mirror unavailable")
-
-        assert _mirror_candidates_in_window(
-            client, "user-1", "2026-09-09T07:00:00+00:00", "2026-09-10T07:00:00+00:00"
-        ) == []
+        broken = Database(tmp_path / "unmigrated.db")
+        try:
+            assert _mirror_candidates_in_window(
+                broken, "00000000-0000-0000-0000-000000000001", *self.WINDOW
+            ) == []
+        finally:
+            broken.close()

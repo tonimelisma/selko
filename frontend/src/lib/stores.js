@@ -1,16 +1,24 @@
 import { writable } from 'svelte/store';
-import { supabase } from './supabase.js';
+import { onAuthChange, restoreSession } from './auth.js';
 
 /**
  * @typedef {import('./types.js').Email} Email
  * @typedef {import('./types.js').CalendarEvent} CalendarEvent
  * @typedef {import('./types.js').Integration} Integration
+ * @typedef {import('./types.js').AuthUser} AuthUser
  */
 
 // Auth stores
-/** @type {import('svelte/store').Writable<import('@supabase/supabase-js').User | null>} */
+/** @type {import('svelte/store').Writable<AuthUser | null>} */
 export const user = writable(null);
 export const loading = writable(true);
+/**
+ * True when the session could not be restored because Selko was unreachable,
+ * so the app shows "Can't reach Selko" instead of sending a signed-in user to
+ * the login page.
+ * @type {import('svelte/store').Writable<boolean>}
+ */
+export const authUnavailable = writable(false);
 
 // Data stores
 /** @type {import('svelte/store').Writable<Email[]>} */
@@ -28,15 +36,28 @@ export const integrations = writable([]);
 /** @type {import('svelte/store').Writable<boolean>} */
 export const integrationsLoading = writable(false);
 
-export async function initAuth() {
-	const { data: { session } } = await supabase.auth.getSession();
-	user.set(session?.user ?? null);
-	loading.set(false);
+/** @type {(() => void) | null} */
+let unsubscribeAuth = null;
 
-	supabase.auth.onAuthStateChange((event, session) => {
-		user.set(session?.user ?? null);
-		if (event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN') {
-			import('$lib/live-updates.js').then((m) => m.refreshAuth(session?.access_token ?? null));
-		}
-	});
+/** Restore the session (one refresh request) and follow auth changes. */
+export async function initAuth() {
+	if (!unsubscribeAuth) {
+		unsubscribeAuth = onAuthChange((event, authUser) => {
+			user.set(authUser);
+			if (authUser) authUnavailable.set(false);
+			if (event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN') {
+				import('$lib/live-updates.js').then((m) => m.refreshAuth());
+			}
+		});
+	}
+	await retryAuth();
+}
+
+/** Try restoring the session again (the "Can't reach Selko" Retry). */
+export async function retryAuth() {
+	loading.set(true);
+	const { user: restored, unavailable } = await restoreSession();
+	user.set(restored);
+	authUnavailable.set(unavailable);
+	loading.set(false);
 }

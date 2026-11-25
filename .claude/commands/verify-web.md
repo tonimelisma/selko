@@ -5,7 +5,7 @@ Verify the Selko web frontend visually using the Playwright MCP server tools (NO
 ## Prerequisites
 
 - Frontend dev server running: `cd frontend && npm run dev` (localhost:5173)
-- Local Supabase running: `supabase start`
+- Local API running over a local data dir: `uv run uvicorn selko.api.app:app --port 8000` (reads `.env`)
 
 ## Steps
 

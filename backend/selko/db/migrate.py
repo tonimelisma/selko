@@ -71,6 +71,24 @@ def applied(conn: sqlite3.Connection) -> dict[int, tuple[str, str]]:
     return {v: (n, h) for v, n, h in conn.execute("SELECT version, name, sha256 FROM schema_migrations")}
 
 
+def _register_trigger_functions(conn: sqlite3.Connection) -> None:
+    """The functions the triggers call, for writes a migration makes.
+
+    Migrations run before anything subscribes, so live hints and work signals
+    have no audience; the timestamp is fixed for the whole run.
+    """
+    from datetime import timedelta
+
+    from selko.db.codec import to_timestamp, utc_now
+
+    started = utc_now()
+    conn.create_function("selko_now", 0, lambda: to_timestamp(started))
+    conn.create_function("selko_ts", 1, lambda s: to_timestamp(started + timedelta(seconds=s)))
+    conn.create_function("selko_emit_live", 3, lambda *_: None)
+    conn.create_function("selko_emit_work", 1, lambda *_: None)
+    conn.create_function("selko_touch_event", 1, lambda *_: None)
+
+
 def migrate(
     db_path: Path | str,
     directory: Path = MIGRATIONS_DIR,
@@ -83,6 +101,7 @@ def migrate(
     try:
         conn.execute("PRAGMA journal_mode = WAL")
         conn.execute("PRAGMA foreign_keys = ON")
+        _register_trigger_functions(conn)
         done = applied(conn)
         for version, (name, sha) in done.items():
             match = next((m for m in migrations if m.version == version), None)

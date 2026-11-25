@@ -64,12 +64,6 @@ jobs:
         working-directory: frontend
         run: npm ci
 
-      - name: Create .env for build
-        working-directory: frontend
-        run: |
-          echo "VITE_SUPABASE_URL=https://placeholder.supabase.co" > .env
-          echo "VITE_SUPABASE_ANON_KEY=placeholder-key" >> .env
-
       - name: Build
         working-directory: frontend
         run: npm run build

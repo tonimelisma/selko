@@ -16,6 +16,7 @@ import pytest
 
 from selko.db import Database, MigrationError, migrate
 from selko.db import codec
+from selko.db.errors import CheckViolation, ForeignKeyViolation, InvariantViolation
 from selko.db.migrate import MIGRATIONS_DIR, available, current_version
 
 POSTGRES_TABLES = {
@@ -52,7 +53,7 @@ def test_initial_schema_creates_every_table(tmp_path):
     conn = sqlite3.connect(path)
     tables = _tables(conn)
     assert POSTGRES_TABLES <= tables, POSTGRES_TABLES - tables
-    assert {"accounts", "refresh_tokens", "schema_migrations"} <= tables
+    assert {"accounts", "auth_sessions", "auth_refresh_tokens", "schema_migrations"} <= tables
     assert current_version(conn) == 1
 
 
@@ -66,7 +67,7 @@ def test_every_table_is_strict(tmp_path):
 
 def test_check_domains_hold(db):
     """The Postgres CHECK domains survive: an unknown processing_status is refused."""
-    with pytest.raises(sqlite3.IntegrityError):
+    with pytest.raises(CheckViolation, match="emails_processing_status_check"):
         with db.transaction() as tx:
             tx.execute(
                 "INSERT INTO accounts (id, email, password_hash, created_at, updated_at) "
@@ -82,7 +83,7 @@ def test_check_domains_hold(db):
 
 
 def test_foreign_keys_are_enforced(db):
-    with pytest.raises(sqlite3.IntegrityError):
+    with pytest.raises(ForeignKeyViolation):
         with db.transaction() as tx:
             tx.execute(
                 "INSERT INTO emails (id, user_id, provider_message_id) "
@@ -329,3 +330,206 @@ def test_bus_unsubscribe_stops_delivery():
         return bus.publish("t", 1), bus.subscriber_count("t")
 
     assert asyncio.run(go()) == (0, 0)
+
+
+# --- the transaction and the triggers ---------------------------------------
+
+USER = "00000000-0000-0000-0000-0000000000a1"
+OTHER = "00000000-0000-0000-0000-0000000000b2"
+
+
+def _user(tx, user_id=USER):
+    tx.execute(
+        "INSERT INTO accounts (id, email, password_hash, created_at, updated_at) VALUES (?, ?, 'x', ?, ?)",
+        (user_id, f"{user_id[-4:]}@example.test", tx.now_text, tx.now_text),
+    )
+    tx.execute("INSERT INTO users (id, email) VALUES (?, ?)", (user_id, f"{user_id[-4:]}@example.test"))
+
+
+def _event(tx, event_id, user_id=USER, review_status="active"):
+    tx.execute(
+        "INSERT INTO events (id, user_id, title, start_datetime, review_status) VALUES (?, ?, 'T', ?, ?)",
+        (event_id, user_id, tx.now_text, review_status),
+    )
+
+
+def _columns(db, table):
+    return {r[1]: r for r in db.reader().execute(f"PRAGMA table_info({table})")}
+
+
+def test_now_is_strictly_increasing(db):
+    stamps = []
+    for _ in range(50):
+        with db.write() as tx:
+            stamps.append(tx.now)
+    assert stamps == sorted(stamps) and len(set(stamps)) == len(stamps)
+
+
+def test_trigger_functions_exist_only_inside_a_write(db, tmp_path):
+    """A connection without the data layer's functions cannot write a triggered table."""
+    with db.write() as tx:
+        _user(tx)
+    other = sqlite3.connect(db.path)
+    with pytest.raises(sqlite3.OperationalError, match="no such function"):
+        other.execute("UPDATE users SET email = 'x@example.test' WHERE id = ?", (USER,))
+
+
+def test_updated_at_is_the_transaction_time(db):
+    with db.write() as tx:
+        _user(tx)
+    with db.write() as tx:
+        tx.execute("UPDATE users SET display_name = 'Sam' WHERE id = ?", (USER,))
+        expected = tx.now_text
+    assert db.query_one("SELECT updated_at FROM users WHERE id = ?", (USER,))[0] == expected
+
+
+def test_live_hints_are_deduplicated_and_sent_after_commit(db):
+    from selko.db.bus import Bus
+
+    bus = Bus()
+    db.bus = bus
+
+    async def go():
+        sub = bus.subscribe(f"user:{USER}")
+
+        def write():
+            with db.write() as tx:
+                _user(tx)
+                for n in range(3):
+                    _event(tx, f"00000000-0000-0000-0000-00000000e00{n}")
+
+        await db.run(write)
+        await asyncio.sleep(0.05)
+        return [sub.queue.get_nowait() for _ in range(sub.queue.qsize())]
+
+    messages = asyncio.run(go())
+    assert [(m["resource"], m["operation"]) for m in messages] == [("events", "INSERT")]
+
+
+def test_rolled_back_write_sends_nothing(db):
+    from selko.db.bus import WorkSignals
+
+    signals = WorkSignals()
+    db.signals = signals
+
+    async def go():
+        await signals.start()
+
+        def write():
+            with db.write() as tx:
+                _user(tx)
+                tx.execute(
+                    "INSERT INTO emails (id, user_id, provider_message_id) VALUES (?, ?, 'm1')",
+                    ("00000000-0000-0000-0000-0000000000e1", USER),
+                )
+                raise RuntimeError("boom")
+
+        with pytest.raises(RuntimeError):
+            await db.run(write)
+        await asyncio.sleep(0.05)
+        return signals.event_for("email_pending").is_set()
+
+    assert asyncio.run(go()) is False
+
+
+def test_pending_email_wakes_the_email_worker(db):
+    from selko.db.bus import WorkSignals
+
+    signals = WorkSignals()
+    db.signals = signals
+
+    async def go():
+        await signals.start()
+
+        def write():
+            with db.write() as tx:
+                _user(tx)
+                tx.execute(
+                    "INSERT INTO emails (id, user_id, provider_message_id) VALUES (?, ?, 'm1')",
+                    ("00000000-0000-0000-0000-0000000000e1", USER),
+                )
+
+        await db.run(write)
+        await asyncio.wait_for(signals.event_for("email_pending").wait(), 2)
+        return signals.status()["signals_sent"]
+
+    assert asyncio.run(go()) == 1
+
+
+def test_gmail_labels_set_the_flags(db):
+    with db.write() as tx:
+        _user(tx)
+        tx.execute(
+            "INSERT INTO emails (id, user_id, provider_message_id, provider_labels) VALUES (?, ?, 'm1', ?)",
+            ("00000000-0000-0000-0000-0000000000e1", USER, '["SPAM","UNREAD"]'),
+        )
+    row = db.query_one("SELECT is_spam, is_unread, is_starred FROM emails")
+    assert tuple(row) == (1, 1, 0)
+    with db.write() as tx:
+        tx.execute("UPDATE emails SET provider_labels = '[\"STARRED\"]'")
+    row = db.query_one("SELECT is_spam, is_unread, is_starred FROM emails")
+    assert tuple(row) == (0, 0, 1)
+
+
+def test_calendar_work_item_must_belong_to_the_event_owner(db):
+    with db.write() as tx:
+        _user(tx)
+        _user(tx, OTHER)
+        _event(tx, "00000000-0000-0000-0000-00000000e001")
+    with pytest.raises(InvariantViolation, match="owner does not match"):
+        with db.write() as tx:
+            tx.execute(
+                "INSERT INTO calendar_work_items (id, user_id, event_id, action) VALUES (?, ?, ?, 'upsert')",
+                ("00000000-0000-0000-0000-0000000000c1", OTHER, "00000000-0000-0000-0000-00000000e001"),
+            )
+
+
+def test_active_integration_gets_a_sync_state(db):
+    with db.write() as tx:
+        _user(tx)
+        tx.execute(
+            "INSERT INTO integrations (id, user_id, provider, status, access_token) VALUES (?, ?, 'gmail', 'active', 't')",
+            ("00000000-0000-0000-0000-0000000000f1", USER),
+        )
+        now = tx.now_text
+    row = db.query_one("SELECT next_poll_at, initial_watermark_at FROM email_sync_state")
+    assert row[0] == now and row[1] < now
+
+
+def test_pending_proposal_requires_an_active_event(db):
+    """The deferred invariant: checked at commit, so the order of writes inside does not matter."""
+    event = "00000000-0000-0000-0000-00000000e001"
+    with db.write() as tx:
+        _user(tx)
+        _event(tx, event, review_status="pending_review")
+        tx.execute(
+            "INSERT INTO event_sources (id, event_id, source_origin, google_calendar_source_event_id, extracted_data) "
+            "VALUES (?, ?, 'google_calendar', 'g1', '{}')",
+            ("00000000-0000-0000-0000-0000000000s1", event),
+        )
+    proposal = (
+        "INSERT INTO event_change_proposals (id, user_id, event_id, source_id, kind, status, change_set, event_snapshot_before) "
+        "VALUES ('00000000-0000-0000-0000-0000000000p1', ?, ?, '00000000-0000-0000-0000-0000000000s1', 'material_update', 'pending', '{\"title\":\"X\"}', '{\"title\":\"T\"}')"
+    )
+    with pytest.raises(InvariantViolation, match="must have active review status"):
+        with db.write() as tx:
+            tx.execute(proposal, (USER, event))
+    # Pending before active in the same transaction is fine, as Postgres deferral allowed.
+    with db.write() as tx:
+        tx.execute(proposal, (USER, event))
+        tx.execute("UPDATE events SET review_status = 'active' WHERE id = ?", (event,))
+
+
+def test_every_timestamp_default_writes_the_codec_format(db):
+    """Text-compared leases misorder silently if any writer uses another format (risk E-2)."""
+    import re
+
+    pattern = re.compile(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{6}Z")
+    checked = 0
+    for (table,) in db.reader().execute("SELECT name FROM sqlite_master WHERE type='table'"):
+        for _cid, name, _type, _notnull, default, _pk in db.reader().execute(f"PRAGMA table_info({table})"):
+            if default and "strftime" in default:
+                value = db.reader().execute(f"SELECT {default}").fetchone()[0]
+                assert pattern.fullmatch(value), (table, name, value)
+                checked += 1
+    assert checked >= 40

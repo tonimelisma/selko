@@ -2,8 +2,8 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { _ } from 'svelte-i18n';
-	import { user, loading } from '$lib/stores.js';
-	import { supabase } from '$lib/supabase.js';
+	import { user, loading, authUnavailable, retryAuth } from '$lib/stores.js';
+	import { signOut } from '$lib/auth.js';
 	import Navbar from '$lib/components/Navbar.svelte';
 	import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
 	import * as liveUpdates from '$lib/live-updates.js';
@@ -12,6 +12,7 @@
 	/** @type {any} */
 	let currentUser = $state(null);
 	let isLoading = $state(true);
+	let isUnavailable = $state(false);
 
 	/**
 	 * Sign-in keeps the deep link the user opened (for example an event) and
@@ -29,9 +30,11 @@
 		const unsubLoading = loading.subscribe((v) => {
 			isLoading = v;
 		});
+		const unsubUnavailable = authUnavailable.subscribe((v) => {
+			isUnavailable = v;
+		});
 		const unsubUser = user.subscribe((u) => {
 			currentUser = u;
-			if (!isLoading && !u) goto(loginPath());
 			const uid = u?.id || null;
 			if (uid !== currentUid) {
 				currentUid = uid;
@@ -43,10 +46,9 @@
 			}
 		});
 
-		// Lifecycle catch-up: visible tab / online / focus
-		// start() returns early when the channel already exists, so these
-		// handlers call catchUp() — a synthetic invalidation for every
-		// subscribed resource — which is what actually refetches.
+		// Lifecycle catch-up: visible tab / online / focus. start() is a
+		// no-op while the stream is open, so these call catchUp() — a synthetic
+		// invalidation for every subscribed resource — which refetches.
 		function onVisible() {
 			if (document.visibilityState === 'visible' && currentUid) {
 				liveUpdates.catchUp();
@@ -54,6 +56,7 @@
 		}
 		function onOnline() {
 			if (currentUid) liveUpdates.catchUp();
+			else if (isUnavailable) retryAuth();
 		}
 		document.addEventListener('visibilitychange', onVisible);
 		window.addEventListener('focus', onVisible);
@@ -61,6 +64,7 @@
 
 		return () => {
 			unsubLoading();
+			unsubUnavailable();
 			unsubUser();
 			document.removeEventListener('visibilitychange', onVisible);
 			window.removeEventListener('focus', onVisible);
@@ -69,9 +73,15 @@
 		};
 	});
 
+	// Signed out (or never signed in): to the login page. Not while Selko is
+	// unreachable — a signed-in user gets a retry instead of the login page.
+	$effect(() => {
+		if (!isLoading && !currentUser && !isUnavailable) goto(loginPath());
+	});
+
 	async function handleLogout() {
 		await liveUpdates.stop();
-		await supabase.auth.signOut();
+		await signOut();
 		goto('/login');
 	}
 </script>
@@ -93,4 +103,16 @@
 			</div>
 		</main>
 	</div>
+{:else if isUnavailable}
+	<main id="main-content" class="flex min-h-screen items-center justify-center px-4">
+		<div class="warm-card w-full max-w-sm">
+			<div class="card-body items-center text-center" role="alert" aria-live="polite">
+				<h1 class="text-xl font-bold">{$_('auth.cantReach')}</h1>
+				<p class="text-sm text-base-content/70">{$_('auth.cantReachDescription')}</p>
+				<button class="btn btn-primary mt-4 min-h-11 rounded-[14px]" onclick={() => retryAuth()}>
+					{$_('common.retry')}
+				</button>
+			</div>
+		</div>
+	</main>
 {/if}

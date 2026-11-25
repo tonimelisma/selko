@@ -33,6 +33,9 @@
     "noAccount": "Don't have an account?",
     "hasAccount": "Already have an account?",
     "checkEmail": "Check your email to confirm your account.",
+    "accountCreated": "Your account is ready. Sign in to continue.",
+    "cantReach": "Can't reach Selko",
+    "cantReachDescription": "Check your connection, then try again.",
     "passwordMismatch": "Passwords do not match",
     "passwordTooShort": "Password must be at least 6 characters",
     "privacyPolicy": "Privacy Policy"
@@ -112,7 +115,9 @@
     "subject": "Subject:",
     "date": "Date:",
     "noSubject": "No subject",
-    "attachments": "Attachments ({count})"
+    "attachments": "Attachments ({count})",
+    "downloadAttachment": "Download {filename}",
+    "downloadFailed": "Couldn't download {filename}."
   },
   "history": {
     "title": "Activity History",

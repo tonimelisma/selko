@@ -1,56 +1,17 @@
-"""Late calendar matches against real Postgres.
+"""Late calendar matches: the writes, on a real SQLite database.
 
-The unit tests prove the decision; these prove the writes. The retirement is a
-conditional PostgREST update on `events` and a relabel of `emails`, both of
-which pass through triggers and CHECK constraints a mock cannot see.
+The retirement is a compare-and-set on `events` and a relabel of `emails`; both
+pass through the schema's CHECK constraints and triggers, which a mock cannot
+see. The same file ran against local Supabase before the SQLite move.
 """
 
 from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
-from uuid import uuid4
 
 import pytest
 
 from selko.services import events
-
-
-pytestmark = [pytest.mark.integration, pytest.mark.development]
-
-
-@pytest.fixture
-def pending_supercuts(admin_client, test_user_id):
-    email_id = admin_client.table("emails").insert({
-        "user_id": test_user_id,
-        "provider_message_id": f"late-match-{uuid4().hex[:8]}",
-        "subject": "You're checked in at Supercuts!",
-        "from_email": "noreply@supercuts.example",
-        "date_sent": "2026-10-31T23:02:39Z",
-        "provider_labels": ["CATEGORY_UPDATES"],
-        "processing_status": "processed",
-        "processing_outcome": "event_created",
-        "processing_result": {"num_new": 1, "num_events": 1, "num_updated": 0},
-    }).execute().data[0]["id"]
-    event_id = admin_client.table("events").insert({
-        "user_id": test_user_id,
-        "title": "Supercuts Appointment",
-        "start_datetime": "2026-11-01T17:40:00+00:00",
-        "end_datetime": "2026-11-01T18:40:00+00:00",
-        "review_status": "pending_review",
-    }).execute().data[0]["id"]
-    admin_client.table("event_sources").insert({
-        "event_id": event_id,
-        "email_id": email_id,
-        "source_origin": "email",
-        "source_type": "new_invitation",
-        "extracted_data": {"title": "Supercuts Appointment"},
-    }).execute()
-    try:
-        yield event_id, email_id
-    finally:
-        admin_client.table("events").delete().eq("id", event_id).execute()
-        admin_client.table("emails").delete().eq("id", email_id).execute()
-
 
 ARRIVED = [{
     "provider_event_id": "imported-supercuts",
@@ -63,32 +24,47 @@ ARRIVED = [{
 }]
 
 
-def _retire(admin_client, user_id):
+@pytest.fixture
+def pending_supercuts(factory):
+    user = factory.user()
+    email = factory.email(
+        user, subject="You're checked in at Supercuts!", from_email="noreply@supercuts.example",
+        date_sent="2026-10-31T23:02:39.000000Z", provider_labels=["CATEGORY_UPDATES"],
+        processing_status="processed", processing_outcome="event_created",
+        processing_result={"num_new": 1, "num_events": 1, "num_updated": 0},
+    )
+    event = factory.event(
+        user, title="Supercuts Appointment",
+        start_datetime="2026-11-01T17:40:00.000000Z", end_datetime="2026-11-01T18:40:00.000000Z",
+    )
+    factory.event_source(event, email, source_type="new_invitation",
+                         extracted_data={"title": "Supercuts Appointment"})
+    return user, event, email
+
+
+def _retire(db, user_id):
     with patch.object(events.event_processing, "compare_events", return_value="gcal:imported-supercuts"):
-        return events.retire_pending_already_on_calendar(admin_client, user_id, ARRIVED, MagicMock)
+        return events.retire_pending_already_on_calendar(db, user_id, ARRIVED, MagicMock)
 
 
-def test_the_duplicate_leaves_new_and_history_says_why(admin_client, test_user_id, pending_supercuts):
-    event_id, email_id = pending_supercuts
+def test_the_duplicate_leaves_new_and_history_says_why(db, factory, pending_supercuts):
+    user, event, email = pending_supercuts
 
-    assert _retire(admin_client, test_user_id) == 1
+    assert _retire(db, user) == 1
 
-    event = admin_client.table("events").select("review_status").eq("id", event_id).single().execute().data
-    assert event["review_status"] == "rejected"
-    email = admin_client.table("emails").select(
-        "processing_outcome,processing_explanation"
-    ).eq("id", email_id).single().execute().data
-    assert email["processing_outcome"] == "event_matched"
-    assert "Supercuts" in email["processing_explanation"]
+    assert factory.row("events", event)["review_status"] == "rejected"
+    row = factory.row("emails", email)
+    assert row["processing_outcome"] == "event_matched"
+    assert "Supercuts" in row["processing_explanation"]
 
 
-def test_an_approved_event_is_not_reverted(admin_client, test_user_id, pending_supercuts):
-    event_id, email_id = pending_supercuts
-    admin_client.table("events").update({"review_status": "active"}).eq("id", event_id).execute()
+def test_an_approved_event_is_not_reverted(db, factory, pending_supercuts):
+    user, event, email = pending_supercuts
+    with db.write() as tx:
+        tx.execute("UPDATE events SET review_status = 'active', updated_at = ? WHERE id = ?",
+                   (tx.now_text, event))
 
-    assert _retire(admin_client, test_user_id) == 0
+    assert _retire(db, user) == 0
 
-    event = admin_client.table("events").select("review_status").eq("id", event_id).single().execute().data
-    assert event["review_status"] == "active"
-    email = admin_client.table("emails").select("processing_outcome").eq("id", email_id).single().execute().data
-    assert email["processing_outcome"] == "event_created"
+    assert factory.row("events", event)["review_status"] == "active"
+    assert factory.row("emails", email)["processing_outcome"] == "event_created"

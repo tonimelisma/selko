@@ -1,16 +1,38 @@
 # Database Schema Reference
 
-This document describes the Supabase database schema for Selko. All tables are in the `public` schema with Row Level Security (RLS) enabled.
+This document describes Selko's database: one SQLite file,
+`<SELKO_DATA_DIR>/selko.db`. The schema itself is
+[`backend/selko/db/migrations/0001_initial.sql`](../backend/selko/db/migrations/0001_initial.sql)
+(plus any later migration in that directory); this page explains what the
+tables mean. Design and decisions: `docs/specs/sqlite-single-process/01-schema.md`.
+
+**Conventions.** Tables are `STRICT`. Ids are UUID text. Timestamps are
+fixed-width UTC text `YYYY-MM-DDTHH:MM:SS.ffffffZ` (so text order is time
+order); the column tables below still say `timestamptz`, `uuid`, `jsonb` and
+`boolean`, read as: timestamp text, UUID text, JSON text under
+`CHECK (json_valid(...))`, and `INTEGER` 0/1 under `CHECK (x IN (0,1))`.
+`selko.db.codec` converts both ways.
+
+**Ownership.** There is no row-level security. Every public `selko.db` function
+that touches a user-owned table takes `user_id` and scopes by it
+(`backend/tests/db/test_ownership.py` enforces this); worker-wide functions are
+allowlisted there by name. Routes answer another user's row with 404.
+
+**Accounts.** `accounts` (email, bcrypt `password_hash`, confirmation and
+sign-in times), `auth_sessions` and `auth_refresh_tokens` (only the SHA-256 of
+each refresh token; rotation and reuse detection) belong to
+`selko.services.accounts`. `users.id` references `accounts.id`; creating an
+account creates its `users` row in the same transaction.
 
 ## Tables
 
 ### `users`
 
-User profiles linked to Supabase Auth.
+User profiles; one per account.
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `id` | uuid, PK | References `auth.users` |
+| `id` | uuid, PK | References `accounts.id` |
 | `email` | text | User email |
 | `display_name` | text | Display name |
 | `created_at` | timestamptz | Auto-set |
@@ -44,14 +66,7 @@ are excluded from discovery and scanning.
 | `is_included` | boolean | Effective source-set decision |
 | `sync_cursor` | text | Outlook folder-specific Graph delta cursor |
 
-**RLS Policies:** Users can view their own folders. Direct authenticated updates are
-revoked; `set_email_folder_preference(uuid, boolean)` is the only user preference
-mutation and can change only inclusion, override, cursor, and timestamp fields on an
-owned eligible user folder. The service role manages discovery and cursor writes.
 
-**RLS Policies:**
-- Users can view/update/insert own profile
-- Auto-created via trigger on `auth.users` insert
 
 ### `integrations`
 
@@ -73,7 +88,6 @@ OAuth tokens for external providers.
 | `created_at` | timestamptz | Auto-set |
 | `updated_at` | timestamptz | Auto-updated |
 
-**RLS Policies:** Users manage own integrations only.
 
 ### `emails`
 
@@ -116,7 +130,6 @@ Synced Gmail and Outlook messages with status-based worker claiming.
 | `dead_letter_at` | timestamptz, nullable | When the email was moved to dead letter |
 | `created_at` | timestamptz | Auto-set |
 
-**RLS Policies:** Users manage own emails only.
 
 **Triggers:** Auto-compute the `is_*` flags from `provider_labels`. Outlook uses
 Gmail-style `UNREAD`, `IMPORTANT`, and `STARRED` tokens for the shared trigger.
@@ -136,11 +149,10 @@ Email attachment metadata.
 | `filename` | text | Original filename |
 | `mime_type` | text | MIME type |
 | `size_bytes` | integer | File size |
-| `storage_path` | text | Supabase Storage path |
+| `storage_path` | text | Path under `<SELKO_DATA_DIR>/attachments/` |
 | `content_hash` | text | SHA-256 for deduplication |
 | `created_at` | timestamptz | Auto-set |
 
-**RLS Policies:** Users manage own attachments only.
 
 ### `email_calendar_components`
 
@@ -161,9 +173,9 @@ payloads are never stored here.
 | `component_status` | text, nullable | Structured component status |
 | `start_datetime` / `end_datetime` | timestamptz, nullable | Structured component dates |
 
-**RLS Policies:** Enabled in the creation migration; direct `anon` and
-`authenticated` access is revoked. Components are replaced only when a new
-non-empty parse is supplied, so reconciliation cannot erase a prior parse.
+Components are replaced only when a new non-empty parse is supplied, so
+reconciliation cannot erase a prior parse.
+
 
 ### `event_identity_hints`
 
@@ -183,9 +195,9 @@ transaction as the event/source mutation.
 | `sequence` / `dtstamp` | integer / timestamptz | Revision ordering for authoritative hints |
 | `created_at` | timestamptz | Auto-set |
 
-**RLS Policies:** Enabled and service-role-only. Lookup is indexed by
-`(user_id, kind, value_hash, recurrence_id)`; the same lookup set participates
-in the commit fingerprint fence.
+
+Lookup is indexed by `(user_id, kind, value_hash, recurrence_id)`; the same
+lookup set participates in the commit fingerprint fence.
 
 ### `user_calendar_settings`
 
@@ -209,7 +221,6 @@ mode, because stretching a per-day window from the first day's start to the last
 day's end makes one continuous block (a skating season became an 8:00 Nov 20 →
 9:00 Jan 18 event).
 
-**RLS Policies:** Users manage own calendar settings only.
 
 ### `events`
 
@@ -234,7 +245,6 @@ Calendar events with status-based worker claiming for sync.
 | `created_at` | timestamptz | Auto-set |
 | `updated_at` | timestamptz | Auto-updated |
 
-**RLS Policies:** Users manage own events only.
 
 **Indexes:** Partial index on `(status, updated_at) WHERE status = 'approved'` for efficient claiming; partial index on `recovery_id WHERE recovery_id IS NOT NULL`.
 
@@ -249,7 +259,7 @@ recovery record). Never stores credentials.
 |--------|------|-------------|
 | `id` | uuid, PK | Recovery generation |
 | `integration_id` | uuid, FK | `integrations.id` (`ON DELETE CASCADE`) |
-| `user_id` | uuid, FK | `users.id` — ownership + RLS scope |
+| `user_id` | uuid, FK | `users.id` — ownership |
 | `provider` | integration_provider | `google_calendar` in practice |
 | `reason` | text | `initial_connection` or `reauthorization` |
 | `status` | text | `pending`, `processing`, `waiting`, `completed`, `completed_with_errors`, `failed`, `superseded` |
@@ -265,9 +275,6 @@ recovery record). Never stores credentials.
 | `error_code` / `error_detail` | text, nullable | Structured terminal recovery failure |
 | `requested_at` / `started_at` / `updated_at` / `completed_at` | timestamptz | Lifecycle timestamps |
 
-**RLS Policies:** `authenticated` SELECT on own rows (`auth.uid() = user_id`);
-`service_role` full access. Data API grants: `SELECT` to `authenticated`,
-`SELECT/INSERT/UPDATE/DELETE` to `service_role` (added in `20260802000006`).
 
 **Indexes:** partial unique on `(integration_id) WHERE status IN ('pending','processing','waiting')`; claim index on `(requested_at) WHERE status = 'pending'`.
 
@@ -293,9 +300,6 @@ provider indefinitely.
 | `last_error` | text | Error message if failed |
 | `created_at` | timestamptz | Auto-set |
 
-**RLS Policies:**
-- Users can view own scheduled tasks
-- Service role has full access (for worker processes)
 
 See `docs/job-queue.md` for full status-based worker details.
 
@@ -320,9 +324,10 @@ Links events to their origin sources (emails, Google Calendar matches, etc.).
 - Email sources require `email_id`; calendar sources require `google_calendar_source_event_id`
 - Partial unique indexes: `(event_id, email_id)` for email sources, `(event_id, google_calendar_source_event_id)` for calendar sources
 
-**RLS Policies:** Authenticated users may select own event sources only (via
-`events.user_id`). Service-owned RPCs are the only writers. Proposal payloads
-and undo snapshots live in `event_change_proposals`, not in provenance rows.
+Only the data layer's commit and proposal functions write provenance rows.
+Proposal payloads and undo snapshots live in `event_change_proposals`, not in
+provenance rows.
+
 
 ### `event_change_proposals`
 
@@ -342,10 +347,11 @@ selected by its own UUID and never reconstructed by choosing the latest
 | `resolution_reason` | text, nullable | Safe transition/audit reason |
 | lifecycle timestamps | timestamptz | Created, resolved, and updated times |
 
-**RLS Policies:** Owners may select their proposals; service role only may
-mutate them. A partial unique index permits at most one pending proposal per
-event. Apply, reject, reopen, and repair resolution are service-only atomic
-RPCs.
+A partial unique index permits at most one pending proposal per event. Apply,
+reject, reopen, and repair resolution are atomic `selko.db.proposals`
+transitions; a pending proposal requires `events.review_status='active'`
+(checked before commit).
+
 
 ### `email_calendar_components`
 
@@ -353,7 +359,6 @@ Opaque, provider-neutral VEVENT correlation data captured during email
 acquisition. `uid_hash` is a SHA-256 hash of the trimmed UID; raw calendar
 identifiers and component content are not stored.
 
-**RLS:** Enabled; service-role only.
 
 **Unique Constraint:** `(email_id, component_index)`.
 
@@ -363,8 +368,6 @@ Service-only, append-only audit rows for the reviewed duplicate/cancellation
 repair tool. It stores UUIDs, action, reason, actor, and content-free
 pre-change hashes/counts; it does not store email or event content.
 
-**RLS:** Enabled; all access is revoked from `anon` and `authenticated` and
-granted to `service_role` only.
 
 ### `sender_rules`
 
@@ -382,7 +385,6 @@ Per-user rules for handling emails from specific senders or domains.
 
 **Constraints:** At least one of `sender_email` or `sender_domain` must be set. Unique per `(user_id, sender_email)` and `(user_id, sender_domain)` (partial unique indexes, since either column may be null).
 
-**RLS Policies:** Users manage own sender rules only.
 
 **Triggers:** `sender_rule_before_delete` — when an ignore rule is deleted, a BEFORE DELETE trigger resets matching `skipped` emails from the last 30 days back to `pending` for reprocessing, **unless another `ignore` rule for the same sender still exists** (e.g. a duplicate-row cleanup) — the sender is still effectively ignored in that case.
 
@@ -400,7 +402,6 @@ Persistent OAuth state tokens for CSRF protection during OAuth flows.
 | `created_at` | timestamptz | Auto-set |
 | `expires_at` | timestamptz | State token expiration (10 minutes) |
 
-**RLS Policies:** Service role only (no direct user access).
 
 ### `action_history`
 
@@ -418,7 +419,6 @@ Records user actions for undo/redo support.
 | `external_resource_id` | text, nullable | External resource ID (e.g., Google Calendar event ID) |
 | `created_at` | timestamptz | Auto-set |
 
-**RLS Policies:** Users manage own action history only.
 
 **Indexes:** `(user_id, created_at DESC)` for recent actions lookup.
 
@@ -448,9 +448,6 @@ Audit log of all LLM API calls with prompts, responses, token usage, latency, an
 | `estimated_cost_usd` | numeric(10,6), nullable | Estimated cost based on token pricing |
 | `created_at` | timestamptz | Auto-set |
 
-**RLS Policies:**
-- Users can view own LLM call history
-- Service role has full access (for backend writes)
 
 **Indexes:**
 - `(user_id, started_at DESC)` — user usage queries ordered by date
@@ -476,7 +473,7 @@ Synced Google Photos with status-based worker claiming for LLM processing. Photo
 | `location_latitude` | numeric | GPS latitude |
 | `location_longitude` | numeric | GPS longitude |
 | `location_display_name` | text | Human-readable location name |
-| `storage_path` | text | Supabase Storage path |
+| `storage_path` | text | Path under `<SELKO_DATA_DIR>/attachments/` |
 | `content_hash` | text | SHA-256 for deduplication |
 | `processing_status` | text | `pending`, `processing`, `processed`, `failed`, `skipped` |
 | `processing_error` | text | Last processing error message |
@@ -490,7 +487,6 @@ Synced Google Photos with status-based worker claiming for LLM processing. Photo
 | `dead_letter_at` | timestamptz, nullable | When the photo was moved to dead letter |
 | `created_at` | timestamptz | Auto-set |
 
-**RLS Policies:** Users manage own photos only. Service role has full access.
 
 **Indexes:**
 - `(processing_status, created_at) WHERE processing_status = 'pending'` for efficient claiming
@@ -498,25 +494,31 @@ Synced Google Photos with status-based worker claiming for LLM processing. Photo
 
 **Unique Constraint:** `(user_id, google_photo_id)` prevents duplicate photo records.
 
-## RPC Functions
+## Data-layer functions
+
+These were Postgres RPCs; each is now a Python function of the same name and
+contract in `backend/selko/db/` (`emails`, `calendar_work`, `events`,
+`proposals`, `recovery`, `parked`, `sender_rules`, `health`, …), running in one
+`db.write()` transaction under the single writer. Arguments drop the `p_`
+prefixes; owner-facing functions take `user_id` explicitly.
 
 ### Claiming Functions
 
 | Function | Description |
 |----------|-------------|
 | `claim_unprocessed_email(worker_id, lock_duration)` | First opportunistically reclaims one expired `processing` lease elsewhere in the table (retries it if attempts remain, otherwise terminates it as `failed`/`lease_expired_at_limit`), then atomically claims next pending email, oldest `date_sent` first (`NULLS LAST`, then `created_at`) — bulk scans ingest newest-first, so claiming oldest-sent-first avoids an older email "updating" an event already created from a newer one. A `pending` row is invariant-guaranteed claimable: `attempts < max_attempts`, no owner, no unexpired lock (`emails_pending_is_claimable_check`) |
-| `fail_email_processing(email_id, worker_id, generation, error_code, error_detail, retry_base_seconds, retry_max_seconds)` | Service-role only. Fenced retry-or-terminate transition for a claimed email; a stale `(worker_id, generation)` is a no-op (`fenced: true`) so a replacement worker's claim is never overwritten |
+| `fail_email_processing(email_id, worker_id, generation, error_code, error_detail, retry_base_seconds, retry_max_seconds)` | Fenced retry-or-terminate transition for a claimed email; a stale `(worker_id, generation)` is a no-op (`fenced: true`) so a replacement worker's claim is never overwritten |
 | `claim_pending_photo(worker_id, lock_duration)` | Atomically claim next pending photo |
 | `claim_calendar_work_item(worker_id, lease_seconds)` | Atomically claim the next calendar work item with an active provider integration and fence its lease |
 | `claim_next_scheduled_task(task_types, worker_id, lock_duration)` | Atomically claim next scheduled task |
-| `claim_integration_recovery(worker_id, lock_seconds)` | Atomically claim the next `pending` recovery generation (`FOR UPDATE SKIP LOCKED`), also reclaiming `processing` rows whose lock expired (crashed-worker self-heal) |
+| `claim_integration_recovery(worker_id, lock_seconds)` | Atomically claim the next `pending` recovery generation, also reclaiming `processing` rows whose lock expired (crashed-worker self-heal) |
 
 ### Unlock Functions
 
 ### Extraction commit contract
 
 `commit_email_extraction(email_id, worker_id, generation, decisions, terminal)`
-is service-role only. It locks the email row, rejects a stale `(locked_by,
+runs as one write transaction. It reads the email row, rejects a stale `(locked_by,
 lock_generation)` pair without mutation, applies the full decision array in one
 transaction, and then clears the lease. Each decision has the pinned minimum
 shape:
@@ -537,7 +539,7 @@ Writing decisions also carry `window_start`, `window_end`, and
 `expected_fingerprint`. The fingerprint is the MD5 of comma-joined
 `id:updated_at` entries sorted by event UUID, with timestamps rendered in UTC
 as `YYYY-MM-DDTHH:MM:SS.USZ`. The RPC rechecks that exact local-day band under
-a short transaction-scoped advisory key before mutating anything; a mismatch
+the same write transaction before mutating anything (the single writer serializes it); a mismatch
 returns `conflict: true` and applies nothing.
 
 | Function | Description |
@@ -552,9 +554,9 @@ returns `conflict: true` and applies nothing.
 
 | Function | Description |
 |----------|-------------|
-| `complete_integration_reauthorization(...)` | Service-role only. Atomically upserts OAuth credentials and (for `google_calendar`) supersedes any in-flight recovery generation and schedules a new `pending` one. Preserves an existing refresh token when the provider omits a replacement. |
-| `requeue_calendar_recovery_batch(recovery_id, worker_id, batch_size, max_batches)` | Service-role only. Tags a claimed recovery's OAuth-blocked `approved` or `cancel_queued` events with `recovery_id` and advances its status. Events resync through the normal worker queue; returns -1 if the claim was lost. |
-| `refresh_waiting_calendar_recoveries(batch_size)` | Service-role only. Recomputes progress for `waiting` recoveries and finalizes ones whose tagged upserts or cancellations all reached a terminal state. |
+| `complete_integration_reauthorization(...)` | Atomically upserts OAuth credentials and (for `google_calendar`) supersedes any in-flight recovery generation and schedules a new `pending` one. Preserves an existing refresh token when the provider omits a replacement. |
+| `requeue_calendar_recovery_batch(recovery_id, worker_id, batch_size, max_batches)` | Tags a claimed recovery's OAuth-blocked `approved` or `cancel_queued` events with `recovery_id` and advances its status. Events resync through the normal worker queue; returns -1 if the claim was lost. |
+| `refresh_waiting_calendar_recoveries(batch_size)` | Recomputes progress for `waiting` recoveries and finalizes ones whose tagged upserts or cancellations all reached a terminal state. |
 
 ### Worker-owned cancellation
 
@@ -570,7 +572,7 @@ item state. Proposal RPCs do not perform provider I/O.
 
 ### Calendar providers (Google and Outlook)
 
-Migration `20261031000001` makes Outlook Calendar a second write target.
+Outlook Calendar is the second write target.
 Provider identity is carried by ids: Google ids are bare, Outlook ids are
 `outlook:<graph id>` in `user_calendar_settings.target_calendar_id`,
 `events.google_calendar_event_id` and `calendar_entries.provider_event_id`.
@@ -592,25 +594,22 @@ Provider identity is carried by ids: Google ids are bare, Outlook ids are
 
 | Function | Description |
 |----------|-------------|
-| `get_llm_usage_summary(p_user_id, p_start_date, p_end_date)` | Returns aggregated LLM usage stats for a user over a date range: total/successful/failed calls, token counts, latency stats, estimated cost, and per-operation breakdowns. Defaults to current day. Granted to `authenticated` role. |
+| `get_llm_usage_summary(p_user_id, p_start_date, p_end_date)` | Returns aggregated LLM usage stats for a user over a date range: total/successful/failed calls, token counts, latency stats, estimated cost, and per-operation breakdowns. Defaults to current day. |
 
 ### Review List
 
 | Function | Description |
 |----------|-------------|
-| `ignore_sender_and_reject_pending(p_sender_email, p_sender_domain)` | Retroactive, atomic sender ignore: upserts the `ignore` rule, rejects `pending_review` events sourced by that sender, and rejects active proposals whose provenance source is from that sender. Returns `{rejected_new, discarded_changes}`. `SECURITY INVOKER`, granted to `authenticated`. |
+| `ignore_sender_and_reject_pending(p_sender_email, p_sender_domain)` | Retroactive, atomic sender ignore: upserts the `ignore` rule, rejects `pending_review` events sourced by that sender, and rejects active proposals whose provenance source is from that sender. Returns `{rejected_new, discarded_changes}`. |
 
-## Supabase Storage
-
-### Bucket: `attachments`
+## Attachment files
 
 | Setting | Value |
 |---------|-------|
-| Access | Private (not publicly accessible) |
-| Max file size | 50 MB |
+| Location | `<SELKO_DATA_DIR>/attachments/` |
 | Path format | `{user_id}/{unique_id}_{filename}` (emails) or `{user_id}/photos/{unique_id}_{filename}` (photos) |
-
-**RLS Policies:** Users can only access files in their own folder (`{user_id}/`).
+| Writes | temp file, fsync, rename, mode 0600; absolute paths, `..` and anything outside the directory are refused |
+| Reads | `GET /attachments/{id}/content`, owner only (another user's id answers 404) |
 
 ## Durable email polling v2
 
@@ -681,20 +680,14 @@ clears accumulated backoff without disturbing a live lease.
 `request_email_sync_now(integration_id)` brings the next poll forward for a
 caller-owned integration and is a no-op while a worker holds the lease.
 
-RLS policies are not sufficient on their own here. Supabase does not grant Data
-API privileges on new public tables, so the migration also grants the five v2
-tables to `service_role` and grants `authenticated` read-only access to
-`email_sync_state` (which the `security_invoker` health view needs). Without
-those grants PostgREST rejects the worker before RLS is evaluated.
-
 ## Migrations
 
-All schema changes are in `supabase/migrations/`. To apply:
+Migrations live in `backend/selko/db/migrations/NNNN_name.sql` and are applied
+by `selko.db.migrate` whenever the process opens the database (or by
+`python -m selko.admin migrate`): each runs once, recorded with its hash in
+`schema_migrations` (an edited, already-applied file is refused), after a
+`VACUUM INTO` backup in `<SELKO_DATA_DIR>/backups/`, with foreign keys checked
+before commit. Every database test applies them all to a fresh file.
 
-```bash
-# Local
-supabase db reset
-
-# Remote (staging/production)
-supabase db push --linked
-```
+The data in the old hosted Postgres database is carried over once, at cutover,
+by `selko_import` (`docs/specs/sqlite-single-process/04-data-cutover.md`).

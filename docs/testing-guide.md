@@ -1,24 +1,47 @@
 # Testing Guide
 
-Comprehensive testing documentation for Selko.
-
 ## Test Commands
 
 ### Backend (Python/pytest)
 
 ```bash
-# All backend tests
-uv run pytest backend/tests/ -v
-
-# Unit tests only (no external dependencies)
-uv run pytest backend/tests/ -m "not integration" -v
-
-# Integration tests with mocked LLM
+# The Tier 1 gate: unit + integration, writes .verify/backend-<sha>.json and
+# fails if any skip is not budgeted (backend/tests/skip_budget.toml)
 ./scripts/verify.sh backend
 
-# Optional integration tests with real LLM (costs $$$)
-uv run pytest backend/tests/integration/ -m "development" --run-llm -v
+# Everything, ad hoc
+uv run pytest backend/tests/
+
+# Unit tests only
+uv run pytest backend/tests/ -m "not integration"
+
+# Tests that call a real LLM (costs money; needs provider keys)
+uv run pytest backend/tests/<file> --run-llm
 ```
+
+No service is needed. The backend runs on one SQLite file, and every test that
+touches the database gets its own: the `db` and `factory` fixtures in
+`backend/tests/sqlite_fixtures.py` create a fresh file in `tmp_path` with every
+migration in `backend/selko/db/migrations/` applied, and `factory` inserts
+minimal valid rows (`factory.user()`, `factory.event(user)`, …).
+
+```python
+def test_something(db, factory):
+    user = factory.user()
+    event = factory.event(user, review_status="pending_review")
+    ...
+```
+
+**One exception needs Docker:** the importer tests
+(`backend/tests/integration/test_import_from_postgres.py`) start a throwaway
+Postgres container holding `selko_import/fixture/`, or use the server named by
+`SELKO_IMPORT_TEST_POSTGRES_URL`. Without either they fail; they never skip,
+because they are the only proof the cutover tool works.
+
+Route tests run the real app (`create_app()`) over that database with a real
+access token from `selko.services.accounts`. Streaming routes (`/live`) are
+tested against a real uvicorn server, because `TestClient` buffers bodies.
+Mock providers (Gmail, Graph, Google Calendar, LLMs), never the database.
 
 ### Frontend (Vitest)
 
@@ -27,6 +50,23 @@ uv run pytest backend/tests/integration/ -m "development" --run-llm -v
 cd frontend && npm run test:unit -- --reporter=json --outputFile=test-results.json
 ```
 
+The frontend unit tests stub `fetch`. A field a page reads must also be
+returned by a backend route test (`backend/tests/db/test_client_routes.py`),
+or nothing proves the API sends it.
+
+### The image
+
+```bash
+./scripts/image-lane.sh            # build, then check
+./scripts/image-lane.sh <image>    # check an existing image
+```
+
+`scripts/image-check.sh` runs the image with a read-only root, no capabilities,
+a 400 MB limit and `/data` as the only volume, and checks `/health`, the
+production health invariants, sign-up/sign-in/refresh, review with a live
+update, attachment download, and a database imported from the Postgres fixture
+in `selko_import/fixture/`.
+
 The native iOS and Android apps are unmaintained and have no tests to run
 (`legacy/README.md`).
 
@@ -34,129 +74,48 @@ The native iOS and Android apps are unmaintained and have no tests to run
 
 | Marker | Description | Requirements |
 |--------|-------------|--------------|
-| `integration` | All integration tests | Local Supabase running |
-| `development` | Tests against local Supabase + real Gmail | Seeded tokens |
-| `staging` | Tests against cloud Supabase + real services | `./scripts/ops.py dispatch staging-tier2` after merge (paused) |
-| `llm` | Tests requiring real LLM API calls | `--run-llm` flag |
+| `integration` | Tests under `backend/tests/integration/` | None (SQLite); the importer tests need Docker |
+| `llm` / `--run-llm` | Tests requiring real LLM API calls | Provider keys |
 
 ## Test Architecture
 
-| Test Type | Database | LLM | Gmail | Cost |
-|-----------|----------|-----|-------|------|
-| Unit | None | Mocked | Mocked | $0 |
-| Integration (default) | Local | **Mocked** | Real | $0 |
-| Integration (real LLM) | Local | **Real** | Real | $$$ |
-| Staging (Tier 2) | Cloud | None | Real | $0 |
+| Test Type | Database | LLM | Providers | Cost |
+|-----------|----------|-----|-----------|------|
+| Unit | A fresh SQLite file where needed | Mocked | Mocked | $0 |
+| Integration | A fresh SQLite file | Mocked | Mocked | $0 |
+| Integration (real LLM) | A fresh SQLite file | **Real** | Mocked | $$$ |
+| Image | The image's own `/data` volume | None | None | $0 |
 
 ## When to Use `--run-llm`
 
-Use `--run-llm` when:
-- Changing LLM prompts or response schemas
-- Debugging LLM-specific behavior
+Use `--run-llm` when changing LLM prompts or response schemas, or debugging
+LLM-specific behavior. Not for database, API or business-logic changes. Prompt
+changes also run the evals (`docs/evals-process.md`).
 
-Don't use `--run-llm` for:
-- Database changes
-- API changes
-- Business logic changes
+## Guards that keep the suite honest
 
-## Development Test Setup
+| Test | Fails when |
+|------|-----------|
+| `test_reachability.py` | a module under `backend/selko/` is not importable from a runtime entry point |
+| `test_no_hosted_database.py` | any module imports supabase, postgrest, asyncpg or psycopg |
+| `db/test_ownership.py` | a public `selko.db` function touching a user-owned table takes no `user_id` |
+| `test_single_data_layer.py` | SQL outside the commit path writes `events` |
+| `test_sqlite_schema.py` | a CHECK domain differs from `schema_domains.py::EXPECTED_CHECK_DOMAINS` |
+| `test_gate_contract.py` | the gate can pass by refusal or needs a service |
 
-### Initial Setup
-
-```bash
-# Start local Supabase
-supabase start
-
-# Run the complete local verification gate (unit + integration). The gate
-# writes .verify/backend-<sha>.json and fails if any skip is not budgeted.
-./scripts/verify.sh backend
-
-# Explicit operator waiver for missing/stale development Gmail credentials.
-# The waiver is recorded in the evidence manifest; it is never implicit.
-./scripts/verify.sh backend --accept-stale-gmail-token
-```
-
-The gate creates the test user and seeds its Gmail token from staging
-(`scripts/seed_test_tokens.py`) after resetting the database.
-
-### After Database Reset
-
-`./scripts/verify.sh backend` resets the database and recreates the test user
-and its token itself. After a manual `supabase db reset`, re-seed with:
-
-```bash
-uv run python scripts/seed_test_tokens.py --from staging --to development --provider gmail
-```
-
-### Refreshing Expired OAuth Tokens
-
-If Gmail tests fail with `unauthorized_client` or `credentials expired or revoked`:
-
-```bash
-# Auto-sync dev↔staging: checks both, copies working → stale (or no-op if both fresh)
-uv run python scripts/seed_test_tokens.py --sync --provider gmail
-# For all providers:
-uv run python scripts/seed_test_tokens.py --sync --all-providers
-
-# If both are stale, connect Gmail for the test user in one side's web app,
-# then re-sync.
-```
-
-Staging tokens are persistent and usually valid. `--sync` is the normal fix; reconnecting is only needed when both envs are stale.
-
-> **WARNING: NEVER modify tests to skip when credentials are missing or invalid.**
-> Tests are designed to FAIL when credentials are unavailable. This is intentional.
-> The correct fix is ALWAYS to refresh/seed the credentials, not to nerf the tests.
-> Changing `pytest.fail()` to `pytest.skip()` masks real problems and breaks CI.
-> The only local exception is the explicit `--accept-stale-gmail-token` gate
-> flag; it records the accepted degradation and exposes every skipped node in
-> the manifest for review.
-
-## Token Persistence Rules
-
-### Development (Local Supabase)
-
-- Database is **ephemeral** (reset on `supabase start`)
-- Tokens must be re-seeded after `supabase db reset`
-- Tests are **READ-ONLY** for integrations (preserve seeded tokens)
-- Use `pytest.fail()` not `pytest.skip()` when credentials missing
-
-### Staging (Cloud Supabase)
-
-- Database is **persistent** across runs
-- Real OAuth tokens connected through the staging web app must be preserved
-- **Never** use `cleanup_integrations` with real providers in staging
+> **Never modify a test to skip when something is missing.** A skip outside
+> `skip_budget.toml` fails the gate, and every skip is listed in the manifest.
 
 ## Pre-Commit Hook
 
-A git pre-commit hook blocks commits unless tests have been run for changed modules.
+A git pre-commit hook blocks commits unless tests have been run for changed
+modules. `scripts/cloud-setup.sh` sets `core.hooksPath=.githooks`; on another
+machine run `git config core.hooksPath .githooks`.
 
-### Setup
-
-```bash
-cp scripts/pre-commit.hook .git/hooks/pre-commit
-chmod +x .git/hooks/pre-commit
-```
-
-### How It Works
-
-The hook checks per-module using native test caches:
-
-| Module | Cache Location |
-|--------|----------------|
-| backend | `backend/.pytest_cache/v/cache/lastfailed` |
+| Module | Evidence the hook accepts |
+|--------|---------------------------|
+| backend | a passing `.verify/backend-<sha>.json` from `verify.sh backend` with nothing newer, else the pytest cache with no failures |
 | frontend | `frontend/test-results.json` |
-
-For each module with staged changes, the hook verifies:
-1. Test results exist and show all tests passed
-2. No source files are newer than the test results
-
-### If Hook Blocks Your Commit
-
-1. Read the error message to see which modules need tests
-2. Run the native test command for that module
-3. Fix any failing tests
-4. Commit again
 
 **Never bypass the hook with `--no-verify`.**
 
@@ -164,35 +123,15 @@ For each module with staged changes, the hook verifies:
 
 For full details, see `docs/ui-testing-guide.md`.
 
-### Quick Reference
-
 | Platform | Command | What It Tests |
 |----------|---------|---------------|
-| Web E2E | `cd frontend && npm run test:e2e -- --project=chromium` | Full user journeys in browser |
+| Web screenshots | `./scripts/capture-all-screenshots.sh web` | The 24-shot light/dark matrix over seeded data |
+| Web E2E | `cd frontend && npm run test:e2e -- --project=chromium` | User journeys in a browser |
 
-### MCP Tools (Manual Debugging Only)
-
-The Playwright MCP server is available for **manual debugging only** — e.g., clicking a new button, testing a specific interaction, or investigating a visual bug. Do NOT use them as a standard verification step. Use `./scripts/capture-all-screenshots.sh web` for standard visual verification.
+The Playwright MCP server is for **manual debugging only**.
 
 ## Continuous Integration
 
-Pull-request CI runs on every push and PR and covers mocked/unit checks only;
-it is never the gate. The authoritative gates are `./scripts/verify.sh backend`
-before merge (in the session) and `./scripts/ops.py dispatch staging-tier2`
-after merge (staging is paused today). See `docs/ci-cd.md`.
-
-## When the gate reports an unresponsive Docker daemon
-
-`./scripts/verify.sh backend` bounds every Docker probe at
-`DOCKER_PROBE_TIMEOUT_SECONDS` (default 15). If it exits with *"the Docker
-daemon did not answer"*, Docker Desktop is running but its daemon is not
-answering — usually because the VM disk has taken an I/O fault. Confirm with:
-
-```bash
-tail -5 ~/Library/Containers/com.docker.docker/Data/log/vm/console.log
-```
-
-An `EXT4-fs (vda1): ... error -5` line is that fault. Quit and reopen Docker
-Desktop; if probes still hang, use Troubleshoot → Clean / Purge data and re-run
-`supabase start`. The gate fails closed here by design — before the bound
-existed it blocked indefinitely, which is indistinguishable from a slow suite.
+CI runs on every push and PR and is never the gate: `test.yml` (the whole
+backend suite), `frontend-tests.yml`, `image.yml`. The gate is the lanes, run in
+the session (`./scripts/verify-lanes.py --gate prod`). See `docs/ci-cd.md`.

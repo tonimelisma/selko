@@ -1,14 +1,19 @@
 """User management service for Selko.
 
-Provides admin operations for user CRUD using the service role key.
-These operations bypass RLS for administrative purposes.
+Operator and test-fixture account administration over Selko's own
+``accounts`` table (docs/specs/sqlite-single-process/03-api-auth-web.md §B.9).
+Passwords are bcrypt-hashed by ``selko.services.accounts``; the profile row in
+``users`` is created with the account, in the same transaction.
 """
 
 import logging
 
-from supabase import AuthApiError, Client, create_client
-
 from selko.config import Config
+from selko.db import accounts as account_rows
+from selko.db.connection import Database
+from selko.db.errors import DbError
+from selko.db.runtime import get_database
+from selko.services import accounts
 
 logger = logging.getLogger(__name__)
 
@@ -19,24 +24,21 @@ class UserManagementError(Exception):
     pass
 
 
-def get_admin_client(config: Config) -> Client:
-    """Get a Supabase client with service role key for admin operations.
+def get_admin_client(config: Config) -> Database:
+    """The process database, for account administration.
 
     Args:
-        config: Configuration object with Supabase credentials.
+        config: Configuration object (kept for callers; the database path
+            comes from the process runtime).
 
     Returns:
-        Supabase client with admin privileges.
-
-    Raises:
-        UserManagementError: If service role key is not configured.
+        The process database.
     """
-    if not config.supabase_service_role_key:
-        raise UserManagementError(
-            "SUPABASE_SERVICE_ROLE_KEY must be configured for admin operations"
-        )
+    return get_database()
 
-    return create_client(config.supabase_url, config.supabase_service_role_key)
+
+def _public(account: dict) -> dict:
+    return {"id": str(account["id"]), "email": account["email"]}
 
 
 def create_user(
@@ -46,51 +48,49 @@ def create_user(
     display_name: str = None,
     auto_confirm: bool = False,
 ) -> dict:
-    """Create a new user in auth.users.
+    """Create a new account and its ``users`` profile row.
 
-    The database trigger automatically creates the public.users profile.
-    By default, users require email confirmation (production-safe).
-    Tests should explicitly pass auto_confirm=True when needed.
+    The profile's display name is the email's local part, as GoTrue's
+    ``handle_new_user`` trigger set it (``display_name`` was never applied
+    and still is not). Without ``auto_confirm`` the account is stored
+    unconfirmed (``email_confirmed_at`` NULL).
 
     Args:
         config: Configuration object.
         email: User's email address.
-        password: User's password.
-        display_name: Optional display name (defaults to email prefix).
-        auto_confirm: Whether to auto-confirm the user (default: False for production safety).
+        password: User's password (bcrypt-hashed before it is stored).
+        display_name: Unused; kept for callers.
+        auto_confirm: Whether the account is confirmed at creation.
 
     Returns:
         Dict with 'id' and 'email' of the created user.
 
     Raises:
-        UserManagementError: If user creation fails.
+        UserManagementError: If user creation fails (invalid input, or an
+            account with that email already exists).
     """
-    client = get_admin_client(config)
+    db = get_admin_client(config)
 
     try:
-        response = client.auth.admin.create_user(
-            {
-                "email": email,
-                "password": password,
-                "email_confirm": auto_confirm,
-            }
+        normalized = accounts.validate_email(email)
+        password_hash = accounts.hash_password(password)
+        account = account_rows.create_account(
+            db, normalized, password_hash, confirmed=auto_confirm
         )
+    except accounts.AuthError as e:
+        raise UserManagementError(f"Failed to create user: {e}") from e
+    except account_rows.AccountExists as e:
+        raise UserManagementError(
+            f"Failed to create user: A user with this email address has already been registered ({email})"
+        ) from e
+    except DbError as e:
+        raise UserManagementError(f"Failed to create user: {e}") from e
 
-        if not response.user:
-            raise UserManagementError(f"Failed to create user: {email}")
-
-        if auto_confirm:
-            logger.debug(f"Auto-confirmed user {email}")
-        else:
-            logger.info(f"User {email} created - confirmation email sent")
-
-        return {
-            "id": str(response.user.id),
-            "email": response.user.email,
-        }
-
-    except AuthApiError as e:
-        raise UserManagementError(f"Failed to create user: {e.message}") from e
+    if auto_confirm:
+        logger.debug(f"Auto-confirmed user {normalized}")
+    else:
+        logger.info(f"User {normalized} created unconfirmed")
+    return _public(account)
 
 
 def list_users(config: Config) -> list[dict]:
@@ -102,20 +102,14 @@ def list_users(config: Config) -> list[dict]:
     Returns:
         List of dicts with 'id' and 'email' for each user.
     """
-    client = get_admin_client(config)
-
     try:
-        response = client.auth.admin.list_users()
-        return [
-            {"id": str(user.id), "email": user.email}
-            for user in response
-        ]
-    except AuthApiError as e:
-        raise UserManagementError(f"Failed to list users: {e.message}") from e
+        return [_public(a) for a in account_rows.list_accounts(get_admin_client(config))]
+    except DbError as e:
+        raise UserManagementError(f"Failed to list users: {e}") from e
 
 
 def delete_user(config: Config, user_id: str) -> bool:
-    """Delete a user by ID.
+    """Delete a user by ID; the profile and every owned row cascade.
 
     Args:
         config: Configuration object.
@@ -125,16 +119,16 @@ def delete_user(config: Config, user_id: str) -> bool:
         True if deletion succeeded.
 
     Raises:
-        UserManagementError: If deletion fails.
+        UserManagementError: If the user does not exist or deletion fails.
     """
-    client = get_admin_client(config)
-
     try:
-        client.auth.admin.delete_user(user_id)
-        logger.info(f"Deleted user {user_id}")
-        return True
-    except AuthApiError as e:
-        raise UserManagementError(f"Failed to delete user: {e.message}") from e
+        deleted = account_rows.delete_account(get_admin_client(config), str(user_id))
+    except DbError as e:
+        raise UserManagementError(f"Failed to delete user: {e}") from e
+    if not deleted:
+        raise UserManagementError(f"Failed to delete user: User not found: {user_id}")
+    logger.info(f"Deleted user {user_id}")
+    return True
 
 
 def get_user(config: Config, user_id: str) -> dict:
@@ -150,15 +144,10 @@ def get_user(config: Config, user_id: str) -> dict:
     Raises:
         UserManagementError: If user not found or fetch fails.
     """
-    client = get_admin_client(config)
-
     try:
-        response = client.auth.admin.get_user_by_id(user_id)
-        if not response.user:
-            raise UserManagementError(f"User not found: {user_id}")
-        return {
-            "id": str(response.user.id),
-            "email": response.user.email,
-        }
-    except AuthApiError as e:
-        raise UserManagementError(f"Failed to get user: {e.message}") from e
+        account = account_rows.get_account(get_admin_client(config), str(user_id))
+    except DbError as e:
+        raise UserManagementError(f"Failed to get user: {e}") from e
+    if account is None:
+        raise UserManagementError(f"User not found: {user_id}")
+    return _public(account)

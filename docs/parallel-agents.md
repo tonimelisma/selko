@@ -141,7 +141,7 @@ The DoD scales to what you changed — run only the scoped tests for the code yo
 - [ ] Screenshots only for the platform whose UI changed (skip for backend/docs/config)
 - [ ] Committed (conventional format), pushed, PR created (`gh api repos/tonimelisma/selko/pulls -f head=… -f base=main …`)
 - [ ] `./scripts/merge-and-cleanup.sh <pr_number>` — merges (no CI gate) and cleans up branch + worktree + main
-- [ ] If the change ships to a server (`backend`/`supabase`/`frontend`), end your final report asking whether to deploy to production
+- [ ] If the change ships (`backend`/`frontend`/image), report the `--gate prod` lane table with a recommendation; changing what production runs needs Toni's explicit yes
 
 ## After PR: Merge and Cleanup
 
@@ -193,7 +193,7 @@ The Claude Code hook **blocks source code** but **allows config/docs**:
 |---------|---------|
 | `backend/` | `docs/` |
 | `frontend/src/` | `.env*` |
-| | `CLAUDE.md`, `.claude/*`, `scripts/`, `supabase/` |
+| | `CLAUDE.md`, `.claude/*`, `scripts/` |
 
 ## Troubleshooting
 

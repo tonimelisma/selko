@@ -12,18 +12,15 @@ Usage:
 
 import argparse
 import hashlib
-
+import os
 import sys
 from datetime import datetime, timedelta, timezone
 
-from selko.config import load_config
-from selko.services.users import (
-    UserManagementError,
-    create_user,
-    delete_user,
-    get_admin_client,
-    list_users,
-)
+from selko.db import accounts as account_rows
+from selko.db import calendar_work, events as db_events, integrations as db_integrations
+from selko.db.codec import new_id
+from selko.db.runtime import open_database
+from selko.services import accounts
 from selko.services.resolution_fingerprint import candidate_fingerprint
 
 # Screenshot test user credentials
@@ -32,91 +29,61 @@ SCREENSHOT_PASSWORD = "screenshotpass123"
 SCREENSHOT_DISPLAY_NAME = "Sarah Johnson"
 
 
-def find_screenshot_user(config):
-    """Find the screenshot user by email, returns user dict or None."""
-    users = list_users(config)
-    for user in users:
-        if user["email"] == SCREENSHOT_EMAIL:
-            return user
-    return None
+def _db():
+    return open_database(os.environ.get("SELKO_DATA_DIR", "data"))
 
 
-def do_cleanup(config):
-    """Remove the screenshot user and all associated data (via CASCADE)."""
+def do_cleanup(db):
+    """Remove the screenshot account and everything it owns (cascade)."""
     print("Cleaning up screenshot data...")
-
-    user = find_screenshot_user(config)
-    if not user:
+    account = account_rows.get_account_by_email(db, SCREENSHOT_EMAIL)
+    if not account:
         print("  No screenshot user found. Nothing to clean up.")
         return
-
-    user_id = user["id"]
-    print(f"  Found screenshot user: {user_id}")
-
-    try:
-        delete_user(config, user_id)
-        print(f"  Deleted user {user_id} and all associated data (CASCADE).")
-    except UserManagementError as e:
-        print(f"  Error deleting user: {e}")
-        sys.exit(1)
-
-    print("Cleanup complete.")
+    account_rows.delete_account(db, account["id"])
+    print(f"  Deleted user {account['id']} and all associated data (CASCADE).")
 
 
-def do_seed(config):
+def do_seed(db):
     """Create the screenshot user and seed all associated data."""
-    admin = get_admin_client(config)
     now = datetime.now(timezone.utc)
 
-    # Check if user already exists
-    existing = find_screenshot_user(config)
-    if existing:
-        print(f"Error: Screenshot user already exists (id={existing['id']}).")
+    if account_rows.get_account_by_email(db, SCREENSHOT_EMAIL):
+        print("Error: Screenshot user already exists.")
         print("Run with --cleanup-first or 'cleanup' command first.")
         sys.exit(1)
 
-    # Step 1: Create auth user
     print("Creating user...")
-    try:
-        user = create_user(
-            config,
-            email=SCREENSHOT_EMAIL,
-            password=SCREENSHOT_PASSWORD,
-            auto_confirm=True,
-        )
-    except UserManagementError as e:
-        print(f"  Error creating user: {e}")
-        sys.exit(1)
-
+    user = accounts.sign_up(db, SCREENSHOT_EMAIL, SCREENSHOT_PASSWORD)
     user_id = user["id"]
-    print(f"  Created user: {user_id} ({user['email']})")
+    print(f"  Created user: {user_id} ({SCREENSHOT_EMAIL})")
+
+    def insert(table, values):
+        values = {"id": new_id(), **values} if table != "user_calendar_settings" else dict(values)
+        encoded = db.schema.encode(table, values)
+        with db.write() as tx:
+            tx.execute(
+                f"INSERT INTO {table} ({', '.join(encoded)}) VALUES ({', '.join('?' * len(encoded))})",
+                tuple(encoded.values()),
+            )
+        return values.get("id")
+
+    def get_event(event_id):
+        return db.schema.decode("events", db.query_one("SELECT * FROM events WHERE id = ?", (event_id,)))
 
     seed_worker = "screenshot-fixture-seed"
 
-    def call_rpc(name, params):
-        response = admin.rpc(name, params).execute()
-        data = response.data
-        if isinstance(data, list) and len(data) == 1:
-            return data[0]
-        return data
-
     def lock_email(email_id):
-        admin.table("emails").update({
-            "processing_status": "processing",
-            "locked_by": seed_worker,
-            "locked_until": (now + timedelta(minutes=10)).isoformat(),
-            "lock_generation": 1,
-        }).eq("id", email_id).execute()
+        with db.write() as tx:
+            tx.execute(
+                "UPDATE emails SET processing_status = 'processing', locked_by = ?, locked_until = ?,"
+                " lock_generation = 1 WHERE id = ?",
+                (seed_worker, tx.ts(600), email_id),
+            )
 
     def commit_decision(email_id, decision):
         lock_email(email_id)
-        result = call_rpc("commit_email_extraction", {
-            "p_email_id": email_id,
-            "p_worker_id": seed_worker,
-            "p_generation": 1,
-            "p_decisions": [decision],
-            "p_terminal": "processed",
-        })
+        result = db_events.commit_email_extraction(db, email_id, seed_worker, 1, [decision], "processed")
         if not isinstance(result, dict) or result.get("fenced") or result.get("conflict"):
             raise RuntimeError(f"fixture extraction commit failed: {result!r}")
         return result
@@ -143,9 +110,8 @@ def do_seed(config):
 
     # Step 2: Update display name
     print("Setting display name...")
-    admin.table("users").update({"display_name": SCREENSHOT_DISPLAY_NAME}).eq(
-        "id", user_id
-    ).execute()
+    with db.write() as tx:
+        tx.execute("UPDATE users SET display_name = ? WHERE id = ?", (SCREENSHOT_DISPLAY_NAME, user_id))
     print(f"  Display name set to '{SCREENSHOT_DISPLAY_NAME}'")
 
     # Step 3: Insert integrations
@@ -175,13 +141,11 @@ def do_seed(config):
         },
     ]
 
-    result = admin.table("integrations").insert(integrations).execute()
-    print(f"  Inserted {len(result.data)} integrations")
+    integration_ids = {row["provider"]: insert("integrations", row) for row in integrations}
+    print(f"  Inserted {len(integration_ids)} integrations")
 
     # Folder preferences make the Included/Excluded control visible in Settings captures.
-    gmail_integration_id = next(
-        row["id"] for row in result.data if row["provider"] == "gmail"
-    )
+    gmail_integration_id = integration_ids["gmail"]
     folders = [
         {
             "user_id": user_id,
@@ -207,7 +171,8 @@ def do_seed(config):
             "is_included": False,
         },
     ]
-    admin.table("email_folders").insert(folders).execute()
+    for folder in folders:
+        insert("email_folders", folder)
     print(f"  Inserted {len(folders)} email folders")
 
     # Step 4: Insert emails
@@ -267,9 +232,8 @@ def do_seed(config):
         },
     ]
 
-    result = admin.table("emails").insert(emails_data).execute()
-    email_ids = {row["provider_message_id"]: row["id"] for row in result.data}
-    print(f"  Inserted {len(result.data)} emails")
+    email_ids = {row["provider_message_id"]: insert("emails", row) for row in emails_data}
+    print(f"  Inserted {len(email_ids)} emails")
 
     # Step 5: Create events and sources through the fenced application RPC.
     print("Committing events through application RPCs...")
@@ -329,7 +293,7 @@ def do_seed(config):
 
     # Q2's second email is an update: the RPC owns proposal creation and
     # review-state transitions from the same source payload.
-    q2_update_email = admin.table("emails").insert({
+    q2_update_email = insert("emails", {
         "user_id": user_id,
         "from_name": "Alex Chen",
         "from_email": "alex.chen@techcorp.com",
@@ -340,8 +304,8 @@ def do_seed(config):
         "date_sent": (now - timedelta(days=1)).isoformat(),
         "processing_status": "processing",
         "content_hash": content_hash("Q2 Planning Offsite Room Change"),
-    }).execute().data[0]["id"]
-    q2 = admin.table("events").select("*").eq("id", event_ids["Q2 Planning Offsite"]).single().execute().data
+    })
+    q2 = get_event(event_ids["Q2 Planning Offsite"])
     q2_window = day_window(q2["start_datetime"])
     q2_source = {
         "email_id": q2_update_email,
@@ -388,54 +352,30 @@ def do_seed(config):
     print("Seeding calendar work through worker RPCs...")
 
     def desired_event(title):
-        row = admin.table("events").select(
-            "title,start_datetime,end_datetime,all_day,location,description,importance"
-        ).eq("id", event_ids[title]).single().execute().data
-        return row
+        row = get_event(event_ids[title])
+        keys = ("title", "start_datetime", "end_datetime", "all_day", "location", "description", "importance")
+        return {k: row[k] for k in keys}
 
     def enqueue(title):
-        data = call_rpc("enqueue_calendar_work", {
-            "p_event_id": event_ids[title],
-            "p_user_id": user_id,
-            "p_action": "upsert",
-            "p_desired_event": desired_event(title),
-            "p_expected_provider_revision": None,
-            "p_force_overwrite": False,
-        })
+        data = calendar_work.enqueue_calendar_work(db, user_id, event_ids[title], "upsert", desired_event(title))
         if not isinstance(data, dict) or not data.get("id"):
             raise RuntimeError(f"calendar work enqueue failed: {data!r}")
         return data
 
     def claim_next():
-        rows = call_rpc("claim_calendar_work_item", {
-            "p_worker_id": seed_worker,
-            "p_lease_seconds": 600,
-        })
-        row = rows[0] if isinstance(rows, list) else rows
-        if not row:
-            raise RuntimeError(f"calendar work claim failed: {rows!r}")
-        return row
+        claimed = calendar_work.claim_calendar_work_item(db, seed_worker, 600)
+        if not claimed:
+            raise RuntimeError("calendar work claim failed: nothing claimable")
+        return claimed[0]
 
     def complete(item, provider_event_id=None):
-        ok = call_rpc("complete_calendar_work", {
-            "p_item_id": item["id"],
-            "p_worker_id": seed_worker,
-            "p_generation": item["generation"],
-            "p_provider_event_id": provider_event_id,
-            "p_provider_revision": None,
-        })
+        ok = calendar_work.complete_calendar_work(db, item["id"], seed_worker, item["generation"], provider_event_id)
         if ok is not True:
             raise RuntimeError(f"calendar work completion failed: {ok!r}")
 
     def fail(item):
-        result = call_rpc("fail_calendar_work", {
-            "p_item_id": item["id"],
-            "p_worker_id": seed_worker,
-            "p_generation": item["generation"],
-            "p_error_code": "provider_transient",
-            "p_error_detail": "Fixture provider failure",
-            "p_retryable": False,
-        })
+        result = calendar_work.fail_calendar_work(
+            db, item["id"], seed_worker, item["generation"], "provider_transient", "Fixture provider failure", False)
         if not isinstance(result, dict) or result.get("status") != "blocked":
             raise RuntimeError(f"calendar work failure transition failed: {result!r}")
 
@@ -458,14 +398,9 @@ def do_seed(config):
         elif event_id == event_ids["Team Standup"]:
             # The fixture deliberately leaves this item pending. A retryable
             # failure is the public worker transition that releases the claim.
-            released = call_rpc("fail_calendar_work", {
-                "p_item_id": claimed["id"],
-                "p_worker_id": seed_worker,
-                "p_generation": claimed["generation"],
-                "p_error_code": "provider_transient",
-                "p_error_detail": "Fixture pending work release",
-                "p_retryable": True,
-            })
+            released = calendar_work.fail_calendar_work(
+                db, claimed["id"], seed_worker, claimed["generation"], "provider_transient",
+                "Fixture pending work release", True)
             if not isinstance(released, dict) or released.get("status") != "pending":
                 raise RuntimeError(f"calendar work release failed: {released!r}")
         else:
@@ -475,12 +410,7 @@ def do_seed(config):
     # Step 7: Insert user_calendar_settings
     print("Inserting calendar settings...")
 
-    calendar_settings = {
-        "user_id": user_id,
-        "target_calendar_id": "primary",
-    }
-
-    result = admin.table("user_calendar_settings").insert(calendar_settings).execute()
+    db_integrations.upsert_calendar_settings(db, user_id, {"target_calendar_id": "primary"})
     print(f"  Inserted calendar settings")
 
     print()
@@ -516,15 +446,15 @@ Examples:
     subparsers.add_parser("cleanup", help="Remove screenshot user and all data")
 
     args = parser.parse_args()
-    config = load_config()
+    db = _db()
 
     if args.command == "seed":
         if args.cleanup_first:
-            do_cleanup(config)
+            do_cleanup(db)
             print()
-        do_seed(config)
+        do_seed(db)
     elif args.command == "cleanup":
-        do_cleanup(config)
+        do_cleanup(db)
 
 
 if __name__ == "__main__":

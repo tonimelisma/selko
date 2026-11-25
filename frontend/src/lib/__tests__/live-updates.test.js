@@ -1,164 +1,330 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+// @ts-nocheck
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-vi.mock('$lib/supabase.js', () => ({
-	supabase: {
-		realtime: {
-			setAuth: vi.fn().mockResolvedValue(undefined)
-		},
-		channel: vi.fn((topic) => ({
-			topic,
-			on: vi.fn().mockReturnThis(),
-			subscribe: vi.fn().mockImplementation((cb) => {
-				subscribeCallback = cb;
-				return topic;
-			})
-		})),
-		removeChannel: vi.fn().mockResolvedValue(undefined),
-		auth: {
-			getSession: vi.fn().mockResolvedValue({
-				data: { session: { access_token: 'initial-token' } }
-			})
-		}
-	}
+const mockAuth = { token: 'token-1', refresh: vi.fn() };
+vi.mock('$lib/auth.js', () => ({
+	getAccessToken: () => mockAuth.token,
+	refresh: (...args) => mockAuth.refresh(...args)
 }));
 
-/** @type {((status: string) => void) | null} */
-let subscribeCallback = null;
+const encoder = new TextEncoder();
 
-import * as liveUpdates from '../live-updates.js';
-import { supabase } from '$lib/supabase.js';
+/** A controllable SSE response body. */
+function sseResponse(status = 200) {
+	const queue = [];
+	let waiting = null;
+	let closed = false;
+	const reader = {
+		read() {
+			if (queue.length) return Promise.resolve({ value: queue.shift(), done: false });
+			if (closed) return Promise.resolve({ value: undefined, done: true });
+			return new Promise((resolve, reject) => {
+				waiting = { resolve, reject };
+			});
+		},
+		cancel() {
+			closed = true;
+			waiting?.resolve({ value: undefined, done: true });
+			waiting = null;
+			return Promise.resolve();
+		}
+	};
+	const stream = {
+		response: { ok: status >= 200 && status < 300, status, body: { getReader: () => reader } },
+		push(text) {
+			const value = encoder.encode(text);
+			if (waiting) {
+				const w = waiting;
+				waiting = null;
+				w.resolve({ value, done: false });
+			} else queue.push(value);
+		},
+		end() {
+			closed = true;
+			waiting?.resolve({ value: undefined, done: true });
+			waiting = null;
+		},
+		fail(error) {
+			waiting?.reject(error);
+			waiting = null;
+		}
+	};
+	return stream;
+}
 
-describe('live-updates auth + lifecycle (C6)', () => {
+/** @type {ReturnType<typeof sseResponse>[]} */
+let streams = [];
+const mockFetch = vi.fn();
+vi.stubGlobal('fetch', mockFetch);
+
+const live = await import('../live-updates.js');
+
+const READY = 'event: ready\ndata: {"user_id":"u1","heartbeat_seconds":25}\n\n';
+const invalidate = (resource, operation = 'UPDATE') =>
+	`event: invalidate\ndata: {"resource":"${resource}","operation":"${operation}","occurred_at":"2026-11-25T18:04:05+00:00"}\n\n`;
+
+/** Let pending promises and zero-delay timers run. */
+const flush = () => vi.advanceTimersByTimeAsync(0);
+
+describe('live-updates SSE client', () => {
 	beforeEach(() => {
-		subscribeCallback = null;
-		liveUpdates.__resetForTests();
-		vi.clearAllMocks();
+		vi.useFakeTimers();
+		vi.spyOn(Math, 'random').mockReturnValue(0); // no jitter
+		live.__resetForTests();
+		streams = [];
+		mockAuth.token = 'token-1';
+		mockAuth.refresh.mockReset().mockResolvedValue(null);
+		mockFetch.mockReset().mockImplementation(async (_url, init) => {
+			const stream = sseResponse();
+			init.signal.addEventListener('abort', () => {
+				const error = new Error('aborted');
+				error.name = 'AbortError';
+				stream.fail(error);
+			});
+			streams.push(stream);
+			return stream.response;
+		});
 	});
 
 	afterEach(() => {
-		liveUpdates.__resetForTests();
-	});
-
-	it('re-authorizes realtime on TOKEN_REFRESHED', async () => {
-		await liveUpdates.refreshAuth('new-token-123');
-		expect(supabase.realtime.setAuth).toHaveBeenCalledWith('new-token-123');
-	});
-
-	it('refreshAuth is a no-op without a token', async () => {
-		await liveUpdates.refreshAuth(null);
-		await liveUpdates.refreshAuth('');
-		expect(supabase.realtime.setAuth).not.toHaveBeenCalled();
-	});
-
-	it('catchUp refetches even when the channel is already open', async () => {
-		/** @type {string[]} */
-		const seen = [];
-		liveUpdates.subscribe('events', (inv) => seen.push(inv.operation));
-		// Channel already established: start() would short-circuit, catchUp() must not.
-		await liveUpdates.start('user-1');
-		liveUpdates.catchUp();
-		await new Promise((r) => setTimeout(r, 450));
-		expect(seen).toContain('CATCHUP');
-	});
-
-	it('rejoins after CHANNEL_ERROR', async () => {
-		vi.useFakeTimers();
-		await liveUpdates.start('user-1');
-		expect(subscribeCallback).toBeTypeOf('function');
-
-		// Terminal state → schedule a rejoin (stop + start) with backoff.
-		subscribeCallback?.('CHANNEL_ERROR');
-		expect(supabase.removeChannel).not.toHaveBeenCalled(); // not yet — backoff delay
-		await vi.advanceTimersByTimeAsync(1000);
-		expect(supabase.removeChannel).toHaveBeenCalled();
-		expect(supabase.channel).toHaveBeenCalledTimes(2);
+		live.__resetForTests();
 		vi.useRealTimers();
+		vi.restoreAllMocks();
 	});
 
-	// F1.1 (D1): rejoinAttempts was declared inside start(), so every rejoin
-	// re-declared it at 0 and the backoff never advanced past 1000ms.
-	it('grows the rejoin delay across consecutive failures', async () => {
-		vi.useFakeTimers();
-		await liveUpdates.start('user-1');
-		expect(subscribeCallback).toBeTypeOf('function');
+	it('opens GET /live with the Bearer token (no token in the URL)', async () => {
+		await live.start('u1');
+		await flush();
 
-		// 1st failure -> 1000ms delay
-		subscribeCallback?.('CHANNEL_ERROR');
-		await vi.advanceTimersByTimeAsync(999);
-		expect(supabase.channel).toHaveBeenCalledTimes(1);
+		expect(mockFetch).toHaveBeenCalledTimes(1);
+		const [url, init] = mockFetch.mock.calls[0];
+		expect(url).toBe('http://localhost:8000/live');
+		expect(init.headers.Authorization).toBe('Bearer token-1');
+		expect(live.getStatus()).toBe('connecting');
+	});
+
+	it('catches up every subscribed resource on ready', async () => {
+		const events = vi.fn();
+		const emails = vi.fn();
+		live.subscribe('events', events);
+		live.subscribe('emails', emails);
+
+		await live.start('u1');
+		await flush();
+		streams[0].push(READY);
+		await flush();
+		expect(live.getStatus()).toBe('connected');
+		await vi.advanceTimersByTimeAsync(350);
+
+		expect(events).toHaveBeenCalledWith(expect.objectContaining({ resource: 'events', operation: 'CATCHUP' }));
+		expect(emails).toHaveBeenCalledWith(expect.objectContaining({ resource: 'emails', operation: 'CATCHUP' }));
+	});
+
+	it('hands an invalidate frame to its resource’s handler, debounced', async () => {
+		const events = vi.fn();
+		live.subscribe('events', events);
+		await live.start('u1');
+		await flush();
+
+		// Two frames in one chunk, and one split across chunks.
+		streams[0].push(invalidate('events') + invalidate('events', 'INSERT'));
+		streams[0].push('event: invali');
+		streams[0].push('date\ndata: {"resource":"events","operation":"DELETE"}\n\n');
+		await vi.advanceTimersByTimeAsync(349);
+		expect(events).not.toHaveBeenCalled();
 		await vi.advanceTimersByTimeAsync(1);
-		expect(supabase.channel).toHaveBeenCalledTimes(2);
 
-		// 2nd failure (on the new channel) -> 2000ms delay
-		subscribeCallback?.('CHANNEL_ERROR');
+		expect(events).toHaveBeenCalledTimes(1);
+		expect(events).toHaveBeenCalledWith(expect.objectContaining({ resource: 'events', operation: 'DELETE' }));
+	});
+
+	it('ignores resources outside the allowlist and heartbeat comments', async () => {
+		const session = vi.fn();
+		live.subscribe('session', session);
+		await live.start('u1');
+		await flush();
+
+		streams[0].push(': ping\n\n' + invalidate('session'));
+		await vi.advanceTimersByTimeAsync(1000);
+
+		expect(session).not.toHaveBeenCalled();
+	});
+
+	it('reconnects with a doubling backoff when the stream ends', async () => {
+		await live.start('u1');
+		await flush();
+
+		streams[0].end();
+		await flush();
+		expect(live.getStatus()).toBe('reconnecting');
+		await vi.advanceTimersByTimeAsync(999);
+		expect(mockFetch).toHaveBeenCalledTimes(1);
+		await vi.advanceTimersByTimeAsync(1);
+		expect(mockFetch).toHaveBeenCalledTimes(2);
+
+		// The counter is module-scoped, so the second failure waits longer.
+		streams[1].end();
+		await flush();
 		await vi.advanceTimersByTimeAsync(1999);
-		expect(supabase.channel).toHaveBeenCalledTimes(2);
+		expect(mockFetch).toHaveBeenCalledTimes(2);
 		await vi.advanceTimersByTimeAsync(1);
-		expect(supabase.channel).toHaveBeenCalledTimes(3);
-
-		// 3rd failure -> 4000ms delay
-		subscribeCallback?.('CHANNEL_ERROR');
-		await vi.advanceTimersByTimeAsync(3999);
-		expect(supabase.channel).toHaveBeenCalledTimes(3);
-		await vi.advanceTimersByTimeAsync(1);
-		expect(supabase.channel).toHaveBeenCalledTimes(4);
-
-		vi.useRealTimers();
+		expect(mockFetch).toHaveBeenCalledTimes(3);
+		expect(live.getRejoinAttempts()).toBe(2);
 	});
 
-	it('caps the rejoin delay at 60s', async () => {
-		vi.useFakeTimers();
-		await liveUpdates.start('user-1');
+	it('reconnects after a network error and resets the backoff on ready', async () => {
+		mockFetch.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+		await live.start('u1');
+		await flush();
+		expect(live.getRejoinAttempts()).toBe(1);
 
-		const growingDelays = [1000, 2000, 4000, 8000, 16000, 32000];
-		for (const delay of growingDelays) {
-			subscribeCallback?.('CHANNEL_ERROR');
-			await vi.advanceTimersByTimeAsync(delay);
-		}
+		await vi.advanceTimersByTimeAsync(1000);
+		expect(mockFetch).toHaveBeenCalledTimes(2);
+		streams[0].push(READY);
+		await flush();
 
-		// 7th failure would be 64000ms uncapped; must cap at 60000ms.
-		subscribeCallback?.('CHANNEL_ERROR');
-		const callsBefore = vi.mocked(supabase.channel).mock.calls.length;
-		await vi.advanceTimersByTimeAsync(59999);
-		expect(supabase.channel).toHaveBeenCalledTimes(callsBefore);
-		await vi.advanceTimersByTimeAsync(1);
-		expect(supabase.channel).toHaveBeenCalledTimes(callsBefore + 1);
-
-		vi.useRealTimers();
+		expect(live.getRejoinAttempts()).toBe(0);
 	});
 
-	it('resets the delay after a successful SUBSCRIBED', async () => {
-		vi.useFakeTimers();
-		await liveUpdates.start('user-1');
+	it('caps the backoff at 60 s', async () => {
+		const times = [];
+		mockFetch.mockImplementation(async () => {
+			times.push(Date.now());
+			throw new TypeError('Failed to fetch');
+		});
+		await live.start('u1');
+		await flush();
+		await vi.advanceTimersByTimeAsync(10 * 60_000);
 
-		subscribeCallback?.('CHANNEL_ERROR'); // 1000ms delay
+		const gaps = times.slice(1).map((t, i) => t - times[i]);
+		expect(gaps.slice(0, 7)).toEqual([1000, 2000, 4000, 8000, 16000, 32000, 60000]);
+		expect(Math.max(...gaps)).toBe(60000);
+	});
+
+	it('does not reconnect after a deliberate stop', async () => {
+		await live.start('u1');
+		await flush();
+
+		await live.stop();
+		await vi.advanceTimersByTimeAsync(120_000);
+
+		expect(mockFetch).toHaveBeenCalledTimes(1);
+		expect(live.getStatus()).toBe('disconnected');
+	});
+
+	it('stops for good when the session is revoked', async () => {
+		await live.start('u1');
+		await flush();
+
+		streams[0].push('event: revoked\n\n');
+		await flush();
+		await vi.advanceTimersByTimeAsync(120_000);
+
+		expect(mockFetch).toHaveBeenCalledTimes(1);
+		expect(live.getStatus()).toBe('disconnected');
+	});
+
+	it('reconnects when the server asks for re-auth', async () => {
+		await live.start('u1');
+		await flush();
+
+		streams[0].push('event: reauth\n\n');
+		await flush();
 		await vi.advanceTimersByTimeAsync(1000);
 
-		subscribeCallback?.('CHANNEL_ERROR'); // 2000ms delay
-		await vi.advanceTimersByTimeAsync(2000);
-
-		subscribeCallback?.('SUBSCRIBED'); // resets backoff
-
-		subscribeCallback?.('CHANNEL_ERROR'); // should be back to 1000ms
-		const callsBefore = vi.mocked(supabase.channel).mock.calls.length;
-		await vi.advanceTimersByTimeAsync(999);
-		expect(supabase.channel).toHaveBeenCalledTimes(callsBefore);
-		await vi.advanceTimersByTimeAsync(1);
-		expect(supabase.channel).toHaveBeenCalledTimes(callsBefore + 1);
-
-		vi.useRealTimers();
+		expect(mockFetch).toHaveBeenCalledTimes(2);
 	});
 
-	it('does not rejoin after a deliberate stop', async () => {
-		vi.useFakeTimers();
-		await liveUpdates.start('user-1');
-		const callsBefore = vi.mocked(supabase.channel).mock.calls.length;
+	it('reconnects after 60 s of silence', async () => {
+		await live.start('u1');
+		await flush();
 
-		await liveUpdates.stop();
-		subscribeCallback?.('CLOSED');
-		await vi.advanceTimersByTimeAsync(60000);
+		await vi.advanceTimersByTimeAsync(59_999);
+		expect(live.getStatus()).toBe('connecting');
+		await vi.advanceTimersByTimeAsync(1);
+		expect(live.getStatus()).toBe('reconnecting');
+		await vi.advanceTimersByTimeAsync(1000);
 
-		expect(supabase.channel).toHaveBeenCalledTimes(callsBefore);
-		vi.useRealTimers();
+		expect(mockFetch).toHaveBeenCalledTimes(2);
+	});
+
+	it('on 401 refreshes the token, then reconnects with the new one', async () => {
+		mockFetch.mockResolvedValueOnce({ ok: false, status: 401, body: null });
+		mockAuth.refresh.mockImplementation(async () => {
+			mockAuth.token = 'token-2';
+			return 'token-2';
+		});
+
+		await live.start('u1');
+		await flush();
+		await vi.advanceTimersByTimeAsync(1000);
+
+		expect(mockAuth.refresh).toHaveBeenCalledTimes(1);
+		expect(mockFetch).toHaveBeenCalledTimes(2);
+		expect(mockFetch.mock.calls[1][1].headers.Authorization).toBe('Bearer token-2');
+	});
+
+	it('on 401 with a failed refresh stops', async () => {
+		mockFetch.mockResolvedValueOnce({ ok: false, status: 401, body: null });
+
+		await live.start('u1');
+		await flush();
+		await vi.advanceTimersByTimeAsync(120_000);
+
+		expect(mockFetch).toHaveBeenCalledTimes(1);
+		expect(live.getStatus()).toBe('disconnected');
+	});
+
+	it('backs off on 429 (too many streams)', async () => {
+		mockFetch.mockResolvedValueOnce({ ok: false, status: 429, body: null });
+
+		await live.start('u1');
+		await flush();
+		expect(mockFetch).toHaveBeenCalledTimes(1);
+		await vi.advanceTimersByTimeAsync(1000);
+
+		expect(mockFetch).toHaveBeenCalledTimes(2);
+	});
+
+	it('refreshAuth restarts the stream with the rotated token', async () => {
+		await live.start('u1');
+		await flush();
+		mockAuth.token = 'token-rotated';
+
+		await live.refreshAuth();
+		await flush();
+
+		expect(mockFetch).toHaveBeenCalledTimes(2);
+		expect(mockFetch.mock.calls[1][1].headers.Authorization).toBe('Bearer token-rotated');
+		// The abandoned stream does not schedule a reconnect of its own.
+		await vi.advanceTimersByTimeAsync(5000);
+		expect(mockFetch).toHaveBeenCalledTimes(2);
+	});
+
+	it('refreshAuth is a no-op while stopped', async () => {
+		await live.refreshAuth();
+		await flush();
+
+		expect(mockFetch).not.toHaveBeenCalled();
+	});
+
+	it('start is idempotent for the same user', async () => {
+		await live.start('u1');
+		await live.start('u1');
+		await flush();
+
+		expect(mockFetch).toHaveBeenCalledTimes(1);
+	});
+
+	it('catchUp refetches even while the stream is open', async () => {
+		const events = vi.fn();
+		live.subscribe('events', events);
+		await live.start('u1');
+		await flush();
+
+		live.catchUp();
+		await vi.advanceTimersByTimeAsync(350);
+
+		expect(events).toHaveBeenCalledWith(expect.objectContaining({ operation: 'CATCHUP' }));
 	});
 });

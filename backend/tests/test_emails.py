@@ -295,37 +295,29 @@ class TestGmailCalendarInviteDetection:
 
 
 class TestSaveEmailsIngestShortCircuit:
-    """An invite-flagged parsed dict must upsert pre-skipped, never claimable."""
+    """An invite-flagged parsed dict must be stored pre-skipped, never claimable."""
 
-    def test_invite_flagged_email_saves_as_skipped(self):
-        from unittest.mock import MagicMock
-
+    def test_invite_flagged_email_saves_as_skipped(self, db, factory):
+        from selko.db.emails import email_is_claimable
         from selko.services.emails import save_emails
 
-        mock_client = MagicMock()
-        mock_execute_result = MagicMock()
-        mock_execute_result.data = [{"id": "email-1"}]
-        mock_client.table.return_value.upsert.return_value.execute.return_value = mock_execute_result
-
+        user = factory.user()
         msg = _make_message_with_calendar_part(content_type="text/calendar; method=REQUEST")
         parsed = parse_gmail_message(msg)
 
-        save_emails(mock_client, [parsed], user_id="user-1")
+        [saved] = save_emails(db, [parsed], user_id=user)
 
-        upsert_payload = mock_client.table.return_value.upsert.call_args[0][0]
-        assert upsert_payload["processing_status"] == "skipped"
-        assert upsert_payload["processing_outcome"] == "calendar_invite"
+        assert saved["user_id"] == user
+        assert saved["processing_status"] == "skipped"
+        assert saved["processing_outcome"] == "calendar_invite"
+        assert saved["processed_at"] is not None
+        assert email_is_claimable(db, saved["id"]) is False
 
-    def test_non_invite_email_has_no_skip_fields_on_save(self):
-        from unittest.mock import MagicMock
-
+    def test_non_invite_email_is_saved_claimable(self, db, factory):
+        from selko.db.emails import email_is_claimable
         from selko.services.emails import save_emails
 
-        mock_client = MagicMock()
-        mock_execute_result = MagicMock()
-        mock_execute_result.data = [{"id": "email-2"}]
-        mock_client.table.return_value.upsert.return_value.execute.return_value = mock_execute_result
-
+        user = factory.user()
         msg = {
             "id": "plain",
             "threadId": "t",
@@ -335,27 +327,35 @@ class TestSaveEmailsIngestShortCircuit:
         }
         parsed = parse_gmail_message(msg)
 
-        save_emails(mock_client, [parsed], user_id="user-1")
+        [saved] = save_emails(db, [parsed], user_id=user)
 
-        upsert_payload = mock_client.table.return_value.upsert.call_args[0][0]
-        assert "processing_status" not in upsert_payload
+        assert saved["processing_status"] == "pending"
+        assert saved["processing_outcome"] is None
+        assert email_is_claimable(db, saved["id"]) is True
+
+    def test_saving_without_an_owner_is_refused(self, db):
+        from selko.services.emails import EmailError, save_emails
+
+        with pytest.raises(EmailError, match="user_id"):
+            save_emails(db, [{"email_provider": "gmail", "provider_message_id": "m"}])
 
 
 class TestStoreGmailMessageAttachmentsOwner:
     """Regression test: attachment owner comes from the email record.
 
-    The reliable-sync worker runs with a service-role client (no auth
-    session), so store_gmail_message_attachments must pass the email's
-    user_id down to every attachment helper instead of letting them fall
-    back to get_current_user_id, which raised "No user signed in" and
-    broke Gmail attachment ingestion in production.
+    The worker has no signed-in session, so store_gmail_message_attachments
+    must pass the email's user_id down to every attachment helper; a lookup
+    of "the current user" once raised "No user signed in" and broke Gmail
+    attachment ingestion in production.
     """
 
-    def test_passes_email_owner_to_attachment_helpers(self):
+    def test_passes_email_owner_to_attachment_helpers(self, db, factory):
         from unittest.mock import MagicMock, patch
 
         from selko.services.emails import store_gmail_message_attachments
 
+        user = factory.user()
+        email_id = factory.email(user)
         attachment_part = {
             "attachment_id": "a1",
             "filename": "f.pdf",
@@ -398,14 +398,14 @@ class TestStoreGmailMessageAttachmentsOwner:
             ) as mock_store_image,
         ):
             stored = store_gmail_message_attachments(
-                client=MagicMock(),
+                client=db,
                 config=MagicMock(),
                 service=MagicMock(),
                 message={"id": "msg-1"},
                 email_record={
-                    "id": "email-1",
-                    "user_id": "user-42",
-                    "has_attachments": True,
+                    "id": email_id,
+                    "user_id": user,
+                    "has_attachments": False,
                 },
                 parsed_email={"body_html": "<img src='x'>"},
             )
@@ -413,7 +413,9 @@ class TestStoreGmailMessageAttachmentsOwner:
         assert stored == 4
         assert mock_process.call_count == 2
         for call in mock_process.call_args_list:
-            assert call.kwargs["user_id"] == "user-42"
+            assert call.kwargs["user_id"] == user
         assert mock_store_image.call_count == 2
         for call in mock_store_image.call_args_list:
-            assert call.kwargs["user_id"] == "user-42"
+            assert call.kwargs["user_id"] == user
+        # Stored images flip the email's flag, on the owner's row.
+        assert factory.row("emails", email_id)["has_attachments"] is True

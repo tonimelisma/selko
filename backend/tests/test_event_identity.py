@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from selko.services.event_identity import (
     build_hints,
     canonical_ical_uid,
@@ -45,14 +43,6 @@ def test_single_supporting_signal_is_not_promoted_to_authoritative():
     )
     assert {hint.kind for hint in hints} == {"provider_thread", "join_url"}
     assert all(hint.strength == "supporting" for hint in hints)
-
-
-def test_c2_migration_has_rls_and_only_commit_hint_writer():
-    migration = Path("supabase/migrations/20260820000001_identity_hints_and_fence.sql").read_text()
-    assert "ALTER TABLE public.event_identity_hints ENABLE ROW LEVEL SECURITY" in migration
-    assert "GRANT ALL ON TABLE public.event_identity_hints TO service_role" in migration
-    assert migration.count("INSERT INTO public.event_identity_hints") == 1
-    assert "v_decision->'hints'" in migration
 
 
 def test_permanent_room_supporting_hint_cannot_merge_distinct_slots():

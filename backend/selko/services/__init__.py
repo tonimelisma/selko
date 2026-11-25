@@ -1,6 +1,5 @@
 """Selko services package - auth, integrations, gmail, emails, attachments."""
 
-from selko.services.auth import get_authenticated_client, get_current_user_id
 from selko.services.users import create_user, list_users, delete_user, get_admin_client
 from selko.services.integrations import (
     save_oauth_credentials,
@@ -28,8 +27,6 @@ from selko.services.attachments import (
 
 __all__ = [
     # auth
-    "get_authenticated_client",
-    "get_current_user_id",
     # users
     "create_user",
     "list_users",

@@ -8,6 +8,13 @@
  */
 
 /**
+ * The signed-in user as the auth endpoints return it.
+ * @typedef {Object} AuthUser
+ * @property {string} id - UUID
+ * @property {string} email
+ */
+
+/**
  * @typedef {'gmail' | 'outlook' | 'google_photos' | 'google_calendar'} IntegrationProvider
  */
 
@@ -174,11 +181,11 @@
  */
 
 /**
- * @typedef {Object} SupabaseServiceResult
+ * @typedef {Object} ServiceResult
  * @template T
  * @property {T} data
  * @property {number | null} [count]
- * @property {import('./errors.js').SupabaseError | null} error
+ * @property {import('./errors.js').AppError | null} error
  */
 
 // ============================================================================

@@ -6,10 +6,11 @@ from functools import lru_cache
 from typing import Annotated
 
 from fastapi import Depends, Header, HTTPException, Request, status
-from supabase import Client, create_client
-
 from selko.api.schemas.common import ErrorCode, error_detail
 from selko.config import Config, load_config
+from selko.db.connection import Database
+from selko.db.runtime import get_database
+from selko.services import accounts
 from selko.services.llm_gateway import LLMGateway, create_llm_gateway
 from selko.services.llm_logging import (
     LLMLoggingService,
@@ -27,6 +28,7 @@ class CurrentUser:
     id: str
     email: str | None
     token: str
+    session_id: str | None = None
 
 
 @lru_cache
@@ -35,24 +37,23 @@ def get_config() -> Config:
     return load_config()
 
 
+def token_keys(config: Config) -> accounts.TokenKeys:
+    if not config.jwt_secret:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=error_detail(ErrorCode.SERVER_ERROR, "Server configuration error"),
+        )
+    return accounts.TokenKeys(config.jwt_secret, config.jwt_secret_previous)
+
+
 def get_current_user(
     authorization: Annotated[str | None, Header()] = None,
     config: Config = Depends(get_config),
 ) -> CurrentUser:
-    """Validate JWT token and extract user information.
+    """The verified user behind the request's Selko access token.
 
-    Uses Supabase's auth.get_user() to validate the token, which works
-    with both HS256 (cloud) and ES256 (local) JWT algorithms.
-
-    Args:
-        authorization: Bearer token from Authorization header.
-        config: Application configuration.
-
-    Returns:
-        CurrentUser with id, email, and original token.
-
-    Raises:
-        HTTPException: 401 if token is missing, invalid, or expired.
+    Verified locally (signature, expiry, issuer, audience): no database read
+    and no network call per request (03-api-auth-web.md §B.6).
     """
     if not authorization:
         raise HTTPException(
@@ -60,8 +61,6 @@ def get_current_user(
             detail=error_detail(ErrorCode.UNAUTHORIZED, "Missing Authorization header"),
             headers={"WWW-Authenticate": "Bearer"},
         )
-
-    # Extract token from "Bearer <token>"
     parts = authorization.split()
     if len(parts) != 2 or parts[0].lower() != "bearer":
         raise HTTPException(
@@ -69,88 +68,39 @@ def get_current_user(
             detail=error_detail(ErrorCode.UNAUTHORIZED, "Invalid Authorization header format. Use: Bearer <token>"),
             headers={"WWW-Authenticate": "Bearer"},
         )
-
-    token = parts[1]
-
     try:
-        # Create client and validate token via Supabase auth
-        client = create_client(config.supabase_url, config.supabase_key)
-
-        # get_user() validates the token against Supabase auth
-        user_response = client.auth.get_user(token)
-
-        if not user_response or not user_response.user:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=error_detail(ErrorCode.UNAUTHORIZED, "Invalid or expired token"),
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-
-        user = user_response.user
-        return CurrentUser(
-            id=user.id,
-            email=user.email,
-            token=token,
-        )
-
-    except Exception as e:
-        # Catch any auth errors (invalid token, expired, etc.)
-        logger.warning(f"Token validation failed: {e}")
+        identity = accounts.verify_access_token(token_keys(config), parts[1])
+    except accounts.AuthError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=error_detail(ErrorCode.UNAUTHORIZED, "Invalid or expired token"),
             headers={"WWW-Authenticate": "Bearer"},
         )
+    return CurrentUser(id=identity.user_id, email=identity.email or None, token=identity.token,
+                       session_id=identity.session_id)
 
 
-def get_authenticated_client(
-    user: CurrentUser = Depends(get_current_user),
-    config: Config = Depends(get_config),
-) -> Client:
-    """Create Supabase client authenticated with user's JWT.
+def get_db() -> Database:
+    """The process database. Every user-owned read takes the CurrentUser's id."""
+    return get_database()
 
-    This client will have RLS policies applied based on the user's identity.
 
-    Args:
-        user: Current authenticated user (from JWT).
-        config: Application configuration.
+def get_authenticated_client(user: CurrentUser = Depends(get_current_user)) -> Database:
+    """The database, for a route that has authenticated its user.
 
-    Returns:
-        Supabase client with user's auth context.
+    Row-level security used to scope this client; now every data-layer
+    function that touches user-owned rows takes ``user.id`` explicitly.
     """
-    # Create client with publishable key, then set the access token
-    client = create_client(config.supabase_url, config.supabase_key)
-
-    # Set the user's JWT so RLS policies apply
-    client.auth.set_session(user.token, user.token)  # access_token, refresh_token
-
-    return client
+    return get_database()
 
 
-def get_service_role_client(config: Config = Depends(get_config)) -> Client:
-    """Create Supabase client with service role key.
-
-    Used for operations that need to bypass RLS, such as quota tracking.
-
-    Args:
-        config: Application configuration.
-
-    Returns:
-        Supabase client with service role privileges.
-
-    Raises:
-        HTTPException: 500 if service role key not configured.
-    """
-    if not config.supabase_service_role_key:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=error_detail(ErrorCode.SERVER_ERROR, "Server configuration error"),
-        )
-    return create_client(config.supabase_url, config.supabase_service_role_key)
+def get_service_role_client() -> Database:
+    """The database, for service-wide work (quotas, logging)."""
+    return get_database()
 
 
 def get_quota_service(
-    service_client: Client = Depends(get_service_role_client),
+    service_client: Database = Depends(get_service_role_client),
 ) -> QuotaService:
     """Create QuotaService for rate limiting.
 
@@ -167,7 +117,7 @@ def get_quota_service(
 
 
 def get_llm_logging_service(
-    service_client: Client = Depends(get_service_role_client),
+    service_client: Database = Depends(get_service_role_client),
 ) -> LLMLoggingService:
     """Create LLMLoggingService for LLM call auditing.
 

@@ -43,13 +43,10 @@ RUN_DIR = VERIFY_DIR / "runs"
 def _lock_dir() -> Path:
     """Where lane locks live: shared by every worktree of this repository.
 
-    The resources a lock protects -- the local Supabase database, the
-    simulator, port 8000 -- belong to the machine, not to a checkout. Locks
-    used to live in each checkout's `.verify/`, so two sessions in two
-    worktrees never saw each other's run: each began with `supabase db reset`
-    and wiped the other's database mid-suite, which surfaced as auth errors
-    ("Database error checking email") and as a schema with another branch's
-    migrations. The git common directory is the one path every worktree
+    The resources a lock protects -- Docker, port 8000 -- belong to the
+    machine, not to a checkout. Locks used to live in each checkout's
+    `.verify/`, so two sessions in two worktrees never saw each other's run
+    (then: both reset one shared local database mid-suite). The git common directory is the one path every worktree
     shares. A run with its own SELKO_VERIFY_DIR (the tests) keeps its own
     locks, so a test never reports a real lane BUSY or the reverse.
     """

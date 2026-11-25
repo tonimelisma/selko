@@ -14,7 +14,11 @@ from typing import Any, Optional
 from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel, ValidationError
-from supabase import Client
+from selko.db import attachments as db_attachments
+from selko.db import emails as db_emails
+from selko.db.connection import Database
+from selko.services.quotas import QuotaExceededError
+from selko.db.runtime import ATTACHMENTS_DIR
 
 from selko.api.schemas.calendar import CalendarEventExtraction, EventExtractionResponse
 from selko.config import Config
@@ -370,31 +374,31 @@ def extract_calendar_events(
         )
         return result
 
-    except LLMGatewayError:
+    except (LLMGatewayError, QuotaExceededError):
         raise
     except Exception as e:
         raise LLMGatewayError(f"Failed to extract events: {e}") from e
 
 
 def fetch_email_with_attachments(
-    supabase_client: Client,
+    supabase_client: Database,
     email_id: str,
     email_row: dict[str, Any] | None = None,
 ) -> tuple[dict[str, Any], str, list[dict[str, Any]]]:
-    """Fetch email and its attachments from Supabase.
+    """Fetch email and its attachments from the database.
 
     If email_row is supplied (already claimed), the email SELECT is skipped
     and only attachments are fetched — Inc1 payload fix.
 
     Args:
-        supabase_client: Authenticated Supabase client.
+        supabase_client: The Selko database.
         email_id: UUID of email record in database.
         email_row: Optional already-fetched email dict to skip SELECT.
 
     Returns:
 
     Args:
-        supabase_client: Authenticated Supabase client.
+        supabase_client: The Selko database.
         email_id: UUID of email record in database.
 
     Returns:
@@ -410,19 +414,9 @@ def fetch_email_with_attachments(
         if email_row is not None:
             email = email_row
         else:
-            # Fetch email record
-            email_result = (
-                supabase_client.table("emails")
-                .select("*")
-                .eq("id", email_id)
-                .single()
-                .execute()
-            )
-
-            if not email_result.data:
+            email = db_emails.get_for_extraction(supabase_client, email_id)
+            if email is None:
                 raise LLMGatewayError(f"Email not found: {email_id}")
-
-            email = email_result.data
         logger.debug(f"Fetched email: {email.get('subject', '(no subject)')}")
 
         # Build metadata
@@ -446,23 +440,13 @@ def fetch_email_with_attachments(
         snippet = email.get("snippet", "")
         email_text = stored_body if is_substantive(stored_body, alternative=snippet) else snippet
 
-        # Fetch attachments from storage (all image types are stored at sync time)
+        # Read attachments from disk (all image types are stored at sync time)
         attachments: list[dict[str, Any]] = []
-        att_result = (
-            supabase_client.table("attachments")
-            .select("*")
-            .eq("email_id", email_id)
-            .execute()
-        )
-
-        for att_record in att_result.data:
+        for att_record in db_attachments.for_email(supabase_client, email_id):
             storage_path = att_record.get("storage_path")
             if storage_path:
                 try:
-                    # Download from Supabase Storage
-                    data = supabase_client.storage.from_("attachments").download(
-                        storage_path
-                    )
+                    data = _read_attachment(supabase_client, storage_path)
                     attachments.append(
                         {
                             "data": data,
@@ -480,14 +464,23 @@ def fetch_email_with_attachments(
 
         return email_metadata, email_text, attachments
 
+    except LLMGatewayError:
+        raise
     except Exception as e:
-        error_str = str(e)
-        # Handle Supabase "no rows" error
-        if "PGRST116" in error_str or "0 rows" in error_str:
-            raise LLMGatewayError(f"Email not found: {email_id}") from e
-        if "Email not found" in error_str:
-            raise
         raise LLMGatewayError(f"Failed to fetch email data: {e}") from e
+
+
+def _read_attachment(db: Database, storage_path: str) -> bytes:
+    """An attachment's bytes from ``<data dir>/attachments/<storage_path>``.
+
+    ``storage_path`` is relative to the attachments directory (02 §3.2); a
+    path that resolves outside it is refused.
+    """
+    root = (db.path.parent / ATTACHMENTS_DIR).resolve()
+    path = (root / storage_path).resolve()
+    if not path.is_relative_to(root):
+        raise ValueError("attachment path escapes the attachments directory")
+    return path.read_bytes()
 
 
 def compare_events(

@@ -7,7 +7,7 @@ from pathlib import Path
 
 
 PACKAGE_ROOT = Path(__file__).parents[1] / "selko"
-RUNTIME_ROOTS = {"selko.api", "selko.api.app", "selko.worker_app"}
+RUNTIME_ROOTS = {"selko.api", "selko.api.app", "selko.worker_app", "selko.admin"}
 
 # Modules deliberately outside the runtime import graph. Each entry names the
 # owner and reason so a parked subsystem cannot silently become forgotten.
@@ -20,14 +20,10 @@ DELIBERATELY_UNREACHABLE: dict[str, str] = {
     "selko.workers.photo_fetch": (
         "owner=photo-ingestion; Google Photos ingestion is parked and disabled"
     ),
-    # The SQLite data layer lands before the services move onto it
-    # (docs/specs/sqlite-single-process.md). These entries are removed by the
-    # increment that makes selko.api open the database.
-    "selko.db": "owner=sqlite-single-process; wired in when the services move to SQLite",
-    "selko.db.bus": "owner=sqlite-single-process; wired in when the services move to SQLite",
-    "selko.db.codec": "owner=sqlite-single-process; wired in when the services move to SQLite",
-    "selko.db.connection": "owner=sqlite-single-process; wired in when the services move to SQLite",
-    "selko.db.migrate": "owner=sqlite-single-process; wired in when the services move to SQLite",
+    "selko.services.scheduled_tasks": (
+        "owner=photo-ingestion; parked with it. Its only runtime caller was the "
+        "startup unlock, which selko.db.startup.reset_leases_at_startup now does"
+    ),
 }
 
 
@@ -117,7 +113,10 @@ def test_every_worker_and_service_module_is_reachable() -> None:
         for module in graph
         if module.startswith(("selko.services.", "selko.workers.", "selko.db"))
     }
-    missing = sorted(runtime_modules - reachable - set(DELIBERATELY_UNREACHABLE))
+    # The SQLite data layer (docs/specs/sqlite-single-process/) lands before the
+    # app opens the database; the increment that wires it removes this line.
+    not_yet_wired = {m for m in runtime_modules if m.startswith("selko.db") or m == "selko.services.accounts"}
+    missing = sorted(runtime_modules - reachable - set(DELIBERATELY_UNREACHABLE) - not_yet_wired)
 
     assert not missing, (
         "unreachable service/worker modules: "

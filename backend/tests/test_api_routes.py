@@ -30,13 +30,9 @@ def mock_config():
     """Config with test values."""
     return Config(
         environment="development",
-        supabase_url="http://localhost:54321",
-        supabase_key="test-anon-key",
-        supabase_service_role_key="test-service-key",
         google_client_id="test-client-id",
         google_client_secret="test-client-secret",
-        test_user_email="test@example.com",
-        test_user_password="testpass",
+        jwt_secret="test-jwt-secret-" + "x" * 32,
     )
 
 
@@ -84,6 +80,10 @@ def test_client(
     mock_gateway,
 ):
     """Fully-overridden TestClient — all deps mocked."""
+    # The callback's per-IP limiter is process state shared by every test.
+    from selko.api.routes import integrations as integration_routes
+
+    integration_routes._callback_request_log.clear()
     app = create_app()
     app.dependency_overrides[get_config] = lambda: mock_config
     app.dependency_overrides[get_current_user] = lambda: mock_user
@@ -96,12 +96,20 @@ def test_client(
 
 
 @pytest.fixture
-def unauthed_app(mock_config):
-    """App with only config overridden — auth will fail against fake Supabase."""
+def unauthed_app(mock_config, db):
+    """App with only config overridden and a real database; auth is not overridden.
+
+    The database is installed because routes also depend on it: without one,
+    dependency resolution fails with a 500 before the 401 under test.
+    """
+    from selko.db import runtime
+
+    runtime.use_database(db)
     app = create_app()
     app.dependency_overrides[get_config] = lambda: mock_config
     yield app
     app.dependency_overrides.clear()
+    runtime.use_database(None)
 
 
 # ===========================================================================
@@ -110,173 +118,109 @@ def unauthed_app(mock_config):
 
 
 class TestHealthEndpoints:
-    """Tests for /health and /health/db."""
+    """/health, /health/db and /health/ingestion over a real SQLite database.
 
-    def test_health_ok(self, test_client, mock_config):
-        """S1: /health's status is driven by health_work_state, not
-        hard-coded — mock the RPC so this stays a real unit test (no live
-        Supabase needed), matching this file's stated contract."""
-        mock_sb = MagicMock()
-        mock_sb.rpc.return_value.execute.return_value = MagicMock(
-            data=[{"status": "ok"}]
-        )
-        mock_sb.table.return_value.select.return_value.eq.return_value.order.return_value.limit.return_value.execute.return_value = MagicMock(
-            data=[], count=0
-        )
-        with patch(
-            "selko.api.routes.health.get_service_client", return_value=mock_sb
-        ):
-            resp = test_client.get("/health")
+    The work-state roll-up is computed by selko.db.health from rows the test
+    writes; nothing stubs the database.
+    """
+
+    @pytest.fixture
+    def health_db(self, db, test_client):
+        from selko.db import runtime
+
+        runtime.use_database(db)
+        test_client.app.state.db = db
+        yield db
+        runtime.use_database(None)
+
+    def test_health_ok(self, test_client, health_db):
+        resp = test_client.get("/health")
         assert resp.status_code == 200
-        assert resp.json()["status"] == "ok"
+        body = resp.json()
+        assert body["status"] == "ok"
+        assert body["resolution"]["pending_emails"] == 0
 
-    def test_health_publishes_build_sha(self, test_client, mock_config):
+    def test_health_publishes_build_sha(self, test_client, mock_config, health_db):
         mock_config.build_sha = "abc123"
-        mock_sb = MagicMock()
-        mock_sb.rpc.return_value.execute.return_value = MagicMock(
-            data=[{"status": "ok"}]
-        )
-        mock_sb.table.return_value.select.return_value.eq.return_value.order.return_value.limit.return_value.execute.return_value = MagicMock(
-            data=[], count=0
-        )
-        with patch(
-            "selko.api.routes.health.get_service_client", return_value=mock_sb
-        ):
-            resp = test_client.get("/health")
+        resp = test_client.get("/health")
         assert resp.status_code == 200
         assert resp.json()["build_sha"] == "abc123"
 
-    def test_health_degraded_when_work_state_reports_degraded(self, test_client, mock_config):
-        mock_sb = MagicMock()
-        mock_sb.rpc.return_value.execute.return_value = MagicMock(
-            data=[{"status": "degraded"}]
-        )
-        mock_sb.table.return_value.select.return_value.eq.return_value.order.return_value.limit.return_value.execute.return_value = MagicMock(
-            data=[], count=0
-        )
-        with patch(
-            "selko.api.routes.health.get_service_client", return_value=mock_sb
-        ):
-            resp = test_client.get("/health")
+    def test_health_degraded_when_work_state_reports_degraded(self, test_client, health_db, factory):
+        factory.email(factory.user(), processing_status="processing")  # no lease: stale
+        resp = test_client.get("/health")
         assert resp.status_code == 200
         assert resp.json()["status"] == "degraded"
 
-    def test_health_degrades_when_work_state_unreachable(self, test_client, mock_config):
-        with patch(
-            "selko.api.routes.health.get_service_client",
-            side_effect=Exception("connection refused"),
-        ):
-            resp = test_client.get("/health")
+    def test_health_counts_pending_email(self, test_client, health_db, factory):
+        factory.email(factory.user(), processing_status="pending")
+        assert test_client.get("/health").json()["resolution"]["pending_emails"] == 1
+
+    def test_health_degrades_when_work_state_unreachable(self, test_client):
+        """No database open: degraded, never a 500."""
+        from selko.db import runtime
+
+        runtime.use_database(None)
+        resp = test_client.get("/health")
         assert resp.status_code == 200
         assert resp.json()["status"] == "degraded"
 
-    def test_health_db_connected(self, test_client, mock_config):
-        """The probe uses the service role; `anon` has no table privileges."""
-        mock_sb = MagicMock()
-        mock_sb.table.return_value.select.return_value.limit.return_value.execute.return_value = (
-            MagicMock(data=[{"id": "x"}])
-        )
-        with patch(
-            "selko.api.routes.health.get_service_client", return_value=mock_sb
-        ) as service_client:
-            resp = test_client.get("/health/db")
+    def test_health_db_connected(self, test_client, health_db):
+        resp = test_client.get("/health/db")
         assert resp.status_code == 200
         assert resp.json()["database"] == "connected"
-        service_client.assert_called_once()
 
-    def test_health_db_failure(self, test_client, mock_config):
-        """Database connectivity failure returns 503."""
-        with patch(
-            "selko.api.routes.health.get_service_client",
-            side_effect=Exception("connection refused"),
-        ):
-            resp = test_client.get("/health/db")
+    def test_health_db_failure(self, test_client):
+        """No database to answer: 503."""
+        from selko.db import runtime
+
+        runtime.use_database(None)
+        resp = test_client.get("/health/db")
         assert resp.status_code == 503
 
-    def test_health_ingestion_when_background_processing_is_off(self, test_client):
+    def test_health_ingestion_when_background_processing_is_off(self, test_client, health_db, factory):
         """Runtime is None: report the disabled state, never "down", and still
-        report the work-state roll-up.
-
-        This previously also asserted the route "does not call into the
-        database". That property was dropped deliberately: the work-state
-        counters describe the DATABASE, not this process, and they are exactly
-        what an operator needs when no worker is running. Staging runs with
-        background processing off by design (D4), so under the old contract it
-        could hold dead-lettered work while this endpoint reported a bare "ok".
-
-        The cost is one health_work_state call, which is what `/health`
-        already does on every hit.
+        report the work-state roll-up, which describes the DATABASE, not this
+        process. Stale polling is the expected steady state with workers off.
         """
-        with patch("selko.api.app.ingestion_runtime", None), \
-             patch("selko.api.routes.health._work_state_counts") as counts:
-            counts.return_value = {
-                "integrations_due": 3,
-                "oldest_next_poll_seconds": 99999,
-                "leases_held": 0,
-                "items_pending": 0,
-                "items_dead_letter": 0,
-                "attachments_dead_letter": 0,
-                "open_incidents": 1,
-                "ready_emails": 0,
-                "processing_emails": 0,
-                "stale_processing_emails": 0,
-                "unclaimable_pending": 0,
-                "failed_emails": 0,
-            }
+        user = factory.user()
+        factory.integration(user, "gmail")  # due now: its sync state is created due
+        with patch("selko.api.app.ingestion_runtime", None):
             resp = test_client.get("/health/ingestion")
         assert resp.status_code == 200
         body = resp.json()
-        # Stale polling and open incidents are the expected steady state with
-        # workers off; they must not degrade this surface.
         assert body["status"] == "ok"
         assert body["background_processing_enabled"] is False
         assert body["tasks"] == []
-        assert body["integrations_due"] == 3
-        assert body["open_incidents"] == 1
+        assert body["integrations_due"] == 1
+        assert body["listener"]["kind"] == "in_process"
+        assert set(body["listener"]) == {"kind", "bound", "signals_sent", "last_signal_at"}
 
-    def test_health_ingestion_degrades_on_lost_work_even_with_workers_off(self, test_client):
+    def test_health_ingestion_degrades_on_lost_work_even_with_workers_off(
+        self, test_client, health_db, factory
+    ):
         """Dead-lettered or unclaimable work is a defect whatever the posture."""
-        base = {
-            "integrations_due": 0, "oldest_next_poll_seconds": 0, "leases_held": 0,
-            "items_pending": 0, "items_dead_letter": 0, "attachments_dead_letter": 0,
-            "open_incidents": 0, "ready_emails": 0, "processing_emails": 0,
-            "stale_processing_emails": 0, "unclaimable_pending": 0, "failed_emails": 0,
-        }
-        for field in (
-            "items_dead_letter", "attachments_dead_letter",
-            "stale_processing_emails", "unclaimable_pending",
-        ):
-            with patch("selko.api.app.ingestion_runtime", None), \
-                 patch("selko.api.routes.health._work_state_counts") as counts:
-                counts.return_value = {**base, field: 2}
-                resp = test_client.get("/health/ingestion")
-            assert resp.json()["status"] == "degraded", field
+        factory.email(factory.user(), processing_status="processing")  # stale lease
+        with patch("selko.api.app.ingestion_runtime", None):
+            body = test_client.get("/health/ingestion").json()
+        assert body["status"] == "degraded"
+        assert body["stale_processing_emails"] == 1
 
-    def test_health_ingestion_does_not_degrade_on_terminal_failures(self, test_client):
+    def test_health_ingestion_does_not_degrade_on_terminal_failures(self, test_client, health_db, factory):
         """failed_emails is history, not a current degradation.
 
-        It counts rows written by fail_email_processing once retries are
-        exhausted, and those rows are permanent. Degrading on it meant that a
-        single permanently failed email pinned /health to 'degraded' forever and
-        made assert-health.sh unsatisfiable -- a gate that cannot succeed, which
-        is ignored exactly as reliably as one that cannot fail. Production
-        carried 27 of them unnoticed.
+        Degrading on it meant that a single permanently failed email pinned
+        /health to 'degraded' forever and made assert-health.sh unsatisfiable.
         """
-        base = {
-            "integrations_due": 0, "oldest_next_poll_seconds": 0, "leases_held": 0,
-            "items_pending": 0, "items_dead_letter": 0, "attachments_dead_letter": 0,
-            "open_incidents": 0, "ready_emails": 0, "processing_emails": 0,
-            "stale_processing_emails": 0, "unclaimable_pending": 0, "failed_emails": 0,
-        }
-        with patch("selko.api.app.ingestion_runtime", None), \
-             patch("selko.api.routes.health._work_state_counts") as counts:
-            counts.return_value = {**base, "failed_emails": 27}
-            resp = test_client.get("/health/ingestion")
-        body = resp.json()
+        user = factory.user()
+        for _ in range(3):
+            factory.email(user, processing_status="failed")
+        with patch("selko.api.app.ingestion_runtime", None):
+            body = test_client.get("/health/ingestion").json()
         assert body["status"] == "ok", body
-        assert body["failed_emails"] == 27, "the count must still be reported"
+        assert body["failed_emails"] == 3, "the count must still be reported"
 
-    def test_health_ingestion_reports_runtime_snapshot(self, test_client):
+    def test_health_ingestion_reports_runtime_snapshot(self, test_client, health_db):
         """The route surfaces IngestionRuntime.health_snapshot()."""
         snapshot = {
             "status": "ok",
@@ -315,8 +259,9 @@ class TestHealthEndpoints:
         assert body["integrations_due"] == 2
         assert body["oldest_next_poll_seconds"] == 41
         assert body["items_pending"] == 17
+        assert body["listener"]["kind"] == "in_process"
 
-    def test_health_ingestion_degrades_when_snapshot_raises(self, test_client):
+    def test_health_ingestion_degrades_when_snapshot_raises(self, test_client, health_db):
         """A snapshot failure must not 500 — degrade to a safe payload."""
         runtime = MagicMock()
         runtime.health_snapshot.side_effect = RuntimeError("db down")
@@ -327,6 +272,12 @@ class TestHealthEndpoints:
         body = resp.json()
         assert body["status"] == "degraded"
         assert body["background_processing_enabled"] is True
+
+    def test_health_egress_reports_the_sqlite_transport(self, test_client, health_db, factory):
+        factory.integration(factory.user(), "gmail")
+        body = test_client.get("/health/egress").json()
+        assert body["transport"] == "sqlite"
+        assert "supabase" not in body["by_destination"]
 
 
 # ===========================================================================
@@ -448,30 +399,65 @@ class TestRequestValidation:
 # ===========================================================================
 
 
+@pytest.fixture
+def db_client(db, factory, mock_config, mock_gateway):
+    """A TestClient whose user-scoped client is a real temporary database."""
+    user_id = factory.user()
+    app = create_app()
+    app.dependency_overrides[get_config] = lambda: mock_config
+    app.dependency_overrides[get_current_user] = lambda: CurrentUser(id=user_id, email="u@example.test", token="t")
+    app.dependency_overrides[get_authenticated_client] = lambda: db
+    app.dependency_overrides[get_service_role_client] = lambda: db
+    app.dependency_overrides[get_llm_gateway] = lambda: mock_gateway
+    yield TestClient(app, raise_server_exceptions=False), user_id
+    app.dependency_overrides.clear()
+
+
 class TestReprocessEmail:
-    """S1: reprocess_email now raises `email_actively_leased` for a row with
-    a live processing lease instead of silently returning no rows."""
+    """S1: reprocess refuses a row with a live processing lease instead of
+    silently returning no rows; everything runs on the real database."""
 
-    def test_actively_leased_email_returns_409(self, test_client, mock_client):
-        from postgrest.exceptions import APIError
+    def test_reprocess_resets_the_users_email_to_pending(self, db_client, factory):
+        client, user_id = db_client
+        email_id = factory.email(user_id, processing_status="failed", processing_error="boom",
+                                 dead_letter_reason="boom", attempts=3, max_attempts=3)
 
-        mock_client.rpc.return_value.execute.side_effect = APIError(
-            {"message": "email_actively_leased", "code": "P0001"}
-        )
+        resp = client.post(f"/emails/{email_id}/reprocess")
 
-        resp = test_client.post("/emails/some-email-id/reprocess")
+        assert resp.status_code == 200
+        assert resp.json()["processing_status"] == "pending"
+        assert resp.json()["email_id"] == email_id
+        row = factory.row("emails", email_id)
+        assert (row["processing_status"], row["attempts"], row["dead_letter_reason"]) == ("pending", 0, None)
+
+    def test_actively_leased_email_returns_409(self, db_client, factory):
+        client, user_id = db_client
+        email_id = factory.email(user_id, processing_status="processing", locked_by="worker-1",
+                                 locked_until="2999-01-01T00:00:00.000000Z", attempts=1)
+
+        resp = client.post(f"/emails/{email_id}/reprocess")
 
         assert resp.status_code == 409
         assert "already pending or being processed" in resp.json()["detail"]["detail"]
+        assert factory.row("emails", email_id)["locked_by"] == "worker-1"
 
-    def test_other_database_error_returns_500(self, test_client, mock_client):
-        from postgrest.exceptions import APIError
+    def test_another_users_email_is_not_reprocessed(self, db_client, factory):
+        client, _user_id = db_client
+        other = factory.user()
+        email_id = factory.email(other, processing_status="failed", attempts=3, max_attempts=3)
 
-        mock_client.rpc.return_value.execute.side_effect = APIError(
-            {"message": "connection refused", "code": "08006"}
-        )
+        resp = client.post(f"/emails/{email_id}/reprocess")
 
-        resp = test_client.post("/emails/some-email-id/reprocess")
+        assert resp.status_code == 409
+        assert factory.row("emails", email_id)["processing_status"] == "failed"
+
+    def test_other_database_error_returns_500(self, db_client, db):
+        client, _user_id = db_client
+        db.close()
+        for suffix in ("", "-wal", "-shm"):
+            db.path.with_name(db.path.name + suffix).unlink(missing_ok=True)
+
+        resp = client.post("/emails/00000000-0000-4000-8000-000000000001/reprocess")
 
         assert resp.status_code == 500
 
@@ -479,126 +465,49 @@ class TestReprocessEmail:
 class TestNotFoundResponses:
     """Tests for 404 when resources don't exist."""
 
-    def test_email_not_found(self, test_client, mock_client):
+    def test_email_not_found(self, db_client):
         """Processing a non-existent email returns 404."""
-        mock_result = MagicMock()
-        mock_result.data = None
-        mock_client.table.return_value.select.return_value.eq.return_value.eq.return_value.maybe_single.return_value.execute.return_value = mock_result
-
-        resp = test_client.post("/emails/some-fake-id/process")
+        client, _user_id = db_client
+        resp = client.post("/emails/00000000-0000-4000-8000-000000000001/process")
         assert resp.status_code == 404
+
+    def test_another_users_email_is_not_found(self, db_client, factory):
+        client, _user_id = db_client
+        email_id = factory.email(factory.user())
+        with patch("selko.api.routes.emails.process_email_for_events") as process:
+            resp = client.post(f"/emails/{email_id}/process")
+        assert resp.status_code == 404
+        process.assert_not_called()
+
+    def test_process_returns_the_events_of_the_users_email(self, db_client, factory):
+        client, user_id = db_client
+        email_id = factory.email(user_id)
+        event_id = factory.event(user_id)
+        factory.event_source(event_id, email_id)
+        with patch("selko.api.routes.emails.process_email_for_events",
+                   return_value={"num_events": 1, "num_new": 1, "num_updated": 0}):
+            resp = client.post(f"/emails/{email_id}/process")
+        assert resp.status_code == 200
+        assert resp.json()["event_ids"] == [event_id]
+
+    def test_batch_process_takes_only_the_users_newest_emails(self, db_client, factory):
+        client, user_id = db_client
+        old = factory.email(user_id, date_sent="2026-01-01T00:00:00.000000Z")
+        new = factory.email(user_id, date_sent="2026-06-01T00:00:00.000000Z")
+        factory.email(factory.user(), date_sent="2026-07-01T00:00:00.000000Z")
+        with patch("selko.api.routes.emails.process_email_for_events",
+                   return_value={"num_events": 0, "num_new": 0, "num_updated": 0}) as process:
+            resp = client.post("/emails/batch-process", json={"max_emails": 1})
+        assert resp.status_code == 200
+        assert [c.kwargs["email_id"] for c in process.call_args_list] == [new]
+        assert old != new
 
 
 class TestServiceRoleOAuthRoutes:
     """OAuth-backed service calls use service role after user-scoped checks."""
 
-    def test_event_sync_leaves_approved_event_for_worker(
-        self, test_client, mock_client
-    ):
-        event_id = "00000000-0000-0000-0000-000000000001"
-        mock_client.table.return_value.select.return_value.eq.return_value.maybe_single.return_value.execute.return_value = MagicMock(
-            data={
-                "user_id": "test-user-id",
-                "review_status": "active",
-                "calendar_work_items": [{"action": "upsert", "generation": 1, "status": "pending", "failure_code": None}],
-                "synced_at": None,
-                "google_calendar_event_id": None,
-            }
-        )
-        mock_client.table.return_value.select.return_value.eq.return_value.single.return_value.execute.return_value = MagicMock(
-            data={
-                "user_id": "test-user-id",
-                "review_status": "active",
-                "calendar_work_items": [{"action": "upsert", "generation": 1, "status": "pending", "failure_code": None}],
-                "synced_at": None,
-                "google_calendar_event_id": None,
-            }
-        )
 
-        response = test_client.post(f"/events/{event_id}/sync")
 
-        assert response.status_code == 200
-        assert response.json() == {
-            "event_id": event_id,
-            "google_calendar_event_id": None,
-            "synced_at": None,
-            "status": "approved",
-        }
-        mock_client.table.return_value.update.assert_not_called()
-
-    def test_event_sync_accepts_worker_owned_syncing_state(
-        self, test_client, mock_client
-    ):
-        """A worker winning the approval race is success-in-progress."""
-        event_id = "00000000-0000-0000-0000-000000000001"
-        syncing = {
-            "user_id": "test-user-id",
-            "review_status": "active",
-            "calendar_work_items": [{"action": "upsert", "generation": 1, "status": "processing", "failure_code": None}],
-            "synced_at": None,
-            "google_calendar_event_id": None,
-        }
-        mock_client.table.return_value.select.return_value.eq.return_value.maybe_single.return_value.execute.return_value = MagicMock(
-            data=syncing
-        )
-        mock_client.table.return_value.select.return_value.eq.return_value.single.return_value.execute.return_value = MagicMock(
-            data=syncing
-        )
-
-        response = test_client.post(f"/events/{event_id}/sync")
-
-        assert response.status_code == 200
-        assert response.json()["status"] == "syncing"
-        mock_client.table.return_value.update.assert_not_called()
-
-    def test_event_sync_requeues_sync_failed_event_for_worker(
-        self, test_client, mock_client, mock_service_client
-    ):
-        """Explicit retry restores a fresh worker attempt budget."""
-        event_id = "00000000-0000-0000-0000-000000000001"
-        mock_client.table.return_value.select.return_value.eq.return_value.maybe_single.return_value.execute.return_value = MagicMock(
-            data={
-                "user_id": "test-user-id",
-                "review_status": "active",
-                "calendar_work_items": [{"action": "upsert", "generation": 1, "status": "failed", "failure_code": "server_error"}],
-                "synced_at": None,
-                "google_calendar_event_id": None,
-            }
-        )
-        mock_client.table.return_value.select.return_value.eq.return_value.single.return_value.execute.return_value = MagicMock(
-            data={
-                "user_id": "test-user-id",
-                "review_status": "active",
-                "calendar_work_items": [{"action": "upsert", "generation": 2, "status": "pending", "failure_code": None}],
-                "synced_at": None,
-                "google_calendar_event_id": None,
-            }
-        )
-
-        response = test_client.post(f"/events/{event_id}/sync")
-
-        assert response.status_code == 200
-        assert response.json()["status"] == "approved"
-        mock_service_client.rpc.assert_called_once_with(
-            "enqueue_calendar_work",
-            {
-                "p_event_id": event_id,
-                "p_user_id": "test-user-id",
-                "p_action": "upsert",
-                "p_desired_event": {
-                    "title": None,
-                    "start_datetime": None,
-                    "end_datetime": None,
-                    "all_day": None,
-                    "location": None,
-                    "description": None,
-                    "importance": None,
-                    "source_attribution": None,
-                },
-                "p_expected_provider_revision": None,
-                "p_force_overwrite": False,
-            },
-        )
 
     def test_email_sync_uses_service_role_client(
         self, test_client, mock_service_client
@@ -625,57 +534,8 @@ class TestServiceRoleOAuthRoutes:
         assert response.status_code == 200
         list_calendars.assert_called_once_with(mock_service_client, "test-user-id")
 
-    def test_event_sync_not_found(self, test_client, mock_client):
-        """Syncing a non-existent event returns 404."""
-        mock_result = MagicMock()
-        mock_result.data = None
-        mock_client.table.return_value.select.return_value.eq.return_value.maybe_single.return_value.execute.return_value = mock_result
 
-        resp = test_client.post("/events/00000000-0000-0000-0000-000000000001/sync")
-        assert resp.status_code == 404
 
-    def test_event_unsync_not_found(self, test_client, mock_client):
-        """Unsyncing a non-existent event returns 404."""
-        mock_result = MagicMock()
-        mock_result.data = None
-        mock_client.table.return_value.select.return_value.eq.return_value.maybe_single.return_value.execute.return_value = mock_result
-
-        resp = test_client.post("/events/00000000-0000-0000-0000-000000000001/unsync")
-        assert resp.status_code == 404
-
-    def test_event_unsync_queues_worker_deletion(
-        self, test_client, mock_client, mock_service_client
-    ):
-        """Unsync must enqueue provider deletion instead of calling Google directly."""
-        event_id = "00000000-0000-0000-0000-000000000001"
-        mock_client.table.return_value.select.return_value.eq.return_value.maybe_single.return_value.execute.return_value = MagicMock(
-            data={
-                "user_id": "test-user-id",
-                "status": "synced",
-                "google_calendar_event_id": "google-event-1",
-            }
-        )
-
-        with patch(
-            "selko.api.routes.events.get_calendar_event",
-            return_value={"etag": '"etag-1"'},
-        ):
-            response = test_client.post(f"/events/{event_id}/unsync")
-
-        assert response.status_code == 200
-        assert response.json() == {
-            "event_id": event_id,
-            "status": "pending_review",
-        }
-        mock_service_client.rpc.assert_called_once_with(
-            "unsync_event_and_enqueue_calendar_work",
-            {
-                "p_event_id": event_id,
-                "p_user_id": "test-user-id",
-                "p_expected_provider_revision": '"etag-1"',
-                "p_force_overwrite": False,
-            },
-        )
 
 
 # ===========================================================================
@@ -734,21 +594,45 @@ class TestOAuthCallback:
         assert resp.status_code == 302
         assert "oauth=error" in resp.headers["location"]
 
-    def test_callback_success(self, test_client, mock_config):
-        """Successful callback redirects to frontend with oauth=success."""
-        mock_creds = MagicMock()
+    @pytest.fixture
+    def callback_db(self, db):
+        """The callback writes through the process database."""
+        from selko.db import runtime
+
+        runtime.use_database(db)
+        yield db
+        runtime.use_database(None)
+
+    @staticmethod
+    def _google_creds(granted_scopes=None):
+        creds = MagicMock()
+        creds.token = "google-access"
+        creds.refresh_token = "google-refresh"
+        creds.expiry = None
+        creds.scopes = list(granted_scopes or [])
+        creds.granted_scopes = granted_scopes
+        return creds
+
+    @staticmethod
+    def _rows(db, user):
+        return {
+            r["provider"]: dict(r)
+            for r in db.query("SELECT * FROM integrations WHERE user_id = ?", (user,))
+        }
+
+    def test_callback_success(self, test_client, callback_db, factory):
+        """Successful callback stores the integration and redirects with oauth=success."""
+        user = factory.user()
         with (
             patch(
                 "selko.api.routes.integrations.complete_oauth_flow",
-                return_value=(mock_creds, "test-user-id", "gmail"),
+                return_value=(self._google_creds(), user, "gmail"),
             ),
-            patch("selko.services.auth.get_service_client"),
             patch("selko.api.routes.integrations.build_service"),
             patch(
                 "selko.api.routes.integrations.get_user_profile",
                 return_value={"emailAddress": "user@gmail.com"},
             ),
-            patch("selko.api.routes.integrations.save_oauth_credentials"),
         ):
             resp = test_client.get(
                 "/integrations/google/callback",
@@ -759,62 +643,91 @@ class TestOAuthCallback:
         location = resp.headers["location"]
         assert "oauth=success" in location
         assert "provider=gmail" in location
+        row = self._rows(callback_db, user)["gmail"]
+        assert (row["status"], row["access_token"], row["provider_email"]) == (
+            "active", "google-access", "user@gmail.com"
+        )
 
-    def _combined_callback(self, test_client, granted_scopes):
-        creds = MagicMock()
-        creds.granted_scopes = granted_scopes
+    def _combined_callback(self, test_client, user, granted_scopes, timezone_value="Europe/Helsinki"):
+        creds = self._google_creds(granted_scopes)
+        calendar = MagicMock()
+        calendar.settings.return_value.get.return_value.execute.return_value = {"value": timezone_value}
         with (
             patch(
                 "selko.api.routes.integrations.complete_oauth_flow",
-                return_value=(creds, "test-user-id", "google"),
+                return_value=(creds, user, "google"),
             ),
-            patch("selko.services.auth.get_service_client"),
             patch("selko.api.routes.integrations.build_service"),
             patch(
                 "selko.api.routes.integrations.get_user_profile",
                 return_value={"emailAddress": "user@gmail.com"},
             ) as profile,
-            patch("googleapiclient.discovery.build"),
-            patch("selko.api.routes.integrations.save_oauth_credentials") as save,
+            patch("googleapiclient.discovery.build", return_value=calendar),
         ):
             resp = test_client.get(
                 "/integrations/google/callback",
                 params={"code": "valid-code", "state": "valid-state"},
                 follow_redirects=False,
             )
-        return resp, save, profile, creds
+        return resp, profile
 
-    def test_one_consent_connects_gmail_and_calendar(self, test_client):
+    def test_one_consent_connects_gmail_and_calendar(self, test_client, callback_db, factory):
         """Both rows get the same token, so they can never expire apart."""
         from selko.services.integrations import CALENDAR_SCOPES, GMAIL_SCOPES
 
-        resp, save, _, creds = self._combined_callback(
-            test_client, GMAIL_SCOPES + CALENDAR_SCOPES
-        )
+        user = factory.user()
+        resp, _ = self._combined_callback(test_client, user, GMAIL_SCOPES + CALENDAR_SCOPES)
 
         assert resp.status_code == 302
         assert "oauth=success" in resp.headers["location"]
-        saved = [(c.args[2], c.args[3], c.args[4]) for c in save.call_args_list]
-        assert saved == [
-            ("gmail", creds, "user@gmail.com"),
-            ("google_calendar", creds, "user@gmail.com"),
-        ]
+        rows = self._rows(callback_db, user)
+        assert set(rows) == {"gmail", "google_calendar"}
+        assert {r["access_token"] for r in rows.values()} == {"google-access"}
+        assert {r["provider_email"] for r in rows.values()} == {"user@gmail.com"}
+        settings = callback_db.query_one(
+            "SELECT timezone FROM user_calendar_settings WHERE user_id = ?", (user,)
+        )
+        assert settings["timezone"] == "Europe/Helsinki", "calendar timezone auto-detected"
 
-    def test_an_unticked_product_is_not_connected(self, test_client):
+    def test_an_unticked_product_is_not_connected(self, test_client, callback_db, factory):
         """Google lets the user untick a scope; that product gets no row."""
         from selko.services.integrations import CALENDAR_SCOPES
 
-        resp, save, profile, _ = self._combined_callback(test_client, CALENDAR_SCOPES)
+        user = factory.user()
+        resp, profile = self._combined_callback(test_client, user, CALENDAR_SCOPES)
 
         assert "oauth=success" in resp.headers["location"]
-        assert [c.args[2] for c in save.call_args_list] == ["google_calendar"]
+        assert set(self._rows(callback_db, user)) == {"google_calendar"}
         profile.assert_not_called()
 
-    def test_a_consent_granting_nothing_connects_nothing(self, test_client):
-        resp, save, _, _ = self._combined_callback(test_client, ["openid"])
+    def test_a_consent_granting_nothing_connects_nothing(self, test_client, callback_db, factory):
+        user = factory.user()
+        resp, _ = self._combined_callback(test_client, user, ["openid"])
 
         assert "oauth=error" in resp.headers["location"]
-        save.assert_not_called()
+        assert self._rows(callback_db, user) == {}
+
+    def test_microsoft_callback_stores_outlook_tokens(self, test_client, callback_db, factory):
+        user = factory.user()
+        with (
+            patch(
+                "selko.api.routes.integrations.complete_oauth_flow",
+                return_value=({"access_token": "ms-access", "refresh_token": "ms-refresh",
+                               "expires_in": 3600, "scope": "Mail.Read"}, user, "outlook"),
+            ),
+            patch(
+                "selko.api.routes.integrations.get_outlook_user_profile",
+                return_value={"mail": "me@outlook.com"},
+            ),
+        ):
+            resp = test_client.get(
+                "/integrations/microsoft/callback",
+                params={"code": "c", "state": "s"},
+                follow_redirects=False,
+            )
+        assert "oauth=success" in resp.headers["location"]
+        row = self._rows(callback_db, user)["outlook"]
+        assert (row["access_token"], row["provider_email"]) == ("ms-access", "me@outlook.com")
 
     def test_callback_rejects_parked_google_photos(self, test_client):
         """Historical or stale Google Photos OAuth states cannot create integrations."""
@@ -854,6 +767,68 @@ class TestOAuthCallback:
 # ===========================================================================
 # Redirect URI validation
 # ===========================================================================
+
+
+class TestEmailFolderRoutes:
+    """Settings' folder list and preference, over a real SQLite database."""
+
+    @pytest.fixture
+    def folders(self, db, factory, test_client):
+        from selko.db.codec import new_id
+
+        alice, bob = factory.user(), factory.user()
+        gmail = factory.integration(alice, "gmail")
+        ids = {}
+        for name, system in (("Work", False), ("INBOX", True), ("Archive", False)):
+            ids[name] = new_id()
+            factory._insert("email_folders", {
+                "id": ids[name], "user_id": alice, "integration_id": gmail, "provider": "gmail",
+                "provider_folder_id": f"label-{name}", "name": name, "full_path": name,
+                "folder_kind": "label", "is_system": system, "is_included": False,
+                "sync_cursor": "cursor-1",
+            })
+        test_client.app.dependency_overrides[get_authenticated_client] = lambda: db
+        test_client.app.dependency_overrides[get_current_user] = lambda: CurrentUser(
+            id=alice, email="alice@example.test", token="t"
+        )
+        return {"alice": alice, "bob": bob, "integration": gmail, **ids}
+
+    def test_list_shows_the_users_non_system_folders_by_path(self, test_client, folders):
+        resp = test_client.get("/integrations/gmail/folders")
+        assert resp.status_code == 200
+        assert [f["name"] for f in resp.json()] == ["Archive", "Work"]
+        assert "sync_cursor" not in resp.json()[0], "provider state stays server-side"
+
+    def test_list_is_empty_for_another_user(self, test_client, folders):
+        test_client.app.dependency_overrides[get_current_user] = lambda: CurrentUser(
+            id=folders["bob"], email=None, token="t"
+        )
+        assert test_client.get("/integrations/gmail/folders").json() == []
+
+    def test_enabling_a_folder_persists_and_requests_a_poll(self, test_client, folders, db):
+        with db.write() as tx:
+            later = tx.ts(3600)
+            tx.execute("UPDATE email_sync_state SET next_poll_at = ?", (later,))
+        resp = test_client.patch(f"/integrations/gmail/folders/{folders['Work']}", json={"is_included": True})
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["is_included"] is True and resp.json()["user_override"] is True
+        row = db.query_one("SELECT is_included, sync_cursor FROM email_folders WHERE id = ?", (folders["Work"],))
+        assert (row[0], row[1]) == (1, None), "enabling resets the cursor"
+        due = db.query_one(
+            "SELECT next_poll_at FROM email_sync_state WHERE integration_id = ?", (folders["integration"],)
+        )[0]
+        assert due < later, "the integration is due now, not in an hour"
+
+    def test_system_and_foreign_folders_are_not_found(self, test_client, folders):
+        assert test_client.patch(
+            f"/integrations/gmail/folders/{folders['INBOX']}", json={"is_included": True}
+        ).status_code == 404
+        test_client.app.dependency_overrides[get_current_user] = lambda: CurrentUser(
+            id=folders["bob"], email=None, token="t"
+        )
+        assert test_client.patch(
+            f"/integrations/gmail/folders/{folders['Work']}", json={"is_included": True}
+        ).status_code == 404
 
 
 class TestGoogleConnectIsOneConsent:
@@ -958,81 +933,3 @@ class TestRedirectURIValidation:
                 follow_redirects=False,
             )
         assert resp.status_code == 302
-
-
-# ===========================================================================
-# History Undo
-# ===========================================================================
-
-
-class TestEventUndo:
-    """Tests for POST /events/{id}/undo."""
-
-    def test_undo_calendar_diverged_returns_409(self, test_client, mock_client):
-        """Diverged GCal edit returns 409 CALENDAR_DIVERGED."""
-        from selko.services.calendars import CalendarDivergedError
-
-        mock_owned = MagicMock()
-        mock_owned.data = {"id": "00000000-0000-0000-0000-000000000001", "user_id": "test-user-id"}
-        mock_client.table.return_value.select.return_value.eq.return_value.maybe_single.return_value.execute.return_value = mock_owned
-
-        with patch(
-            "selko.api.routes.events.undo_history_event",
-            side_effect=CalendarDivergedError(
-                "edited in Google Calendar",
-                ["title"],
-                differences=[
-                    {
-                        "field": "title",
-                        "selko": "Original title",
-                        "google": "Edited title",
-                    }
-                ],
-                google_event_url="https://calendar.google.com/event?eid=test",
-            ),
-        ):
-            resp = test_client.post(
-                "/events/00000000-0000-0000-0000-000000000001/undo",
-                json={"force": False},
-            )
-
-        assert resp.status_code == 409
-        detail = resp.json()["detail"]
-        assert detail["error"] == "CALENDAR_DIVERGED"
-        assert "Google Calendar" in detail["detail"]
-        assert detail["conflict"] == {
-            "changed_fields": ["title"],
-            "differences": [
-                {
-                    "field": "title",
-                    "selko": "Original title",
-                    "google": "Edited title",
-                }
-            ],
-            "google_event_url": "https://calendar.google.com/event?eid=test",
-        }
-
-    def test_undo_force_succeeds(
-        self, test_client, mock_client, mock_service_client
-    ):
-        mock_owned = MagicMock()
-        mock_owned.data = {"id": "00000000-0000-0000-0000-000000000001", "user_id": "test-user-id"}
-        mock_client.table.return_value.select.return_value.eq.return_value.maybe_single.return_value.execute.return_value = mock_owned
-
-        with patch(
-            "selko.api.routes.events.undo_history_event",
-            return_value="pending_review",
-        ) as mock_undo:
-            resp = test_client.post(
-                "/events/00000000-0000-0000-0000-000000000001/undo",
-                json={"force": True},
-            )
-
-        assert resp.status_code == 200
-        assert resp.json()["status"] == "pending_review"
-        assert mock_undo.call_args.args[:3] == (
-            mock_service_client,
-            "00000000-0000-0000-0000-000000000001",
-            "test-user-id",
-        )
-        assert mock_undo.call_args.kwargs.get("force") is True

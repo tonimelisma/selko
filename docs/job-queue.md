@@ -13,16 +13,12 @@ drills or a future dedicated service.
 The v2 path uses `email_sync_state` leases for one active integration, records
 each run in `email_sync_runs`, and writes immutable provider identities to
 `email_ingestion_items` before acquiring bodies or attachments. Claims reclaim
-expired leases during ordinary `FOR UPDATE SKIP LOCKED` claims; there is no
-startup-only unlock step. Provider cursor commits occur after each durable
+expired leases during ordinary claims (each claim is one write transaction
+under the single writer); there is no periodic unlock sweep. Provider cursor commits occur after each durable
 page, while message acquisition, attachment storage, and downstream LLM work
 retry independently.
 
-The old `scheduled_tasks` email-fetch path below remains only as an explicit
-rollback compatibility path while v2 is disabled. It must not be enabled at
-the same time as v2.
-
-**Architecture**: Status-based workers using PostgreSQL atomic claiming with continuous worker pool (no Redis required) following the Async Monolith pattern.
+**Architecture**: Status-based workers claiming rows from the SQLite data tables, in one process with the API (no Redis, no separate worker service). Work is announced by `selko.db.bus.WorkSignals`: a committed write that creates work wakes the worker that should take it, and a slow safety-net poll is the floor.
 
 ## Overview
 
@@ -32,10 +28,10 @@ The background processing system uses status-based polling where data tables ARE
 - **Natural idempotency**: Data state is always consistent
 
 Components:
-- **PostgreSQL** for queue storage via data tables (Supabase)
+- **SQLite** data tables as the queue (`selko.db`)
 - **Worker Pool** with long-running asyncio tasks for processing
 - **Ingestion coordinator** owning its own polling cadence via database leases
-- **Atomic claiming** via `FOR UPDATE SKIP LOCKED`
+- **Atomic claiming**: one `db.write()` transaction per claim, serialized by the single writer; leases carry a generation that fences stale completions
 
 ## Data Flow
 
@@ -61,12 +57,12 @@ Emails are stored with `processing_status='pending'`. Workers claim them directl
 
 ```python
 # Worker claims next pending email
-email = await claim_pending_email(worker_id)  # Uses FOR UPDATE SKIP LOCKED
+email = claim_unprocessed_email(db, worker_id, lock_seconds)  # selko.db.emails
 
 # Worker processes; the claim increments lock_generation on every lease.
 await process_email(email)
 
-# The fenced extraction RPC commits all event/source decisions and sets the
+# The fenced extraction commit writes all event/source decisions and sets the
 # terminal email status in the same transaction.
 commit_email_extraction(email_id, worker_id, lock_generation, decisions, "processed")
 ```
@@ -74,10 +70,11 @@ commit_email_extraction(email_id, worker_id, lock_generation, decisions, "proces
 **Email statuses**: `pending` → `processing` → `processed` / `failed` / `skipped`
 
 Each extracted-event decision includes the local-day candidate window and its
-fingerprint. The RPC rechecks the MD5 of sorted `id:updated_at` rows under a
-short transaction-scoped advisory key. A changed band returns a conflict with
-no writes; Python rereads and recomputes up to three times. The advisory key is
-never held during provider or LLM I/O, so extraction remains parallel.
+fingerprint. `selko.db.events.commit_email_extraction` rechecks the MD5 of
+sorted `id:updated_at` rows inside its write transaction. A changed band
+returns a conflict with no writes; Python rereads and recomputes up to three
+times. No lock is held during provider or LLM I/O, so extraction remains
+parallel.
 
 ### 2. Event Sync (status-based)
 
@@ -85,7 +82,7 @@ Events with `status='approved'` are automatically synced. Workers claim them dir
 
 ```python
 # Worker claims next approved event
-event = await claim_approved_event_for_sync(worker_id)  # Uses FOR UPDATE SKIP LOCKED
+event = await claim_approved_event_for_sync(pool, worker_id)  # selko.db.calendar_work
 
 # Worker syncs to Google Calendar
 quota = QuotaService(client).check_and_increment(event["user_id"], "calendar_syncs")
@@ -185,29 +182,26 @@ async def _process_any_work(self, worker_id: str) -> bool:
 - `WORKER_IDLE_SLEEP_SECONDS`: Sleep time when no work available (default: 1.0)
 - `WORKER_ERROR_BACKOFF_SECONDS`: Sleep time after errors (default: 5.0)
 
-## RPC Functions
+## Claim functions
 
-Atomic claiming functions using `FOR UPDATE SKIP LOCKED`:
+Python functions in `backend/selko/db/` (they replaced Postgres RPCs of the same names):
 
 | Function | Purpose |
 |----------|---------|
-| `claim_unprocessed_email(worker_id, lock_duration)` | Claim next pending email |
-| `claim_approved_event(worker_id, lock_duration)` | Claim next approved event |
-| `claim_next_scheduled_task(task_types, worker_id, lock_duration)` | Claim next scheduled task |
-| `unlock_expired_email_locks()` | Reset stuck email processing |
-| `unlock_expired_event_locks()` | Reset stuck event syncing |
-| `unlock_expired_scheduled_tasks()` | Reset stuck scheduled tasks |
+| `emails.claim_unprocessed_email(db, worker_id, lock_duration_seconds)` | Reclaim one expired lease, then claim the oldest claimable email |
+| `emails.fail_email_processing(...)` | Fenced retry-or-terminate for a claimed email |
+| `calendar_work.claim_calendar_work_item(db, worker_id, lease_seconds, providers)` | Claim the next calendar work item whose provider is writable; returns `(item, event)` |
+| `calendar_work.complete_calendar_work(...)` / `fail_calendar_work(...)` | Fenced completion of a calendar work item |
+| `email_sync.claim_due_email_sync(...)` and the acquisition/attachment claims | Provider discovery and acquisition leases |
+| `startup.reset_leases_at_startup(db)` | Release every lease a previous process held, before workers start |
 
 ## Running Locally
 
 The worker system automatically starts with the FastAPI server:
 
 ```bash
-# Start local Supabase
-supabase start
-
-# Run API server (workers start automatically if enabled)
-ENABLE_BACKGROUND_PROCESSING=true uv run python -m selko.api
+# Run API server (workers start automatically if enabled; data in SELKO_DATA_DIR)
+ENABLE_BACKGROUND_PROCESSING=true uv run uvicorn selko.api.app:app --port 8000
 
 # Work is processed automatically in the background
 # Check logs to see processing
@@ -216,6 +210,9 @@ ENABLE_BACKGROUND_PROCESSING=true uv run python -m selko.api
 ## Monitoring
 
 ### View Pending Work
+
+`/health/ingestion` and `/health` report counts. To look at rows, open the file
+read-only: `sqlite3 -readonly "file:$SELKO_DATA_DIR/selko.db?mode=ro"`.
 
 ```sql
 -- Pending emails awaiting LLM processing
@@ -235,22 +232,15 @@ FROM scheduled_tasks
 WHERE status = 'pending';
 ```
 
-### Unlock Stuck Work
+### Stuck work
 
-```sql
--- Unlock emails stuck in processing
-SELECT unlock_expired_email_locks();
-
--- Unlock events stuck in syncing
-SELECT unlock_expired_event_locks();
-
--- Unlock stuck scheduled tasks
-SELECT unlock_expired_scheduled_tasks();
-```
+An expired lease is reclaimed by the next claim, and leases held by a previous
+process are released at startup (`selko.db.startup.reset_leases_at_startup`)
+before any worker starts. There is no manual unlock step.
 
 ## Testing
 
-Integration tests validate the worker system with real Supabase:
+Integration tests validate the worker system over a real SQLite file:
 
 ```bash
 # Run worker tests
@@ -260,7 +250,7 @@ uv run pytest backend/tests/integration/test_integration_workers.py -v
 # - Email status-based claiming
 # - Event status-based claiming
 # - Scheduled task lifecycle
-# - Concurrent worker safety (SKIP LOCKED)
+# - Concurrent worker safety (single writer, generation fences)
 # - Lock expiry recovery
 # - Retry logic
 ```
@@ -286,7 +276,5 @@ The Async Monolith runs as a single process. For MVP, this is sufficient (<10,00
 - **Scalability**: Add more workers by increasing `WORKER_POOL_SIZE`
 
 ### Horizontal Scaling
-When scaling to multiple instances:
-- Only ONE instance should run the scheduler (leader election needed)
-- Multiple instances can run worker pools (SKIP LOCKED prevents conflicts)
-- Consider migrating to pg_cron for scheduling at scale
+One process owns the database file. Running a second instance against the same
+file is not supported; scale by giving the one process more concurrency.

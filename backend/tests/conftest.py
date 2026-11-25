@@ -6,6 +6,9 @@ import pytest
 
 from selko.config import Config
 
+# `db` and `factory`: a fresh SQLite database per test (selko.db).
+pytest_plugins = ["tests.sqlite_fixtures"]
+
 
 def pytest_addoption(parser):
     """Add custom command line options."""
@@ -41,13 +44,8 @@ def mock_config():
     """Create a mock Config object for testing."""
     return Config(
         environment="development",
-        supabase_url="http://localhost:54321",
-        supabase_key="test-anon-key",
-        supabase_service_role_key="test-service-key",
         google_client_id="test-client-id",
         google_client_secret="test-client-secret",
-        test_user_email="test@example.com",
-        test_user_password="testpass",
     )
 
 

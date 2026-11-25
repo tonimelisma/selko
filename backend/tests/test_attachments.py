@@ -1,6 +1,7 @@
-"""Unit tests for attachment service.
+"""Unit tests for the attachment service.
 
-Tests attachment processing functions with mocked dependencies.
+Storage runs against a real temporary database and attachments directory;
+only the Gmail API is mocked.
 """
 
 import base64
@@ -8,14 +9,18 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from selko.db.runtime import attachments_dir, use_database
 from selko.services.attachments import (
     AttachmentError,
     calculate_content_hash,
+    delete_attachment,
     download_gmail_attachment,
     process_attachment,
+    read_attachment_file,
     store_image_content,
+    upload_to_storage,
+    write_attachment_file,
 )
-from selko.services.auth import AuthenticationError
 from selko.services.gmail import extract_attachments, extract_inline_images
 
 
@@ -402,153 +407,106 @@ class TestExtractInlineImages:
         assert result[0]["mime_type"] == "image/gif"
 
 
+@pytest.fixture
+def store(db):
+    """The test database installed as the process database (the file store's root)."""
+    use_database(db)
+    yield db
+    use_database(None)
+
+
+def _config(max_size: int = 10 * 1024 * 1024):
+    config = MagicMock()
+    config.max_attachment_size = max_size
+    config.storage_bucket_attachments = "attachments"
+    return config
+
+
 class TestStoreImageContent:
-    """Test storing raw image bytes as attachment records."""
+    """Storing raw image bytes writes a file and an attachment row."""
 
-    @patch("selko.services.attachments.save_attachment_metadata")
-    @patch("selko.services.attachments.upload_to_storage")
-    @patch("selko.services.attachments.get_current_user_id")
-    @patch("selko.services.attachments.check_duplicate_attachment")
-    def test_stores_new_image(
-        self, mock_check_dup, mock_get_user, mock_upload, mock_save
-    ):
-        """Store a new image that has no duplicate."""
-        mock_check_dup.return_value = None
-        mock_get_user.return_value = "user-123"
-        mock_upload.return_value = "user-123/abc_linked_0.jpg"
-        mock_save.return_value = {"id": "att-new", "filename": "linked_0.jpg"}
-
-        config = MagicMock()
-        config.max_attachment_size = 10 * 1024 * 1024
-        config.storage_bucket_attachments = "attachments"
+    def test_stores_new_image(self, store, factory):
+        user = factory.user()
+        email = factory.email(user)
 
         result = store_image_content(
-            client=MagicMock(),
-            email_id="email-123",
+            client=store,
+            email_id=email,
             image_data=b"x" * 1000,
             mime_type="image/jpeg",
             filename="linked_0.jpg",
-            config=config,
+            config=_config(),
+            user_id=user,
         )
 
         assert result is not None
         assert result["filename"] == "linked_0.jpg"
-        mock_upload.assert_called_once()
-        mock_save.assert_called_once()
+        assert result["user_id"] == user
+        assert result["storage_path"].startswith(f"{user}/")
+        assert result["storage_path"].endswith("_linked_0.jpg")
+        assert read_attachment_file(result["storage_path"]) == b"x" * 1000
+        assert factory.row("attachments", result["id"])["content_hash"] == calculate_content_hash(b"x" * 1000)
 
-    @patch("selko.services.attachments.check_duplicate_attachment")
-    def test_skips_duplicate_image(self, mock_check_dup):
-        """Skip image that already exists (hash match)."""
-        mock_check_dup.return_value = {"id": "existing-att", "filename": "old.jpg"}
+    def test_skips_duplicate_image(self, store, factory):
+        """The same bytes for the same user reuse the stored row and write no second file."""
+        user = factory.user()
+        email = factory.email(user)
+        first = store_image_content(store, email, b"same", "image/png", "a.png", _config(), user_id=user)
+        second = store_image_content(store, email, b"same", "image/png", "b.png", _config(), user_id=user)
 
-        config = MagicMock()
-        config.max_attachment_size = 10 * 1024 * 1024
+        assert second["id"] == first["id"]
+        assert len(list((attachments_dir() / user).iterdir())) == 1
 
+    def test_duplicates_are_per_user(self, store, factory):
+        """Another user's identical file is not a duplicate: rows are owned."""
+        alice, bob = factory.user(), factory.user()
+        a = store_image_content(store, factory.email(alice), b"same", "image/png", "a.png", _config(), user_id=alice)
+        b = store_image_content(store, factory.email(bob), b"same", "image/png", "b.png", _config(), user_id=bob)
+        assert a["id"] != b["id"]
+        assert b["user_id"] == bob
+
+    def test_skips_empty_data(self, store):
         result = store_image_content(
-            client=MagicMock(),
-            email_id="email-123",
-            image_data=b"x" * 1000,
-            mime_type="image/jpeg",
-            filename="linked_0.jpg",
-            config=config,
+            client=store, email_id="email-123", image_data=b"", mime_type="image/jpeg",
+            filename="empty.jpg", config=_config(), user_id="user-1",
         )
-
-        assert result["id"] == "existing-att"
-
-    def test_skips_empty_data(self):
-        """Return None for empty image data."""
-        config = MagicMock()
-
-        result = store_image_content(
-            client=MagicMock(),
-            email_id="email-123",
-            image_data=b"",
-            mime_type="image/jpeg",
-            filename="empty.jpg",
-            config=config,
-        )
-
         assert result is None
 
-    def test_skips_oversized_image(self):
-        """Skip images exceeding max_attachment_size."""
-        config = MagicMock()
-        config.max_attachment_size = 1000
-
+    def test_skips_oversized_image(self, store):
         result = store_image_content(
-            client=MagicMock(),
-            email_id="email-123",
-            image_data=b"x" * 2000,
-            mime_type="image/jpeg",
-            filename="huge.jpg",
-            config=config,
+            client=store, email_id="email-123", image_data=b"x" * 2000, mime_type="image/jpeg",
+            filename="huge.jpg", config=_config(max_size=1000), user_id="user-1",
         )
-
         assert result is None
 
 
 class TestAttachmentOwnerThreading:
     """Regression tests for the worker 'No user signed in' failure.
 
-    Background workers use a service-role client with no auth session, so
-    falling back to get_current_user_id raised AuthenticationError and every
-    Gmail fetch with attachments failed in production. When user_id is passed
-    explicitly, the session lookup must never happen.
+    Background workers once fell back to a session lookup for the owner, and
+    every Gmail fetch with attachments failed in production. Ownership is now
+    always explicit: the owner passed is the owner stored, and a missing
+    owner is refused rather than guessed.
     """
 
-    def _config(self):
-        config = MagicMock()
-        config.max_attachment_size = 10 * 1024 * 1024
-        config.storage_bucket_attachments = "attachments"
-        return config
-
-    @patch("selko.services.attachments.save_attachment_metadata")
-    @patch("selko.services.attachments.upload_to_storage")
-    @patch("selko.services.attachments.get_current_user_id")
-    @patch("selko.services.attachments.check_duplicate_attachment")
-    def test_store_image_content_with_user_id_skips_session_lookup(
-        self, mock_check_dup, mock_get_user, mock_upload, mock_save
-    ):
-        """store_image_content(user_id=...) works on a session-less client."""
-        mock_check_dup.return_value = None
-        mock_get_user.side_effect = AuthenticationError("No user signed in")
-        mock_upload.return_value = "user-123/abc_linked_0.jpg"
-        mock_save.return_value = {"id": "att-new", "filename": "linked_0.jpg"}
-
+    def test_store_image_content_stores_the_given_owner(self, store, factory):
+        user = factory.user()
         result = store_image_content(
-            client=MagicMock(),
-            email_id="email-123",
-            image_data=b"x" * 1000,
-            mime_type="image/jpeg",
-            filename="linked_0.jpg",
-            config=self._config(),
-            user_id="user-123",
+            client=store, email_id=factory.email(user), image_data=b"x" * 10,
+            mime_type="image/jpeg", filename="linked_0.jpg", config=_config(), user_id=user,
         )
-
-        assert result is not None
-        mock_get_user.assert_not_called()
-        assert mock_upload.call_args.kwargs["user_id"] == "user-123"
-        assert mock_save.call_args.kwargs["user_id"] == "user-123"
+        assert result["user_id"] == user
+        assert result["storage_path"].split("/")[0] == user
 
     @patch("selko.services.attachments.download_gmail_attachment")
-    @patch("selko.services.attachments.save_attachment_metadata")
-    @patch("selko.services.attachments.upload_to_storage")
-    @patch("selko.services.attachments.get_current_user_id")
-    @patch("selko.services.attachments.check_duplicate_attachment")
-    def test_process_attachment_with_user_id_skips_session_lookup(
-        self, mock_check_dup, mock_get_user, mock_upload, mock_save, mock_download
-    ):
-        """process_attachment(user_id=...) works on a session-less client."""
-        mock_check_dup.return_value = None
-        mock_get_user.side_effect = AuthenticationError("No user signed in")
+    def test_process_attachment_stores_the_given_owner(self, mock_download, store, factory):
+        user = factory.user()
         mock_download.return_value = b"pdf-bytes"
-        mock_upload.return_value = "user-123/abc_report.pdf"
-        mock_save.return_value = {"id": "att-new", "filename": "report.pdf"}
 
         result = process_attachment(
-            client=MagicMock(),
+            client=store,
             gmail_service=MagicMock(),
-            email_id="email-123",
+            email_id=factory.email(user),
             message_id="msg-1",
             attachment_part={
                 "attachment_id": "gmail-att-1",
@@ -556,14 +514,71 @@ class TestAttachmentOwnerThreading:
                 "mime_type": "application/pdf",
                 "size_bytes": 9,
             },
-            config=self._config(),
-            user_id="user-123",
+            config=_config(),
+            user_id=user,
         )
 
-        assert result is not None
-        mock_get_user.assert_not_called()
-        assert mock_upload.call_args.kwargs["user_id"] == "user-123"
-        assert mock_save.call_args.kwargs["user_id"] == "user-123"
+        assert result["user_id"] == user
+        assert result["provider_attachment_id"] == "gmail-att-1"
+        assert read_attachment_file(result["storage_path"]) == b"pdf-bytes"
+
+    def test_a_missing_owner_is_refused(self, store, factory):
+        with pytest.raises(AttachmentError, match="user_id"):
+            store_image_content(
+                client=store, email_id=factory.email(factory.user()), image_data=b"x",
+                mime_type="image/png", filename="x.png", config=_config(),
+            )
+        assert not any(p.is_file() for p in attachments_dir().rglob("*"))
+
+
+class TestFileStore:
+    """Attachments on disk: atomic writes, paths that cannot escape, delete."""
+
+    def test_write_is_atomic_and_leaves_no_temp_file(self, store):
+        write_attachment_file("user-1/abc_file.txt", b"hello")
+        files = sorted(p.name for p in (attachments_dir() / "user-1").iterdir())
+        assert files == ["abc_file.txt"]
+        assert read_attachment_file("user-1/abc_file.txt") == b"hello"
+
+    def test_a_failed_write_leaves_no_partial_file(self, store, monkeypatch):
+        import os
+
+        def crash(_src, _dst):
+            raise OSError("crash between write and rename")
+
+        monkeypatch.setattr(os, "replace", crash)
+        with pytest.raises(OSError):
+            write_attachment_file("user-1/abc_file.txt", b"hello")
+        assert not any(p.is_file() for p in attachments_dir().rglob("*"))
+
+    @pytest.mark.parametrize(
+        "path", ["../escape.txt", "user-1/../../escape.txt", "/etc/passwd", "", "user/../.."],
+    )
+    def test_paths_never_escape_the_attachments_directory(self, store, path):
+        with pytest.raises(AttachmentError):
+            write_attachment_file(path, b"x")
+        with pytest.raises(AttachmentError):
+            read_attachment_file(path)
+
+    def test_a_filename_cannot_steer_the_path(self, store):
+        path = upload_to_storage(store, "user-1", "../../../etc/passwd", b"x", "text/plain")
+        assert path.startswith("user-1/")
+        assert ".." not in path.split("/")
+        assert (attachments_dir() / path).resolve().is_relative_to(attachments_dir().resolve())
+
+    def test_delete_removes_the_row_then_the_file(self, store, factory):
+        user = factory.user()
+        row = store_image_content(store, factory.email(user), b"img", "image/png", "i.png", _config(), user_id=user)
+        assert delete_attachment(store, row["id"], _config(), user_id=user) is True
+        assert factory.row("attachments", row["id"]) is None
+        assert not (attachments_dir() / row["storage_path"]).exists()
+
+    def test_delete_refuses_another_users_attachment(self, store, factory):
+        owner, other = factory.user(), factory.user()
+        row = store_image_content(store, factory.email(owner), b"img", "image/png", "i.png", _config(), user_id=owner)
+        assert delete_attachment(store, row["id"], _config(), user_id=other) is False
+        assert factory.row("attachments", row["id"]) is not None
+        assert read_attachment_file(row["storage_path"]) == b"img"
 
 
 class TestAttachmentError:

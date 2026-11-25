@@ -23,8 +23,9 @@ from typing import Any
 
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-from supabase import Client
 
+from selko.db import mirror as db_mirror
+from selko.db.connection import Database
 from selko.services import calendar_providers as providers
 from selko.services.calendar_providers import CalendarSyncTokenExpired, GoogleCalendarAdapter
 from selko.services.integrations import get_credentials
@@ -158,7 +159,7 @@ def fetch_page(
     )
 
 
-def _mirror_adapter(supabase_client: Client, user_id: str, provider: str) -> Any:
+def _mirror_adapter(supabase_client: Database, user_id: str, provider: str) -> Any:
     if provider == providers.OUTLOOK:
         return calendar_adapter(supabase_client, user_id, provider)
     credentials = get_credentials(supabase_client, user_id, "google_calendar")
@@ -168,7 +169,7 @@ def _mirror_adapter(supabase_client: Client, user_id: str, provider: str) -> Any
 
 
 def sync_calendar(
-    supabase_client: Client,
+    supabase_client: Database,
     user_id: str,
     integration_id: str,
     calendar_id: str = "primary",
@@ -184,15 +185,8 @@ def sync_calendar(
 
     window = rolling_window(now)
 
-    state = (
-        supabase_client.table("calendar_mirror_state")
-        .select("sync_token")
-        .eq("integration_id", integration_id)
-        .eq("calendar_id", calendar_id)
-        .maybe_single()
-        .execute()
-    )
-    sync_token = (getattr(state, "data", None) or {}).get("sync_token")
+    state = db_mirror.get_state(supabase_client, user_id, integration_id, calendar_id)
+    sync_token = (state or {}).get("sync_token")
 
     full_resync = sync_token is None
     rows: list[dict[str, Any]] = []
@@ -235,20 +229,13 @@ def sync_calendar(
             break
 
     if rows:
-        supabase_client.table("calendar_entries").upsert(
-            rows, on_conflict="integration_id,calendar_id,provider_event_id"
-        ).execute()
-        # Read the rows back rather than trusting the upsert's response. It
-        # returned nothing, so `stored` was empty and no hint was ever written:
-        # production mirrored 1595 entries carrying 1595 iCalUIDs and indexed
-        # none of them, which is the whole point of the mirror. The tests
-        # covered the row mapping and the wiring, and neither could see this,
-        # because the gap is in what the database hands back.
-        _write_entry_hints(
-            supabase_client,
-            user_id,
-            _reload_stored(supabase_client, user_id, rows),
-        )
+        # The upsert returns the stored rows (their ids), which the hints
+        # need. Under PostgREST it returned nothing, so `stored` was empty and
+        # no hint was ever written: production mirrored 1595 entries carrying
+        # 1595 iCalUIDs and indexed none of them. The mirror tests run on a
+        # real database so that gap stays visible.
+        stored = db_mirror.upsert_entries(supabase_client, user_id, rows)
+        _write_entry_hints(supabase_client, user_id, stored)
 
     # Index anything still missing a hint, whether or not this pass changed it.
     #
@@ -260,24 +247,16 @@ def sync_calendar(
     # means the index converges on its own.
     _index_unhinted_entries(supabase_client, user_id)
 
-    supabase_client.table("calendar_mirror_state").upsert(
-        {
-            "integration_id": integration_id,
-            "calendar_id": calendar_id,
-            "user_id": user_id,
-            "sync_token": next_sync_token,
-            "window_start": window[0].isoformat(),
-            "window_end": window[1].isoformat(),
-            "last_success_at": datetime.now(timezone.utc).isoformat(),
-            "last_full_resync_at": (
-                datetime.now(timezone.utc).isoformat() if full_resync else None
-            ),
-            "consecutive_failures": 0,
-            "last_error_code": None,
-            "updated_at": datetime.now(timezone.utc).isoformat(),
-        },
-        on_conflict="integration_id,calendar_id",
-    ).execute()
+    db_mirror.save_state(
+        supabase_client,
+        user_id,
+        integration_id,
+        calendar_id,
+        sync_token=next_sync_token,
+        window_start=window[0],
+        window_end=window[1],
+        full_resync=full_resync,
+    )
 
     return {
         "entries": len(rows),
@@ -290,7 +269,7 @@ def sync_calendar(
 
 
 def _write_entry_hints(
-    supabase_client: Client, user_id: str, stored: list[dict[str, Any]]
+    supabase_client: Database, user_id: str, stored: list[dict[str, Any]]
 ) -> None:
     """Index mirrored entries by identity so matching can find them.
 
@@ -327,46 +306,30 @@ def _write_entry_hints(
     if not payload:
         return
     try:
-        supabase_client.table("event_identity_hints").upsert(
-            payload,
-            on_conflict="calendar_entry_id,kind,value_hash,recurrence_id",
-        ).execute()
+        db_mirror.upsert_entry_hints(supabase_client, user_id, payload)
     except Exception:
         # A hint that fails to store costs a match, never a wrong one.
         logger.exception("Could not index calendar entry identity hints")
 
 
 def _reload_stored(
-    supabase_client: Client, user_id: str, rows: list[dict[str, Any]]
+    supabase_client: Database, user_id: str, rows: list[dict[str, Any]]
 ) -> list[dict[str, Any]]:
     """Fetch the ids of entries just written, in batches.
 
-    Upsert does not return representations here, and hint rows need the entry
-    id. Batched because `in_` on a few thousand provider ids is a URL, not a
-    query, and a mirror of a busy calendar will exceed what one request can
-    carry.
+    `sync_calendar` uses what the upsert returns; this re-reads by provider
+    id for a caller holding only the rows it sent.
     """
     provider_ids = [row["provider_event_id"] for row in rows if row.get("provider_event_id")]
-    stored: list[dict[str, Any]] = []
-    batch = 200
-    for start in range(0, len(provider_ids), batch):
-        chunk = provider_ids[start : start + batch]
-        try:
-            result = (
-                supabase_client.table("calendar_entries")
-                .select("id,ical_uid,original_start,deleted_at,join_url")
-                .eq("user_id", user_id)
-                .in_("provider_event_id", chunk)
-                .execute()
-            )
-            stored.extend(row for row in (result.data or []) if isinstance(row, dict))
-        except Exception:
-            logger.exception("Could not reload mirrored entries for indexing")
-    return stored
+    try:
+        return db_mirror.entries_by_provider_ids(supabase_client, user_id, provider_ids)
+    except Exception:
+        logger.exception("Could not reload mirrored entries for indexing")
+        return []
 
 
 def _index_unhinted_entries(
-    supabase_client: Client, user_id: str, limit: int = 500
+    supabase_client: Database, user_id: str, limit: int = 500
 ) -> int:
     """Write hints for mirrored entries that have none. Returns how many.
 
@@ -375,17 +338,7 @@ def _index_unhinted_entries(
     the whole sync.
     """
     try:
-        entries = (
-            supabase_client.table("calendar_entries")
-            .select("id,ical_uid,original_start")
-            .eq("user_id", user_id)
-            .not_.is_("ical_uid", "null")
-            .is_("deleted_at", "null")
-            .limit(limit)
-            .execute()
-            .data
-            or []
-        )
+        entries = db_mirror.indexable_entries(supabase_client, user_id, limit)
     except Exception:
         logger.exception("Could not list calendar entries for indexing")
         return 0
@@ -393,19 +346,7 @@ def _index_unhinted_entries(
         return 0
 
     try:
-        hinted = {
-            row["calendar_entry_id"]
-            for row in (
-                supabase_client.table("event_identity_hints")
-                .select("calendar_entry_id")
-                .eq("user_id", user_id)
-                .not_.is_("calendar_entry_id", "null")
-                .execute()
-                .data
-                or []
-            )
-            if row.get("calendar_entry_id")
-        }
+        hinted = db_mirror.hinted_entry_ids(supabase_client, user_id)
     except Exception:
         logger.exception("Could not list existing calendar hints")
         return 0
@@ -419,7 +360,7 @@ def _index_unhinted_entries(
 
 
 def sync_all_calendars(
-    supabase_client: Client,
+    supabase_client: Database,
     user_id: str,
     integration_id: str,
     provider: str = providers.GOOGLE,

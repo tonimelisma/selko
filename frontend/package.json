@@ -38,7 +38,6 @@
   },
   "dependencies": {
     "@fontsource-variable/figtree": "^5.2.10",
-    "@supabase/supabase-js": "^2.110.2",
     "svelte-i18n": "^4.0.1"
   },
   "overrides": {

@@ -1,24 +1,60 @@
 """Attachment service for Selko.
 
-Handles downloading attachments from Gmail, uploading to Supabase Storage,
-and managing attachment metadata with content deduplication.
+Handles downloading attachments from Gmail, storing their bytes as files
+under the data directory, and managing attachment metadata with content
+deduplication.
+
+Files live at ``<attachments dir>/<storage_path>``, where ``storage_path``
+keeps the layout Supabase Storage used, ``{user_id}/{uuid12}_{filename}``, so
+the imported rows' paths stay valid (docs/specs/sqlite-single-process
+decision D8). Every write is atomic (temp file + rename), and a path that
+would leave the attachments directory is refused.
 """
 
 import base64
+import contextlib
 import hashlib
 import logging
+import os
+import tempfile
 import time
+from pathlib import Path
 from typing import Any, Optional
 from uuid import uuid4
 
 from googleapiclient.errors import HttpError
-from supabase import Client, PostgrestAPIError
 
 from selko.config import Config
-from selko.services.auth import get_current_user_id
+from selko.db import attachments as db_attachments
+from selko.db.connection import Database
+from selko.db.errors import DbError
+from selko.db.runtime import attachments_dir
 from selko.services.egress import GMAIL, record_egress
 
 logger = logging.getLogger(__name__)
+
+# The content types Selko stores and reads: the worker's accept-set. The file
+# store refuses anything else, so a type outside it is terminal `unsupported`
+# rather than a retry ladder ending in dead_letter.
+SUPPORTED_ATTACHMENT_MIME_PREFIXES = ("image/", "text/")
+SUPPORTED_ATTACHMENT_MIMES = {
+    "application/pdf",
+    "application/rtf",
+    "application/ics",
+    "text/calendar",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/vnd.ms-powerpoint",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+}
+
+
+def is_supported_attachment_type(mime_type: str | None) -> bool:
+    """Whether the file store accepts this content type."""
+    mime = str(mime_type or "application/octet-stream").split(";", 1)[0].strip().lower()
+    return mime.startswith(SUPPORTED_ATTACHMENT_MIME_PREFIXES) or mime in SUPPORTED_ATTACHMENT_MIMES
 
 
 class AttachmentError(Exception):
@@ -28,10 +64,10 @@ class AttachmentError(Exception):
 
 
 class AttachmentTypeRejected(AttachmentError):
-    """Storage refused the content type, and will refuse it again.
+    """The store refused the content type, and will refuse it again.
 
     Distinguished from a plain ``AttachmentError`` because the retry ladder is
-    the wrong response to it. A bucket MIME rejection is a property of the
+    the wrong response to it. A type rejection is a property of the
     type, not of the moment: retrying spends all 8 attempts to reach the same
     `415`, and the row then lands in `dead_letter` -- one of the four counts
     `assert-health.sh` calls never acceptable, which no worker clears, so a
@@ -58,33 +94,85 @@ def calculate_content_hash(data: bytes) -> str:
 
 
 def check_duplicate_attachment(
-    client: Client,
+    client: Database,
     content_hash: str,
+    user_id: str | None = None,
 ) -> Optional[dict]:
-    """Check if attachment with same hash already exists for user.
+    """Return the user's attachment with the same hash, if any.
 
     Args:
-        client: Authenticated Supabase client.
+        client: The process database.
         content_hash: SHA-256 hash to check.
+        user_id: Owner; duplicates are only ever the owner's own rows.
 
     Returns:
         Existing attachment record if found, None otherwise.
     """
+    if user_id is None:
+        return None
     try:
-        result = (
-            client.table("attachments")
-            .select("*")
-            .eq("content_hash", content_hash)
-            .limit(1)
-            .execute()
-        )
-        if result.data:
-            logger.debug(f"Found duplicate attachment with hash: {content_hash[:16]}...")
-            return result.data[0]
+        existing = db_attachments.find_by_content_hash(client, user_id, content_hash)
+    except DbError as e:
+        logger.warning(f"Error checking for duplicate: {e}")
         return None
-    except PostgrestAPIError as e:
-        logger.warning(f"Error checking for duplicate: {e.message}")
-        return None
+    if existing:
+        logger.debug(f"Found duplicate attachment with hash: {content_hash[:16]}...")
+    return existing
+
+
+# ---------------------------------------------------------------------------
+# The file store
+# ---------------------------------------------------------------------------
+
+
+def _resolve_storage_path(storage_path: str) -> Path:
+    """The file for a stored path, refusing anything outside the attachments dir."""
+    if not storage_path or "\0" in storage_path:
+        raise AttachmentError("empty or invalid storage path")
+    relative = Path(storage_path)
+    if relative.is_absolute() or ".." in relative.parts:
+        raise AttachmentError(f"storage path escapes the attachments directory: {storage_path!r}")
+    root = attachments_dir().resolve()
+    target = (root / relative).resolve()
+    if root not in target.parents:
+        raise AttachmentError(f"storage path escapes the attachments directory: {storage_path!r}")
+    return target
+
+
+def write_attachment_file(storage_path: str, data: bytes) -> Path:
+    """Write ``data`` atomically: a temp file in the same directory, then rename."""
+    target = _resolve_storage_path(storage_path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=target.parent, prefix=".tmp-", suffix=".part")
+    try:
+        with os.fdopen(fd, "wb") as handle:
+            handle.write(data)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.chmod(tmp, 0o600)
+        os.replace(tmp, target)
+    except BaseException:
+        with contextlib.suppress(OSError):
+            os.unlink(tmp)
+        raise
+    return target
+
+
+def read_attachment_file(storage_path: str) -> bytes:
+    """The stored bytes of an attachment."""
+    try:
+        return _resolve_storage_path(storage_path).read_bytes()
+    except FileNotFoundError as e:
+        raise AttachmentError(f"attachment file missing: {storage_path}") from e
+
+
+def delete_attachment_file(storage_path: str) -> bool:
+    """Remove a stored file; False when it was already gone."""
+    try:
+        _resolve_storage_path(storage_path).unlink()
+        return True
+    except FileNotFoundError:
+        return False
 
 
 def download_gmail_attachment(
@@ -149,35 +237,36 @@ def download_gmail_attachment(
 
 
 def upload_to_storage(
-    client: Client,
+    client: Database,
     user_id: str,
     filename: str,
     data: bytes,
     mime_type: str,
     bucket: str = "attachments",
 ) -> str:
-    """Upload attachment to Supabase Storage.
+    """Store attachment bytes as a file under the attachments directory.
 
     Args:
-        client: Authenticated Supabase client.
+        client: The process database (unused; kept for the call sites).
         user_id: User UUID for path namespacing.
         filename: Original filename.
         data: File bytes.
-        mime_type: MIME type.
-        bucket: Storage bucket name.
+        mime_type: MIME type; a type outside the accept-set is refused.
+        bucket: Historical bucket name (unused).
 
     Returns:
         Storage path (e.g., "{user_id}/{uuid}_{filename}").
 
     Raises:
-        AttachmentError: If upload fails.
+        AttachmentTypeRejected: If the content type is not one Selko stores.
+        AttachmentError: If the write fails.
     """
-    # Generate unique filename with user namespace
-    # Sanitize for Supabase Storage InvalidKey: storage keys must be URL-safe
-    # ASCII. The previous sanitizer only stripped slashes, so a real inbox
-    # filename like 'Beslut om klagomål(1049457).pdf' or
-    # 'Screenshot … AM.png' (narrow no-break space U+202F) raised
-    # StorageApiError InvalidKey and retried 8 times to dead_letter.
+    if not is_supported_attachment_type(mime_type):
+        # Permanent for this type: the worker finishes the row `unsupported`.
+        raise AttachmentTypeRejected(f"Storage rejected content type {mime_type!r}")
+    # Unique filename under the user's directory, URL-safe ASCII: the layout
+    # Supabase Storage required, kept so imported paths stay valid (D8). The
+    # result never contains '/' or '..', so it stays inside the user's directory.
     import re as _re
     import unicodedata as _ud
     # NFKD transliterate ö→o etc, drop non-ASCII, then strip unsafe chars
@@ -197,43 +286,15 @@ def upload_to_storage(
     storage_path = f"{user_id}/{unique_id}_{safe_filename}"
 
     try:
-        client.storage.from_(bucket).upload(
-            path=storage_path,
-            file=data,
-            file_options={"content-type": mime_type},
-        )
-        logger.debug(f"Uploaded attachment to {storage_path}")
-        return storage_path
-
-    except Exception as e:
-        if _is_mime_rejection(e):
-            # Permanent for this type. Raising the generic error here is what
-            # turned one unstorable file into a permanently red health check.
-            raise AttachmentTypeRejected(
-                f"Storage rejected content type {mime_type!r}: {e}"
-            ) from e
-        raise AttachmentError(f"Failed to upload attachment: {e}") from e
-
-
-def _is_mime_rejection(exc: BaseException) -> bool:
-    """Is this storage failure a content-type refusal rather than a blip?
-
-    Supabase Storage answers `415` with `error: invalid_mime_type` and a
-    message naming the type. Both are checked: the status alone would miss a
-    client that surfaces only the body, and the string alone would miss a
-    future wording change. Deliberately narrow -- anything unrecognised stays
-    an ordinary retryable `AttachmentError`, because treating a transient
-    storage outage as permanent would silently drop real attachments.
-    """
-    for attribute in ("status", "statusCode", "status_code", "code"):
-        value = getattr(exc, attribute, None)
-        if value in (415, "415"):
-            return True
-    return "invalid_mime_type" in str(exc)
+        write_attachment_file(storage_path, data)
+    except OSError as e:
+        raise AttachmentError(f"Failed to store attachment: {e}") from e
+    logger.debug(f"Stored attachment at {storage_path}")
+    return storage_path
 
 
 def save_attachment_metadata(
-    client: Client,
+    client: Database,
     email_id: str,
     provider_attachment_id: str,
     filename: str,
@@ -246,14 +307,15 @@ def save_attachment_metadata(
     """Save attachment metadata to database.
 
     Args:
-        client: Authenticated Supabase client.
+        client: The process database.
         email_id: UUID of parent email record.
         provider_attachment_id: Provider's attachment ID.
         filename: Original filename.
         mime_type: MIME type.
         size_bytes: File size in bytes.
-        storage_path: Path in Supabase Storage.
+        storage_path: Path under the attachments directory.
         content_hash: SHA-256 hash for deduplication.
+        user_id: Owner (required).
 
     Returns:
         Created attachment record.
@@ -262,10 +324,9 @@ def save_attachment_metadata(
         AttachmentError: If database insert fails.
     """
     if user_id is None:
-        user_id = get_current_user_id(client)
+        raise AttachmentError("save_attachment_metadata needs the owning user_id")
 
     record = {
-        "user_id": user_id,
         "email_id": email_id,
         "provider_attachment_id": provider_attachment_id,
         "filename": filename,
@@ -276,18 +337,15 @@ def save_attachment_metadata(
     }
 
     try:
-        result = client.table("attachments").insert(record).execute()
-        if result.data:
-            logger.debug(f"Saved attachment metadata: {filename}")
-            return result.data[0]
-        raise AttachmentError("Insert returned no data")
-
-    except PostgrestAPIError as e:
-        raise AttachmentError(f"Failed to save attachment metadata: {e.message}") from e
+        saved = db_attachments.insert(client, user_id, record)
+    except DbError as e:
+        raise AttachmentError(f"Failed to save attachment metadata: {e}") from e
+    logger.debug(f"Saved attachment metadata: {filename}")
+    return saved
 
 
 def store_attachment_bytes(
-    client: Client,
+    client: Database,
     email_id: str,
     *,
     data: bytes,
@@ -310,13 +368,15 @@ def store_attachment_bytes(
         )
         return None
 
+    if user_id is None:
+        raise AttachmentError("store_attachment_bytes needs the owning user_id")
+    owner_id = user_id
     content_hash = calculate_content_hash(data)
-    existing = check_duplicate_attachment(client, content_hash)
+    existing = check_duplicate_attachment(client, content_hash, owner_id)
     if existing:
         logger.info("Skipping duplicate attachment: %s (hash match)", filename)
         return existing
 
-    owner_id = user_id or get_current_user_id(client)
     storage_path = upload_to_storage(
         client=client,
         user_id=owner_id,
@@ -339,7 +399,7 @@ def store_attachment_bytes(
 
 
 def process_attachment(
-    client: Client,
+    client: Database,
     gmail_service,
     email_id: str,
     message_id: str,
@@ -357,7 +417,7 @@ def process_attachment(
     5. Saves metadata to database
 
     Args:
-        client: Authenticated Supabase client.
+        client: The process database.
         gmail_service: Gmail API service.
         email_id: UUID of parent email in database.
         message_id: Gmail message ID.
@@ -367,9 +427,7 @@ def process_attachment(
             - mime_type: MIME type
             - size_bytes: Size in bytes
         config: Application config.
-        user_id: Owner of the attachment. Required with a service-role
-            client (background workers), which has no auth session to
-            resolve the user from.
+        user_id: Owner of the attachment (required).
 
     Returns:
         Attachment record (new or existing), or None if skipped.
@@ -411,7 +469,7 @@ def process_attachment(
 
 
 def store_image_content(
-    client: Client,
+    client: Database,
     email_id: str,
     image_data: bytes,
     mime_type: str,
@@ -425,15 +483,13 @@ def store_image_content(
     Uses content hash deduplication like process_attachment().
 
     Args:
-        client: Authenticated Supabase client.
+        client: The process database.
         email_id: UUID of parent email record.
         image_data: Raw image bytes.
         mime_type: Image MIME type.
         filename: Filename for the stored image.
         config: Application config.
-        user_id: Owner of the attachment. Required with a service-role
-            client (background workers), which has no auth session to
-            resolve the user from.
+        user_id: Owner of the attachment (required).
 
     Returns:
         Attachment record (new or existing), or None if skipped.
@@ -464,48 +520,43 @@ def store_image_content(
     return record
 
 
-def delete_attachment(client: Client, attachment_id: str, config: Config) -> bool:
-    """Delete an attachment from storage and database.
+def delete_attachment(
+    client: Database, attachment_id: str, config: Config, user_id: str | None = None
+) -> bool:
+    """Delete one of the user's attachments: the row, then its file.
+
+    The file goes only after the row's delete commits, so a crash between the
+    two leaves an orphan file, never a row pointing at nothing.
 
     Args:
-        client: Authenticated Supabase client.
+        client: The process database.
         attachment_id: UUID of attachment record.
         config: Application config.
+        user_id: Owner (required).
 
     Returns:
         True if deleted successfully, False otherwise.
     """
+    if user_id is None:
+        logger.warning("delete_attachment called without an owner; refusing")
+        return False
     try:
-        # Get attachment record
-        result = (
-            client.table("attachments")
-            .select("storage_path")
-            .eq("id", attachment_id)
-            .single()
-            .execute()
-        )
-
-        if not result.data:
+        row = db_attachments.get(client, user_id, attachment_id)
+        if not row:
             logger.warning(f"Attachment not found: {attachment_id}")
             return False
-
-        storage_path = result.data.get("storage_path")
-
-        # Delete from storage
-        if storage_path:
-            try:
-                client.storage.from_(config.storage_bucket_attachments).remove(
-                    [storage_path]
-                )
-                logger.debug(f"Deleted from storage: {storage_path}")
-            except Exception as e:
-                logger.warning(f"Failed to delete from storage: {e}")
-
-        # Delete from database
-        client.table("attachments").delete().eq("id", attachment_id).execute()
-        logger.info(f"Deleted attachment: {attachment_id}")
-        return True
-
-    except PostgrestAPIError as e:
-        logger.error(f"Failed to delete attachment: {e.message}")
+        if not db_attachments.delete(client, user_id, attachment_id):
+            return False
+    except DbError as e:
+        logger.error(f"Failed to delete attachment: {e}")
         return False
+
+    storage_path = row.get("storage_path")
+    if storage_path:
+        try:
+            delete_attachment_file(storage_path)
+            logger.debug(f"Deleted file: {storage_path}")
+        except Exception as e:
+            logger.warning(f"Failed to delete attachment file: {e}")
+    logger.info(f"Deleted attachment: {attachment_id}")
+    return True

@@ -1,7 +1,6 @@
 """Unit tests for all-day materialization policy."""
 
 from datetime import datetime, time
-from unittest.mock import MagicMock, patch
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -184,79 +183,3 @@ class TestValidateAllDayPolicy:
     def test_parse_time_value(self):
         assert parse_time_value("09:30:00") == time(9, 30)
         assert parse_time_value("9:30") == time(9, 30)
-
-
-@pytest.mark.skip(reason="event creation and source persistence now belong to commit_email_extraction RPC")
-class TestCreateEventSourceMaterializedSplit:
-    def test_create_event_stores_source_in_extracted_data(self):
-        events_table = MagicMock()
-        sources_table = MagicMock()
-        events_table.insert.return_value.execute.return_value = MagicMock(
-            data=[{"id": "evt-1"}]
-        )
-        sources_table.select.return_value.eq.return_value.eq.return_value.eq.return_value.limit.return_value.execute.return_value = MagicMock(
-            data=[]
-        )
-        sources_table.insert.return_value.execute.return_value = MagicMock(
-            data=[{"id": "src-1"}]
-        )
-
-        mock_client = MagicMock()
-
-        def table(name):
-            if name == "events":
-                return events_table
-            if name == "event_sources":
-                return sources_table
-            return MagicMock()
-
-        mock_client.table.side_effect = table
-
-        source = _source(end="2026-07-27T23:59:59")
-        materialized = materialize_all_day_event(
-            source, AllDayPolicy(AllDayDisplayMode.DAY_9_TO_5), TZ
-        )
-
-        assert materialized["all_day"] is False
-        assert materialized["start_datetime"] == "2026-07-27T09:00:00-04:00"
-        assert materialized["end_datetime"] == "2026-07-27T17:00:00-04:00"
-        assert source["all_day"] is True
-        assert source["start_datetime"] == "2026-07-27T00:00:00"
-
-
-@pytest.mark.skip(reason="direct event_sources writes removed in S5")
-class TestEnsureEmailEventSourceIdempotent:
-    def test_second_link_reuses_existing_row(self):
-        from selko.services.events import ensure_email_event_source
-
-        sources_table = MagicMock()
-        # First call: no existing row → insert
-        empty = MagicMock(data=[])
-        existing = MagicMock(data=[{"id": "src-existing"}])
-        select_chain = MagicMock()
-        select_chain.eq.return_value = select_chain
-        select_chain.limit.return_value.execute.side_effect = [empty, existing]
-        sources_table.select.return_value = select_chain
-        sources_table.insert.return_value.execute.return_value = MagicMock(
-            data=[{"id": "src-new"}]
-        )
-
-        mock_client = MagicMock()
-        mock_client.table.return_value = sources_table
-
-        first = ensure_email_event_source(
-            mock_client,
-            event_id="evt-1",
-            email_id="email-1",
-            extracted_data={"title": "Water Day"},
-        )
-        second = ensure_email_event_source(
-            mock_client,
-            event_id="evt-1",
-            email_id="email-1",
-            extracted_data={"title": "Water Day"},
-        )
-
-        assert first == "src-new"
-        assert second == "src-existing"
-        assert sources_table.insert.call_count == 1

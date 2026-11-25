@@ -1,14 +1,13 @@
 """Email processing endpoints.
 
 These endpoints require server-side secrets (Gmail API credentials, LLM API key).
-For direct email queries, use Supabase client from frontend.
+Every read and write is scoped to the signed-in user.
 """
 
 import logging
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Response, status
-from supabase import Client, PostgrestAPIError
 
 from selko.api.deps import (
     CurrentUser,
@@ -28,6 +27,10 @@ from selko.api.schemas.emails import (
     EmailSyncResponse,
 )
 from selko.config import Config
+from selko.db import emails as db_emails
+from selko.db import events as db_events
+from selko.db.connection import Database
+from selko.db.errors import DbError, EmailActivelyLeased
 from selko.services.emails import (
     EmailError,
     ExpiredCredentialsError,
@@ -46,32 +49,29 @@ router = APIRouter(prefix="/emails", tags=["emails"])
 @router.post("/{email_id}/reprocess", response_model=EmailReprocessResponse)
 async def reprocess_email(
     email_id: Annotated[str, Path(description="Email UUID")],
-    client: Client = Depends(get_authenticated_client),
+    client: Database = Depends(get_authenticated_client),
     user: CurrentUser = Depends(get_current_user),
 ) -> EmailReprocessResponse:
     """Atomically put one historical email back into the processing queue."""
 
     try:
-        result = client.rpc("reprocess_email", {
-            "p_user_id": user.id,
-            "p_email_id": email_id,
-        }).execute()
-    except PostgrestAPIError as exc:
-        if "email_actively_leased" in (getattr(exc, "message", None) or str(exc)):
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail=error_detail(
-                    ErrorCode.INVALID_REQUEST,
-                    "This email is already pending or being processed",
-                ),
-            ) from exc
+        row = await client.run(db_emails.reprocess_email, client, user.id, email_id)
+    except EmailActivelyLeased as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=error_detail(
+                ErrorCode.INVALID_REQUEST,
+                "This email is already pending or being processed",
+            ),
+        ) from exc
+    except DbError as exc:
         logger.error("Failed to reprocess email %s: %s", email_id, exc)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=error_detail(ErrorCode.DATABASE_ERROR, "Failed to reprocess email"),
         ) from exc
 
-    if not result or not result.data:
+    if not row:
         # The same response covers repeated clicks and a concurrent worker claim:
         # both leave the row pending/processing and therefore do not enqueue twice.
         raise HTTPException(
@@ -83,7 +83,7 @@ async def reprocess_email(
         )
     return EmailReprocessResponse(
         email_id=email_id,
-        processing_status=result.data[0].get("processing_status", "pending"),
+        processing_status=row.get("processing_status", "pending"),
     )
 
 
@@ -91,9 +91,11 @@ async def reprocess_email(
 async def sync_emails(
     request: EmailSyncRequest,
     response: Response,
-    service_client: Client = Depends(get_service_role_client),
-    config: Config = Depends(get_config),
+    # Authentication resolves first: a request without a valid token is a
+    # 401 before anything touches the database.
     user: CurrentUser = Depends(get_current_user),
+    service_client: Database = Depends(get_service_role_client),
+    config: Config = Depends(get_config),
     quota_service: QuotaService = Depends(get_quota_service),
 ) -> EmailSyncResponse:
     """Manually trigger email fetch from Gmail.
@@ -167,7 +169,7 @@ async def sync_emails(
 async def process_email(
     email_id: Annotated[str, Path(description="Email UUID")],
     response: Response,
-    client: Client = Depends(get_authenticated_client),
+    client: Database = Depends(get_authenticated_client),
     user: CurrentUser = Depends(get_current_user),
     gateway: LLMGateway = Depends(get_llm_gateway),
 ) -> EmailProcessResponse:
@@ -190,16 +192,7 @@ async def process_email(
     """
     # Verify email exists and belongs to user
     try:
-        result = (
-            client.table("emails")
-            .select("id")
-            .eq("id", email_id)
-            .eq("user_id", user.id)
-            .maybe_single()
-            .execute()
-        )
-
-        if result is None or not result.data:
+        if not db_emails.exists_owned(client, user.id, email_id):
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=error_detail(ErrorCode.EMAIL_NOT_FOUND, "Email not found"),
@@ -207,8 +200,8 @@ async def process_email(
 
     except HTTPException:
         raise
-    except PostgrestAPIError as e:
-        logger.error(f"Failed to fetch email: {e.message}")
+    except DbError as e:
+        logger.error(f"Failed to fetch email: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=error_detail(ErrorCode.DATABASE_ERROR, "Failed to verify email"),
@@ -224,14 +217,7 @@ async def process_email(
         )
 
         # Get event IDs from database (events created/updated for this email)
-        events_result = (
-            client.table("event_sources")
-            .select("event_id")
-            .eq("email_id", email_id)
-            .execute()
-        )
-
-        event_ids = [row["event_id"] for row in events_result.data]
+        event_ids = db_events.event_ids_for_email(client, user.id, email_id)
 
         return EmailProcessResponse(
             num_events=process_result.get("num_events", 0),
@@ -261,7 +247,7 @@ async def process_email(
 async def batch_process_emails(
     request: BatchProcessRequest,
     response: Response,
-    client: Client = Depends(get_authenticated_client),
+    client: Database = Depends(get_authenticated_client),
     user: CurrentUser = Depends(get_current_user),
     gateway: LLMGateway = Depends(get_llm_gateway),
 ) -> EmailProcessResponse:
@@ -282,16 +268,7 @@ async def batch_process_emails(
     """
     # Fetch recent emails first
     try:
-        result = (
-            client.table("emails")
-            .select("id")
-            .eq("user_id", user.id)
-            .order("date_sent", desc=True)
-            .limit(request.max_emails)
-            .execute()
-        )
-
-        email_ids = [row["id"] for row in result.data]
+        email_ids = db_emails.list_ids_recent(client, user.id, request.max_emails)
 
         if not email_ids:
             logger.info("No emails found to process")
@@ -302,8 +279,8 @@ async def batch_process_emails(
                 event_ids=[],
             )
 
-    except PostgrestAPIError as e:
-        logger.error(f"Failed to fetch emails: {e.message}")
+    except DbError as e:
+        logger.error(f"Failed to fetch emails: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=error_detail(ErrorCode.DATABASE_ERROR, "Failed to fetch emails for processing"),
@@ -330,15 +307,7 @@ async def batch_process_emails(
                 total_updated += process_result.get("num_updated", 0)
 
                 # Get event IDs for this email
-                events_result = (
-                    client.table("event_sources")
-                    .select("event_id")
-                    .eq("email_id", email_id)
-                    .execute()
-                )
-
-                event_ids = [row["event_id"] for row in events_result.data]
-                all_event_ids.extend(event_ids)
+                all_event_ids.extend(db_events.event_ids_for_email(client, user.id, email_id))
 
             except QuotaExceededError as e:
                 # Stop batch processing when quota is exceeded

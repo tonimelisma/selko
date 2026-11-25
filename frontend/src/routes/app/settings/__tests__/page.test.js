@@ -51,10 +51,12 @@ const mockListCalendars = vi.fn();
 const mockInitiateGoogleAuth = vi.fn();
 const mockInitiateOutlookAuth = vi.fn();
 
-vi.mock('$lib/supabase.js', () => ({
-	supabase: {
-		auth: { signOut: (...args) => mockSignOut(...args) }
-	}
+vi.mock('$lib/auth.js', () => ({
+	signOut: (...args) => mockSignOut(...args)
+}));
+
+vi.mock('$lib/live-updates.js', () => ({
+	stop: () => Promise.resolve()
 }));
 
 vi.mock('$lib/services/integrations.js', () => ({

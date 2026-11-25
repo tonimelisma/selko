@@ -1,47 +1,22 @@
-"""Real-Postgres contracts for the S2 calendar work-item owner."""
+"""Contracts for the S2 calendar work-item owner, end to end on a real SQLite database.
+
+Queue transitions are `selko.db.calendar_work`; the provider write is the real
+calendar worker (`workers.calendar_sync` -> `services.calendars`) with Google's
+API mocked. The tests in `tests/db/test_calendar_work.py` cover each
+transition in isolation; these run them together with the writer.
+"""
 
 from datetime import datetime, timedelta, timezone
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-from selko.services.events import (
-    claim_approved_event_for_sync,
-    complete_event_cancellation,
-    complete_event_sync,
-    fail_event_sync,
-)
+from selko.db import calendar_work
+from selko.db.codec import new_id, to_timestamp
+from selko.workers import calendar_sync
 
 
-pytestmark = [pytest.mark.integration, pytest.mark.development]
-
-
-async def _claim_until(pg_pool, worker_id, event_id, *, attempts=25):
-    """Claim until this event's item comes up, then return that claim.
-
-    claim_approved_event_for_sync takes the OLDEST pending item in the whole
-    database, not this test's. On a clean local reset those are the same thing;
-    against staging, or after another test in the same run leaves a pending
-    item behind, they are not -- which is how this assertion failed in the
-    staging drill while passing every Tier 1 run.
-
-    Items belonging to someone else are released with a retryable failure, the
-    same transition a worker uses when it cannot proceed, so nothing is left
-    locked behind us.
-    """
-    for _ in range(attempts):
-        claimed = await claim_approved_event_for_sync(pg_pool, worker_id)
-        assert claimed is not None, "no calendar work available to claim"
-        if str(claimed["id"]) == event_id:
-            return claimed
-        await fail_event_sync(
-            pg_pool,
-            claimed["calendar_work_lease"],
-            "released by _claim_until: not this test's item",
-        )
-    raise AssertionError(
-        f"event {event_id} never came up for claim within {attempts} attempts"
-    )
-
+pytestmark = [pytest.mark.integration]
 
 
 def _desired(title: str = "S2 event") -> dict:
@@ -57,192 +32,138 @@ def _desired(title: str = "S2 event") -> dict:
     }
 
 
-@pytest.mark.asyncio
-async def test_enqueue_claim_complete_is_item_fenced(
-    admin_client, temp_user, pg_pool
-):
-    user_id = temp_user[0]
-    admin_client.table("integrations").upsert(
-        {
-            "user_id": user_id,
-            "provider": "google_calendar",
-            "status": "active",
-            "access_token": "s2-test-token",
-        },
-        on_conflict="user_id,provider",
-    ).execute()
-    event_id = admin_client.table("events").insert(
-        {
-            "user_id": user_id,
-            "title": "S2 event",
-            "start_datetime": "2026-09-01T14:00:00Z",
-            "end_datetime": "2026-09-01T15:00:00Z",
-            # Calendar work is queued for an event the user has approved.
-            # Queueing no longer promotes the event itself -- events.review_status
-            # owns the user decision, so the caller states it (see
-            # test_integration_extraction_intent.py).
-            "review_status": "active",
-        }
-    ).execute().data[0]["id"]
-
-    queued = admin_client.rpc("enqueue_calendar_work", {
-        "p_event_id": event_id,
-        "p_user_id": user_id,
-        "p_action": "upsert",
-        "p_desired_event": _desired(),
-        "p_expected_provider_revision": None,
-        "p_force_overwrite": False,
-    }).execute().data
-    item_id = queued["id"] if isinstance(queued, dict) else queued[0]["id"]
-
-    claimed = await _claim_until(pg_pool, "s2-worker", event_id)
-    assert claimed["calendar_work_item_id"] == str(item_id)
-    # Delivery state is the work item's, not a second column on events.
-    assert claimed["calendar_work_item_status"] == "processing"
-
-    assert await complete_event_sync(
-        pg_pool, claimed["calendar_work_lease"], "google-s2-event",
-    ) is True
-    final = admin_client.table("events").select(
-        "review_status,google_calendar_event_id"
-    ).eq("id", event_id).single().execute().data
-    assert final == {
-        "review_status": "active",
-        "google_calendar_event_id": "google-s2-event",
+def _claimed_event(item, event):
+    """The event dict the worker pool hands the calendar worker after a claim."""
+    return {
+        **event,
+        "calendar_work_desired_event": item["desired_event"],
+        "expected_provider_revision": item["expected_provider_revision"],
+        "force_overwrite": item["force_overwrite"],
+        "calendar_work_item_provider": item["provider"],
     }
 
 
-@pytest.mark.asyncio
-async def test_new_enqueue_supersedes_old_and_stale_completion_is_fenced(
-    admin_client, temp_user, pg_pool
-):
-    user_id = temp_user[0]
-    admin_client.table("integrations").upsert(
-        {
-            "user_id": user_id,
-            "provider": "google_calendar",
-            "status": "active",
-            "access_token": "s2-test-token",
-        },
-        on_conflict="user_id,provider",
-    ).execute()
-    event_id = admin_client.table("events").insert(
-        {"user_id": user_id, "title": "Race", "review_status": "pending_review"}
-    ).execute().data[0]["id"]
-    first = admin_client.rpc("enqueue_calendar_work", {
-        "p_event_id": event_id, "p_user_id": user_id, "p_action": "upsert",
-        "p_desired_event": _desired("first"), "p_expected_provider_revision": None,
-        "p_force_overwrite": False,
-    }).execute().data
-    first_id = first["id"] if isinstance(first, dict) else first[0]["id"]
-    claimed = await claim_approved_event_for_sync(pg_pool, "old-worker")
-    assert claimed is not None
-    lease = claimed["calendar_work_lease"]
+@pytest.fixture
+def user_id(factory):
+    user_id = factory.user()
+    factory.integration(user_id, provider="google_calendar", access_token="s2-test-token")
+    return user_id
 
-    second = admin_client.rpc("enqueue_calendar_work", {
-        "p_event_id": event_id, "p_user_id": user_id, "p_action": "cancel",
-        "p_desired_event": None, "p_expected_provider_revision": None,
-        "p_force_overwrite": False,
-    }).execute().data
-    second_id = second["id"] if isinstance(second, dict) else second[0]["id"]
-    assert str(first_id) != str(second_id)
-    assert await complete_event_sync(
-        pg_pool, lease, "stale-google-event"
+
+async def test_enqueue_claim_complete_is_item_fenced(db, factory, user_id):
+    event_id = factory.event(
+        user_id,
+        title="S2 event",
+        start_datetime="2026-09-01T14:00:00.000000Z",
+        end_datetime="2026-09-01T15:00:00.000000Z",
+        # Calendar work is queued for an event the user has approved.
+        # Queueing never promotes the event itself -- events.review_status
+        # owns the user decision, so the caller states it.
+        review_status="active",
+    )
+
+    queued = calendar_work.enqueue_calendar_work(db, user_id, event_id, "upsert", _desired())
+
+    claimed = calendar_work.claim_calendar_work_item(db, "s2-worker")
+    assert claimed is not None
+    item, event = claimed
+    assert item["id"] == queued["id"]
+    # Delivery state is the work item's, not a second column on events.
+    assert item["status"] == "processing"
+    assert item["provider"] == "google_calendar"
+
+    with patch("selko.services.calendars.get_credentials", return_value=MagicMock()), \
+            patch("selko.services.calendars.build") as build:
+        service = build.return_value
+        service.events.return_value.list.return_value.execute.return_value = {"items": []}
+        service.events.return_value.insert.return_value.execute.return_value = {"id": "google-s2-event"}
+        provider_event_id = await calendar_sync.sync_event(db, MagicMock(), _claimed_event(item, event))
+    assert provider_event_id == "google-s2-event"
+
+    # A second worker holding no lease cannot complete it.
+    assert calendar_work.complete_calendar_work(
+        db, item["id"], "other-worker", item["generation"], "google-s2-event"
     ) is False
-    row = admin_client.table("calendar_work_items").select(
-        "status,action,generation"
-    ).eq("id", second_id).single().execute().data
-    assert row == {"status": "pending", "action": "cancel", "generation": 2}
+    assert calendar_work.complete_calendar_work(
+        db, item["id"], "s2-worker", item["generation"], provider_event_id
+    ) is True
+    final = factory.row("events", event_id)
+    assert (final["review_status"], final["google_calendar_event_id"]) == ("active", "google-s2-event")
+    assert factory.row("calendar_work_items", item["id"])["status"] == "succeeded"
+    log = db.query("SELECT action, google_calendar_event_id FROM calendar_sync_log WHERE event_id = ?",
+                   (event_id,))
+    assert [tuple(r) for r in log] == [("created", "google-s2-event")]
 
 
-@pytest.mark.asyncio
-async def test_expired_processing_item_is_reclaimable(
-    admin_client, temp_user, pg_pool
-):
-    user_id = temp_user[0]
-    admin_client.table("integrations").upsert(
-        {
-            "user_id": user_id,
-            "provider": "google_calendar",
-            "status": "active",
-            "access_token": "s2-test-token",
-        },
-        on_conflict="user_id,provider",
-    ).execute()
-    event_id = admin_client.table("events").insert(
-        {"user_id": user_id, "title": "Expired", "review_status": "pending_review"}
-    ).execute().data[0]["id"]
-    queued = admin_client.rpc("enqueue_calendar_work", {
-        "p_event_id": event_id, "p_user_id": user_id, "p_action": "upsert",
-        "p_desired_event": _desired("expired"), "p_expected_provider_revision": None,
-        "p_force_overwrite": False,
-    }).execute().data
-    item_id = queued["id"] if isinstance(queued, dict) else queued[0]["id"]
-    claimed = await claim_approved_event_for_sync(pg_pool, "crashed-worker", 1)
+async def test_new_enqueue_supersedes_old_and_stale_completion_is_fenced(db, factory, user_id):
+    event_id = factory.event(user_id, title="Race", review_status="pending_review")
+    first = calendar_work.enqueue_calendar_work(db, user_id, event_id, "upsert", _desired("first"))
+    claimed = calendar_work.claim_calendar_work_item(db, "old-worker")
     assert claimed is not None
-    admin_client.table("calendar_work_items").update({
-        "locked_until": (datetime.now(timezone.utc) - timedelta(seconds=1)).isoformat(),
-    }).eq("id", item_id).execute()
-    reclaimed = await claim_approved_event_for_sync(pg_pool, "reclaimer", 60)
+    old_item, _ = claimed
+
+    second = calendar_work.enqueue_calendar_work(db, user_id, event_id, "cancel", None)
+    assert first["id"] != second["id"]
+    assert calendar_work.complete_calendar_work(
+        db, old_item["id"], "old-worker", old_item["generation"], "stale-google-event"
+    ) is False
+    row = factory.row("calendar_work_items", second["id"])
+    assert (row["status"], row["action"], row["generation"]) == ("pending", "cancel", 2)
+    assert factory.row("calendar_work_items", first["id"])["status"] == "superseded"
+    assert factory.row("events", event_id)["google_calendar_event_id"] is None
+
+
+async def test_expired_processing_item_is_reclaimable(db, factory, user_id):
+    event_id = factory.event(user_id, title="Expired", review_status="pending_review")
+    queued = calendar_work.enqueue_calendar_work(db, user_id, event_id, "upsert", _desired("expired"))
+    claimed = calendar_work.claim_calendar_work_item(db, "crashed-worker", 1)
+    assert claimed is not None
+    with db.write() as tx:
+        tx.execute(
+            "UPDATE calendar_work_items SET locked_until = ? WHERE id = ?",
+            (to_timestamp(datetime.now(timezone.utc) - timedelta(seconds=1)), queued["id"]),
+        )
+    reclaimed = calendar_work.claim_calendar_work_item(db, "reclaimer", 60)
     assert reclaimed is not None
-    assert reclaimed["calendar_work_item_id"] == str(item_id)
-    assert admin_client.table("calendar_work_items").select("locked_by").eq(
-        "id", item_id
-    ).single().execute().data["locked_by"] == "reclaimer"
+    assert reclaimed[0]["id"] == queued["id"]
+    assert factory.row("calendar_work_items", queued["id"])["locked_by"] == "reclaimer"
+    # The crashed worker's lease is dead: its completion is fenced.
+    assert calendar_work.complete_calendar_work(
+        db, queued["id"], "crashed-worker", claimed[0]["generation"], "g"
+    ) is False
 
 
-@pytest.mark.asyncio
-async def test_unsync_is_worker_owned_and_clears_remote_identity_on_completion(
-    admin_client, temp_user, pg_pool
-):
-    user_id = temp_user[0]
-    admin_client.table("integrations").upsert(
-        {
-            "user_id": user_id,
-            "provider": "google_calendar",
-            "status": "active",
-            "access_token": "s2-test-token",
-        },
-        on_conflict="user_id,provider",
-    ).execute()
-    event_id = admin_client.table("events").insert(
-        {
-            "user_id": user_id,
-            "title": "Unsync me",
-            "review_status": "active",
-            "google_calendar_event_id": "google-delete-me",
-        }
-    ).execute().data[0]["id"]
+async def test_unsync_is_worker_owned_and_clears_remote_identity_on_completion(db, factory, user_id):
+    event_id = factory.event(
+        user_id, title="Unsync me", review_status="active",
+        google_calendar_event_id="google-delete-me",
+    )
+    factory._insert("calendar_work_items", {
+        "id": new_id(), "event_id": event_id, "user_id": user_id, "action": "upsert",
+        "generation": 1, "status": "succeeded", "provider_event_id": "google-delete-me",
+    })
 
-    admin_client.table("calendar_work_items").insert({
-        "event_id": event_id,
-        "user_id": user_id,
-        "action": "upsert",
-        "generation": 1,
-        "status": "succeeded",
-        "provider_event_id": "google-delete-me",
-    }).execute()
-
-    queued = admin_client.rpc("unsync_event_and_enqueue_calendar_work", {
-        "p_event_id": event_id,
-        "p_user_id": user_id,
-        "p_expected_provider_revision": None,
-        "p_force_overwrite": False,
-    }).execute().data
+    queued = calendar_work.unsync_event_and_enqueue_calendar_work(db, user_id, event_id)
     assert queued["status"] == "pending_review"
 
-    claimed = await claim_approved_event_for_sync(pg_pool, "unsync-worker")
+    claimed = calendar_work.claim_calendar_work_item(db, "unsync-worker")
     assert claimed is not None
-    assert claimed["calendar_work_item_action"] == "cancel"
-    assert claimed["calendar_work_desired_event"] == {"delete_remote": True}
+    item, event = claimed
+    assert item["action"] == "cancel"
+    assert item["desired_event"] == {"delete_remote": True}
 
-    assert await complete_event_cancellation(
-        pg_pool,
-        claimed["calendar_work_lease"],
+    with patch("selko.services.calendars.get_credentials", return_value=MagicMock()), \
+            patch("selko.services.calendars.build") as build:
+        service = build.return_value
+        service.events.return_value.get.return_value.execute.return_value = {"id": "google-delete-me"}
+        await calendar_sync.cancel_event(db, MagicMock(), _claimed_event(item, event))
+    service.events.return_value.delete.assert_called_once()
+    service.events.return_value.update.assert_not_called()
+
+    assert calendar_work.complete_calendar_work(
+        db, item["id"], "unsync-worker", item["generation"], None
     ) is True
-    final = admin_client.table("events").select(
-        "review_status,google_calendar_event_id,synced_at"
-    ).eq("id", event_id).single().execute().data
+    final = factory.row("events", event_id)
     assert final["review_status"] == "pending_review"
     assert final["google_calendar_event_id"] is None
     assert final["synced_at"] is None

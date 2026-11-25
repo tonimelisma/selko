@@ -143,8 +143,6 @@ class TestConfigAllowedOrigins:
         """Config has default allowed_origins for localhost."""
         config = Config(
             environment="development",
-            supabase_url="http://localhost:54321",
-            supabase_key="test-key",
         )
 
         assert len(config.allowed_origins) == 4
@@ -156,8 +154,6 @@ class TestConfigAllowedOrigins:
         custom_origins = ["https://example.com", "https://staging.example.com"]
         config = Config(
             environment="production",
-            supabase_url="https://example.supabase.co",
-            supabase_key="prod-key",
             allowed_origins=custom_origins,
         )
 
@@ -167,8 +163,6 @@ class TestConfigAllowedOrigins:
         """Config accepts empty allowed_origins list."""
         config = Config(
             environment="production",
-            supabase_url="https://example.supabase.co",
-            supabase_key="prod-key",
             allowed_origins=[],
         )
 
@@ -185,14 +179,12 @@ class TestLoadConfigAllowedOrigins:
         # Create a minimal .env file
         env_file = tmp_path / ".env"
         env_file.write_text(
-            "SUPABASE_URL=http://localhost:54321\n"
-            "SUPABASE_PUBLISHABLE_KEY=test-key\n"
+            "SELKO_DATA_DIR=data\n"
         )
 
         # Set environment to use our temp .env
         monkeypatch.setenv("ENVIRONMENT", "development")
-        monkeypatch.setenv("SUPABASE_URL", "http://localhost:54321")
-        monkeypatch.setenv("SUPABASE_PUBLISHABLE_KEY", "test-key")
+        monkeypatch.setenv("SELKO_DATA_DIR", "data")
         monkeypatch.setenv(
             "ALLOWED_ORIGINS",
             "https://selko-web-staging.onrender.com,https://selkoapp.com"
@@ -209,8 +201,7 @@ class TestLoadConfigAllowedOrigins:
         from selko.config import load_config
 
         monkeypatch.setenv("ENVIRONMENT", "development")
-        monkeypatch.setenv("SUPABASE_URL", "http://localhost:54321")
-        monkeypatch.setenv("SUPABASE_PUBLISHABLE_KEY", "test-key")
+        monkeypatch.setenv("SELKO_DATA_DIR", "data")
         monkeypatch.delenv("ALLOWED_ORIGINS", raising=False)
 
         config = load_config()
@@ -239,15 +230,8 @@ class TestBackgroundProcessingDefaults:
 
         monkeypatch.setattr(config_module, "PROJECT_ROOT", tmp_path)
         monkeypatch.setenv("ENVIRONMENT", environment)
-        monkeypatch.setenv("SUPABASE_URL", "http://localhost:54321")
-        monkeypatch.setenv("SUPABASE_PUBLISHABLE_KEY", "test-key")
+        monkeypatch.setenv("SELKO_DATA_DIR", "data")
         monkeypatch.delenv("ENABLE_BACKGROUND_PROCESSING", raising=False)
-        # F1.4 (D7): production's default is enabled, so it also needs a URL —
-        # this test is about the default value, not about SUPABASE_DB_URL.
-        monkeypatch.setenv(
-            "SUPABASE_DB_URL",
-            "postgresql://postgres:pw@x.pooler.supabase.com:5432/postgres",
-        )
 
         config = config_module.load_config()
 
@@ -259,8 +243,7 @@ class TestBackgroundProcessingDefaults:
 
         monkeypatch.setattr(config_module, "PROJECT_ROOT", tmp_path)
         monkeypatch.setenv("ENVIRONMENT", "production")
-        monkeypatch.setenv("SUPABASE_URL", "http://localhost:54321")
-        monkeypatch.setenv("SUPABASE_PUBLISHABLE_KEY", "test-key")
+        monkeypatch.setenv("SELKO_DATA_DIR", "data")
         monkeypatch.setenv("ENABLE_BACKGROUND_PROCESSING", "false")
 
         config = config_module.load_config()
@@ -276,13 +259,8 @@ class TestBackgroundProcessingDefaults:
         )
         monkeypatch.setattr(config_module, "PROJECT_ROOT", tmp_path)
         monkeypatch.setenv("ENVIRONMENT", "production")
-        monkeypatch.setenv("SUPABASE_URL", "http://localhost:54321")
-        monkeypatch.setenv("SUPABASE_PUBLISHABLE_KEY", "test-key")
+        monkeypatch.setenv("SELKO_DATA_DIR", "data")
         monkeypatch.setenv("ENABLE_BACKGROUND_PROCESSING", "true")
-        monkeypatch.setenv(
-            "SUPABASE_DB_URL",
-            "postgresql://postgres:pw@x.pooler.supabase.com:5432/postgres",
-        )
 
         config = config_module.load_config()
 
@@ -295,80 +273,20 @@ class TestBackgroundProcessingDefaults:
         from selko import config as config_module
 
         (tmp_path / ".env.test").write_text(
-            "SUPABASE_URL=https://staging.example\n"
-            "SUPABASE_PUBLISHABLE_KEY=staging-key\n"
+            "GOOGLE_CLIENT_ID=staging-client\n"
         )
         (tmp_path / ".env").write_text(
-            "SUPABASE_URL=http://localhost:54321\n"
-            "SUPABASE_PUBLISHABLE_KEY=development-key\n"
+            "GOOGLE_CLIENT_ID=development-client\n"
         )
         monkeypatch.setattr(config_module, "PROJECT_ROOT", tmp_path)
-        monkeypatch.delenv("SUPABASE_URL", raising=False)
-        monkeypatch.delenv("SUPABASE_PUBLISHABLE_KEY", raising=False)
+        monkeypatch.delenv("GOOGLE_CLIENT_ID", raising=False)
 
         staging = config_module.load_config(env_override="staging")
         development = config_module.load_config(env_override="development")
 
-        assert staging.supabase_url == "https://staging.example"
-        assert development.supabase_url == "http://localhost:54321"
-        assert "SUPABASE_URL" not in os.environ
-
-
-class TestSupabaseDbUrlRequiredWhenBackgroundProcessingEnabled:
-    """F1.4 (D7): a missing SUPABASE_DB_URL must fail loudly at config load,
-    not deep inside async startup when create_pool() happens to be called.
-    """
-
-    def test_raises_with_actionable_message(self, monkeypatch, tmp_path):
-        from selko import config as config_module
-
-        monkeypatch.setattr(config_module, "PROJECT_ROOT", tmp_path)
-        monkeypatch.setenv("ENVIRONMENT", "production")
-        monkeypatch.setenv("SUPABASE_URL", "http://localhost:54321")
-        monkeypatch.setenv("SUPABASE_PUBLISHABLE_KEY", "test-key")
-        monkeypatch.setenv("ENABLE_BACKGROUND_PROCESSING", "true")
-        monkeypatch.delenv("SUPABASE_DB_URL", raising=False)
-
-        with pytest.raises(Exception) as exc_info:
-            config_module.load_config()
-
-        message = str(exc_info.value)
-        assert "SUPABASE_DB_URL" in message
-        assert "ENABLE_BACKGROUND_PROCESSING" in message
-
-    def test_does_not_raise_when_background_processing_disabled(
-        self, monkeypatch, tmp_path
-    ):
-        from selko import config as config_module
-
-        monkeypatch.setattr(config_module, "PROJECT_ROOT", tmp_path)
-        monkeypatch.setenv("ENVIRONMENT", "staging")
-        monkeypatch.setenv("SUPABASE_URL", "http://localhost:54321")
-        monkeypatch.setenv("SUPABASE_PUBLISHABLE_KEY", "test-key")
-        monkeypatch.setenv("ENABLE_BACKGROUND_PROCESSING", "false")
-        monkeypatch.delenv("SUPABASE_DB_URL", raising=False)
-
-        config = config_module.load_config()
-
-        assert config.enable_background_processing is False
-        assert config.supabase_db_url is None
-
-    def test_does_not_raise_when_url_present(self, monkeypatch, tmp_path):
-        from selko import config as config_module
-
-        monkeypatch.setattr(config_module, "PROJECT_ROOT", tmp_path)
-        monkeypatch.setenv("ENVIRONMENT", "production")
-        monkeypatch.setenv("SUPABASE_URL", "http://localhost:54321")
-        monkeypatch.setenv("SUPABASE_PUBLISHABLE_KEY", "test-key")
-        monkeypatch.setenv("ENABLE_BACKGROUND_PROCESSING", "true")
-        monkeypatch.setenv(
-            "SUPABASE_DB_URL",
-            "postgresql://postgres:pw@x.pooler.supabase.com:5432/postgres",
-        )
-
-        config = config_module.load_config()
-
-        assert config.supabase_db_url is not None
+        assert staging.google_client_id == "staging-client"
+        assert development.google_client_id == "development-client"
+        assert "GOOGLE_CLIENT_ID" not in os.environ
 
 
 class TestAttachmentLimitsDefaults:
@@ -378,8 +296,6 @@ class TestAttachmentLimitsDefaults:
         """Verify default values for per-type attachment limits."""
         config = Config(
             environment="development",
-            supabase_url="http://localhost:54321",
-            supabase_key="test-key",
         )
 
         assert config.max_pdf_pages_for_llm == 10
@@ -390,8 +306,6 @@ class TestAttachmentLimitsDefaults:
         """Verify custom values can be set."""
         config = Config(
             environment="development",
-            supabase_url="http://localhost:54321",
-            supabase_key="test-key",
             max_pdf_pages_for_llm=5,
             max_image_size_for_llm=2048,
             max_other_size_for_llm=4096,
@@ -410,8 +324,7 @@ class TestAttachmentLimitsFromEnv:
         from selko.config import load_config
 
         monkeypatch.setenv("ENVIRONMENT", "development")
-        monkeypatch.setenv("SUPABASE_URL", "http://localhost:54321")
-        monkeypatch.setenv("SUPABASE_PUBLISHABLE_KEY", "test-key")
+        monkeypatch.setenv("SELKO_DATA_DIR", "data")
         monkeypatch.setenv("MAX_PDF_PAGES_FOR_LLM", "20")
         monkeypatch.setenv("MAX_IMAGE_SIZE_FOR_LLM", "2000000")
         monkeypatch.setenv("MAX_OTHER_SIZE_FOR_LLM", "3000000")
@@ -427,8 +340,7 @@ class TestAttachmentLimitsFromEnv:
         from selko.config import load_config
 
         monkeypatch.setenv("ENVIRONMENT", "development")
-        monkeypatch.setenv("SUPABASE_URL", "http://localhost:54321")
-        monkeypatch.setenv("SUPABASE_PUBLISHABLE_KEY", "test-key")
+        monkeypatch.setenv("SELKO_DATA_DIR", "data")
         monkeypatch.delenv("MAX_PDF_PAGES_FOR_LLM", raising=False)
         monkeypatch.delenv("MAX_IMAGE_SIZE_FOR_LLM", raising=False)
         monkeypatch.delenv("MAX_OTHER_SIZE_FOR_LLM", raising=False)
@@ -448,8 +360,7 @@ class TestMemoryMonitorConfig:
         from selko.config import load_config
 
         monkeypatch.setenv("ENVIRONMENT", "development")
-        monkeypatch.setenv("SUPABASE_URL", "http://localhost:54321")
-        monkeypatch.setenv("SUPABASE_PUBLISHABLE_KEY", "test-key")
+        monkeypatch.setenv("SELKO_DATA_DIR", "data")
         monkeypatch.setenv("MEMORY_LOG_INTERVAL_SECONDS", "300")
         monkeypatch.setenv("MEMORY_TRACEMALLOC", "true")
 
@@ -463,8 +374,7 @@ class TestMemoryMonitorConfig:
         from selko.config import load_config
 
         monkeypatch.setenv("ENVIRONMENT", "development")
-        monkeypatch.setenv("SUPABASE_URL", "http://localhost:54321")
-        monkeypatch.setenv("SUPABASE_PUBLISHABLE_KEY", "test-key")
+        monkeypatch.setenv("SELKO_DATA_DIR", "data")
         monkeypatch.delenv("MEMORY_LOG_INTERVAL_SECONDS", raising=False)
         monkeypatch.delenv("MEMORY_TRACEMALLOC", raising=False)
 
@@ -571,8 +481,7 @@ class TestVisionFallback:
 
         monkeypatch.setattr("selko.config.dotenv_values", lambda *a, **k: {})
         monkeypatch.setenv("ENVIRONMENT", "development")
-        monkeypatch.setenv("SUPABASE_URL", "http://localhost:54321")
-        monkeypatch.setenv("SUPABASE_PUBLISHABLE_KEY", "test-key")
+        monkeypatch.setenv("SELKO_DATA_DIR", "data")
         for key in (
             "LLM_PROVIDER",
             "LLM_MODEL",
@@ -604,8 +513,7 @@ class TestVisionFallback:
 
         monkeypatch.setattr("selko.config.dotenv_values", lambda *a, **k: {})
         monkeypatch.setenv("ENVIRONMENT", "production")
-        monkeypatch.setenv("SUPABASE_URL", "http://localhost:54321")
-        monkeypatch.setenv("SUPABASE_PUBLISHABLE_KEY", "test-key")
+        monkeypatch.setenv("SELKO_DATA_DIR", "data")
         monkeypatch.setenv("ENABLE_BACKGROUND_PROCESSING", "false")
         monkeypatch.setenv("LLM_PROVIDER", "anthropic")
         monkeypatch.setenv("LLM_MODEL", "claude-haiku-5-5")
@@ -628,8 +536,7 @@ class TestVisionFallback:
 
         monkeypatch.setattr("selko.config.dotenv_values", lambda *a, **k: {})
         monkeypatch.setenv("ENVIRONMENT", "development")
-        monkeypatch.setenv("SUPABASE_URL", "http://localhost:54321")
-        monkeypatch.setenv("SUPABASE_PUBLISHABLE_KEY", "test-key")
+        monkeypatch.setenv("SELKO_DATA_DIR", "data")
         monkeypatch.setenv("LLM_PROVIDER", "anthropic")
         monkeypatch.setenv("LLM_MODEL", "claude-haiku-5-5")
         monkeypatch.setenv("LLM_FALLBACK_PROVIDER", "none")

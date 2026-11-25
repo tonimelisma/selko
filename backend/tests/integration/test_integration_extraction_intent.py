@@ -1,38 +1,34 @@
-"""Real-Postgres proof that the extraction commit honours its decision intent.
+"""The extraction commit honours its decision intent, on a real SQLite database.
 
 Every test here executes ``commit_email_extraction`` itself. That is the whole
 point: the Changes lane was silently auto-applied for the entire life of #332
-because the unit suite stubs this function and the proposal integration suite
-INSERTs proposal rows directly, so nothing had ever run it with a change_set.
+because the unit suite stubbed this function and the proposal integration suite
+INSERTed proposal rows directly, so nothing had ever run it with a change_set.
+The two service-level tests run ``save_extracted_events`` end to end: the real
+match, the real provenance read and the real commit; only the LLM is mocked.
 """
 
-import json
-from datetime import date, datetime, timedelta, timezone
-from uuid import uuid4
+from datetime import date, datetime, timedelta
+from unittest.mock import patch
 
-import asyncpg
 import pytest
 
-
-pytestmark = pytest.mark.integration
+from selko.db import calendar_work as db_calendar_work
+from selko.db import emails as db_emails
+from selko.db import errors
+from selko.db import events as db_events
+from tests.event_pipeline import gateway, providers_offline
 
 DAY = "2026-09-14"
 
 
 def _window() -> tuple[str, str]:
-    start = f"{DAY}T00:00:00Z"
-    year, month, day_number = (int(part) for part in DAY.split("-"))
-    end = date(year, month, day_number) + timedelta(days=1)
-    return start, f"{end.isoformat()}T00:00:00Z"
+    y, m, d = (int(p) for p in DAY.split("-"))
+    return f"{DAY}T00:00:00Z", f"{(date(y, m, d) + timedelta(days=1)).isoformat()}T00:00:00Z"
 
 
 def _change_set() -> dict:
-    return {
-        "kind": "material_update",
-        "changes": [
-            {"field": "location", "before": "Room A", "after": "Room B"},
-        ],
-    }
+    return {"kind": "material_update", "changes": [{"field": "location", "before": "Room A", "after": "Room B"}]}
 
 
 def _snapshot() -> dict:
@@ -48,387 +44,251 @@ def _snapshot() -> dict:
     }
 
 
-async def _claim_email(pg_pool, user_id: str) -> tuple:
-    """Insert an email and claim it, returning (id, worker_id, generation)."""
-    email_id = uuid4()
+def _claim(db, factory, user_id) -> tuple[str, str, int]:
+    """Insert an email and claim it: (id, worker, generation)."""
+    email_id = factory.email(user_id, subject="intent test")
     worker = f"intent-{email_id}"
-    await pg_pool.execute(
-        """
-        INSERT INTO public.emails (id, user_id, provider_message_id, subject, processing_status, created_at)
-        VALUES ($1, $2, $3, 'intent test', 'pending', $4)
-        """,
-        email_id,
-        user_id,
-        f"intent-{email_id}",
-        datetime(2000, 1, 1, tzinfo=timezone.utc),
-    )
-    for _ in range(50):
-        row = await pg_pool.fetchrow(
-            "SELECT * FROM public.claim_unprocessed_email($1, $2)", worker, 300
-        )
-        if row is None:
-            break
-        if row["id"] == email_id:
-            return email_id, worker, row["lock_generation"]
-        await pg_pool.execute(
-            "UPDATE public.emails SET processing_status = 'processed',"
-            " locked_by = NULL, locked_until = NULL WHERE id = $1",
-            row["id"],
-        )
-    pytest.fail(f"could not claim test email {email_id}")
+    row = db_emails.claim_unprocessed_email(db, worker, 300)
+    assert row["id"] == email_id
+    return email_id, worker, row["lock_generation"]
 
 
-async def _event(pg_pool, user_id: str, review_status: str) -> str:
-    event_id = uuid4()
-    await pg_pool.execute(
-        """
-        INSERT INTO public.events (id, user_id, title, start_datetime, end_datetime,
-                                   location, importance, review_status)
-        VALUES ($1, $2, 'Standup', $3, $4, 'Room A', 'action_required', $5)
-        """,
-        event_id,
-        user_id,
-        datetime.fromisoformat(f"{DAY}T10:00:00+00:00"),
-        datetime.fromisoformat(f"{DAY}T11:00:00+00:00"),
-        review_status,
-    )
-    return event_id
-
-
-async def _fingerprint(pg_pool, user_id: str) -> str:
-    window = _window()
-    return await pg_pool.fetchval(
-        """
-        SELECT md5(COALESCE(string_agg(e.id::text || ':' || to_char(e.updated_at AT TIME ZONE 'UTC',
-            'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'), ',' ORDER BY e.id), ''))
-        FROM public.events e
-        WHERE e.user_id = $1 AND e.start_datetime >= $2 AND e.start_datetime < $3
-        """,
-        user_id,
-        datetime.fromisoformat(window[0].replace("Z", "+00:00")),
-        datetime.fromisoformat(window[1].replace("Z", "+00:00")),
+def _event(factory, user_id, review_status: str, day: str = DAY) -> str:
+    return factory.event(
+        user_id, review_status=review_status, title="Standup",
+        start_datetime=f"{day}T10:00:00.000000Z", end_datetime=f"{day}T11:00:00.000000Z",
+        location="Room A", importance="action_required",
     )
 
 
-async def _commit(pg_pool, email_id, worker, generation, decision: dict) -> dict:
-    return json.loads(await pg_pool.fetchval(
-        "SELECT public.commit_email_extraction($1, $2, $3, $4::jsonb, 'processed')",
-        email_id,
-        worker,
-        generation,
-        json.dumps([decision]),
-    ))
-
-
-async def _decision(pg_pool, user_id, email_id, event_id, **overrides) -> dict:
+def _decision(db, user_id, email_id, event_id, **overrides) -> dict:
     window = _window()
     decision = {
         "action": "update",
-        "event_id": str(event_id),
+        "event_id": event_id,
         "window_start": window[0],
         "window_end": window[1],
-        "expected_fingerprint": await _fingerprint(pg_pool, user_id),
+        "expected_fingerprint": db_events.band_fingerprint(db, user_id, *window),
         "hints": [],
-        "source": {"email_id": str(email_id), "extracted_data": {}},
+        "source": {"email_id": email_id, "extracted_data": {}},
     }
     decision.update(overrides)
     return decision
 
 
-async def _proposals(pg_pool, event_id) -> list[dict]:
-    rows = await pg_pool.fetch(
-        "SELECT status, kind, change_set FROM public.event_change_proposals WHERE event_id = $1",
-        event_id,
-    )
-    return [dict(row) for row in rows]
+def _change_source(email_id) -> dict:
+    return {"email_id": email_id, "extracted_data": {}, "source_type": "update",
+            "event_snapshot_before": _snapshot(), "change_set": _change_set()}
 
 
-async def _work_items(pg_pool, event_id) -> list[dict]:
-    rows = await pg_pool.fetch(
-        "SELECT action, status, desired_event FROM public.calendar_work_items WHERE event_id = $1",
-        event_id,
-    )
-    return [dict(row) for row in rows]
+def _commit(db, email_id, worker, generation, decision: dict) -> dict:
+    return db_events.commit_email_extraction(db, email_id, worker, generation, [decision], "processed")
 
 
-async def _event_row(pg_pool, event_id) -> dict:
-    return dict(await pg_pool.fetchrow(
-        "SELECT review_status, title, location FROM public.events WHERE id = $1", event_id
-    ))
+def _proposals(db, event_id) -> list[dict]:
+    return [dict(r) for r in db.query(
+        "SELECT status, kind FROM event_change_proposals WHERE event_id = ? ORDER BY created_at", (event_id,))]
+
+
+def _work_items(db, event_id) -> list[dict]:
+    return [db.schema.decode("calendar_work_items", r) for r in db.query(
+        "SELECT action, status, desired_event FROM calendar_work_items WHERE event_id = ? ORDER BY generation",
+        (event_id,))]
+
+
+def _event_row(factory, event_id) -> dict:
+    row = factory.row("events", event_id)
+    return {"review_status": row["review_status"], "title": row["title"], "location": row["location"]}
 
 
 # --- the four intents ----------------------------------------------------
 
 
-async def test_review_intent_holds_the_change_and_writes_no_calendar_work(pg_pool, temp_user):
+def test_review_intent_holds_the_change_and_writes_no_calendar_work(db, factory):
     """The Changes lane: a pending proposal, an untouched event, no provider write."""
-    user_id, _, _ = temp_user
-    email_id, worker, generation = await _claim_email(pg_pool, user_id)
-    event_id = await _event(pg_pool, user_id, "active")
+    user = factory.user()
+    email_id, worker, generation = _claim(db, factory, user)
+    event_id = _event(factory, user, "active")
 
-    result = await _commit(pg_pool, email_id, worker, generation, await _decision(
-        pg_pool, user_id, email_id, event_id,
-        intent="review",
-        fields={"review_status": "active"},
-        source={
-            "email_id": str(email_id),
-            "extracted_data": {},
-            "source_type": "update",
-            "event_snapshot_before": _snapshot(),
-            "change_set": _change_set(),
-        },
+    result = _commit(db, email_id, worker, generation, _decision(
+        db, user, email_id, event_id, intent="review", fields={"review_status": "active"},
+        source=_change_source(email_id),
     ))
 
     assert result["applied"] == 1
-    proposals = await _proposals(pg_pool, event_id)
-    assert [p["status"] for p in proposals] == ["pending"], (
+    assert [p["status"] for p in _proposals(db, event_id)] == ["pending"], (
         "a change held for review must produce a pending proposal"
     )
-    event = await _event_row(pg_pool, event_id)
+    event = _event_row(factory, event_id)
     assert event["review_status"] == "active"
     assert event["location"] == "Room A", "the proposal owns the change, not the event"
-    assert await _work_items(pg_pool, event_id) == [], (
-        "nothing may reach the user's calendar before they accept"
-    )
+    assert _work_items(db, event_id) == [], "nothing may reach the user's calendar before they accept"
 
 
-async def test_apply_intent_applies_the_change_and_queues_calendar_work(pg_pool, temp_user):
-    user_id, _, _ = temp_user
-    email_id, worker, generation = await _claim_email(pg_pool, user_id)
-    event_id = await _event(pg_pool, user_id, "active")
+def test_apply_intent_applies_the_change_and_queues_calendar_work(db, factory):
+    user = factory.user()
+    email_id, worker, generation = _claim(db, factory, user)
+    event_id = _event(factory, user, "active")
 
-    await _commit(pg_pool, email_id, worker, generation, await _decision(
-        pg_pool, user_id, email_id, event_id,
+    _commit(db, email_id, worker, generation, _decision(
+        db, user, email_id, event_id,
         intent="apply",
         fields={
-            "review_status": "active",
-            "calendar_action": "upsert",
-            "title": "Standup",
-            "start_datetime": f"{DAY}T10:00:00Z",
-            "end_datetime": f"{DAY}T11:00:00Z",
-            "location": "Room B",
+            "review_status": "active", "calendar_action": "upsert", "title": "Standup",
+            "start_datetime": f"{DAY}T10:00:00Z", "end_datetime": f"{DAY}T11:00:00Z", "location": "Room B",
         },
-        source={
-            "email_id": str(email_id),
-            "extracted_data": {},
-            "source_type": "update",
-            "event_snapshot_before": _snapshot(),
-            "change_set": _change_set(),
-        },
+        source=_change_source(email_id),
     ))
 
-    assert [p["status"] for p in await _proposals(pg_pool, event_id)] == ["applied"]
-    assert (await _event_row(pg_pool, event_id))["location"] == "Room B"
-    items = await _work_items(pg_pool, event_id)
+    assert [p["status"] for p in _proposals(db, event_id)] == ["applied"]
+    assert _event_row(factory, event_id)["location"] == "Room B"
+    items = _work_items(db, event_id)
     assert [item["action"] for item in items] == ["upsert"]
-    assert items[0]["desired_event"] is not None
-    assert json.loads(items[0]["desired_event"])["title"] == "Standup", (
+    assert items[0]["desired_event"]["title"] == "Standup", (
         "the queued payload must carry real values, never a NULL-filled object"
     )
 
 
-async def test_apply_intent_on_a_new_lane_event_queues_no_calendar_work(pg_pool, temp_user):
+def test_apply_intent_on_a_new_lane_event_queues_no_calendar_work(db, factory):
     """Absorbing newer information into an unapproved event is not a delivery."""
-    user_id, _, _ = temp_user
-    email_id, worker, generation = await _claim_email(pg_pool, user_id)
-    event_id = await _event(pg_pool, user_id, "pending_review")
+    user = factory.user()
+    email_id, worker, generation = _claim(db, factory, user)
+    event_id = _event(factory, user, "pending_review")
 
-    await _commit(pg_pool, email_id, worker, generation, await _decision(
-        pg_pool, user_id, email_id, event_id,
-        intent="apply",
+    _commit(db, email_id, worker, generation, _decision(
+        db, user, email_id, event_id, intent="apply",
         fields={"review_status": "pending_review", "location": "Room B"},
-        source={
-            "email_id": str(email_id),
-            "extracted_data": {},
-            "source_type": "update",
-            "event_snapshot_before": _snapshot(),
-            "change_set": _change_set(),
-        },
+        source=_change_source(email_id),
     ))
 
-    event = await _event_row(pg_pool, event_id)
+    event = _event_row(factory, event_id)
     assert event["review_status"] == "pending_review", "it stays in the New lane"
     assert event["location"] == "Room B"
-    assert await _work_items(pg_pool, event_id) == []
+    assert _work_items(db, event_id) == []
 
 
 @pytest.mark.parametrize("declined", ["rejected", "cancelled"])
-async def test_record_only_leaves_a_declined_event_untouched(pg_pool, temp_user, declined):
+def test_record_only_leaves_a_declined_event_untouched(db, factory, declined):
     """review-queue-integrity 8.2: record the match, change nothing."""
-    user_id, _, _ = temp_user
-    email_id, worker, generation = await _claim_email(pg_pool, user_id)
-    event_id = await _event(pg_pool, user_id, declined)
+    user = factory.user()
+    email_id, worker, generation = _claim(db, factory, user)
+    event_id = _event(factory, user, declined)
 
-    await _commit(pg_pool, email_id, worker, generation, await _decision(
-        pg_pool, user_id, email_id, event_id,
-        intent="record_only",
-        fields={},
-        source={"email_id": str(email_id), "extracted_data": {}, "source_type": "update"},
+    _commit(db, email_id, worker, generation, _decision(
+        db, user, email_id, event_id, intent="record_only", fields={},
+        source={"email_id": email_id, "extracted_data": {}, "source_type": "update"},
     ))
 
-    event = await _event_row(pg_pool, event_id)
+    event = _event_row(factory, event_id)
     assert event["review_status"] == declined, "a declined event is never revived"
     assert event["location"] == "Room A"
-    assert await _proposals(pg_pool, event_id) == []
-    assert await _work_items(pg_pool, event_id) == []
+    assert _proposals(db, event_id) == []
+    assert _work_items(db, event_id) == []
     # Provenance still lands: that is what keeps the identity match working, and
     # therefore what keeps the decision terminal instead of producing duplicates.
-    assert await pg_pool.fetchval(
-        "SELECT count(*) FROM public.event_sources WHERE event_id = $1 AND email_id = $2",
-        event_id, email_id,
-    ) == 1
+    assert db.query_one(
+        "SELECT count(*) FROM event_sources WHERE event_id = ? AND email_id = ?", (event_id, email_id)
+    )[0] == 1
 
 
-async def test_a_booking_reopens_a_rejected_event_into_the_new_lane(pg_pool, temp_user):
+def _future_day() -> datetime:
+    return (datetime.now() + timedelta(days=30)).replace(hour=10, minute=0, second=0, microsecond=0)
+
+
+def test_a_booking_reopens_a_rejected_event_into_the_new_lane(db, factory):
     """Regression: a ticket receipt for a play the user had rejected.
 
-    The decision is the one ``save_extracted_events`` actually builds, sent
-    through the real commit: the event returns to pending_review, an applied
-    proposal records why, and nothing is queued for the calendar.
+    The decision ``save_extracted_events`` builds goes through the real commit:
+    the event returns to pending_review, an applied proposal records why, and
+    nothing is queued for the calendar.
     """
-    from unittest.mock import MagicMock, patch
-
     from selko.api.schemas.calendar import CalendarEvent, CalendarEventExtraction
-    from selko.services.events import EventMatch, save_extracted_events
+    from selko.services.events import save_extracted_events
 
-    user_id, _, _ = temp_user
-    email_id, worker, generation = await _claim_email(pg_pool, user_id)
-    event_id = await _event(pg_pool, user_id, "rejected")
-
-    future = datetime.now() + timedelta(days=30)
+    user = factory.user()
+    factory._insert("user_calendar_settings", {"user_id": user, "timezone": "UTC"})
+    start = _future_day()
+    day = start.date().isoformat()
+    event_id = _event(factory, user, "rejected", day=day)
+    email_id, worker, generation = _claim(db, factory, user)
     extraction = CalendarEventExtraction(
-        email_message_id="receipt",
-        sender_email="tickets@example.com",
-        events_found=True,
+        email_message_id="receipt", sender_email="tickets@example.com", events_found=True,
         booking_confirmed=True,
-        events=[CalendarEvent(
-            title="Standup", start_datetime=future, description="tickets",
-        )],
+        events=[CalendarEvent(title="Standup", start_datetime=start, description="tickets")],
     )
-    captured: list[dict] = []
 
-    def capture(client, email, locked_by, lock_generation, decisions, terminal="processed"):
-        captured.extend(decisions)
-        return {"fenced": False, "applied": len(decisions), "event_ids": []}
+    with providers_offline(), \
+         patch("selko.services.events.event_processing.compare_events", return_value=event_id):
+        assert save_extracted_events(
+            db, gateway(), user, email_id, extraction, locked_by=worker, lock_generation=generation,
+        ) == (0, 1)
 
-    match = EventMatch(match_id=str(event_id), baseline={**_snapshot(), "review_status": "rejected"})
-    with patch("selko.services.events.find_matching_event", return_value=match), \
-         patch("selko.services.events._commit_email_extraction", side_effect=capture), \
-         patch("selko.services.events._load_identity_context", return_value=({}, [])), \
-         patch("selko.services.events.calendars.get_all_day_policy_and_timezone",
-               return_value=(MagicMock(mode="all_day"), "UTC")):
-        save_extracted_events(MagicMock(), MagicMock(), user_id, str(email_id), extraction)
-
-    assert len(captured) == 1
-    built = captured[0]
-    window = await _decision(pg_pool, user_id, email_id, event_id)
-    await _commit(pg_pool, email_id, worker, generation, {
-        **built,
-        **{k: window[k] for k in ("window_start", "window_end", "expected_fingerprint")},
-        "source": {**built["source"], "email_id": str(email_id)},
-    })
-
-    event = await _event_row(pg_pool, event_id)
+    event = _event_row(factory, event_id)
     assert event["review_status"] == "pending_review", "back in the New lane"
     assert event["location"] == "Room A", "only the lane changed"
-    assert await _work_items(pg_pool, event_id) == [], "never straight to the calendar"
-    proposals = await _proposals(pg_pool, event_id)
-    assert [(p["status"], p["kind"]) for p in proposals] == [("applied", "material_update")]
+    assert _work_items(db, event_id) == [], "never straight to the calendar"
+    assert [(p["status"], p["kind"]) for p in _proposals(db, event_id)] == [("applied", "material_update")]
 
 
 # --- fail-closed ---------------------------------------------------------
 
 
-async def test_a_decision_without_an_intent_is_refused(pg_pool, temp_user):
+def test_a_decision_without_an_intent_is_refused(db, factory):
     """The regression itself: silence must never mean 'apply and deliver'."""
-    user_id, _, _ = temp_user
-    email_id, worker, generation = await _claim_email(pg_pool, user_id)
-    event_id = await _event(pg_pool, user_id, "active")
+    user = factory.user()
+    email_id, worker, generation = _claim(db, factory, user)
+    event_id = _event(factory, user, "active")
 
-    decision = await _decision(
-        pg_pool, user_id, email_id, event_id,
-        fields={},
-        source={
-            "email_id": str(email_id),
-            "extracted_data": {},
-            "source_type": "update",
-            "event_snapshot_before": _snapshot(),
-            "change_set": _change_set(),
-        },
-    )
-    with pytest.raises(asyncpg.exceptions.PostgresError, match="known intent"):
-        await _commit(pg_pool, email_id, worker, generation, decision)
+    decision = _decision(db, user, email_id, event_id, fields={}, source=_change_source(email_id))
+    with pytest.raises(errors.InvalidArgument, match="known intent"):
+        _commit(db, email_id, worker, generation, decision)
+    assert _work_items(db, event_id) == []
 
 
-async def test_a_decision_without_a_review_status_is_refused(pg_pool, temp_user):
-    user_id, _, _ = temp_user
-    email_id, worker, generation = await _claim_email(pg_pool, user_id)
-    event_id = await _event(pg_pool, user_id, "active")
+def test_a_decision_without_a_review_status_is_refused(db, factory):
+    user = factory.user()
+    email_id, worker, generation = _claim(db, factory, user)
+    event_id = _event(factory, user, "active")
 
-    decision = await _decision(
-        pg_pool, user_id, email_id, event_id, intent="no_change", fields={},
-    )
-    with pytest.raises(asyncpg.exceptions.PostgresError, match="explicit review_status"):
-        await _commit(pg_pool, email_id, worker, generation, decision)
+    decision = _decision(db, user, email_id, event_id, intent="no_change", fields={})
+    with pytest.raises(errors.InvalidArgument, match="explicit review_status"):
+        _commit(db, email_id, worker, generation, decision)
 
 
-async def test_review_intent_requires_an_active_event(pg_pool, temp_user):
+def test_review_intent_requires_an_active_event(db, factory):
     """A pending proposal requires review_status 'active'; say so, don't guess."""
-    user_id, _, _ = temp_user
-    email_id, worker, generation = await _claim_email(pg_pool, user_id)
-    event_id = await _event(pg_pool, user_id, "active")
+    user = factory.user()
+    email_id, worker, generation = _claim(db, factory, user)
+    event_id = _event(factory, user, "active")
 
-    decision = await _decision(
-        pg_pool, user_id, email_id, event_id,
-        intent="review",
-        fields={"review_status": "pending_review"},
-        source={
-            "email_id": str(email_id),
-            "extracted_data": {},
-            "source_type": "update",
-            "event_snapshot_before": _snapshot(),
-            "change_set": _change_set(),
-        },
-    )
-    with pytest.raises(asyncpg.exceptions.PostgresError, match="requires review_status active"):
-        await _commit(pg_pool, email_id, worker, generation, decision)
+    decision = _decision(db, user, email_id, event_id, intent="review",
+                         fields={"review_status": "pending_review"}, source=_change_source(email_id))
+    with pytest.raises(errors.InvalidArgument, match="requires review_status active"):
+        _commit(db, email_id, worker, generation, decision)
 
 
-async def test_no_change_intent_cannot_carry_a_change_set(pg_pool, temp_user):
-    user_id, _, _ = temp_user
-    email_id, worker, generation = await _claim_email(pg_pool, user_id)
-    event_id = await _event(pg_pool, user_id, "active")
+def test_no_change_intent_cannot_carry_a_change_set(db, factory):
+    user = factory.user()
+    email_id, worker, generation = _claim(db, factory, user)
+    event_id = _event(factory, user, "active")
 
-    decision = await _decision(
-        pg_pool, user_id, email_id, event_id,
-        intent="no_change",
-        fields={"review_status": "active"},
-        source={
-            "email_id": str(email_id),
-            "extracted_data": {},
-            "source_type": "update",
-            "event_snapshot_before": _snapshot(),
-            "change_set": _change_set(),
-        },
-    )
-    with pytest.raises(asyncpg.exceptions.PostgresError, match="cannot carry a change_set"):
-        await _commit(pg_pool, email_id, worker, generation, decision)
+    decision = _decision(db, user, email_id, event_id, intent="no_change",
+                         fields={"review_status": "active"}, source=_change_source(email_id))
+    with pytest.raises(errors.InvalidArgument, match="cannot carry a change_set"):
+        _commit(db, email_id, worker, generation, decision)
 
 
 @pytest.mark.parametrize("declined", ["rejected", "cancelled"])
-async def test_calendar_upsert_is_refused_for_a_declined_event(pg_pool, temp_user, declined):
+def test_calendar_upsert_is_refused_for_a_declined_event(db, factory, declined):
     """The queue helper no longer resurrects; it fails closed."""
-    user_id, _, _ = temp_user
-    event_id = await _event(pg_pool, user_id, declined)
-    with pytest.raises(asyncpg.exceptions.PostgresError, match="cannot queue calendar upsert"):
-        await pg_pool.fetchval(
-            "SELECT public._enqueue_calendar_work($1, $2, 'upsert', $3::jsonb, NULL, false)",
-            event_id, user_id, json.dumps({"title": "Standup"}),
-        )
-    assert (await _event_row(pg_pool, event_id))["review_status"] == declined
+    user = factory.user()
+    event_id = _event(factory, user, declined)
+    with pytest.raises(errors.InvalidArgument, match="cannot queue calendar upsert"):
+        db_calendar_work.enqueue_calendar_work(db, user, event_id, "upsert", {"title": "Standup"})
+    assert _event_row(factory, event_id)["review_status"] == declined
 
 
-async def test_queueing_calendar_work_does_not_change_the_review_decision(pg_pool, temp_user):
+def test_queueing_calendar_work_does_not_change_the_review_decision(db, factory):
     """events.review_status owns the user decision; the queue helper does not.
 
     The helper used to promote pending_review/rejected/cancelled to 'active' on
@@ -436,78 +296,51 @@ async def test_queueing_calendar_work_does_not_change_the_review_decision(pg_poo
     immediately afterwards, which is how a declined event could be revived by
     something as unrelated as queueing a calendar write.
     """
-    user_id, _, _ = temp_user
-    event_id = await _event(pg_pool, user_id, "pending_review")
-    await pg_pool.fetchval(
-        "SELECT public._enqueue_calendar_work($1, $2, 'upsert', $3::jsonb, NULL, false)",
-        event_id, user_id, json.dumps({"title": "Standup"}),
-    )
-    assert (await _event_row(pg_pool, event_id))["review_status"] == "pending_review"
-    assert [item["action"] for item in await _work_items(pg_pool, event_id)] == ["upsert"]
+    user = factory.user()
+    event_id = _event(factory, user, "pending_review")
+    db_calendar_work.enqueue_calendar_work(db, user, event_id, "upsert", {"title": "Standup"})
+    assert _event_row(factory, event_id)["review_status"] == "pending_review"
+    assert [item["action"] for item in _work_items(db, event_id)] == ["upsert"]
 
 
 @pytest.mark.parametrize("adopted_from_calendar", [False, True])
-async def test_an_update_applies_to_a_selko_event_and_waits_on_a_calendar_one(
-    pg_pool, temp_user, admin_client, adopted_from_calendar
-):
+def test_an_update_applies_to_a_selko_event_and_waits_on_a_calendar_one(db, factory, adopted_from_calendar):
     """Provenance is read from real rows and the decision goes through the real commit.
 
     A Selko-created event (email provenance only) takes the update and queues
     calendar work; an event adopted from the user's own calendar keeps its
     values and gets a pending proposal instead.
     """
-    from unittest.mock import MagicMock, patch
-
     from selko.api.schemas.calendar import CalendarEvent, CalendarEventExtraction
     from selko.services.event_diff import EventChangeSet, FieldChange
-    from selko.services.events import EventMatch, save_extracted_events
+    from selko.services.events import save_extracted_events
 
-    user_id, _, _ = temp_user
-    email_id, worker, generation = await _claim_email(pg_pool, user_id)
-    event_id = await _event(pg_pool, user_id, "active")
-    await pg_pool.execute(
-        "INSERT INTO public.event_sources (event_id, email_id, source_origin, source_type, extracted_data)"
-        " VALUES ($1, $2, 'email', 'new_invitation', '{}'::jsonb)",
-        event_id, email_id,
-    )
+    user = factory.user()
+    factory._insert("user_calendar_settings", {"user_id": user, "timezone": "UTC"})
+    start = _future_day()
+    event_id = _event(factory, user, "active", day=start.date().isoformat())
+    factory.event_source(event_id, factory.email(user, processing_status="processed"),
+                         source_type="new_invitation")
     if adopted_from_calendar:
-        await pg_pool.execute(
-            "INSERT INTO public.event_sources (event_id, source_origin, google_calendar_source_event_id,"
-            " source_type, extracted_data) VALUES ($1, 'google_calendar', 'gcal-1', 'unknown', '{}'::jsonb)",
-            event_id,
-        )
-
-    future = datetime.now() + timedelta(days=30)
+        factory.event_source(event_id, source_type="unknown")
+    email_id, worker, generation = _claim(db, factory, user)
     extraction = CalendarEventExtraction(
         email_message_id="update", sender_email="organizer@example.com", events_found=True,
-        events=[CalendarEvent(title="Standup", start_datetime=future, location="Room B",
-                              description="moved")],
+        events=[CalendarEvent(title="Standup", start_datetime=start, end_datetime=start + timedelta(hours=1),
+                              location="Room B", description="moved")],
     )
-    captured: list[dict] = []
-
-    def capture(client, email, locked_by, lock_generation, decisions, terminal="processed"):
-        captured.extend(decisions)
-        return {"fenced": False, "applied": len(decisions), "event_ids": []}
-
-    match = EventMatch(match_id=str(event_id), baseline=_snapshot())
     change_set = EventChangeSet(kind="material_update", changes=[
         FieldChange(field="location", before="Room A", after="Room B", reason="moved")])
-    with patch("selko.services.events.find_matching_event", return_value=match), \
-         patch("selko.services.events._commit_email_extraction", side_effect=capture), \
-         patch("selko.services.events.event_processing.propose_event_update",
-               return_value=change_set):
-        save_extracted_events(admin_client, MagicMock(), user_id, str(email_id), extraction)
 
-    built = captured[0]
-    window = await _decision(pg_pool, user_id, email_id, event_id)
-    await _commit(pg_pool, email_id, worker, generation, {
-        **built,
-        **{k: window[k] for k in ("window_start", "window_end", "expected_fingerprint")},
-    })
+    with providers_offline(), \
+         patch("selko.services.events.event_processing.compare_events", return_value=event_id), \
+         patch("selko.services.events.event_processing.propose_event_update", return_value=change_set):
+        save_extracted_events(db, gateway(), user, email_id, extraction,
+                              locked_by=worker, lock_generation=generation)
 
-    event = await _event_row(pg_pool, event_id)
-    proposals = await _proposals(pg_pool, event_id)
-    work = await _work_items(pg_pool, event_id)
+    event = _event_row(factory, event_id)
+    proposals = _proposals(db, event_id)
+    work = _work_items(db, event_id)
     if adopted_from_calendar:
         assert event["location"] == "Room A", "the user's own entry is not rewritten"
         assert [p["status"] for p in proposals] == ["pending"]
@@ -515,6 +348,4 @@ async def test_an_update_applies_to_a_selko_event_and_waits_on_a_calendar_one(
     else:
         assert event["location"] == "Room B"
         assert [p["status"] for p in proposals] == ["applied"]
-        assert [(w["action"], json.loads(w["desired_event"])["location"]) for w in work] == [
-            ("upsert", "Room B")
-        ]
+        assert [(w["action"], w["desired_event"]["location"]) for w in work] == [("upsert", "Room B")]

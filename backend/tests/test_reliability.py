@@ -49,179 +49,178 @@ def freeze_retry_clock(now: datetime = FROZEN_NOW):
 
 
 class TestFencedFailEmailProcessing:
-    """S1: exponential backoff and dead-lettering now happen inside the
-    ``fail_email_processing`` SQL RPC (see the ``20260823000001`` migration);
-    this Python wrapper just calls it and interprets the returned outcome.
-    Backoff growth/capping is covered against real Postgres by
-    ``test_integration_email_state_machine.py``.
+    """S1: exponential backoff and dead-lettering happen inside
+    `selko.db.emails.fail_email_processing`; this Python wrapper calls it
+    and interprets the outcome. Exercised against a real temporary database.
     """
 
-    @pytest.fixture(autouse=True)
-    def pool(self, fake_pg_pool):
-        self.pool = fake_pg_pool
+    @staticmethod
+    def _claimed(db, factory, *, max_attempts: int = 3) -> dict:
+        from selko.db import emails as db_emails
 
-    def test_calls_fenced_rpc_with_worker_and_generation(self):
+        factory.email(factory.user(), max_attempts=max_attempts)
+        email = db_emails.claim_unprocessed_email(db, "worker-a", 300)
+        assert email is not None
+        return email
+
+    def test_passes_worker_and_generation_to_the_fence(self, db, factory):
         import asyncio
-        import json
 
         from selko.services.emails import fail_email_processing
 
-        self.pool.rows.append(json.dumps({"fenced": False, "status": "pending", "attempts": 1}))
-        asyncio.run(fail_email_processing(
-            self.pool, "email-1", "worker-a", 3, "test error", 60, 1800,
+        email = self._claimed(db, factory)
+        outcome = asyncio.run(fail_email_processing(
+            db, email["id"], "worker-a", email["lock_generation"], "test error", 60, 1800,
         ))
 
-        sql, args = self.pool.calls[-1]
-        assert "public.fail_email_processing(" in sql
-        assert args == ("email-1", "worker-a", 3, "test error", "test error", 60, 1800)
+        assert outcome["fenced"] is False
+        row = factory.row("emails", email["id"])
+        assert (row["processing_status"], row["processing_error"], row["locked_by"]) == ("pending", "test error", None)
 
-    def test_pending_outcome_is_returned(self):
+    def test_pending_outcome_is_returned(self, db, factory):
         import asyncio
-        import json
 
         from selko.services.emails import fail_email_processing
 
-        self.pool.rows.append(json.dumps({
-            "fenced": False, "status": "pending", "attempts": 1,
-            "next_retry_at": "2026-04-09T12:01:00+00:00",
-        }))
+        email = self._claimed(db, factory)
         outcome = asyncio.run(fail_email_processing(
-            self.pool, "email-1", "worker-a", 1, "transient", 60, 1800,
+            db, email["id"], "worker-a", email["lock_generation"], "transient", 60, 1800,
         ))
 
         assert outcome["status"] == "pending"
-        assert outcome["fenced"] is False
+        assert outcome["attempts"] == 1
+        assert outcome["next_retry_at"] is not None
 
-    def test_terminal_outcome_is_returned(self):
+    def test_terminal_outcome_is_returned(self, db, factory):
         import asyncio
-        import json
 
         from selko.services.emails import fail_email_processing
 
-        self.pool.rows.append(json.dumps({"fenced": False, "status": "failed", "attempts": 3}))
+        email = self._claimed(db, factory, max_attempts=1)
         outcome = asyncio.run(fail_email_processing(
-            self.pool, "email-1", "worker-a", 1, "permanent", 60, 1800,
+            db, email["id"], "worker-a", email["lock_generation"], "permanent", 60, 1800,
         ))
 
         assert outcome["status"] == "failed"
+        assert factory.row("emails", email["id"])["dead_letter_reason"] == "permanent"
 
-    def test_fenced_outcome_is_returned_without_raising(self):
+    def test_fenced_outcome_is_returned_without_raising(self, db, factory):
         """A stale (worker, generation) must not raise — a replacement worker
         already owns the row."""
         import asyncio
-        import json
 
         from selko.services.emails import fail_email_processing
 
-        self.pool.rows.append(json.dumps({"fenced": True, "status": "processing"}))
+        email = self._claimed(db, factory)
         outcome = asyncio.run(fail_email_processing(
-            self.pool, "email-1", "stale-worker", 1, "too late", 60, 1800,
+            db, email["id"], "stale-worker", email["lock_generation"], "too late", 60, 1800,
         ))
 
         assert outcome["fenced"] is True
+        assert factory.row("emails", email["id"])["locked_by"] == "worker-a"
+
+
+def _processing_item(factory, *, attempts=1, max_attempts=3):
+    """A calendar work item leased to worker-1 at generation 2, on a real database."""
+    from selko.db.codec import new_id
+
+    user = factory.user()
+    event = factory.event(user, review_status="active")
+    item = factory._insert("calendar_work_items", {
+        "id": new_id(), "event_id": event, "user_id": user, "action": "upsert", "generation": 2,
+        "status": "processing", "desired_event": {"title": "Event"}, "attempts": attempts,
+        "max_attempts": max_attempts, "locked_by": "worker-1",
+        "locked_until": "2099-01-01T00:00:00.000000Z", "provider": "google_calendar",
+    })
+    return item
+
+
+def _item(factory, item_id):
+    return factory.row("calendar_work_items", item_id)
 
 
 class TestExponentialBackoffEvents:
-    @pytest.fixture(autouse=True)
-    def pool(self, fake_pg_pool):
-        self.pool = fake_pg_pool
+    """The Python boundary around the fenced calendar work transitions, on a real database."""
 
-    """Tests for the Python boundary around the calendar work RPC."""
-
-    def queue_processing_item(self):
-        self.pool.rows.append({
-            "id": "work-item-1",
-            "event_id": "event-1",
-            "generation": 2,
-            "locked_by": "worker-1",
-            "status": "processing",
-        })
-
-    def test_event_retry_with_backoff(self):
-        """Event retry should include next_retry_at with exponential backoff."""
+    def test_event_retry_with_backoff(self, db, factory):
+        """A retryable failure goes back to pending with a backoff, keeping the attempt."""
         import asyncio
 
         from selko.services.events import WorkItemLease, fail_event_sync
 
-        self.queue_processing_item()
-        asyncio.run(
-            fail_event_sync(
-                self.pool, WorkItemLease("work-item-1", "worker-1", 2),
-                "Calendar API error",
-            )
-        )
+        item_id = _processing_item(factory, attempts=1)
+        asyncio.run(fail_event_sync(db, WorkItemLease(item_id, "worker-1", 2), "Calendar API error"))
 
-        sql, args = self.pool.calls[-1]
-        assert "public.fail_calendar_work(" in sql
-        assert args == (
-            "work-item-1", "worker-1", 2, "calendar_sync_failed",
-            "Calendar API error", True,
+        row = _item(factory, item_id)
+        assert (row["status"], row["failure_code"], row["failure_detail"]) == (
+            "pending", "calendar_sync_failed", "Calendar API error",
         )
+        assert row["locked_by"] is None and row["next_retry_at"] is not None
+        assert row["attempts"] == 1
 
-    def test_event_delay_capped(self):
-        """Event delay should also be capped at 3600s."""
+    def test_event_delay_capped(self, db, factory):
+        """The backoff never exceeds the 30-minute cap, however many attempts."""
         import asyncio
+        from datetime import datetime
 
+        from selko.db.calendar_work import retry_delay_seconds
         from selko.services.events import WorkItemLease, fail_event_sync
 
-        self.queue_processing_item()
-        asyncio.run(
-            fail_event_sync(
-                self.pool, WorkItemLease("work-item-1", "worker-1", 2), "error"
-            )
-        )
+        assert retry_delay_seconds(20) == 1800
+        item_id = _processing_item(factory, attempts=2, max_attempts=50)
+        asyncio.run(fail_event_sync(db, WorkItemLease(item_id, "worker-1", 2), "error"))
 
-        sql, args = self.pool.calls[-1]
-        assert "public.fail_calendar_work(" in sql
+        row = _item(factory, item_id)
+        delay = (datetime.fromisoformat(row["next_retry_at"]) - datetime.fromisoformat(row["updated_at"]))
+        assert delay.total_seconds() == retry_delay_seconds(2) <= 1800
 
-    def test_calendar_quota_deferral_releases_claim_without_spending_attempt(self):
+    def test_calendar_quota_deferral_releases_claim_without_spending_attempt(self, db, factory):
         """Quota deferral returns the claimed event to its pre-claim budget."""
         import asyncio
 
         from selko.services.events import WorkItemLease, defer_event_sync_for_quota
 
         reset_at = "2026-04-10T00:00:00+00:00"
+        item_id = _processing_item(factory, attempts=1)
+        asyncio.run(defer_event_sync_for_quota(db, WorkItemLease(item_id, "worker-1", 2), reset_at))
 
-        self.queue_processing_item()
-        asyncio.run(
-            defer_event_sync_for_quota(
-                self.pool, WorkItemLease("work-item-1", "worker-1", 2), reset_at
-            )
-        )
+        row = _item(factory, item_id)
+        assert (row["status"], row["attempts"], row["locked_by"]) == ("pending", 0, None)
+        assert row["next_retry_at"] == "2026-04-10T00:00:00.000000Z"
+        assert row["failure_detail"] == "Daily calendar sync quota exceeded"
 
-        sql, args = self.pool.calls[-1]
-        assert "public.defer_calendar_work(" in sql
-        assert args == (
-            "work-item-1", "worker-1", 2, reset_at,
-            "Daily calendar sync quota exceeded",
-        )
-
-    def test_oauth_park_releases_claim_without_spending_attempt_or_dead_lettering(self):
+    def test_oauth_park_releases_claim_without_spending_attempt_or_dead_lettering(self, db, factory):
         """An OAuth-blocked sync isn't a real attempt: no dead-letter, no backoff.
 
         docs/specs/oauth-reconnect-catch-up.md item 1: expired/insufficient
-        OAuth "does not consume further automatic attempts" and must clear
-        any stale retry/dead-letter state so the event is a clean `approved`
-        row once the user reauthorizes.
+        OAuth "does not consume further automatic attempts"; the item is parked
+        (blocked, with the OAuth failure code) until the user reauthorizes and
+        recovery requeues it.
         """
         import asyncio
 
         from selko.services.events import WorkItemLease, park_event_for_oauth_reauth
 
-        self.queue_processing_item()
+        item_id = _processing_item(factory, attempts=1)
         asyncio.run(park_event_for_oauth_reauth(
-            self.pool,
-            WorkItemLease("work-item-1", "worker-1", 2),
-            "oauth_required",
+            db, WorkItemLease(item_id, "worker-1", 2), "oauth_required",
             "Google Calendar needs to be reconnected.",
         ))
 
-        sql, args = self.pool.calls[-1]
-        assert "public.fail_calendar_work(" in sql
-        assert args == (
-            "work-item-1", "worker-1", 2, "oauth_required",
-            "Google Calendar needs to be reconnected.", False,
-        )
+        row = _item(factory, item_id)
+        assert (row["status"], row["failure_code"]) == ("blocked", "oauth_required")
+        assert row["next_retry_at"] is None, "no backoff for an OAuth block"
+        assert row["locked_by"] is None
+
+    def test_a_stale_lease_changes_nothing(self, db, factory):
+        import asyncio
+
+        from selko.services.events import WorkItemLease, fail_event_sync
+
+        item_id = _processing_item(factory)
+        asyncio.run(fail_event_sync(db, WorkItemLease(item_id, "worker-1", 1), "late"))
+
+        assert _item(factory, item_id)["status"] == "processing"
 
 
 # ===========================================================================
@@ -236,58 +235,31 @@ class TestDeadLetterEmail:
 
 
 class TestDeadLetterEvent:
-    @pytest.fixture(autouse=True)
-    def pool(self, fake_pg_pool):
-        self.pool = fake_pg_pool
+    """A calendar work item that spends its budget ends failed; one with budget left retries."""
 
-    """Tests for dead letter fields when max attempts exceeded for events."""
-
-    def queue_processing_item(self):
-        self.pool.rows.append({
-            "id": "work-item-1",
-            "event_id": "event-1",
-            "generation": 2,
-            "locked_by": "worker-1",
-            "status": "processing",
-        })
-
-    def test_dead_letter_on_max_sync_attempts(self):
-        """When max sync attempts exceeded, dead_letter fields should be set."""
+    def test_dead_letter_on_max_sync_attempts(self, db, factory):
         import asyncio
 
         from selko.services.events import WorkItemLease, fail_event_sync
 
-        self.queue_processing_item()
-        asyncio.run(
-            fail_event_sync(
-                self.pool, WorkItemLease("work-item-1", "worker-1", 2),
-                "Calendar API down",
-            )
-        )
+        item_id = _processing_item(factory, attempts=3, max_attempts=3)
+        asyncio.run(fail_event_sync(db, WorkItemLease(item_id, "worker-1", 2), "Calendar API down"))
 
-        sql, args = self.pool.calls[-1]
-        assert "public.fail_calendar_work(" in sql
-        assert args == (
-            "work-item-1", "worker-1", 2, "calendar_sync_failed",
-            "Calendar API down", True,
-        )
+        row = _item(factory, item_id)
+        assert (row["status"], row["failure_detail"]) == ("failed", "Calendar API down")
+        assert row["completed_at"] is not None and row["next_retry_at"] is None
 
-    def test_no_dead_letter_on_event_retry(self):
-        """When retries remain, dead_letter fields should NOT be set."""
+    def test_no_dead_letter_on_event_retry(self, db, factory):
         import asyncio
 
         from selko.services.events import WorkItemLease, fail_event_sync
 
-        self.queue_processing_item()
-        asyncio.run(
-            fail_event_sync(
-                self.pool, WorkItemLease("work-item-1", "worker-1", 2),
-                "Temporary error",
-            )
-        )
+        item_id = _processing_item(factory, attempts=1, max_attempts=3)
+        asyncio.run(fail_event_sync(db, WorkItemLease(item_id, "worker-1", 2), "Temporary error"))
 
-        sql, args = self.pool.calls[-1]
-        assert "public.fail_calendar_work(" in sql
+        row = _item(factory, item_id)
+        assert row["status"] == "pending"
+        assert row["completed_at"] is None
 
 
 # ===========================================================================

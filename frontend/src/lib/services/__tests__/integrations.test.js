@@ -1,262 +1,93 @@
 // @ts-nocheck
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { mockIntegrations, mockErrors } from '../../../../tests/fixtures/mock-data.js';
+import { mockIntegrations } from '../../../../tests/fixtures/mock-data.js';
 
-// Mock supabase module
-const mockFrom = vi.fn();
-vi.mock('$lib/supabase.js', () => ({
-	supabase: {
-		from: (...args) => mockFrom(...args)
-	}
+const mockApiFetch = vi.fn();
+vi.mock('$lib/api/client.js', () => ({
+	apiFetch: (...args) => mockApiFetch(...args)
 }));
 
-// Import after mocking
-const { fetchIntegrations, getIntegration, getIntegrationByProvider, isProviderConnected } =
-	await import('../integrations.js');
+const { fetchIntegrations, disconnectIntegrations, fetchCalendarRecovery } = await import(
+	'../integrations.js'
+);
 
 describe('integrations service', () => {
 	beforeEach(() => {
-		vi.clearAllMocks();
+		mockApiFetch.mockReset();
 	});
 
 	describe('fetchIntegrations', () => {
-		it('fetches all integrations for user', async () => {
-			const mockQuery = {
-				select: vi.fn().mockReturnThis(),
-				order: vi.fn().mockResolvedValue({
-					data: mockIntegrations,
-					error: null,
-					count: mockIntegrations.length
-				})
-			};
-
-			mockFrom.mockReturnValue(mockQuery);
+		it('fetches the user’s integrations from GET /integrations', async () => {
+			mockApiFetch.mockResolvedValue({ data: mockIntegrations, error: null, status: 200 });
 
 			const result = await fetchIntegrations();
 
-			expect(mockFrom).toHaveBeenCalledWith('integrations');
-			expect(mockQuery.select).toHaveBeenCalledWith(
-				'id, user_id, provider, status, provider_email, scopes, last_sync_at, created_at, updated_at',
-				{ count: 'exact' }
-			);
-			expect(mockQuery.order).toHaveBeenCalledWith('created_at', { ascending: false });
+			expect(mockApiFetch).toHaveBeenCalledWith('/integrations');
 			expect(result.data).toEqual(mockIntegrations);
 			expect(result.count).toBe(mockIntegrations.length);
 			expect(result.error).toBeNull();
 		});
 
-		it('excludes sensitive token fields', async () => {
-			const mockQuery = {
-				select: vi.fn().mockReturnThis(),
-				order: vi.fn().mockResolvedValue({
-					data: mockIntegrations,
-					error: null,
-					count: mockIntegrations.length
-				})
-			};
-
-			mockFrom.mockReturnValue(mockQuery);
-
-			await fetchIntegrations();
-
-			// Should NOT include access_token or refresh_token
-			const selectArg = mockQuery.select.mock.calls[0][0];
-			expect(selectArg).not.toContain('access_token');
-			expect(selectArg).not.toContain('refresh_token');
-		});
-
 		it('handles errors gracefully', async () => {
-			const mockQuery = {
-				select: vi.fn().mockReturnThis(),
-				order: vi.fn().mockResolvedValue({
-					data: null,
-					error: mockErrors.permissionDenied,
-					count: null
-				})
-			};
-
-			mockFrom.mockReturnValue(mockQuery);
+			mockApiFetch.mockResolvedValue({ data: null, error: { message: 'Unable to connect', status: 0, code: 'NETWORK_ERROR' }, status: 0 });
 
 			const result = await fetchIntegrations();
 
 			expect(result.data).toEqual([]);
-			expect(result.error?.code).toBe('42501');
+			expect(result.count).toBeNull();
+			expect(result.error.code).toBe('NETWORK_ERROR');
 		});
 
-		it('returns empty array when data is null', async () => {
-			const mockQuery = {
-				select: vi.fn().mockReturnThis(),
-				order: vi.fn().mockResolvedValue({
-					data: null,
-					error: null,
-					count: 0
-				})
-			};
-
-			mockFrom.mockReturnValue(mockQuery);
+		it('returns an empty list when the body is empty', async () => {
+			mockApiFetch.mockResolvedValue({ data: null, error: null, status: 200 });
 
 			const result = await fetchIntegrations();
 
 			expect(result.data).toEqual([]);
-			expect(result.error).toBeNull();
+			expect(result.count).toBe(0);
 		});
 	});
 
-	describe('getIntegration', () => {
-		it('fetches a single integration by ID', async () => {
-			const mockQuery = {
-				select: vi.fn().mockReturnThis(),
-				eq: vi.fn().mockReturnThis(),
-				single: vi.fn().mockResolvedValue({
-					data: mockIntegrations[0],
-					error: null
-				})
-			};
+	describe('disconnectIntegrations', () => {
+		it('deletes the given ids in one request', async () => {
+			mockApiFetch.mockResolvedValue({ data: { deleted: 2 }, error: null, status: 200 });
 
-			mockFrom.mockReturnValue(mockQuery);
+			const result = await disconnectIntegrations(['gmail-1', 'gcal-1']);
 
-			const result = await getIntegration(mockIntegrations[0].id);
-
-			expect(mockFrom).toHaveBeenCalledWith('integrations');
-			expect(mockQuery.eq).toHaveBeenCalledWith('id', mockIntegrations[0].id);
-			expect(mockQuery.single).toHaveBeenCalled();
-			expect(result.data).toEqual(mockIntegrations[0]);
-			expect(result.error).toBeNull();
+			expect(mockApiFetch).toHaveBeenCalledWith('/integrations/disconnect', {
+				method: 'POST',
+				body: { integration_ids: ['gmail-1', 'gcal-1'] }
+			});
+			expect(result).toEqual({ data: true, error: null });
 		});
 
-		it('handles not found', async () => {
-			const mockQuery = {
-				select: vi.fn().mockReturnThis(),
-				eq: vi.fn().mockReturnThis(),
-				single: vi.fn().mockResolvedValue({
-					data: null,
-					error: mockErrors.notFound
-				})
-			};
+		it('returns the API error', async () => {
+			mockApiFetch.mockResolvedValue({ data: null, error: { message: 'Integration not found', status: 404 }, status: 404 });
 
-			mockFrom.mockReturnValue(mockQuery);
-
-			const result = await getIntegration('non-existent');
+			const result = await disconnectIntegrations(['other-user']);
 
 			expect(result.data).toBeNull();
-			expect(result.error).not.toBeNull();
+			expect(result.error.status).toBe(404);
 		});
 	});
 
-	describe('getIntegrationByProvider', () => {
-		it('fetches integration by provider name', async () => {
-			const gmailIntegration = mockIntegrations.find((i) => i.provider === 'gmail');
-			const mockQuery = {
-				select: vi.fn().mockReturnThis(),
-				eq: vi.fn().mockReturnThis(),
-				single: vi.fn().mockResolvedValue({
-					data: gmailIntegration,
-					error: null
-				})
-			};
+	describe('fetchCalendarRecovery', () => {
+		it('unwraps the latest Google Calendar recovery', async () => {
+			const recovery = { id: 'r1', provider: 'google_calendar', status: 'processing' };
+			mockApiFetch.mockResolvedValue({ data: { recovery }, error: null, status: 200 });
 
-			mockFrom.mockReturnValue(mockQuery);
+			const result = await fetchCalendarRecovery();
 
-			const result = await getIntegrationByProvider('gmail');
-
-			expect(mockFrom).toHaveBeenCalledWith('integrations');
-			expect(mockQuery.eq).toHaveBeenCalledWith('provider', 'gmail');
-			expect(result.data).toEqual(gmailIntegration);
-			expect(result.error).toBeNull();
+			expect(mockApiFetch).toHaveBeenCalledWith('/integrations/recovery', {
+				query: { provider: 'google_calendar' }
+			});
+			expect(result).toEqual({ data: recovery, error: null });
 		});
 
-		it('returns null without error when not found', async () => {
-			const mockQuery = {
-				select: vi.fn().mockReturnThis(),
-				eq: vi.fn().mockReturnThis(),
-				single: vi.fn().mockResolvedValue({
-					data: null,
-					error: { code: 'PGRST116', message: 'No rows found' }
-				})
-			};
+		it('returns null without an error when there is no recovery', async () => {
+			mockApiFetch.mockResolvedValue({ data: { recovery: null }, error: null, status: 200 });
 
-			mockFrom.mockReturnValue(mockQuery);
-
-			const result = await getIntegrationByProvider('gmail');
-
-			// PGRST116 (not found) should return null without error
-			expect(result.data).toBeNull();
-			expect(result.error).toBeNull();
-		});
-
-		it('returns error for other errors', async () => {
-			const mockQuery = {
-				select: vi.fn().mockReturnThis(),
-				eq: vi.fn().mockReturnThis(),
-				single: vi.fn().mockResolvedValue({
-					data: null,
-					error: mockErrors.permissionDenied
-				})
-			};
-
-			mockFrom.mockReturnValue(mockQuery);
-
-			const result = await getIntegrationByProvider('gmail');
-
-			expect(result.data).toBeNull();
-			expect(result.error).not.toBeNull();
-			expect(result.error?.code).toBe('42501');
-		});
-	});
-
-	describe('isProviderConnected', () => {
-		it('returns true for active provider', async () => {
-			const activeIntegration = mockIntegrations.find(
-				(i) => i.provider === 'gmail' && i.status === 'active'
-			);
-			const mockQuery = {
-				select: vi.fn().mockReturnThis(),
-				eq: vi.fn().mockReturnThis(),
-				single: vi.fn().mockResolvedValue({
-					data: activeIntegration,
-					error: null
-				})
-			};
-
-			mockFrom.mockReturnValue(mockQuery);
-
-			const result = await isProviderConnected('gmail');
-
-			expect(result).toBe(true);
-		});
-
-		it('returns false when provider not found', async () => {
-			const mockQuery = {
-				select: vi.fn().mockReturnThis(),
-				eq: vi.fn().mockReturnThis(),
-				single: vi.fn().mockResolvedValue({
-					data: null,
-					error: { code: 'PGRST116', message: 'No rows found' }
-				})
-			};
-
-			mockFrom.mockReturnValue(mockQuery);
-
-			const result = await isProviderConnected('gmail');
-
-			expect(result).toBe(false);
-		});
-
-		it('returns false on error', async () => {
-			const mockQuery = {
-				select: vi.fn().mockReturnThis(),
-				eq: vi.fn().mockReturnThis(),
-				single: vi.fn().mockResolvedValue({
-					data: null,
-					error: mockErrors.permissionDenied
-				})
-			};
-
-			mockFrom.mockReturnValue(mockQuery);
-
-			const result = await isProviderConnected('gmail');
-
-			expect(result).toBe(false);
+			expect(await fetchCalendarRecovery()).toEqual({ data: null, error: null });
 		});
 	});
 });

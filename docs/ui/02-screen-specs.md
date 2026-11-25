@@ -553,7 +553,7 @@ Future: "Add another account" button for multiple Google accounts.
 | Field | Type | Notes |
 |-------|------|-------|
 | Email | Read-only | Shows current email address |
-| Change Password | Button | Triggers Supabase password reset flow |
+| Change Password | Button | Not implemented: Selko's own sign-in has no password change or reset yet |
 
 #### Calendar Defaults
 

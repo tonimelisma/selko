@@ -12,9 +12,9 @@ import asyncio
 import logging
 from typing import Any
 
-from supabase import Client
-
 from selko.config import Config
+from selko.db import emails as db_emails
+from selko.db.connection import Database
 from selko.services.events import EventsError, process_email_for_events
 from selko.services.llm_gateway import create_llm_gateway
 from selko.services.llm_logging import LLMLoggingService
@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 
 async def process_email(
-    client: Client,
+    client: Database,
     config: Config,
     email: dict[str, Any],
 ) -> dict[str, Any]:
@@ -37,7 +37,7 @@ async def process_email(
     "processed".
 
     Args:
-        client: Supabase client (with service role).
+        client: The process database.
         config: Application configuration.
         email: Full email record (from claim_pending_email).
 
@@ -55,7 +55,7 @@ async def process_email(
 
     logger.info(f"Processing email {email_id} for calendar events: {subject[:50]}")
 
-    # Create gateway with logging service (worker uses service role client)
+    # Create gateway with logging service
     # Note: Workers don't enforce quotas (that's done at the API level)
     logging_service = LLMLoggingService(client)
     gateway = create_llm_gateway(config, logging_service=logging_service, quota_service=None)
@@ -96,7 +96,7 @@ async def process_email(
 
 # Keep old function signature for backwards compatibility with existing tests
 async def process_email_process_job(
-    client: Client,
+    client: Database,
     config: Config,
     job_id: str,
     payload: dict[str, Any],
@@ -107,7 +107,7 @@ async def process_email_process_job(
     New code should use process_email() directly.
 
     Args:
-        client: Supabase client (with service role).
+        client: The process database.
         config: Application configuration.
         job_id: UUID of the job being processed (unused in new architecture).
         payload: Job payload with {email_id: str}.
@@ -122,14 +122,11 @@ async def process_email_process_job(
 
     # Fetch the full email record
     try:
-        email_result = client.table("emails").select("*").eq(
-            "id", email_id
-        ).single().execute()
-
-        email = email_result.data
-
+        email = db_emails.get_for_extraction(client, email_id)
     except Exception as e:
         raise EventsError(f"Failed to fetch email {email_id}: {e}") from e
+    if email is None:
+        raise EventsError(f"Failed to fetch email {email_id}: not found")
 
     # Process using new function
     await process_email(client, config, email)

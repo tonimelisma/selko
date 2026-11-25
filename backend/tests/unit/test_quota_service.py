@@ -1,7 +1,6 @@
 """Unit tests for QuotaService."""
 
 from datetime import date, datetime, timedelta, timezone
-from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -119,208 +118,95 @@ class TestUserUsage:
         assert usage.calendar_syncs_remaining == 98
 
 
+def _break_quota_tables(db):
+    """A real database failure: the quota table is gone."""
+    with db.write() as tx:
+        tx.execute("DROP TABLE usage_quotas")
+
+
 class TestQuotaService:
-    """Tests for QuotaService."""
+    """QuotaService over a real SQLite database (seeded global_limits)."""
 
     @pytest.fixture
-    def mock_client(self):
-        """Create a mock Supabase client."""
-        return MagicMock()
+    def quota_service(self, db):
+        return QuotaService(db)
 
-    @pytest.fixture
-    def quota_service(self, mock_client):
-        """Create a QuotaService with mock client."""
-        return QuotaService(mock_client)
+    def test_check_and_increment_allowed(self, quota_service, factory):
+        user = factory.user()
+        result = quota_service.check_and_increment(user, "llm_calls")
+        assert result == QuotaCheckResult(allowed=True, current_count=1, limit=100, remaining=99)
+        again = quota_service.check_and_increment(user, "llm_calls")
+        assert again.current_count == 2
 
-    def test_check_and_increment_allowed(self, quota_service, mock_client):
-        """Test successful quota check and increment."""
-        # Mock RPC response
-        mock_client.rpc.return_value.execute.return_value.data = [
-            {
-                "allowed": True,
-                "current_count": 1,
-                "quota_limit": 100,
-                "remaining": 99,
-            }
-        ]
+    def test_check_and_increment_denied_changes_nothing(self, quota_service, factory, db):
+        user = factory.user()
+        quota_service.set_user_limit(user, "email_syncs", 2)
+        assert quota_service.check_and_increment(user, "email_syncs", 2).allowed
+        denied = quota_service.check_and_increment(user, "email_syncs")
+        assert denied == QuotaCheckResult(allowed=False, current_count=2, limit=2, remaining=0)
+        assert db.query_one("SELECT email_syncs_count FROM usage_quotas WHERE user_id = ?", (user,))[0] == 2
 
-        result = quota_service.check_and_increment("user-123", "llm_calls")
+    def test_check_and_increment_custom_increment(self, quota_service, factory):
+        result = quota_service.check_and_increment(factory.user(), "calendar_syncs", increment=5)
+        assert (result.allowed, result.current_count, result.remaining) == (True, 5, 95)
 
+    def test_quotas_are_per_user(self, quota_service, factory):
+        alice, bob = factory.user(), factory.user()
+        quota_service.check_and_increment(alice, "llm_calls", 10)
+        assert quota_service.check_and_increment(bob, "llm_calls").current_count == 1
+
+    def test_check_and_increment_error_fails_open(self, quota_service, factory, db):
+        user = factory.user()
+        _break_quota_tables(db)
+        result = quota_service.check_and_increment(user, "llm_calls")
         assert result.allowed is True
-        assert result.current_count == 1
-        assert result.limit == 100
-        assert result.remaining == 99
+        assert result.current_count == 0
 
-        # Verify RPC was called correctly
-        mock_client.rpc.assert_called_once_with(
-            "check_and_increment_quota",
-            {
-                "p_user_id": "user-123",
-                "p_quota_type": "llm_calls",
-                "p_increment": 1,
-            },
+    def test_get_usage_success(self, quota_service, factory):
+        user = factory.user()
+        quota_service.check_and_increment(user, "llm_calls", 3)
+        usage = quota_service.get_usage(user)
+        assert usage == UserUsage(
+            llm_calls_count=3, llm_calls_limit=100, llm_calls_remaining=97,
+            email_syncs_count=0, email_syncs_limit=50, email_syncs_remaining=50,
+            calendar_syncs_count=0, calendar_syncs_limit=100, calendar_syncs_remaining=100,
         )
 
-    def test_check_and_increment_denied(self, quota_service, mock_client):
-        """Test quota check when limit exceeded."""
-        mock_client.rpc.return_value.execute.return_value.data = [
-            {
-                "allowed": False,
-                "current_count": 100,
-                "quota_limit": 100,
-                "remaining": 0,
-            }
-        ]
-
-        result = quota_service.check_and_increment("user-123", "llm_calls")
-
-        assert result.allowed is False
-        assert result.current_count == 100
-        assert result.remaining == 0
-
-    def test_check_and_increment_custom_increment(self, quota_service, mock_client):
-        """Test quota check with custom increment."""
-        mock_client.rpc.return_value.execute.return_value.data = [
-            {
-                "allowed": True,
-                "current_count": 10,
-                "quota_limit": 100,
-                "remaining": 90,
-            }
-        ]
-
-        result = quota_service.check_and_increment("user-123", "email_syncs", increment=10)
-
-        assert result.allowed is True
-        mock_client.rpc.assert_called_once_with(
-            "check_and_increment_quota",
-            {
-                "p_user_id": "user-123",
-                "p_quota_type": "email_syncs",
-                "p_increment": 10,
-            },
-        )
-
-    def test_check_and_increment_empty_response(self, quota_service, mock_client):
-        """Test handling of empty RPC response (fail-open)."""
-        mock_client.rpc.return_value.execute.return_value.data = []
-
-        result = quota_service.check_and_increment("user-123", "llm_calls")
-
-        # Should allow request on empty response (fail-open)
-        assert result.allowed is True
-
-    def test_check_and_increment_error_handling(self, quota_service, mock_client):
-        """Test error handling (fail-open for availability)."""
-        mock_client.rpc.side_effect = Exception("Database error")
-
-        result = quota_service.check_and_increment("user-123", "llm_calls")
-
-        # Should allow request on error (fail-open)
-        assert result.allowed is True
-        assert result.limit == 100
-
-    def test_get_usage_success(self, quota_service, mock_client):
-        """Test getting user usage."""
-        mock_client.rpc.return_value.execute.return_value.data = [
-            {
-                "llm_calls_count": 10,
-                "llm_calls_limit": 100,
-                "llm_calls_remaining": 90,
-                "email_syncs_count": 5,
-                "email_syncs_limit": 50,
-                "email_syncs_remaining": 45,
-                "calendar_syncs_count": 2,
-                "calendar_syncs_limit": 100,
-                "calendar_syncs_remaining": 98,
-            }
-        ]
-
-        usage = quota_service.get_usage("user-123")
-
-        assert usage.llm_calls_count == 10
-        assert usage.email_syncs_remaining == 45
-        assert usage.calendar_syncs_limit == 100
-
-    def test_get_usage_with_date(self, quota_service, mock_client):
-        """Test getting usage for specific date."""
-        mock_client.rpc.return_value.execute.return_value.data = [
-            {
-                "llm_calls_count": 0,
-                "llm_calls_limit": 100,
-                "llm_calls_remaining": 100,
-                "email_syncs_count": 0,
-                "email_syncs_limit": 50,
-                "email_syncs_remaining": 50,
-                "calendar_syncs_count": 0,
-                "calendar_syncs_limit": 100,
-                "calendar_syncs_remaining": 100,
-            }
-        ]
-
-        yesterday = date.today() - timedelta(days=1)
-        usage = quota_service.get_usage("user-123", for_date=yesterday)
-
-        mock_client.rpc.assert_called_once()
-        call_args = mock_client.rpc.call_args
-        assert call_args[0][1]["p_date"] == yesterday.isoformat()
-
-    def test_get_usage_empty_response(self, quota_service, mock_client):
-        """Test getting usage with no existing data."""
-        mock_client.rpc.return_value.execute.return_value.data = []
-
-        usage = quota_service.get_usage("user-123")
-
-        # Should return defaults
-        assert usage.llm_calls_count == 0
-        assert usage.llm_calls_limit == 100
-        assert usage.email_syncs_limit == 50
-
-    def test_get_usage_error_handling(self, quota_service, mock_client):
-        """Test error handling returns defaults."""
-        mock_client.rpc.side_effect = Exception("Database error")
-
-        usage = quota_service.get_usage("user-123")
-
-        # Should return defaults on error
+    def test_get_usage_with_date_reads_that_day(self, quota_service, factory):
+        user = factory.user()
+        quota_service.check_and_increment(user, "llm_calls", 3)
+        usage = quota_service.get_usage(user, for_date=date(2020, 1, 1))
         assert usage.llm_calls_count == 0
         assert usage.llm_calls_limit == 100
 
-    def test_set_user_limit_success(self, quota_service, mock_client):
-        """Test setting custom user limit."""
-        # Mock global limits check
-        mock_client.table.return_value.select.return_value.eq.return_value.single.return_value.execute.return_value.data = {
-            "max_allowed": 1000
-        }
-        # Mock upsert
-        mock_client.table.return_value.upsert.return_value.execute.return_value = None
+    def test_get_usage_error_returns_defaults(self, quota_service, factory, db):
+        user = factory.user()
+        _break_quota_tables(db)
+        usage = quota_service.get_usage(user)
+        assert usage.llm_calls_count == 0
+        assert usage.llm_calls_limit == 100
 
-        quota_service.set_user_limit("user-123", "llm_calls", 500)
+    def test_set_user_limit_success(self, quota_service, factory, db):
+        user = factory.user()
+        quota_service.set_user_limit(user, "llm_calls", 500)
+        row = db.query_one("SELECT llm_calls_limit, email_syncs_limit FROM usage_quotas WHERE user_id = ?", (user,))
+        assert (row[0], row[1]) == (500, 50), "only the named limit changes"
+        quota_service.set_user_limit(user, "llm_calls", 600)
+        assert quota_service.check_and_increment(user, "llm_calls").limit == 600
 
-        # Verify upsert was called
-        mock_client.table.return_value.upsert.assert_called_once()
-
-    def test_set_user_limit_exceeds_max(self, quota_service, mock_client):
-        """Test setting limit above max_allowed fails."""
-        # Mock the select().eq().single().execute() chain
-        mock_result = MagicMock()
-        mock_result.data = {"max_allowed": 1000}
-        mock_single = MagicMock()
-        mock_single.execute.return_value = mock_result
-        mock_eq = MagicMock()
-        mock_eq.single.return_value = mock_single
-        mock_select = MagicMock()
-        mock_select.eq.return_value = mock_eq
-        mock_table = MagicMock()
-        mock_table.select.return_value = mock_select
-
-        mock_client.table.return_value = mock_table
-
+    def test_set_user_limit_exceeds_max(self, quota_service, factory):
         with pytest.raises(ValueError, match="exceeds maximum"):
-            quota_service.set_user_limit("user-123", "llm_calls", 2000)
+            quota_service.set_user_limit(factory.user(), "llm_calls", 2000)
 
-    def test_set_user_limit_invalid_quota_type(self, quota_service, mock_client):
-        """Test setting limit with invalid quota type."""
+    def test_set_user_limit_without_a_global_max_is_allowed(self, quota_service, factory, db):
+        """As before: when the maximum cannot be verified, the limit is set."""
+        user = factory.user()
+        with db.write() as tx:
+            tx.execute("DELETE FROM global_limits WHERE limit_type = 'llm_calls_daily'")
+        quota_service.set_user_limit(user, "llm_calls", 5000)
+        assert db.query_one("SELECT llm_calls_limit FROM usage_quotas WHERE user_id = ?", (user,))[0] == 5000
+
+    def test_set_user_limit_invalid_quota_type(self, quota_service):
         with pytest.raises(ValueError, match="Invalid quota type"):
             quota_service.set_user_limit("user-123", "invalid_type", 100)
 
@@ -328,10 +214,8 @@ class TestQuotaService:
 class TestGetQuotaService:
     """Tests for get_quota_service factory function."""
 
-    def test_get_quota_service_returns_instance(self):
-        """Test factory function returns QuotaService instance."""
-        mock_client = MagicMock()
-        service = get_quota_service(mock_client)
+    def test_get_quota_service_returns_instance(self, db):
+        service = get_quota_service(db)
 
         assert isinstance(service, QuotaService)
-        assert service.client == mock_client
+        assert service.client is db

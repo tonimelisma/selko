@@ -42,30 +42,29 @@ vi.mock('$app/stores', () => ({
 }));
 
 // Mock stores
+const mockUnavailable = writable(false);
+const mockRetryAuth = vi.fn();
 vi.mock('$lib/stores.js', () => ({
 	user: mockUser,
-	loading: mockLoading
+	loading: mockLoading,
+	authUnavailable: mockUnavailable,
+	retryAuth: (...args) => mockRetryAuth(...args)
 }));
 
-// Mock Supabase
+// Mock auth and live updates
 const mockSignOut = vi.fn();
-const mockChannel = {
-	on: vi.fn(() => mockChannel),
-	subscribe: vi.fn((callback) => {
-		callback('SUBSCRIBED');
-		return mockChannel;
-	})
+vi.mock('$lib/auth.js', () => ({
+	signOut: (...args) => mockSignOut(...args)
+}));
+const mockLive = {
+	start: vi.fn(),
+	stop: vi.fn().mockResolvedValue(undefined),
+	catchUp: vi.fn()
 };
-vi.mock('$lib/supabase.js', () => ({
-	supabase: {
-		auth: {
-			signOut: (...args) => mockSignOut(...args),
-			getSession: vi.fn().mockResolvedValue({ data: { session: null } })
-		},
-		realtime: { setAuth: vi.fn().mockResolvedValue(undefined) },
-		channel: vi.fn(() => mockChannel),
-		removeChannel: vi.fn().mockResolvedValue(undefined)
-	}
+vi.mock('$lib/live-updates.js', () => ({
+	start: (...args) => mockLive.start(...args),
+	stop: (...args) => mockLive.stop(...args),
+	catchUp: (...args) => mockLive.catchUp(...args)
 }));
 
 // Import after mocking
@@ -76,7 +75,9 @@ describe('App Layout', () => {
 		vi.clearAllMocks();
 		mockUser.set(null);
 		mockLoading.set(true);
-		mockSignOut.mockResolvedValue({ error: null });
+		mockUnavailable.set(false);
+		mockSignOut.mockResolvedValue(undefined);
+		mockLive.stop.mockResolvedValue(undefined);
 	});
 
 	it('shows loading spinner when loading', () => {
@@ -145,7 +146,38 @@ describe('App Layout', () => {
 			expect(screen.getAllByText('History').length).toBeGreaterThan(0);
 			expect(screen.getAllByText('Settings').length).toBeGreaterThan(0);
 		});
-		await waitFor(() => expect(mockChannel.subscribe).toHaveBeenCalled());
+		await waitFor(() => expect(mockLive.start).toHaveBeenCalledWith('123'));
+	});
+
+	it('shows "Can\'t reach Selko" with a retry instead of the login page', async () => {
+		const userEvents = (await import('@testing-library/user-event')).default.setup();
+		mockLoading.set(false);
+		mockUnavailable.set(true);
+		mockUser.set(null);
+
+		render(AppLayout);
+
+		await waitFor(() => {
+			expect(screen.getByText("Can't reach Selko")).toBeInTheDocument();
+		});
+		expect(mockGoto).not.toHaveBeenCalled();
+		await userEvents.click(screen.getByRole('button', { name: /retry/i }));
+		expect(mockRetryAuth).toHaveBeenCalledTimes(1);
+	});
+
+	it('logs out through the auth module and stops live updates', async () => {
+		const userEvents = (await import('@testing-library/user-event')).default.setup();
+		mockLoading.set(false);
+		mockUser.set({ id: '123', email: 'test@example.com' });
+
+		render(AppLayout);
+
+		const button = await screen.findByRole('button', { name: /log out/i });
+		await userEvents.click(button);
+
+		await waitFor(() => expect(mockSignOut).toHaveBeenCalledTimes(1));
+		expect(mockLive.stop).toHaveBeenCalled();
+		expect(mockGoto).toHaveBeenCalledWith('/login');
 	});
 
 	it('renders logout in the desktop sidebar and a sticky mobile header', async () => {

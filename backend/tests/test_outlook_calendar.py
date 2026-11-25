@@ -298,31 +298,43 @@ def test_outlook_calendars_are_listed_with_qualified_ids():
 
 
 # --- the writer routes by provider ---------------------------------------------
+#
+# The event, settings and integration rows are real (SQLite `db`/`factory`);
+# only the provider adapter (Google/Graph HTTP) is mocked.
 
 
-def _client_returning_event(event):
-    client = MagicMock()
-    client.table.return_value.select.return_value.eq.return_value.single.return_value.execute.return_value.data = event
-    return client
+def _writer_user(factory, *, target=None, google=True, outlook_scopes=("Mail.Read", "Calendars.ReadWrite")):
+    from selko.db import integrations as db_integrations
+
+    user_id = factory.user()
+    if google:
+        factory.integration(user_id, provider="google_calendar", scopes=["calendar"])
+    if outlook_scopes is not None:
+        factory.integration(user_id, provider="outlook", scopes=list(outlook_scopes))
+    if target is not None:
+        db_integrations.upsert_calendar_settings(
+            factory.db, user_id, {"target_calendar_id": target, "timezone": "America/New_York"}
+        )
+    return user_id
 
 
-def _settings(target=None):
-    return {"target_calendar_id": target, "default_invitees": None, "timezone": "America/New_York"}
+def _writer_event(factory, user_id, **extra):
+    values = {"title": "x", "review_status": "active"}
+    values.update(extra)
+    return factory.event(user_id, **values)
 
 
-def test_a_new_event_is_written_to_the_outlook_target_calendar():
+def test_a_new_event_is_written_to_the_outlook_target_calendar(db, factory):
     from selko.services import calendars
 
+    user_id = _writer_user(factory, target="outlook:CAL")
+    event_id = _writer_event(factory, user_id)
     adapter = MagicMock()
     adapter.find_event_by_selko_id.return_value = None
     adapter.insert_event.return_value = {"id": "outlook:NEW"}
-    client = _client_returning_event({"id": "e-1", "title": "x", "google_calendar_event_id": None})
 
-    with (
-        patch.object(calendars, "get_calendar_settings", return_value=_settings("outlook:CAL")),
-        patch.object(calendars, "calendar_adapter", return_value=adapter) as build_adapter,
-    ):
-        provider_id = calendars.sync_event_to_calendar(client, "u-1", "e-1")
+    with patch.object(calendars, "calendar_adapter", return_value=adapter) as build_adapter:
+        provider_id = calendars.sync_event_to_calendar(db, user_id, event_id)
 
     assert provider_id == "outlook:NEW"
     assert build_adapter.call_args.args[2] == "outlook"
@@ -330,20 +342,18 @@ def test_a_new_event_is_written_to_the_outlook_target_calendar():
     assert adapter.insert_event.call_args.args[0] == "outlook:CAL"
 
 
-def test_an_event_already_in_google_stays_there_after_switching_to_outlook():
+def test_an_event_already_in_google_stays_there_after_switching_to_outlook(db, factory):
     """Updating it in Outlook would orphan the Google copy and duplicate it."""
     from selko.services import calendars
 
+    user_id = _writer_user(factory, target="outlook:CAL")
+    event_id = _writer_event(factory, user_id, google_calendar_event_id="g-1")
     adapter = MagicMock()
     adapter.get_event.return_value = {"id": "g-1", "summary": "old"}
-    client = _client_returning_event({"id": "e-1", "title": "x", "google_calendar_event_id": "g-1"})
 
-    with (
-        patch.object(calendars, "get_calendar_settings", return_value=_settings("outlook:CAL")),
-        patch.object(calendars, "calendar_adapter", return_value=adapter) as build_adapter,
-    ):
+    with patch.object(calendars, "calendar_adapter", return_value=adapter) as build_adapter:
         provider_id = calendars.sync_event_to_calendar(
-            client, "u-1", "e-1", provider="outlook"
+            db, user_id, event_id, provider="outlook"
         )
 
     assert provider_id == "g-1"
@@ -352,19 +362,17 @@ def test_an_event_already_in_google_stays_there_after_switching_to_outlook():
     assert adapter.update_event.call_args.args[:2] == ("primary", "g-1")
 
 
-def test_the_claimed_provider_decides_when_no_target_is_chosen():
+def test_the_claimed_provider_decides_when_no_target_is_chosen(db, factory):
     from selko.services import calendars
 
+    user_id = _writer_user(factory)
+    event_id = _writer_event(factory, user_id)
     adapter = MagicMock()
     adapter.find_event_by_selko_id.return_value = "outlook:FOUND"
     adapter.get_event.return_value = {"id": "outlook:FOUND"}
-    client = _client_returning_event({"id": "e-1", "title": "x"})
 
-    with (
-        patch.object(calendars, "get_calendar_settings", return_value=_settings(None)),
-        patch.object(calendars, "calendar_adapter", return_value=adapter) as build_adapter,
-    ):
-        provider_id = calendars.sync_event_to_calendar(client, "u-1", "e-1", provider="outlook")
+    with patch.object(calendars, "calendar_adapter", return_value=adapter) as build_adapter:
+        provider_id = calendars.sync_event_to_calendar(db, user_id, event_id, provider="outlook")
 
     # An ambiguous earlier insert is reconciled rather than duplicated.
     assert provider_id == "outlook:FOUND"
@@ -372,13 +380,43 @@ def test_the_claimed_provider_decides_when_no_target_is_chosen():
     adapter.insert_event.assert_not_called()
 
 
-def test_an_outlook_auth_failure_never_expires_the_mail_integration():
+def test_with_no_target_and_no_stamp_a_writable_google_wins(db, factory):
+    from selko.services import calendars
+
+    user_id = _writer_user(factory)
+    event_id = _writer_event(factory, user_id)
+    adapter = MagicMock()
+    adapter.find_event_by_selko_id.return_value = None
+    adapter.insert_event.return_value = {"id": "g-new"}
+
+    with patch.object(calendars, "calendar_adapter", return_value=adapter) as build_adapter:
+        calendars.sync_event_to_calendar(db, user_id, event_id)
+
+    assert build_adapter.call_args.args[2] == "google_calendar"
+
+
+def test_with_no_target_an_outlook_only_user_writes_to_outlook(db, factory):
+    from selko.services import calendars
+
+    user_id = _writer_user(factory, google=False)
+    event_id = _writer_event(factory, user_id)
+    adapter = MagicMock()
+    adapter.find_event_by_selko_id.return_value = None
+    adapter.insert_event.return_value = {"id": "outlook:N"}
+
+    with patch.object(calendars, "calendar_adapter", return_value=adapter) as build_adapter:
+        calendars.sync_event_to_calendar(db, user_id, event_id)
+
+    assert build_adapter.call_args.args[2] == "outlook"
+
+
+def test_an_outlook_auth_failure_never_expires_the_mail_integration(db, factory):
     """The Outlook row also carries mail; expiring it would stop ingestion."""
     from selko.services import calendars
 
-    client = _client_returning_event({"id": "e-1", "title": "x"})
+    user_id = _writer_user(factory, target="outlook:CAL")
+    event_id = _writer_event(factory, user_id)
     with (
-        patch.object(calendars, "get_calendar_settings", return_value=_settings("outlook:CAL")),
         patch.object(
             calendars, "calendar_adapter",
             side_effect=calendars.CalendarAuthRequiredError("no grant", provider="outlook"),
@@ -386,34 +424,34 @@ def test_an_outlook_auth_failure_never_expires_the_mail_integration():
         patch.object(calendars, "update_integration_status") as update_status,
         pytest.raises(calendars.CalendarsError) as raised,
     ):
-        calendars.sync_event_to_calendar(client, "u-1", "e-1")
+        calendars.sync_event_to_calendar(db, user_id, event_id)
 
     update_status.assert_not_called()
     assert raised.value.classification.code == "oauth_required"
     assert "Outlook Calendar" in raised.value.classification.user_message
+    statuses = {r["provider"]: r["status"] for r in db.query(
+        "SELECT provider, status FROM integrations WHERE user_id = ?", (user_id,))}
+    assert statuses["outlook"] == "active"
 
 
-def test_cancellation_goes_to_the_calendar_the_event_lives_in():
+def test_cancellation_goes_to_the_calendar_the_event_lives_in(db, factory):
     from selko.services import calendars
 
+    user_id = _writer_user(factory, target="g-cal")
+    event_id = _writer_event(factory, user_id, title="Party", google_calendar_event_id="outlook:E")
     adapter = MagicMock()
     adapter.get_event.return_value = {"id": "outlook:E", "summary": "Party"}
-    client = _client_returning_event(
-        {"id": "e-1", "title": "Party", "google_calendar_event_id": "outlook:E"}
-    )
-    with (
-        patch.object(calendars, "get_calendar_settings", return_value=_settings("g-cal")),
-        patch.object(calendars, "calendar_adapter", return_value=adapter) as build_adapter,
-    ):
-        calendars.cancel_event_to_calendar(client, "u-1", "e-1", delete_remote=True)
+    with patch.object(calendars, "calendar_adapter", return_value=adapter) as build_adapter:
+        calendars.cancel_event_to_calendar(db, user_id, event_id, delete_remote=True)
 
     assert build_adapter.call_args.args[2] == "outlook"
     adapter.delete_event.assert_called_once_with("primary", "outlook:E")
 
 
-def test_an_outlook_adapter_requires_a_calendar_grant():
+def test_an_outlook_adapter_requires_a_calendar_grant(db, factory):
     from selko.services import calendars
 
+    user_id = _writer_user(factory, outlook_scopes=("Mail.Read",))
     with (
         patch(
             "selko.services.integrations.get_provider_integration",
@@ -422,33 +460,42 @@ def test_an_outlook_adapter_requires_a_calendar_grant():
         patch("selko.config.load_config", return_value=MagicMock()),
         pytest.raises(calendars.CalendarAuthRequiredError) as raised,
     ):
-        calendars.calendar_adapter(MagicMock(), "u-1", "outlook")
+        calendars.calendar_adapter(db, user_id, "outlook")
     assert raised.value.provider == "outlook"
 
 
-def test_calendars_from_both_providers_are_listed_together():
+def test_calendars_from_both_providers_are_listed_together(db, factory):
     from selko.services import calendars
 
-    client = MagicMock()
-    client.table.return_value.select.return_value.eq.return_value.execute.return_value.data = [
-        {"provider": "google_calendar", "status": "active", "scopes": []},
-        {"provider": "outlook", "status": "active", "scopes": ["Calendars.ReadWrite"]},
-    ]
+    user_id = _writer_user(factory, target="outlook:C1", outlook_scopes=("Calendars.ReadWrite",))
     listed = {
         "google_calendar": [{"id": "me@gmail.com", "summary": "Me", "primary": True, "can_write": True},
                             {"id": "holidays", "summary": "Holidays", "primary": False, "can_write": False}],
         "outlook": [{"id": "outlook:C1", "summary": "Calendar", "primary": True, "can_write": True}],
     }
-    with (
-        patch.object(calendars, "list_provider_calendars", side_effect=lambda c, u, p: listed[p]),
-        patch.object(calendars, "get_calendar_settings", return_value=_settings("outlook:C1")),
-    ):
-        result = calendars.list_calendars(client, "u-1")
+    with patch.object(calendars, "list_provider_calendars", side_effect=lambda c, u, p: listed[p]):
+        result = calendars.list_calendars(db, user_id)
 
     assert [(c["id"], c["provider"], c["is_selected"]) for c in result] == [
         ("me@gmail.com", "google_calendar", False),
         ("outlook:C1", "outlook", True),
     ]
+
+
+def test_a_mail_only_outlook_grant_is_not_listed(db, factory):
+    from selko.services import calendars
+
+    user_id = _writer_user(factory, outlook_scopes=("Mail.Read",))
+    seen: list[str] = []
+
+    def fake_list(client, uid, provider):
+        seen.append(provider)
+        return []
+
+    with patch.object(calendars, "list_provider_calendars", side_effect=fake_list):
+        calendars.list_calendars(db, user_id)
+
+    assert seen == ["google_calendar"]
 
 
 # --- failure classification ----------------------------------------------------
@@ -535,16 +582,16 @@ def test_a_delete_answering_204_is_a_success():
         assert msgraph.request_json("t", "https://graph/me/events/x", method="DELETE", operation="DELETE x") == {}
 
 
-def test_calendar_failures_are_ledgered_under_their_own_surface():
+def test_calendar_failures_are_ledgered_under_their_own_surface(db, factory):
     from selko.services import msgraph
 
-    client = MagicMock()
+    integration_id = factory.integration(factory.user(), provider="outlook")
     msgraph.record_graph_failure(
-        client, None, integration_id="i", operation="PATCH /me/events/{event-id}",
+        db, None, integration_id=integration_id, operation="PATCH /me/events/{event-id}",
         url="https://graph.microsoft.com/v1.0/me/events/SECRET-ID", error=GraphRequestError(400, "x"),
         http_method="PATCH", graph_surface="outlook_calendar",
     )
-    payload = client.table.return_value.insert.call_args.args[0]
+    [payload] = db.query("SELECT graph_surface, http_method, safe_url_template FROM graph_api_failures")
     assert payload["graph_surface"] == "outlook_calendar"
     assert payload["http_method"] == "PATCH"
     assert "SECRET-ID" not in payload["safe_url_template"]
@@ -577,31 +624,42 @@ async def test_an_open_outlook_circuit_does_not_stop_google_claims():
     assert claim.call_args.kwargs["providers"] == ["google_calendar"]
 
 
-async def test_the_worker_hands_the_stamped_provider_to_the_writer():
+async def test_the_worker_hands_the_stamped_provider_to_the_writer(db):
     from selko.workers import calendar_sync
 
     with patch.object(calendar_sync, "sync_event_to_calendar", return_value="outlook:N") as sync:
         result = await calendar_sync.sync_event(
-            MagicMock(), MagicMock(),
+            db, MagicMock(),
             {"id": "e", "user_id": "u", "calendar_work_item_provider": "outlook"},
         )
     assert result == "outlook:N"
+    assert sync.call_args.args[0] is db
     assert sync.call_args.kwargs["provider"] == "outlook"
 
 
-async def test_the_claim_passes_providers_to_the_rpc():
+async def test_the_claim_passes_providers_to_the_rpc(db, factory):
+    """The worker's open circuits reach the claim: only an allowed provider's item is taken."""
+    from selko.db import calendar_work as db_calendar_work
     from selko.services.events import claim_approved_event_for_sync
 
-    pg = MagicMock()
+    google_user, outlook_user = factory.user(), factory.user()
+    factory.integration(google_user, provider="google_calendar", scopes=["calendar"])
+    factory.integration(outlook_user, provider="outlook",
+                        scopes=["Mail.Read", "User.Read", "Calendars.ReadWrite"])
+    google_event = factory.event(google_user, review_status="active", google_calendar_event_id="g-1")
+    outlook_event = factory.event(outlook_user, review_status="active",
+                                  google_calendar_event_id="outlook:E1")
+    for user, event in ((google_user, google_event), (outlook_user, outlook_event)):
+        db_calendar_work.enqueue_calendar_work(db, user, event, "upsert", {"title": "Event"})
 
-    async def fetchrow(*args):
-        return None
+    claimed = await claim_approved_event_for_sync(db, "w", 60, providers=["outlook"])
 
-    pg.fetchrow = MagicMock(side_effect=fetchrow)
-    await claim_approved_event_for_sync(pg, "w", 60, providers=["outlook"])
-    sql, *params = pg.fetchrow.call_args.args
-    assert "claim_calendar_work_item($1, $2, $3)" in sql
-    assert params == ["w", 60, ["outlook"]]
+    assert claimed["id"] == outlook_event
+    assert claimed["calendar_work_item_provider"] == "outlook"
+    assert claimed["calendar_work_lease"].worker_id == "w"
+    assert await claim_approved_event_for_sync(db, "w", 60, providers=["outlook"]) is None, (
+        "the Google item stays queued while its circuit is open"
+    )
 
 
 def test_the_mirror_loop_includes_calendar_capable_outlook_rows():
@@ -610,5 +668,7 @@ def test_the_mirror_loop_includes_calendar_capable_outlook_rows():
     from selko.workers.ingestion_runtime import IngestionRuntime
 
     loop = inspect.getsource(IngestionRuntime._calendar_mirror_floor)
-    assert '"outlook"' in loop and "outlook_scopes_allow_calendar" in loop
+    # The row set (google_calendar + outlook, active) is selko.db.email_sync's
+    # active_calendar_integrations, tested in tests/db/test_email_sync.py.
+    assert "active_calendar_integrations" in loop and "outlook_scopes_allow_calendar" in loop
     assert 'row.get("provider")' in loop

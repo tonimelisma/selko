@@ -6,10 +6,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from slowapi import Limiter
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
-from slowapi.util import get_remote_address
 
 from selko.api.routes import (
     calendars_router,
@@ -19,6 +17,9 @@ from selko.api.routes import (
     integrations_router,
     photos_router,
 )
+from selko.api.routes.auth import router as auth_router
+from selko.api.routes.client import router as client_router
+from selko.api.routes.live import router as live_router
 from selko.services.auth import AuthenticationError
 from selko.services.calendars import CalendarsError
 from selko.services.emails import EmailError
@@ -29,7 +30,6 @@ from selko.services.photos import PhotosError
 from selko.services.quotas import QuotaExceededError
 from selko.config import load_config
 from selko.services.memory_monitor import start_memory_monitor
-from selko.services.pg import WorkListener, create_pool
 from selko.workers.pool import WorkerPool
 
 logger = logging.getLogger(__name__)
@@ -41,32 +41,7 @@ worker_pool: WorkerPool = None
 ingestion_runtime = None
 
 
-def get_user_id_or_ip(request: Request) -> str:
-    """Rate limit key function: by user_id if authenticated, else by IP.
-
-    Args:
-        request: FastAPI request object.
-
-    Returns:
-        Rate limit key string (user:{id} or ip:{address}).
-    """
-    auth_header = request.headers.get("Authorization", "")
-    if auth_header.startswith("Bearer "):
-        token = auth_header[7:]
-        # Extract actual user ID from JWT for consistent rate limiting
-        try:
-            from jose import jwt
-            payload = jwt.decode(token, options={"verify_signature": False})
-            user_id = payload.get("sub", token[:32])
-            return f"user:{user_id}"
-        except Exception:
-            # Fall back to token prefix if JWT decode fails
-            return f"user:{token[:32]}"
-    return f"ip:{get_remote_address(request)}"
-
-
-# Create limiter with user/IP key function
-limiter = Limiter(key_func=get_user_id_or_ip, default_limits=["60/minute"])
+from selko.api.limits import get_user_id_or_ip, limiter  # noqa: E402,F401  (re-exported)
 
 
 @asynccontextmanager
@@ -90,8 +65,19 @@ async def lifespan(app: FastAPI):
     # Load configuration
     config = load_config()
 
-    pg_pool = None
-    work_listener = None
+    # The database comes first: migrations run before anything is served, and
+    # a failed migration stops the process (the previous image keeps running).
+    from selko.db.runtime import open_database
+    from selko.db.startup import reset_leases_at_startup
+    from selko.services.accounts import TokenKeys
+
+    db = open_database(config.data_dir)
+    app.state.db = db
+    app.state.bus = db.bus
+    app.state.environment = config.environment
+    app.state.allowed_origins = config.allowed_origins
+    app.state.token_keys = TokenKeys(config.jwt_secret, config.jwt_secret_previous) if config.jwt_secret else None
+    await db.signals.start()
 
     memory_monitor_task = start_memory_monitor(
         config.memory_log_interval_seconds,
@@ -99,58 +85,24 @@ async def lifespan(app: FastAPI):
     )
 
     if config.enable_background_processing:
-        from selko.services.auth import get_service_client
-        from selko.services.emails import unlock_expired_email_locks
-        from selko.services.events import unlock_expired_event_locks
-        from selko.services.integrations import unlock_expired_integration_recoveries
-        from selko.services.photos import unlock_expired_photo_locks
-        from selko.services.scheduled_tasks import unlock_expired_scheduled_tasks
         from selko.workers.ingestion_runtime import IngestionRuntime
 
         logger.info("Starting background processing (worker pool + email ingestion)")
-        # The direct-pg transport is the only transport for worker coordination.
-        # A missing URL or a failed pool is a configuration error. There is
-        # nothing to fall back to, and pretending otherwise is how this shipped
-        # broken the first time.
-        pg_pool = await create_pool(config)
-        app.state.pg_pool = pg_pool
-        logger.info("Supavisor session pooler connected")
-        service_client = get_service_client(config)
-
-        work_listener = WorkListener(config)
-        await work_listener.start()
-        app.state.work_listener = work_listener
+        # One process owns every lease, so any lease present now belongs to a
+        # dead run. Release them before a single worker starts.
+        released = await db.run(reset_leases_at_startup, db)
+        if any(released.values()):
+            logger.info("Released stale leases on startup: %s", {k: v for k, v in released.items() if v})
 
         worker_pool = WorkerPool(
             idle_sleep_seconds=config.worker_idle_sleep_seconds,
             error_backoff_seconds=config.worker_error_backoff_seconds,
-            pg_pool=pg_pool,
-            work_listener=work_listener,
+            pg_pool=db,
+            work_listener=db.signals,
         )
         await worker_pool.start()
 
-        # Recover any stale jobs from a previous instance crash. Email sync
-        # leases need no equivalent step: claims reclaim expired leases.
-        emails_unlocked = await unlock_expired_email_locks(pg_pool)
-        events_unlocked = await unlock_expired_event_locks(pg_pool)
-        photos_unlocked = await unlock_expired_photo_locks(pg_pool)
-        tasks_unlocked = await unlock_expired_scheduled_tasks(pg_pool)
-        recoveries_unlocked = await unlock_expired_integration_recoveries(pg_pool)
-
-        if (
-            emails_unlocked or events_unlocked or photos_unlocked
-            or tasks_unlocked or recoveries_unlocked
-        ):
-            logger.info(
-                f"Recovered stale jobs on startup: "
-                f"{emails_unlocked} emails, {events_unlocked} events, "
-                f"{photos_unlocked} photos, {tasks_unlocked} tasks, "
-                f"{recoveries_unlocked} integration recoveries"
-            )
-
-        ingestion_runtime = IngestionRuntime(
-            service_client, config, pg_pool=pg_pool, work_listener=work_listener
-        )
+        ingestion_runtime = IngestionRuntime(db, config, pg_pool=db, work_listener=db.signals)
         await ingestion_runtime.start()
 
         logger.info("Background workers started successfully")
@@ -176,13 +128,12 @@ async def lifespan(app: FastAPI):
             await ingestion_runtime.stop()
         if worker_pool:
             await worker_pool.stop()
-        if work_listener is not None:
-            await work_listener.stop()
-        if pg_pool:
-            await pg_pool.close()
-            logger.info("Pg pool closed")
-
         logger.info("Background workers shutdown complete")
+
+    await db.signals.stop()
+    from selko.db.runtime import close_database
+
+    close_database()
 
 
 def create_app() -> FastAPI:
@@ -278,6 +229,9 @@ def create_app() -> FastAPI:
     app.include_router(events_router)
     app.include_router(calendars_router)
     app.include_router(photos_router)
+    app.include_router(auth_router)
+    app.include_router(client_router)
+    app.include_router(live_router)
 
     # Exception handlers for service errors
     @app.exception_handler(AuthenticationError)
@@ -386,7 +340,46 @@ def create_app() -> FastAPI:
             },
         )
 
+    mount_web_app(app)
     return app
+
+
+# Paths the web app owns; everything else is the API's. The SPA routes itself,
+# so any of these answers index.html unless it names a built file.
+WEB_PATH_PREFIXES = ("/app", "/login", "/register", "/privacy", "/_app/")
+WEB_PATHS = {"/", "/favicon.png", "/favicon.svg", "/robots.txt", "/manifest.webmanifest"}
+
+
+def mount_web_app(app: FastAPI) -> None:
+    """Serve the built web app from SELKO_WEB_DIR (the image sets it to /app/web).
+
+    Unset or missing: the API alone (development uses the Vite dev server).
+    """
+    import os
+    from pathlib import Path
+
+    from fastapi.responses import FileResponse
+
+    web_dir = os.environ.get("SELKO_WEB_DIR")
+    if not web_dir or not (Path(web_dir) / "index.html").is_file():
+        return
+    root = Path(web_dir).resolve()
+    index = root / "index.html"
+
+    async def web(request: Request) -> FileResponse:
+        relative = request.url.path.lstrip("/")
+        target = (root / relative).resolve() if relative else index
+        if target != index and root in target.parents and target.is_file():
+            # Built assets are content-hashed: cache them for good.
+            immutable = request.url.path.startswith("/_app/immutable/")
+            return FileResponse(target, headers={"Cache-Control": "public, max-age=31536000, immutable"} if immutable else {})
+        return FileResponse(index, headers={"Cache-Control": "no-cache"})
+
+    for prefix in WEB_PATH_PREFIXES:
+        app.add_api_route(prefix.rstrip("/") or "/", web, methods=["GET"], include_in_schema=False)
+        app.add_api_route(prefix.rstrip("/") + "/{path:path}", web, methods=["GET"], include_in_schema=False)
+    for exact in WEB_PATHS:
+        app.add_api_route(exact, web, methods=["GET"], include_in_schema=False)
 
 
 # Create the app instance

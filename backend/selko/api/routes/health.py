@@ -2,7 +2,7 @@
 
 import asyncio
 import logging
-from datetime import datetime, timezone
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
@@ -18,6 +18,8 @@ from selko.api.schemas.common import (
     error_detail,
 )
 from selko.config import Config, load_config
+from selko.db import health as db_health
+from selko.db import integrations as db_integrations
 from selko.services.auth import get_service_client
 from selko.services.egress import egress_snapshot
 from selko.services.resolution_metrics import resolution_metrics
@@ -28,6 +30,15 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["health"])
 
 
+def _health_work_state() -> dict[str, Any]:
+    """The ``health_work_state`` roll-up from the process database."""
+    cfg = load_config()
+    client = get_service_client(cfg)
+    return db_health.health_work_state(
+        client, int(cfg.email_health_warning_seconds or 1800)
+    )
+
+
 def _work_state_status() -> str:
     """Top-level ``/health`` status, driven by the same roll-up the workers
     use to claim work — never hard-coded ``ok``.
@@ -36,16 +47,7 @@ def _work_state_status() -> str:
     failing the route, matching ``_pending_email_metrics`` below.
     """
     try:
-        cfg = load_config()
-        client = get_service_client(cfg)
-        result = client.rpc(
-            "health_work_state",
-            {"p_warning_seconds": int(cfg.email_health_warning_seconds or 1800)},
-        ).execute()
-        data = getattr(result, "data", None)
-        row = (data or [None])[0] if isinstance(data, list) else data
-        if not isinstance(row, dict):
-            return "degraded"
+        row = _health_work_state()
         return "ok" if row.get("status") == "ok" else "degraded"
     except Exception:
         logger.exception("Work state health check failed")
@@ -55,30 +57,7 @@ def _work_state_status() -> str:
 def _pending_email_metrics() -> dict[str, int | None]:
     """Return queue age gauges without exposing email identity or content."""
     try:
-        client = get_service_client(load_config())
-        result = (
-            client.table("emails")
-            .select("created_at", count="exact")
-            .eq("processing_status", "pending")
-            .order("created_at")
-            .limit(1)
-            .execute()
-        )
-        pending = getattr(result, "count", None)
-        if pending is None:
-            pending = len(result.data or [])
-        oldest_age = None
-        if result.data:
-            created_at = result.data[0].get("created_at")
-            if created_at:
-                created = datetime.fromisoformat(str(created_at).replace("Z", "+00:00"))
-                if created.tzinfo is None:
-                    created = created.replace(tzinfo=timezone.utc)
-                oldest_age = max(0, int((datetime.now(timezone.utc) - created).total_seconds()))
-        return {
-            "pending_emails": int(pending or 0),
-            "oldest_pending_age_seconds": oldest_age,
-        }
+        return db_health.pending_email_metrics(get_service_client(load_config()))
     except Exception:
         logger.exception("Resolution queue health snapshot failed")
         return {"pending_emails": None, "oldest_pending_age_seconds": None}
@@ -107,17 +86,10 @@ async def health_db_check(
 ) -> HealthDbResponse:
     """Database connectivity health check.
 
-    Tests connection to Supabase and returns status.
+    Tests that the database answers a query and returns status.
     """
     try:
-        # Must use the service role: 20260714000003 deliberately leaves `anon`
-        # with no table privileges, so an anon probe reports the database as
-        # down even when it is perfectly healthy. The key stays server-side and
-        # only a status string is returned.
-        client = get_service_client(config)
-
-        # Simple query to test connectivity, returning minimal data.
-        client.table("users").select("id").limit(1).execute()
+        db_health.ping(get_service_client(config))
 
         return HealthDbResponse(status="ok", database="connected")
 
@@ -141,16 +113,7 @@ _WORK_STATE_COUNT_FIELDS = (
 def _work_state_counts() -> dict[str, int | None]:
     """The health_work_state roll-up as plain counters, or all None."""
     try:
-        cfg = load_config()
-        client = get_service_client(cfg)
-        result = client.rpc(
-            "health_work_state",
-            {"p_warning_seconds": int(cfg.email_health_warning_seconds or 1800)},
-        ).execute()
-        data = getattr(result, "data", None)
-        row = (data or [None])[0] if isinstance(data, list) else data
-        if not isinstance(row, dict):
-            return {field: None for field in _WORK_STATE_COUNT_FIELDS}
+        row = _health_work_state()
         return {field: row.get(field) for field in _WORK_STATE_COUNT_FIELDS}
     except Exception:
         logger.exception("Work state counts unavailable")
@@ -190,10 +153,7 @@ async def health_ingestion_check(request: Request) -> HealthIngestionResponse:
     # time (the routes module is imported during app construction).
     from selko.api.app import ingestion_runtime
 
-    listener_status = None
-    work_listener = getattr(request.app.state, "work_listener", None)
-    if work_listener is not None:
-        listener_status = work_listener.status()
+    listener_status = _signals_status(request)
 
     if ingestion_runtime is None:
         # Background processing disabled (local servers, tests, CI, and staging
@@ -247,28 +207,41 @@ async def health_ingestion_check(request: Request) -> HealthIngestionResponse:
     )
 
 
-async def _pg_transport_state(pool) -> str:
-    """Prove the asyncpg pool can answer, not merely that it was constructed.
+def _app_database(request: Request):
+    """The database the app opened at startup, or None before startup."""
+    return getattr(request.app.state, "db", None)
 
-    This used to be ``pool is not None``, which is just as true of a pool
-    whose every connection is wedged. assert-health.sh asserts
-    ``transport == "asyncpg"`` to prove the worker transport is active, so
-    that form could not fail for the one reason worth asserting: a pool that
-    exists and does not work. ``pool.acquire()`` has no default timeout, and
-    a hung acquire inside an unbounded executor is how acquisition stalled
-    for 19 days.
 
-    Bounded, so the probe cannot itself hang the health route.
+def _signals_status(request: Request) -> dict | None:
+    """The in-process work-wakeup signals (``kind``, ``bound``,
+    ``signals_sent``, ``last_signal_at``), which replaced the pg listener."""
+    db = _app_database(request)
+    signals = getattr(db, "signals", None) if db is not None else None
+    if signals is None:
+        return None
+    try:
+        return signals.status()
+    except Exception:
+        logger.warning("Work signal status unavailable", exc_info=True)
+        return None
+
+
+async def _db_transport_state(db) -> str:
+    """Prove the database answers a query, not merely that it was opened.
+
+    assert-health.sh asserts the transport to prove the worker data path is
+    active, so the probe must be able to fail for the one reason worth
+    asserting: a database that exists and does not answer. Bounded, so the
+    probe cannot itself hang the health route.
     """
-    if pool is None:
+    if db is None:
         return "none"
     try:
         async with asyncio.timeout(5):
-            await pool.fetchval("SELECT 1")
+            return await db.run(db_health.ping, db)
     except Exception:
-        logger.warning("asyncpg transport probe failed", exc_info=True)
+        logger.warning("database transport probe failed", exc_info=True)
         return "unavailable"
-    return "asyncpg"
 
 
 @router.get("/health/egress", response_model=HealthEgressResponse)
@@ -285,28 +258,21 @@ async def health_egress_check(request: Request) -> HealthEgressResponse:
     long-running instance; a freshly deployed one has nothing to say yet.
     """
     snapshot = egress_snapshot()
-    # Inc6: bytes per mailbox per day — supabase bytes projected per mailbox
+    # Outbound bytes per active mailbox per day. The database is local now, so
+    # every metered byte is provider traffic (Gmail, Graph).
     bytes_per_mailbox = None
     try:
-        supabase_bytes = (snapshot.get("by_destination", {}).get("supabase", {}) or {}).get("bytes", 0) or snapshot.get("total_bytes", 0)
+        total_bytes = snapshot.get("total_bytes", 0) or 0
         # Best-effort mailbox count; failure degrades to total per day
         mailbox_count = 1
         try:
-            from selko.services.auth import get_service_client
-            from selko.config import load_config
-            cfg = load_config()
-            svc = get_service_client(cfg)
-            # Count active email integrations (gmail/outlook)
-            res = svc.table("integrations").select("id", count="exact").in_("provider", ["gmail", "outlook"]).eq("status", "active").execute()
-            cnt = getattr(res, "count", None)
-            if cnt is None and hasattr(res, "data"):
-                cnt = len(res.data or [])
-            if cnt and cnt > 0:
-                mailbox_count = int(cnt)
+            count = db_integrations.count_active_mailboxes(get_service_client(load_config()))
+            if count > 0:
+                mailbox_count = count
         except Exception:
             mailbox_count = 1
         uptime = max(snapshot.get("uptime_seconds", 1), 1)
-        bytes_per_day = supabase_bytes / uptime * 86400
+        bytes_per_day = total_bytes / uptime * 86400
         bytes_per_mailbox = int(bytes_per_day / max(mailbox_count, 1))
     except Exception:
         bytes_per_mailbox = None
@@ -323,5 +289,5 @@ async def health_egress_check(request: Request) -> HealthEgressResponse:
             EgressOperationResponse(**row) for row in snapshot["top_operations"]
         ],
         bytes_per_mailbox_per_day=bytes_per_mailbox,
-        transport=await _pg_transport_state(getattr(request.app.state, "pg_pool", None)),
+        transport=await _db_transport_state(_app_database(request)),
     )

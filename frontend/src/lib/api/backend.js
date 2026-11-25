@@ -1,150 +1,24 @@
 /**
- * Backend API client for server-side operations
- *
- * These operations require server-side secrets (OAuth credentials, API keys)
- * and cannot be performed directly from the frontend.
+ * Backend API client for server-side operations (sync, LLM processing, OAuth,
+ * calendar writes). Every call goes through `apiFetch` in `client.js`, which
+ * owns the token, the timeout and the 401 refresh.
  */
 
-import { supabase } from '$lib/supabase.js';
+import { apiFetch, getAccessToken, getApiBaseUrl, parseApiError } from '$lib/api/client.js';
 
 /**
- * Get the API base URL from environment
- * @returns {string}
- */
-function getApiBaseUrl() {
-	// @ts-ignore - Vite env variable
-	return import.meta.env.VITE_API_URL || 'http://localhost:8000';
-}
-
-/**
- * Get the current access token for API authentication
- * @returns {Promise<string | null>}
- */
-async function getAccessToken() {
-	const {
-		data: { session }
-	} = await supabase.auth.getSession();
-	return session?.access_token ?? null;
-}
-
-/** Default timeout for backend API requests (ms). */
-const API_REQUEST_TIMEOUT_MS = 30_000;
-
-/**
- * Make an authenticated request to the backend API
- * @param {string} endpoint - API endpoint (without base URL)
- * @param {RequestInit} [options={}] - Fetch options
- * @returns {Promise<Response>}
- */
-async function apiRequest(endpoint, options = {}) {
-	const token = await getAccessToken();
-	if (!token) {
-		throw new Error('Not authenticated');
-	}
-
-	const url = `${getApiBaseUrl()}${endpoint}`;
-	const timeoutSignal = AbortSignal.timeout(API_REQUEST_TIMEOUT_MS);
-
-	try {
-		return await fetch(url, {
-			...options,
-			signal: timeoutSignal,
-			headers: {
-				'Content-Type': 'application/json',
-				Authorization: `Bearer ${token}`,
-				...options.headers
-			}
-		});
-	} catch (error) {
-		if (error instanceof DOMException && error.name === 'TimeoutError') {
-			throw new Error('Request timed out. Please try again.');
-		}
-		if (error instanceof Error && error.name === 'AbortError') {
-			throw new Error('Request timed out. Please try again.');
-		}
-		throw error;
-	}
-}
-
-/**
- * @typedef {Object} ApiError
- * @property {string} message
- * @property {number} status
- * @property {string} [detail]
- * @property {string} [code]
- * @property {{ changed_fields?: string[], differences?: Array<{ field: string, selko: unknown, google: unknown }>, google_event_url?: string | null }} [conflict]
+ * @typedef {import('$lib/api/http.js').ApiError} ApiError
  */
 
 /**
- * Extract a human-readable message from FastAPI-style error payloads.
- * Supports plain strings and nested `{ error, detail }` objects.
- * @param {unknown} detail
- * @returns {string | null}
+ * Call the API and keep this module's `{data, error}` shape.
+ * @param {string} endpoint
+ * @param {import('$lib/api/client.js').ApiFetchOptions} [options]
+ * @returns {Promise<{data: any, error: ApiError | null}>}
  */
-function extractErrorMessage(detail) {
-	if (typeof detail === 'string' && detail.trim()) {
-		return detail;
-	}
-	if (detail && typeof detail === 'object') {
-		const nested = /** @type {{ detail?: unknown, message?: unknown, error?: unknown }} */ (
-			detail
-		);
-		if (typeof nested.detail === 'string' && nested.detail.trim()) {
-			return nested.detail;
-		}
-		if (typeof nested.message === 'string' && nested.message.trim()) {
-			return nested.message;
-		}
-		if (typeof nested.error === 'string' && nested.error.trim()) {
-			return nested.error;
-		}
-	}
-	return null;
-}
-
-/**
- * Extract machine-readable error code from FastAPI-style payloads.
- * @param {any} data
- * @returns {string | null}
- */
-function extractErrorCode(data) {
-	if (!data || typeof data !== 'object') return null;
-	if (typeof data.error === 'string' && data.error.trim()) return data.error;
-	if (data.detail && typeof data.detail === 'object' && typeof data.detail.error === 'string') {
-		return data.detail.error;
-	}
-	return null;
-}
-
-/**
- * Parse API error response
- * @param {Response} response
- * @returns {Promise<ApiError>}
- */
-async function parseApiError(response) {
-	try {
-		const data = await response.json();
-		const message =
-			extractErrorMessage(data.detail) ||
-			extractErrorMessage(data.message) ||
-			extractErrorMessage(data) ||
-			'API request failed';
-		return {
-			message,
-			status: response.status,
-			detail: typeof data.detail === 'string' ? data.detail : message,
-			code: extractErrorCode(data) || undefined,
-			conflict:
-				data.detail && typeof data.detail === 'object' && data.detail.conflict
-					? data.detail.conflict
-					: undefined
-		};
-	} catch {
-		return {
-			message: `API request failed with status ${response.status}`,
-			status: response.status
-		};
-	}
+async function request(endpoint, options = {}) {
+	const { data, error } = await apiFetch(endpoint, options);
+	return error ? { data: null, error } : { data, error: null };
 }
 
 // ============================================================================
@@ -160,7 +34,6 @@ async function parseApiError(response) {
 
 /**
  * Sync emails from Gmail
- * Requires server-side Gmail API credentials
  * @param {Object} [options={}]
  * @param {number} [options.maxResults=50] - Maximum emails to fetch
  * @param {boolean} [options.fetchAttachments=true] - Whether to download attachments
@@ -168,32 +41,10 @@ async function parseApiError(response) {
  */
 export async function syncEmails(options = {}) {
 	const { maxResults = 50, fetchAttachments = true } = options;
-
-	try {
-		const response = await apiRequest('/emails/sync', {
-			method: 'POST',
-			body: JSON.stringify({
-				max_results: maxResults,
-				fetch_attachments: fetchAttachments
-			})
-		});
-
-		if (!response.ok) {
-			const error = await parseApiError(response);
-			return { data: null, error };
-		}
-
-		const data = await response.json();
-		return { data, error: null };
-	} catch (error) {
-		return {
-			data: null,
-			error: {
-				message: error instanceof Error ? error.message : 'Sync failed',
-				status: 0
-			}
-		};
-	}
+	return request('/emails/sync', {
+		method: 'POST',
+		body: { max_results: maxResults, fetch_attachments: fetchAttachments }
+	});
 }
 
 /**
@@ -206,66 +57,22 @@ export async function syncEmails(options = {}) {
 
 /**
  * Process a single email to extract calendar events
- * Requires server-side LLM API key (Gemini)
  * @param {string} emailId - The email UUID to process
  * @returns {Promise<{data: EmailProcessResult | null, error: ApiError | null}>}
  */
 export async function processEmail(emailId) {
-	try {
-		const response = await apiRequest(`/emails/${emailId}/process`, {
-			method: 'POST'
-		});
-
-		if (!response.ok) {
-			const error = await parseApiError(response);
-			return { data: null, error };
-		}
-
-		const data = await response.json();
-		return { data, error: null };
-	} catch (error) {
-		return {
-			data: null,
-			error: {
-				message: error instanceof Error ? error.message : 'Processing failed',
-				status: 0
-			}
-		};
-	}
+	return request(`/emails/${emailId}/process`, { method: 'POST' });
 }
 
 /**
  * Process multiple recent emails to extract events
- * Requires server-side LLM API key (Gemini)
  * @param {Object} [options={}]
  * @param {number} [options.maxEmails=10] - Maximum emails to process
  * @returns {Promise<{data: EmailProcessResult | null, error: ApiError | null}>}
  */
 export async function batchProcessEmails(options = {}) {
 	const { maxEmails = 10 } = options;
-
-	try {
-		const response = await apiRequest('/emails/batch-process', {
-			method: 'POST',
-			body: JSON.stringify({ max_emails: maxEmails })
-		});
-
-		if (!response.ok) {
-			const error = await parseApiError(response);
-			return { data: null, error };
-		}
-
-		const data = await response.json();
-		return { data, error: null };
-	} catch (error) {
-		return {
-			data: null,
-			error: {
-				message: error instanceof Error ? error.message : 'Batch processing failed',
-				status: 0
-			}
-		};
-	}
+	return request('/emails/batch-process', { method: 'POST', body: { max_emails: maxEmails } });
 }
 
 /**
@@ -274,35 +81,18 @@ export async function batchProcessEmails(options = {}) {
  * @returns {Promise<{data: {email_id: string, processing_status: string} | null, error: ApiError | null}>}
  */
 export async function reprocessEmail(emailId) {
-	try {
-		const response = await apiRequest(`/emails/${emailId}/reprocess`, { method: 'POST' });
-		if (!response.ok) {
-			return { data: null, error: await parseApiError(response) };
-		}
-		return { data: await response.json(), error: null };
-	} catch (error) {
-		return {
-			data: null,
-			error: { message: error instanceof Error ? error.message : 'Reprocess failed', status: 0 }
-		};
-	}
+	return request(`/emails/${emailId}/reprocess`, { method: 'POST' });
 }
 
 /**
  * Fetch discovered, user-configurable folders for an email provider.
  * @param {'gmail' | 'outlook'} provider
+ * @returns {Promise<{data: any[], error: ApiError | null}>}
  */
 export async function fetchEmailFolders(provider) {
-	try {
-		const response = await apiRequest(`/integrations/${provider}/folders`, { method: 'GET' });
-		if (!response.ok) return { data: [], error: await parseApiError(response) };
-		return { data: await response.json(), error: null };
-	} catch (error) {
-		return {
-			data: [],
-			error: { message: error instanceof Error ? error.message : 'Failed to load folders', status: 0 }
-		};
-	}
+	const { data, error } = await apiFetch(`/integrations/${provider}/folders`, { method: 'GET' });
+	if (error) return { data: [], error };
+	return { data: data ?? [], error: null };
 }
 
 /**
@@ -312,19 +102,10 @@ export async function fetchEmailFolders(provider) {
  * @param {boolean} isIncluded
  */
 export async function updateEmailFolder(provider, folderId, isIncluded) {
-	try {
-		const response = await apiRequest(`/integrations/${provider}/folders/${folderId}`, {
-			method: 'PATCH',
-			body: JSON.stringify({ is_included: isIncluded })
-		});
-		if (!response.ok) return { data: null, error: await parseApiError(response) };
-		return { data: await response.json(), error: null };
-	} catch (error) {
-		return {
-			data: null,
-			error: { message: error instanceof Error ? error.message : 'Failed to update folder', status: 0 }
-		};
-	}
+	return request(`/integrations/${provider}/folders/${folderId}`, {
+		method: 'PATCH',
+		body: { is_included: isIncluded }
+	});
 }
 
 // ============================================================================
@@ -347,27 +128,7 @@ export async function updateEmailFolder(provider, folderId, isIncluded) {
  * @returns {Promise<{data: Calendar[] | null, error: ApiError | null}>}
  */
 export async function listCalendars() {
-	try {
-		const response = await apiRequest('/calendars', {
-			method: 'GET'
-		});
-
-		if (!response.ok) {
-			const error = await parseApiError(response);
-			return { data: null, error };
-		}
-
-		const data = await response.json();
-		return { data, error: null };
-	} catch (error) {
-		return {
-			data: null,
-			error: {
-				message: error instanceof Error ? error.message : 'Failed to list calendars',
-				status: 0
-			}
-		};
-	}
+	return request('/calendars', { method: 'GET' });
 }
 
 /**
@@ -384,27 +145,7 @@ export async function listCalendars() {
  * @returns {Promise<{data: CalendarSyncResult | null, error: ApiError | null}>}
  */
 export async function syncEventToCalendar(eventId) {
-	try {
-		const response = await apiRequest(`/events/${eventId}/sync`, {
-			method: 'POST'
-		});
-
-		if (!response.ok) {
-			const error = await parseApiError(response);
-			return { data: null, error };
-		}
-
-		const data = await response.json();
-		return { data, error: null };
-	} catch (error) {
-		return {
-			data: null,
-			error: {
-				message: error instanceof Error ? error.message : 'Calendar sync failed',
-				status: 0
-			}
-		};
-	}
+	return request(`/events/${eventId}/sync`, { method: 'POST' });
 }
 
 /**
@@ -413,23 +154,7 @@ export async function syncEventToCalendar(eventId) {
  * @returns {Promise<{data: {event_id: string, status: string} | null, error: ApiError | null}>}
  */
 export async function applyEventChange(eventId) {
-	try {
-		const response = await apiRequest(`/events/${eventId}/apply-change`, {
-			method: 'POST'
-		});
-		if (!response.ok) {
-			return { data: null, error: await parseApiError(response) };
-		}
-		return { data: await response.json(), error: null };
-	} catch (error) {
-		return {
-			data: null,
-			error: {
-				message: error instanceof Error ? error.message : 'Apply change failed',
-				status: 0
-			}
-		};
-	}
+	return request(`/events/${eventId}/apply-change`, { method: 'POST' });
 }
 
 /**
@@ -438,23 +163,7 @@ export async function applyEventChange(eventId) {
  * @returns {Promise<{data: {event_id: string, status: string} | null, error: ApiError | null}>}
  */
 export async function rejectEventChange(eventId) {
-	try {
-		const response = await apiRequest(`/events/${eventId}/reject-change`, {
-			method: 'POST'
-		});
-		if (!response.ok) {
-			return { data: null, error: await parseApiError(response) };
-		}
-		return { data: await response.json(), error: null };
-	} catch (error) {
-		return {
-			data: null,
-			error: {
-				message: error instanceof Error ? error.message : 'Reject change failed',
-				status: 0
-			}
-		};
-	}
+	return request(`/events/${eventId}/reject-change`, { method: 'POST' });
 }
 
 /**
@@ -466,24 +175,7 @@ export async function rejectEventChange(eventId) {
  */
 export async function undoHistoryEvent(eventId, options = {}) {
 	const { force = false } = options;
-	try {
-		const response = await apiRequest(`/events/${eventId}/undo`, {
-			method: 'POST',
-			body: JSON.stringify({ force })
-		});
-		if (!response.ok) {
-			return { data: null, error: await parseApiError(response) };
-		}
-		return { data: await response.json(), error: null };
-	} catch (error) {
-		return {
-			data: null,
-			error: {
-				message: error instanceof Error ? error.message : 'Undo failed',
-				status: 0
-			}
-		};
-	}
+	return request(`/events/${eventId}/undo`, { method: 'POST', body: { force } });
 }
 
 // ============================================================================
@@ -498,40 +190,28 @@ export async function undoHistoryEvent(eventId, options = {}) {
  * @returns {string} The authorization URL
  */
 export function getGoogleAuthUrl(redirectUri) {
-	const baseUrl = getApiBaseUrl();
 	const params = new URLSearchParams();
 	if (redirectUri) {
 		params.set('redirect_uri', redirectUri);
 	}
 	const queryString = params.toString();
-	return `${baseUrl}/integrations/google/auth${queryString ? `?${queryString}` : ''}`;
+	return `${getApiBaseUrl()}/integrations/google/auth${queryString ? `?${queryString}` : ''}`;
 }
 
 /**
- * Fetch Google auth_url from the API with the user's Bearer token, then navigate.
+ * Fetch the provider's auth_url with the user's Bearer token, then navigate.
  * Browser navigation alone cannot send Authorization headers.
- * @param {string} endpointUrl
+ * @param {string} path - API path (with query) of the auth endpoint
  * @returns {Promise<void>}
  */
-async function startOAuthRedirect(endpointUrl) {
-	const token = await getAccessToken();
-	if (!token) {
+async function startOAuthRedirect(path) {
+	if (!getAccessToken()) {
 		throw new Error('Not authenticated');
 	}
-
-	const response = await fetch(endpointUrl, {
-		headers: {
-			Authorization: `Bearer ${token}`,
-			Accept: 'application/json'
-		}
-	});
-
-	if (!response.ok) {
-		const err = await parseApiError(response);
-		throw new Error(err.message || 'Failed to start OAuth');
+	const { data, error } = await apiFetch(path, { headers: { Accept: 'application/json' } });
+	if (error) {
+		throw new Error(error.message || 'Failed to start OAuth');
 	}
-
-	const data = await response.json();
 	if (!data?.auth_url) {
 		throw new Error('OAuth response missing auth_url');
 	}
@@ -547,13 +227,23 @@ async function startOAuthRedirect(endpointUrl) {
 }
 
 /**
+ * @param {string} provider
+ * @param {string} [redirectUri]
+ */
+function authPath(provider, redirectUri) {
+	const params = new URLSearchParams();
+	if (redirectUri) params.set('redirect_uri', redirectUri);
+	const queryString = params.toString();
+	return `/integrations/${provider}/auth${queryString ? `?${queryString}` : ''}`;
+}
+
+/**
  * Initiate the combined Google (Gmail + Google Calendar) OAuth flow
- * Fetches Google consent URL with auth, then opens it in the current window
  * @param {string} [redirectUri] - Optional custom redirect URI
  * @returns {Promise<void>}
  */
 export async function initiateGoogleAuth(redirectUri) {
-	await startOAuthRedirect(getGoogleAuthUrl(redirectUri));
+	await startOAuthRedirect(authPath('google', redirectUri));
 }
 
 /**
@@ -562,13 +252,7 @@ export async function initiateGoogleAuth(redirectUri) {
  * @returns {string} The authorization URL
  */
 export function getOutlookAuthUrl(redirectUri) {
-	const baseUrl = getApiBaseUrl();
-	const params = new URLSearchParams();
-	if (redirectUri) {
-		params.set('redirect_uri', redirectUri);
-	}
-	const queryString = params.toString();
-	return `${baseUrl}/integrations/outlook/auth${queryString ? `?${queryString}` : ''}`;
+	return `${getApiBaseUrl()}${authPath('outlook', redirectUri)}`;
 }
 
 /**
@@ -577,7 +261,7 @@ export function getOutlookAuthUrl(redirectUri) {
  * @returns {Promise<void>}
  */
 export async function initiateOutlookAuth(redirectUri) {
-	await startOAuthRedirect(getOutlookAuthUrl(redirectUri));
+	await startOAuthRedirect(authPath('outlook', redirectUri));
 }
 
 // ============================================================================
@@ -590,21 +274,16 @@ export async function initiateOutlookAuth(redirectUri) {
  */
 
 /**
- * Check if the backend API is healthy
+ * Check if the backend API is healthy (no authentication).
  * @returns {Promise<{data: HealthStatus | null, error: ApiError | null}>}
  */
 export async function checkHealth() {
 	try {
-		const url = `${getApiBaseUrl()}/health`;
-		const response = await fetch(url);
-
+		const response = await fetch(`${getApiBaseUrl()}/health`);
 		if (!response.ok) {
-			const error = await parseApiError(response);
-			return { data: null, error };
+			return { data: null, error: await parseApiError(response) };
 		}
-
-		const data = await response.json();
-		return { data, error: null };
+		return { data: await response.json(), error: null };
 	} catch (error) {
 		return {
 			data: null,

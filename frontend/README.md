@@ -4,106 +4,67 @@ SvelteKit web application for Selko.
 
 ## Architecture
 
-**Direct Supabase Access** - The app queries Supabase directly for all data operations using the JavaScript Supabase SDK. The Python API is only used for server-side operations.
+The web app talks only to Selko's API. In production the API serves the built
+app from the same origin; in development the dev server on `:5173` calls the
+API on `:8000` (`VITE_API_URL`). There is no database client in the browser.
 
 ```
-Web Frontend
+Web app
     │
-    ├─── Data queries ──→ Supabase (direct)
-    │    - List emails, events, integrations
-    │    - Update event status
-    │    - Download attachments
-    │
-    └─── Server-side ops ──→ Python API
-         - OAuth callback handling
-         - Email sync triggers
-         - LLM processing triggers
-         - Calendar sync triggers
+    └── Selko API (Bearer token)
+         - sign-in: /auth/*          (refresh token in an HttpOnly cookie)
+         - data: /events, /emails, /integrations, /settings, /sender-rules
+         - attachments: /attachments/{id}/content
+         - live updates: GET /live   (Server-Sent Events)
 ```
+
+The full route map is [`docs/api-client-endpoints.md`](../docs/api-client-endpoints.md).
 
 ## Tech Stack
 
-- **Framework**: SvelteKit
-- **Supabase**: `@supabase/supabase-js`
-- **CSS**: Tailwind CSS
-- **Testing**: Vitest (unit), Playwright (e2e)
-
-## Data Access
-
-All data queries use the Supabase JavaScript SDK directly. See `docs/supabase-frontend-queries.md` for canonical query patterns.
-
-```javascript
-// Example: List emails
-import { supabase } from '$lib/supabase';
-
-const { data: emails, error } = await supabase
-  .from('emails')
-  .select('*')
-  .eq('is_spam', false)
-  .eq('is_trash', false)
-  .order('date_sent', { ascending: false })
-  .limit(20);
-```
+- **Framework**: SvelteKit 2, Svelte 5 (runes)
+- **CSS**: Tailwind CSS v4 + DaisyUI (themes in `src/app.css`)
+- **Testing**: Vitest (unit), Playwright (screenshots, e2e)
 
 ## Project Structure
 
 ```
 src/
-├── app.html              # HTML template
-├── routes/               # SvelteKit routes
-│   ├── +layout.svelte   # Root layout
-│   └── +page.svelte     # Home page
-├── lib/
-│   ├── supabase.js      # Supabase client
-│   ├── stores.js        # Svelte stores
-│   ├── types.js         # Type definitions
-│   ├── errors.js        # Error handling
-│   └── services/        # Data services
-│       ├── emails.js    # Email queries
-│       ├── events.js    # Event queries
-│       └── backend.js   # Python API client
-└── components/           # Reusable components
+├── routes/               # SvelteKit routes (/login, /register, /app/…, /privacy)
+└── lib/
+    ├── api/
+    │   ├── client.js     # apiFetch: Bearer token, 30 s timeout, one shared refresh on 401
+    │   ├── http.js       # base URL, parseApiError
+    │   └── backend.js    # action calls (sync, process, calendars, …)
+    ├── auth.js           # sign-in, sign-up, sign-out, token renewal, cross-tab sync
+    ├── live-updates.js   # the /live stream: invalidate, reconnect with backoff
+    ├── services/         # data modules returning {data, error, count}
+    ├── stores.js
+    ├── errors.js
+    └── components/
 ```
+
+The access token lives in memory only; the refresh token only in the
+`selko_refresh` cookie. `src/lib/__tests__/no-supabase.test.js` fails if a
+database client comes back.
 
 ## Development
 
 ```bash
-# Install dependencies
 npm install
-
-# Start dev server
-npm run dev
-
-# Run tests (outputs JSON for pre-commit hook)
+npm run dev                # http://localhost:5173, API at VITE_API_URL
 npm run test:unit -- --reporter=json --outputFile=test-results.json
-
-# Build for production
-npm run build
+npm run check              # svelte-check (strict)
+npm run build              # VITE_API_URL="" for same-origin (what the image does)
 ```
 
 ## Configuration
 
-Create `.env` file:
+`frontend/.env`:
 
 ```bash
-PUBLIC_SUPABASE_URL=http://localhost:54321
-PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
-PUBLIC_BACKEND_URL=http://localhost:8000
+VITE_API_URL=http://localhost:8000
 ```
 
-## API Services
-
-The `src/lib/services/` directory contains:
-
-| File | Purpose |
-|------|---------|
-| `emails.js` | Email queries via Supabase |
-| `events.js` | Event queries via Supabase |
-| `integrations.js` | Integration queries via Supabase |
-| `backend.js` | Python API client (server-side ops only) |
-
-The `backend.js` client is **only** for operations requiring server-side secrets:
-- `triggerEmailSync()` - POST /emails/sync
-- `processEmail(id)` - POST /emails/{id}/process
-- `syncEventToCalendar(id)` - POST /events/{id}/sync
-- `listCalendars()` - GET /calendars
+The API must list the dev origin in `ALLOWED_ORIGINS` (sign-in checks
+`Origin`).

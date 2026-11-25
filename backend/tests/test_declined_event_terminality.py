@@ -10,88 +10,103 @@ the bug. The declined row is the *correct* identity match; hiding it makes the
 next email create a fresh New-lane card for something the user already said no
 to. So these tests assert both halves: the match still happens, and it decides
 nothing.
+
+Runs on a real database through the real match and commit; the LLM and the
+calendar provider's live read are mocked.
 """
 
-from datetime import datetime, timedelta
+from datetime import timedelta
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from selko.api.schemas.calendar import CalendarEvent, CalendarEventExtraction
-from selko.services.events import EventMatch, find_matching_event, save_extracted_events
+from selko.services.events import find_matching_event, save_extracted_events
+from tests.event_pipeline import (
+    claimed_email,
+    event_at,
+    future_local,
+    gateway,
+    ical_uid,
+    lease,
+    providers_offline,
+    spy_commit,  # noqa: F401  (fixture)
+)
+
+START = future_local()
 
 
-def _extraction():
-    future = datetime.now() + timedelta(days=30)
+def _extraction(booking_confirmed: bool = False):
     return CalendarEventExtraction(
         email_message_id="msg-declined",
-        email_date=datetime(2026, 4, 9, 10, 0),
         sender_email="sender@example.com",
         events_found=True,
+        booking_confirmed=booking_confirmed,
         events=[CalendarEvent(
             title="Team Meeting",
-            start_datetime=future.replace(hour=14, minute=0, second=0, microsecond=0),
-            end_datetime=future.replace(hour=15, minute=0, second=0, microsecond=0),
+            start_datetime=START,
+            end_datetime=START + timedelta(hours=1),
             location="Room A",
             description="Weekly sync",
         )],
     )
 
 
-@pytest.fixture(autouse=True)
-def stub_commit(monkeypatch):
-    def fake_commit(client, email_id, locked_by, lock_generation, decisions, terminal="processed"):
-        client._extraction_decisions = decisions
-        return {"fenced": False, "applied": len(decisions), "event_ids": []}
+def _sources(db, event_id):
+    return db.query("SELECT email_id, source_type FROM event_sources WHERE event_id = ?", (event_id,))
 
-    monkeypatch.setattr("selko.services.events._commit_email_extraction", fake_commit)
+
+def _save(db, factory, declined, extraction, *, cancellation_mode=False, propose=None):
+    user = factory.user()
+    event = event_at(factory, user, START, review_status=declined)
+    email = claimed_email(factory, user)
+    if cancellation_mode:
+        # An organizer cancellation matches by its iCalendar UID, never by text.
+        ical_uid(factory, user, email, "uid-declined", event_id=event, method="CANCEL")
+    with providers_offline(), \
+         patch("selko.services.events.event_processing.compare_events", return_value=event), \
+         patch("selko.services.events.event_processing.propose_event_update",
+               side_effect=propose or AssertionError("no LLM call for a declined match")) as llm:
+        counts = save_extracted_events(
+            db, gateway(), user, email, extraction, cancellation_mode=cancellation_mode,
+            **lease(db, email),
+        )
+    return counts, event, email, llm
 
 
 @pytest.mark.parametrize("declined", ["rejected", "cancelled"])
-def test_an_update_matching_a_declined_event_records_only(declined):
-    match = EventMatch(
-        match_id="event-declined",
-        baseline={"title": "Team Meeting", "review_status": declined},
-    )
-    client, gateway = MagicMock(), MagicMock()
+def test_an_update_matching_a_declined_event_records_only(db, factory, spy_commit, declined):
+    counts, event, email, propose = _save(db, factory, declined, _extraction())
 
-    with patch("selko.services.events.find_matching_event", return_value=match), \
-         patch("selko.services.events.event_processing.propose_event_update") as propose:
-        num_new, num_updated = save_extracted_events(
-            client, gateway, "user-1", "email-1", _extraction()
-        )
-
-    assert (num_new, num_updated) == (0, 0), "a declined match changes nothing"
-    decision = client._extraction_decisions[0]
+    assert counts == (0, 0), "a declined match changes nothing"
+    decision = spy_commit.decisions[0]
     assert decision["intent"] == "record_only"
     assert decision["fields"] == {}
     assert "change_set" not in decision["source"]
     # No LLM call for a change the user will never see.
     propose.assert_not_called()
+    # The provenance is recorded and the decision stands.
+    assert factory.row("events", event)["review_status"] == declined
+    assert [s["email_id"] for s in _sources(db, event)] == [email]
+    assert db.query("SELECT 1 FROM event_change_proposals WHERE event_id = ?", (event,)) == []
+    assert db.query("SELECT 1 FROM calendar_work_items WHERE event_id = ?", (event,)) == []
+    assert db.query_one("SELECT count(*) FROM events")[0] == 1, "no duplicate in New"
 
 
 @pytest.mark.parametrize("declined", ["rejected", "cancelled"])
-def test_a_cancellation_matching_a_declined_event_records_only(declined):
+def test_a_cancellation_matching_a_declined_event_records_only(db, factory, spy_commit, declined):
     """Cancelling a declined event would revive it and queue a provider write."""
-    match = EventMatch(
-        match_id="event-declined",
-        baseline={"title": "Team Meeting", "review_status": declined},
-    )
-    client, gateway = MagicMock(), MagicMock()
+    _, event, _, _ = _save(db, factory, declined, _extraction(), cancellation_mode=True)
 
-    with patch("selko.services.events.find_matching_event", return_value=match):
-        save_extracted_events(
-            client, gateway, "user-1", "email-1", _extraction(),
-            cancellation_mode=True,
-        )
-
-    decision = client._extraction_decisions[0]
+    decision = spy_commit.decisions[0]
     assert decision["intent"] == "record_only"
     assert decision["fields"] == {}
+    assert factory.row("events", event)["review_status"] == declined
+    assert db.query("SELECT 1 FROM calendar_work_items WHERE event_id = ?", (event,)) == []
 
 
 @pytest.mark.parametrize("declined", ["rejected", "cancelled"])
-def test_a_declined_adopted_event_is_matched_not_adopted_again(declined):
+def test_a_declined_adopted_event_is_matched_not_adopted_again(db, factory, declined):
     """The provider-event lookup must see declined rows.
 
     An event adopted from the user's own Google Calendar is not written back
@@ -100,40 +115,20 @@ def test_a_declined_adopted_event_is_matched_not_adopted_again(declined):
     its existing Selko row skips declined rows, every later email adopts it
     again -- a duplicate of something the user rejected.
     """
-    client, gateway = MagicMock(), MagicMock()
-    selected = client.table.return_value.select.return_value
-    # Local-day candidate window: no local matches by start_datetime.
-    selected.eq.return_value.gte.return_value.lt.return_value.execute.return_value = (
-        MagicMock(data=[])
+    user = factory.user()
+    # The adopted row starts on another day, so only the provider-id lookup finds it.
+    event = factory.event(
+        user, review_status=declined, title="Team Meeting",
+        start_datetime="2026-05-01T14:00:00.000000Z", google_calendar_event_id="abc-123",
     )
-    # The provider-event lookup, which must find the declined row.
-    selected.eq.return_value.eq.return_value.order.return_value.limit.return_value.execute.return_value = (
-        MagicMock(data=[{
-            "id": "event-declined",
-            "title": "Team Meeting",
-            "start_datetime": "2026-05-09T14:00:00Z",
-            "end_datetime": "2026-05-09T15:00:00Z",
-            "all_day": False,
-            "location": "Room A",
-            "description": None,
-            "importance": "action_required",
-            "review_status": declined,
-        }])
-    )
+    live = [{"id": "abc-123", "summary": "Team Meeting",
+             "start": {"dateTime": "2026-05-09T14:00:00Z"},
+             "end": {"dateTime": "2026-05-09T15:00:00Z"}}]
 
-    with patch("selko.services.events.get_user_timezone", return_value="UTC"), \
-         patch(
-             "selko.services.events.calendars.fetch_calendar_events_for_date_range",
-             return_value=[{"id": "abc-123", "summary": "Team Meeting",
-                            "start": {"dateTime": "2026-05-09T14:00:00Z"},
-                            "end": {"dateTime": "2026-05-09T15:00:00Z"}}],
-         ), \
-         patch(
-             "selko.services.events.event_processing.compare_events",
-             return_value="gcal:abc-123",
-         ):
+    with providers_offline(live), \
+         patch("selko.services.events.event_processing.compare_events", return_value="gcal:abc-123"):
         match = find_matching_event(
-            client, gateway, "user-1",
+            db, MagicMock(), user,
             {"title": "Team Meeting", "start_datetime": "2026-05-09T14:00:00Z",
              "end_datetime": "2026-05-09T15:00:00Z"},
             user_timezone="UTC",
@@ -141,17 +136,11 @@ def test_a_declined_adopted_event_is_matched_not_adopted_again(declined):
 
     assert match is not None
     assert not match.is_gcal, "a declined Selko row already owns this provider event"
-    assert match.match_id == "event-declined"
+    assert match.match_id == event
     assert match.baseline["review_status"] == declined
 
 
-def _booking_extraction():
-    extraction = _extraction()
-    extraction.booking_confirmed = True
-    return extraction
-
-
-def test_a_booking_for_a_rejected_event_reopens_it_for_review():
+def test_a_booking_for_a_rejected_event_reopens_it_for_review(db, factory, spy_commit):
     """Regression: a ticket receipt for a play the user had rejected.
 
     The user dismissed a school play in a triage pass, then bought tickets three
@@ -160,20 +149,12 @@ def test_a_booking_for_a_rejected_event_reopens_it_for_review():
     the user's own decision: the event goes back to the New lane -- and only
     there; it is not approved on their behalf.
     """
-    baseline = {"title": "Team Meeting", "review_status": "rejected"}
-    match = EventMatch(match_id="event-rejected", baseline=baseline)
-    client, gateway = MagicMock(), MagicMock()
+    counts, event, _, propose = _save(db, factory, "rejected", _extraction(booking_confirmed=True))
 
-    with patch("selko.services.events.find_matching_event", return_value=match), \
-         patch("selko.services.events.event_processing.propose_event_update") as propose:
-        num_new, num_updated = save_extracted_events(
-            client, gateway, "user-1", "email-1", _booking_extraction()
-        )
-
-    assert (num_new, num_updated) == (0, 1)
-    decision = client._extraction_decisions[0]
+    assert counts == (0, 1)
+    decision = spy_commit.decisions[0]
     assert decision["action"] == "update"
-    assert decision["event_id"] == "event-rejected"
+    assert decision["event_id"] == event
     assert decision["intent"] == "apply"
     assert decision["fields"] == {"review_status": "pending_review"}, (
         "only the lane changes; nothing is queued for the calendar"
@@ -186,40 +167,29 @@ def test_a_booking_for_a_rejected_event_reopens_it_for_review():
         "after": "pending_review",
         "reason": "booking confirmed after the user declined",
     }]
-    assert decision["source"]["event_snapshot_before"] == baseline
+    assert decision["source"]["event_snapshot_before"]["review_status"] == "rejected"
     propose.assert_not_called()
+    assert factory.row("events", event)["review_status"] == "pending_review"
+    assert db.query("SELECT 1 FROM calendar_work_items WHERE event_id = ?", (event,)) == []
 
 
-def test_a_booking_never_revives_an_organizer_cancelled_event():
+def test_a_booking_never_revives_an_organizer_cancelled_event(db, factory, spy_commit):
     """Cancelled is the organizer's word, not the user's: a receipt cannot undo it."""
-    match = EventMatch(
-        match_id="event-cancelled",
-        baseline={"title": "Team Meeting", "review_status": "cancelled"},
-    )
-    client, gateway = MagicMock(), MagicMock()
+    counts, event, _, _ = _save(db, factory, "cancelled", _extraction(booking_confirmed=True))
 
-    with patch("selko.services.events.find_matching_event", return_value=match):
-        assert save_extracted_events(
-            client, gateway, "user-1", "email-1", _booking_extraction()
-        ) == (0, 0)
-
-    assert client._extraction_decisions[0]["intent"] == "record_only"
+    assert counts == (0, 0)
+    assert spy_commit.decisions[0]["intent"] == "record_only"
+    assert factory.row("events", event)["review_status"] == "cancelled"
 
 
-def test_an_announcement_for_a_rejected_event_leaves_it_rejected():
+def test_an_announcement_for_a_rejected_event_leaves_it_rejected(db, factory, spy_commit):
     """The other half: a newsletter repeating the event must not nag again."""
     extraction = _extraction()
     assert extraction.booking_confirmed is False
-    match = EventMatch(
-        match_id="event-rejected",
-        baseline={"title": "Team Meeting", "review_status": "rejected"},
-    )
-    client, gateway = MagicMock(), MagicMock()
+    _, event, _, _ = _save(db, factory, "rejected", extraction)
 
-    with patch("selko.services.events.find_matching_event", return_value=match):
-        save_extracted_events(client, gateway, "user-1", "email-1", extraction)
-
-    assert client._extraction_decisions[0]["intent"] == "record_only"
+    assert spy_commit.decisions[0]["intent"] == "record_only"
+    assert factory.row("events", event)["review_status"] == "rejected"
 
 
 def test_extraction_carries_booking_confirmed_from_the_llm_response():
@@ -230,11 +200,11 @@ def test_extraction_carries_booking_confirmed_from_the_llm_response():
     llm_result = EventExtractionResponse(
         events_found=True, events=_extraction().events, booking_confirmed=True
     )
-    gateway = MagicMock()
-    gateway.call_validated.return_value = llm_result
+    gw = MagicMock()
+    gw.call_validated.return_value = llm_result
 
     extraction = event_processing.extract_calendar_events(
-        gateway, "body", {"provider_message_id": "m", "from_email": "a@b.c"}
+        gw, "body", {"provider_message_id": "m", "from_email": "a@b.c"}
     )
 
     assert extraction.booking_confirmed is True

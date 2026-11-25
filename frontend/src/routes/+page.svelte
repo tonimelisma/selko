@@ -5,7 +5,7 @@
 	import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
 
 	let isLoading = $state(true);
-	/** @type {import('@supabase/supabase-js').User | null} */
+	/** @type {import('$lib/types.js').AuthUser | null} */
 	let currentUser = $state(null);
 
 	onMount(() => {

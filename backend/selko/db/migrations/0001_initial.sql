@@ -11,32 +11,42 @@
 -- enforced by selko.db: every read a client can reach takes a user_id.
 
 -- Accounts replace Supabase Auth's auth.users. Ids are carried over unchanged,
--- so every user_id in every table keeps pointing at the same person.
+-- so every user_id in every table keeps pointing at the same person
+-- (docs/specs/sqlite-single-process/03-api-auth-web.md §B).
 CREATE TABLE accounts (
     id TEXT NOT NULL PRIMARY KEY,
-    email TEXT NOT NULL COLLATE NOCASE UNIQUE,
-    password_hash TEXT NOT NULL,
+    email TEXT NOT NULL UNIQUE,                  -- trimmed and lowercased by the data layer
+    password_hash TEXT NOT NULL,                 -- bcrypt; GoTrue's $2a$10$ hashes carried verbatim
+    email_confirmed_at TEXT,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
-    last_sign_in_at TEXT
+    last_sign_in_at TEXT,
+    disabled_at TEXT
 ) STRICT;
 
--- Refresh tokens: random secrets, stored only as SHA-256 hashes, rotated on
--- every use. A token used again within its reuse window returns the same
--- successor; after that, reuse revokes the whole family (stolen token).
-CREATE TABLE refresh_tokens (
+-- One row per signed-in device. The access token's `sid`.
+CREATE TABLE auth_sessions (
     id TEXT NOT NULL PRIMARY KEY,
-    account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
-    family_id TEXT NOT NULL,
-    token_hash TEXT NOT NULL UNIQUE,
+    user_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
     created_at TEXT NOT NULL,
-    expires_at TEXT NOT NULL,
-    used_at TEXT,
-    replaced_by TEXT,
-    revoked_at TEXT
+    refreshed_at TEXT NOT NULL,
+    user_agent TEXT,                             -- first 200 characters; no IP is stored
+    revoked_at TEXT,
+    revoked_reason TEXT CHECK (revoked_reason IN ('logout', 'logout_global', 'reuse_detected', 'expired', 'password_changed', 'account_deleted'))
 ) STRICT;
-CREATE INDEX refresh_tokens_account_idx ON refresh_tokens (account_id);
-CREATE INDEX refresh_tokens_family_idx ON refresh_tokens (family_id);
+CREATE INDEX auth_sessions_user_active ON auth_sessions (user_id) WHERE revoked_at IS NULL;
+
+-- Refresh tokens: 32 random bytes, stored only as their SHA-256, rotated on
+-- every use. A token reused within 10 s of its rotation is a concurrent
+-- refresh; later, it is a stolen token and the session is revoked.
+CREATE TABLE auth_refresh_tokens (
+    id TEXT NOT NULL PRIMARY KEY,
+    session_id TEXT NOT NULL REFERENCES auth_sessions(id) ON DELETE CASCADE,
+    token_hash TEXT NOT NULL UNIQUE,
+    parent_id TEXT REFERENCES auth_refresh_tokens(id) ON DELETE SET NULL,
+    created_at TEXT NOT NULL,
+    rotated_at TEXT
+) STRICT;
 
 CREATE TABLE action_history (
     id TEXT NOT NULL,
@@ -47,7 +57,7 @@ CREATE TABLE action_history (
     previous_state TEXT CHECK (previous_state IS NULL OR json_valid(previous_state)),
     new_state TEXT CHECK (new_state IS NULL OR json_valid(new_state)),
     external_resource_id TEXT,
-    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f','now') || '000Z'),
     CONSTRAINT action_history_action_type_check CHECK ((action_type IN ('create', 'update', 'delete'))),
     CONSTRAINT action_history_entity_type_check CHECK ((entity_type IN ('event', 'sender_rule'))),
     CONSTRAINT action_history_pkey PRIMARY KEY (id),
@@ -67,7 +77,7 @@ CREATE TABLE attachments (
     size_bytes INTEGER,
     storage_path TEXT,
     content_hash TEXT,
-    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f','now') || '000Z'),
     ingestion_status TEXT NOT NULL DEFAULT 'pending',
     attempts INTEGER NOT NULL DEFAULT 0,
     max_attempts INTEGER NOT NULL DEFAULT 8,
@@ -107,8 +117,8 @@ CREATE TABLE calendar_entries (
     provider_updated_at TEXT,
     origin TEXT NOT NULL DEFAULT 'external',
     deleted_at TEXT,
-    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
-    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f','now') || '000Z'),
+    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f','now') || '000Z'),
     join_url TEXT,
     CONSTRAINT calendar_entries_integration_id_fkey FOREIGN KEY (integration_id) REFERENCES integrations(id) ON DELETE CASCADE,
     CONSTRAINT calendar_entries_origin_check CHECK ((origin IN ('selko_created', 'external'))),
@@ -127,7 +137,7 @@ CREATE TABLE calendar_mirror_state (
     last_full_resync_at TEXT,
     window_start TEXT NOT NULL,
     window_end TEXT NOT NULL,
-    next_poll_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    next_poll_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f','now') || '000Z'),
     lease_owner TEXT,
     lease_expires_at TEXT,
     lease_generation INTEGER NOT NULL DEFAULT 0,
@@ -136,8 +146,8 @@ CREATE TABLE calendar_mirror_state (
     consecutive_failures INTEGER NOT NULL DEFAULT 0,
     last_error_code TEXT,
     last_error_at TEXT,
-    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
-    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f','now') || '000Z'),
+    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f','now') || '000Z'),
     CONSTRAINT calendar_mirror_state_integration_id_fkey FOREIGN KEY (integration_id) REFERENCES integrations(id) ON DELETE CASCADE,
     CONSTRAINT calendar_mirror_state_pkey PRIMARY KEY (integration_id, calendar_id),
     CONSTRAINT calendar_mirror_state_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -151,8 +161,8 @@ CREATE TABLE calendar_sync_log (
     google_calendar_event_id TEXT NOT NULL,
     action TEXT NOT NULL,
     snapshot_synced TEXT NOT NULL CHECK (snapshot_synced IS NULL OR json_valid(snapshot_synced)),
-    synced_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
-    CONSTRAINT calendar_sync_log_action_check CHECK ((action IN ('created', 'updated', 'deleted'))),
+    synced_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f','now') || '000Z'),
+    CONSTRAINT calendar_sync_log_action_check CHECK ((action IN ('created', 'updated', 'deleted', 'cancelled'))),
     CONSTRAINT calendar_sync_log_event_id_fkey FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
     CONSTRAINT calendar_sync_log_pkey PRIMARY KEY (id),
     CONSTRAINT calendar_sync_log_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -180,8 +190,8 @@ CREATE TABLE calendar_work_items (
     next_retry_at TEXT,
     failure_code TEXT,
     failure_detail TEXT,
-    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
-    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f','now') || '000Z'),
+    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f','now') || '000Z'),
     completed_at TEXT,
     provider TEXT,
     CONSTRAINT calendar_work_items_action_check CHECK ((action IN ('upsert', 'cancel'))),
@@ -212,7 +222,7 @@ CREATE TABLE email_calendar_components (
     component_status TEXT,
     start_datetime TEXT,
     end_datetime TEXT,
-    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f','now') || '000Z'),
     CONSTRAINT email_calendar_components_component_index_check CHECK ((component_index >= 0)),
     CONSTRAINT email_calendar_components_email_id_component_index_key UNIQUE (email_id, component_index),
     CONSTRAINT email_calendar_components_email_id_fkey FOREIGN KEY (email_id) REFERENCES emails(id) ON DELETE CASCADE,
@@ -240,8 +250,8 @@ CREATE TABLE email_folders (
     user_override INTEGER NOT NULL DEFAULT 0 CHECK (user_override IN (0,1)),
     is_included INTEGER NOT NULL DEFAULT 1 CHECK (is_included IN (0,1)),
     sync_cursor TEXT,
-    discovered_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
-    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    discovered_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f','now') || '000Z'),
+    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f','now') || '000Z'),
     is_scannable INTEGER NOT NULL DEFAULT 1 CHECK (is_scannable IN (0,1)),
     is_permanently_excluded INTEGER NOT NULL DEFAULT 0 CHECK (is_permanently_excluded IN (0,1)),
     CONSTRAINT email_folders_classification_decision_check CHECK ((classification_decision IN ('include', 'exclude', 'uncertain'))),
@@ -263,8 +273,8 @@ CREATE TABLE email_ingestion_items (
     provider_message_id TEXT NOT NULL,
     provider_folder_ids TEXT NOT NULL DEFAULT '[]' CHECK (provider_folder_ids IS NULL OR json_valid(provider_folder_ids)),
     change_kind TEXT NOT NULL DEFAULT 'upsert',
-    first_discovered_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
-    last_discovered_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    first_discovered_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f','now') || '000Z'),
+    last_discovered_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f','now') || '000Z'),
     acquisition_status TEXT NOT NULL DEFAULT 'pending',
     attempts INTEGER NOT NULL DEFAULT 0,
     max_attempts INTEGER NOT NULL DEFAULT 8,
@@ -275,8 +285,8 @@ CREATE TABLE email_ingestion_items (
     last_error_at TEXT,
     email_id TEXT,
     completed_at TEXT,
-    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
-    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f','now') || '000Z'),
+    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f','now') || '000Z'),
     CONSTRAINT email_ingestion_items_acquisition_status_check CHECK ((acquisition_status IN ('pending', 'processing', 'completed', 'retry', 'dead_letter', 'removed'))),
     CONSTRAINT email_ingestion_items_change_kind_check CHECK ((change_kind IN ('upsert', 'membership_change', 'removed'))),
     CONSTRAINT email_ingestion_items_email_id_fkey FOREIGN KEY (email_id) REFERENCES emails(id) ON DELETE SET NULL,
@@ -295,7 +305,7 @@ CREATE TABLE email_sync_runs (
     provider TEXT NOT NULL,
     run_kind TEXT NOT NULL,
     status TEXT NOT NULL,
-    started_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    started_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f','now') || '000Z'),
     completed_at TEXT,
     folders_attempted INTEGER NOT NULL DEFAULT 0,
     folders_completed INTEGER NOT NULL DEFAULT 0,
@@ -320,7 +330,7 @@ CREATE TABLE email_sync_state (
     user_id TEXT NOT NULL,
     provider TEXT NOT NULL,
     initial_watermark_at TEXT NOT NULL,
-    next_poll_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    next_poll_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f','now') || '000Z'),
     lease_owner TEXT,
     lease_expires_at TEXT,
     last_started_at TEXT,
@@ -330,8 +340,8 @@ CREATE TABLE email_sync_state (
     consecutive_failures INTEGER NOT NULL DEFAULT 0,
     last_error_code TEXT,
     last_error_at TEXT,
-    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
-    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f','now') || '000Z'),
+    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f','now') || '000Z'),
     folders_refreshed_at TEXT,
     lease_generation INTEGER NOT NULL DEFAULT 0,
     CONSTRAINT email_sync_state_integration_id_fkey FOREIGN KEY (integration_id) REFERENCES integrations(id) ON DELETE CASCADE,
@@ -367,7 +377,7 @@ CREATE TABLE emails (
     storage_path TEXT,
     has_attachments INTEGER DEFAULT 0 CHECK (has_attachments IN (0,1)),
     content_hash TEXT,
-    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f','now') || '000Z'),
     processing_status TEXT DEFAULT 'pending',
     processing_error TEXT,
     processed_at TEXT,
@@ -401,6 +411,8 @@ CREATE INDEX idx_emails_date ON emails (date_sent DESC);
 CREATE INDEX idx_emails_history ON emails (user_id, date_sent DESC) WHERE (processing_status IN ('processed', 'failed'));
 CREATE INDEX idx_emails_pending_processing ON emails (processing_status, created_at) WHERE (processing_status = 'pending');
 CREATE INDEX idx_emails_processing_status ON emails (processing_status);
+-- The expired-lease step of claim_unprocessed_email (02-data-layer.md §2.1).
+CREATE INDEX idx_emails_processing_locked_until ON emails (processing_status, locked_until);
 CREATE INDEX idx_emails_provider_message_id ON emails (provider_message_id);
 CREATE INDEX idx_emails_user ON emails (user_id);
 CREATE INDEX idx_emails_user_date ON emails (user_id, date_sent DESC);
@@ -415,15 +427,15 @@ CREATE TABLE event_change_proposals (
     change_set TEXT NOT NULL CHECK (change_set IS NULL OR json_valid(change_set)),
     event_snapshot_before TEXT NOT NULL CHECK (event_snapshot_before IS NULL OR json_valid(event_snapshot_before)),
     resolution_reason TEXT,
-    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f','now') || '000Z'),
     resolved_at TEXT,
-    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f','now') || '000Z'),
     CONSTRAINT event_change_proposals_change_set_check CHECK (json_valid(change_set) AND json_type(change_set) = 'object' AND change_set <> '{}'),
     CONSTRAINT event_change_proposals_event_id_fkey FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
     CONSTRAINT event_change_proposals_event_snapshot_before_check CHECK (json_valid(event_snapshot_before) AND json_type(event_snapshot_before) = 'object' AND event_snapshot_before <> '{}'),
     CONSTRAINT event_change_proposals_kind_check CHECK ((kind IN ('material_update', 'cancellation'))),
     CONSTRAINT event_change_proposals_pkey PRIMARY KEY (id),
-    CONSTRAINT event_change_proposals_source_id_fkey FOREIGN KEY (source_id) REFERENCES event_sources(id) ON DELETE RESTRICT,
+    CONSTRAINT event_change_proposals_source_id_fkey FOREIGN KEY (source_id) REFERENCES event_sources(id),
     CONSTRAINT event_change_proposals_source_id_key UNIQUE (source_id),
     CONSTRAINT event_change_proposals_source_owner_check CHECK ((user_id IS NOT NULL)),
     CONSTRAINT event_change_proposals_status_check CHECK ((status IN ('pending', 'applied', 'rejected', 'superseded', 'closed_legacy'))),
@@ -443,7 +455,7 @@ CREATE TABLE event_identity_hints (
     strength TEXT NOT NULL,
     sequence INTEGER NOT NULL DEFAULT 0,
     dtstamp TEXT,
-    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f','now') || '000Z'),
     calendar_entry_id TEXT,
     CONSTRAINT event_identity_hints_calendar_entry_id_fkey FOREIGN KEY (calendar_entry_id) REFERENCES calendar_entries(id) ON DELETE CASCADE,
     CONSTRAINT event_identity_hints_event_id_fkey FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
@@ -466,7 +478,7 @@ CREATE TABLE event_repair_audit (
     reason TEXT NOT NULL,
     actor TEXT NOT NULL,
     pre_change TEXT NOT NULL DEFAULT '[]' CHECK (pre_change IS NULL OR json_valid(pre_change)),
-    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f','now') || '000Z'),
     CONSTRAINT event_repair_audit_action_check CHECK ((action IN ('merge_duplicate_group', 'merge_source', 'cancel_event', 'resolve_proposal'))),
     CONSTRAINT event_repair_audit_pkey PRIMARY KEY (id),
     CONSTRAINT event_repair_audit_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -480,7 +492,7 @@ CREATE TABLE event_sources (
     email_id TEXT,
     source_type TEXT NOT NULL DEFAULT 'new_invitation',
     extracted_data TEXT NOT NULL CHECK (extracted_data IS NULL OR json_valid(extracted_data)),
-    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f','now') || '000Z'),
     source_origin TEXT NOT NULL DEFAULT 'email',
     google_calendar_source_event_id TEXT,
     CONSTRAINT event_sources_email_id_fkey FOREIGN KEY (email_id) REFERENCES emails(id) ON DELETE CASCADE,
@@ -507,8 +519,8 @@ CREATE TABLE events (
     source_attribution TEXT,
     google_calendar_event_id TEXT,
     synced_at TEXT,
-    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
-    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f','now') || '000Z'),
+    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f','now') || '000Z'),
     importance TEXT NOT NULL DEFAULT 'action_required',
     recurrence_rule TEXT,
     recovery_id TEXT,
@@ -529,15 +541,15 @@ CREATE TABLE global_limits (
     default_limit INTEGER NOT NULL,
     max_allowed INTEGER NOT NULL,
     is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0,1)),
-    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
-    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f','now') || '000Z'),
+    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f','now') || '000Z'),
     CONSTRAINT global_limits_limit_type_key UNIQUE (limit_type),
     CONSTRAINT global_limits_pkey PRIMARY KEY (id)
 ) STRICT;
 
 CREATE TABLE graph_api_failures (
     id TEXT NOT NULL,
-    occurred_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    occurred_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f','now') || '000Z'),
     environment TEXT NOT NULL,
     integration_id TEXT,
     graph_surface TEXT NOT NULL,
@@ -584,9 +596,9 @@ CREATE TABLE integration_recoveries (
     remaining_count INTEGER NOT NULL DEFAULT 0,
     error_code TEXT,
     error_detail TEXT,
-    requested_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    requested_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f','now') || '000Z'),
     started_at TEXT,
-    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f','now') || '000Z'),
     completed_at TEXT,
     withdrawn_count INTEGER NOT NULL DEFAULT 0,
     CONSTRAINT integration_recoveries_integration_id_fkey FOREIGN KEY (integration_id) REFERENCES integrations(id) ON DELETE CASCADE,
@@ -610,8 +622,8 @@ CREATE TABLE integrations (
     scopes TEXT NOT NULL DEFAULT '[]' CHECK (scopes IS NULL OR json_valid(scopes)),
     sync_cursor TEXT,
     last_sync_at TEXT,
-    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
-    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f','now') || '000Z'),
+    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f','now') || '000Z'),
     last_photo_sync_at TEXT,
     CONSTRAINT integrations_pkey PRIMARY KEY (id),
     CONSTRAINT integrations_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -630,14 +642,14 @@ CREATE TABLE llm_call_log (
     prompt_tokens INTEGER,
     completion_tokens INTEGER,
     total_tokens INTEGER,
-    started_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    started_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f','now') || '000Z'),
     completed_at TEXT,
     latency_ms INTEGER,
     success INTEGER NOT NULL DEFAULT 1 CHECK (success IN (0,1)),
     error_message TEXT,
     error_type TEXT,
     estimated_cost_usd REAL,
-    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f','now') || '000Z'),
     provider TEXT,
     CONSTRAINT llm_call_log_email_id_fkey FOREIGN KEY (email_id) REFERENCES emails(id) ON DELETE SET NULL,
     CONSTRAINT llm_call_log_pkey PRIMARY KEY (id),
@@ -653,7 +665,7 @@ CREATE TABLE oauth_states (
     user_id TEXT NOT NULL,
     provider TEXT NOT NULL,
     redirect_uri TEXT NOT NULL,
-    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f','now') || '000Z'),
     expires_at TEXT NOT NULL,
     code_verifier TEXT,
     CONSTRAINT oauth_states_pkey PRIMARY KEY (state),
@@ -670,8 +682,8 @@ CREATE TABLE operational_incidents (
     severity TEXT NOT NULL,
     status TEXT NOT NULL,
     safe_summary TEXT NOT NULL,
-    first_seen_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
-    last_seen_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    first_seen_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f','now') || '000Z'),
+    last_seen_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f','now') || '000Z'),
     resolved_at TEXT,
     opened_notification_sent_at TEXT,
     resolved_notification_sent_at TEXT,
@@ -708,7 +720,7 @@ CREATE TABLE photos (
     next_retry_at TEXT,
     dead_letter_reason TEXT,
     dead_letter_at TEXT,
-    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f','now') || '000Z'),
     CONSTRAINT photos_pkey PRIMARY KEY (id),
     CONSTRAINT photos_processing_status_check CHECK ((processing_status IN ('pending', 'processing', 'processed', 'failed', 'skipped'))),
     CONSTRAINT photos_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -723,10 +735,10 @@ CREATE TABLE scheduled_tasks (
     task_type TEXT NOT NULL,
     payload TEXT NOT NULL DEFAULT '[]' CHECK (payload IS NULL OR json_valid(payload)),
     status TEXT NOT NULL DEFAULT 'pending',
-    scheduled_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    scheduled_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f','now') || '000Z'),
     locked_until TEXT,
     locked_by TEXT,
-    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f','now') || '000Z'),
     started_at TEXT,
     completed_at TEXT,
     last_error TEXT,
@@ -744,8 +756,8 @@ CREATE TABLE sender_rules (
     sender_domain TEXT,
     sender_email TEXT,
     action TEXT NOT NULL,
-    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
-    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f','now') || '000Z'),
+    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f','now') || '000Z'),
     CONSTRAINT sender_rules_action_check CHECK ((action IN ('auto_approve', 'ignore'))),
     CONSTRAINT sender_rules_check CHECK (((sender_domain IS NOT NULL) OR (sender_email IS NOT NULL))),
     CONSTRAINT sender_rules_pkey PRIMARY KEY (id),
@@ -767,8 +779,8 @@ CREATE TABLE usage_quotas (
     email_syncs_limit INTEGER NOT NULL DEFAULT 50,
     calendar_syncs_count INTEGER NOT NULL DEFAULT 0,
     calendar_syncs_limit INTEGER NOT NULL DEFAULT 100,
-    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
-    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f','now') || '000Z'),
+    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f','now') || '000Z'),
     CONSTRAINT usage_quotas_pkey PRIMARY KEY (id),
     CONSTRAINT usage_quotas_user_id_date_key UNIQUE (user_id, date),
     CONSTRAINT usage_quotas_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -779,7 +791,7 @@ CREATE TABLE user_calendar_settings (
     user_id TEXT NOT NULL,
     target_calendar_id TEXT,
     default_invitees TEXT,
-    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f','now') || '000Z'),
     timezone TEXT NOT NULL DEFAULT 'America/New_York',
     all_day_display_mode TEXT NOT NULL DEFAULT 'all_day',
     all_day_custom_start TEXT,
@@ -794,8 +806,173 @@ CREATE TABLE users (
     id TEXT NOT NULL,
     email TEXT NOT NULL,
     display_name TEXT,
-    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
-    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f','now') || '000Z'),
+    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f','now') || '000Z'),
     CONSTRAINT users_id_fkey FOREIGN KEY (id) REFERENCES accounts(id) ON DELETE CASCADE,
     CONSTRAINT users_pkey PRIMARY KEY (id)
 ) STRICT;
+
+-- ===========================================================================
+-- Triggers: one per Postgres trigger (docs/specs/sqlite-single-process/
+-- 02-data-layer.md §2.13-2.15). They call functions that only the data
+-- layer's writer connection registers:
+--   selko_now()                     the transaction's timestamp (Postgres now())
+--   selko_ts(offset_seconds)        that timestamp plus an offset
+--   selko_emit_live(user, resource, operation)   a live hint, sent after commit
+--   selko_emit_work(work_type)      a worker wake-up, sent after commit
+--   selko_touch_event(event_id)     an event whose proposal invariant is checked before commit
+-- A write from any other connection fails with "no such function": nothing
+-- can change these tables behind the data layer's back.
+-- ===========================================================================
+
+-- updated_at: Postgres's BEFORE UPDATE trigger always set now(); so does this.
+CREATE TRIGGER set_events_updated_at AFTER UPDATE ON events FOR EACH ROW
+BEGIN UPDATE events SET updated_at = selko_now() WHERE rowid = NEW.rowid; END;
+CREATE TRIGGER set_global_limits_updated_at AFTER UPDATE ON global_limits FOR EACH ROW
+BEGIN UPDATE global_limits SET updated_at = selko_now() WHERE rowid = NEW.rowid; END;
+CREATE TRIGGER set_integrations_updated_at AFTER UPDATE ON integrations FOR EACH ROW
+BEGIN UPDATE integrations SET updated_at = selko_now() WHERE rowid = NEW.rowid; END;
+CREATE TRIGGER set_sender_rules_updated_at AFTER UPDATE ON sender_rules FOR EACH ROW
+BEGIN UPDATE sender_rules SET updated_at = selko_now() WHERE rowid = NEW.rowid; END;
+CREATE TRIGGER set_usage_quotas_updated_at AFTER UPDATE ON usage_quotas FOR EACH ROW
+BEGIN UPDATE usage_quotas SET updated_at = selko_now() WHERE rowid = NEW.rowid; END;
+CREATE TRIGGER set_user_calendar_settings_updated_at AFTER UPDATE ON user_calendar_settings FOR EACH ROW
+BEGIN UPDATE user_calendar_settings SET updated_at = selko_now() WHERE rowid = NEW.rowid; END;
+CREATE TRIGGER set_users_updated_at AFTER UPDATE ON users FOR EACH ROW
+BEGIN UPDATE users SET updated_at = selko_now() WHERE rowid = NEW.rowid; END;
+
+-- Gmail labels -> the boolean label columns (Postgres: BEFORE INSERT OR UPDATE OF provider_labels).
+CREATE TRIGGER parse_provider_labels_insert AFTER INSERT ON emails FOR EACH ROW
+BEGIN
+    UPDATE emails SET
+        is_spam       = EXISTS (SELECT 1 FROM json_each(NEW.provider_labels) WHERE value = 'SPAM'),
+        is_trash      = EXISTS (SELECT 1 FROM json_each(NEW.provider_labels) WHERE value = 'TRASH'),
+        is_promotions = EXISTS (SELECT 1 FROM json_each(NEW.provider_labels) WHERE value = 'CATEGORY_PROMOTIONS'),
+        is_social     = EXISTS (SELECT 1 FROM json_each(NEW.provider_labels) WHERE value = 'CATEGORY_SOCIAL'),
+        is_updates    = EXISTS (SELECT 1 FROM json_each(NEW.provider_labels) WHERE value = 'CATEGORY_UPDATES'),
+        is_forums     = EXISTS (SELECT 1 FROM json_each(NEW.provider_labels) WHERE value = 'CATEGORY_FORUMS'),
+        is_primary    = EXISTS (SELECT 1 FROM json_each(NEW.provider_labels) WHERE value = 'CATEGORY_PERSONAL'),
+        is_important  = EXISTS (SELECT 1 FROM json_each(NEW.provider_labels) WHERE value = 'IMPORTANT'),
+        is_starred    = EXISTS (SELECT 1 FROM json_each(NEW.provider_labels) WHERE value = 'STARRED'),
+        is_unread     = EXISTS (SELECT 1 FROM json_each(NEW.provider_labels) WHERE value = 'UNREAD')
+    WHERE rowid = NEW.rowid;
+END;
+CREATE TRIGGER parse_provider_labels_update AFTER UPDATE OF provider_labels ON emails FOR EACH ROW
+BEGIN
+    UPDATE emails SET
+        is_spam       = EXISTS (SELECT 1 FROM json_each(NEW.provider_labels) WHERE value = 'SPAM'),
+        is_trash      = EXISTS (SELECT 1 FROM json_each(NEW.provider_labels) WHERE value = 'TRASH'),
+        is_promotions = EXISTS (SELECT 1 FROM json_each(NEW.provider_labels) WHERE value = 'CATEGORY_PROMOTIONS'),
+        is_social     = EXISTS (SELECT 1 FROM json_each(NEW.provider_labels) WHERE value = 'CATEGORY_SOCIAL'),
+        is_updates    = EXISTS (SELECT 1 FROM json_each(NEW.provider_labels) WHERE value = 'CATEGORY_UPDATES'),
+        is_forums     = EXISTS (SELECT 1 FROM json_each(NEW.provider_labels) WHERE value = 'CATEGORY_FORUMS'),
+        is_primary    = EXISTS (SELECT 1 FROM json_each(NEW.provider_labels) WHERE value = 'CATEGORY_PERSONAL'),
+        is_important  = EXISTS (SELECT 1 FROM json_each(NEW.provider_labels) WHERE value = 'IMPORTANT'),
+        is_starred    = EXISTS (SELECT 1 FROM json_each(NEW.provider_labels) WHERE value = 'STARRED'),
+        is_unread     = EXISTS (SELECT 1 FROM json_each(NEW.provider_labels) WHERE value = 'UNREAD')
+    WHERE rowid = NEW.rowid;
+END;
+
+-- A calendar work item belongs to its event's owner.
+CREATE TRIGGER calendar_work_items_owner_check_insert BEFORE INSERT ON calendar_work_items FOR EACH ROW
+WHEN NOT EXISTS (SELECT 1 FROM events WHERE id = NEW.event_id AND user_id = NEW.user_id)
+BEGIN SELECT RAISE(ABORT, 'calendar work item owner does not match event owner'); END;
+CREATE TRIGGER calendar_work_items_owner_check_update BEFORE UPDATE ON calendar_work_items FOR EACH ROW
+WHEN NOT EXISTS (SELECT 1 FROM events WHERE id = NEW.event_id AND user_id = NEW.user_id)
+BEGIN SELECT RAISE(ABORT, 'calendar work item owner does not match event owner'); END;
+
+-- An active Gmail/Outlook integration has a sync state; reconnecting resumes promptly.
+CREATE TRIGGER integrations_ensure_email_sync_state_insert AFTER INSERT ON integrations FOR EACH ROW
+WHEN NEW.provider IN ('gmail', 'outlook') AND NEW.status = 'active'
+BEGIN
+    INSERT INTO email_sync_state (integration_id, user_id, provider, initial_watermark_at, next_poll_at, created_at, updated_at)
+    VALUES (NEW.id, NEW.user_id, NEW.provider, selko_ts(-14 * 86400), selko_now(), selko_now(), selko_now())
+    ON CONFLICT (integration_id) DO UPDATE SET
+        next_poll_at = CASE
+            WHEN email_sync_state.lease_expires_at IS NULL OR email_sync_state.lease_expires_at <= selko_now()
+            THEN selko_now() ELSE email_sync_state.next_poll_at END,
+        consecutive_failures = 0,
+        last_error_code = NULL,
+        updated_at = selko_now();
+END;
+CREATE TRIGGER integrations_ensure_email_sync_state_update AFTER UPDATE OF status, provider ON integrations FOR EACH ROW
+WHEN NEW.provider IN ('gmail', 'outlook') AND NEW.status = 'active'
+BEGIN
+    INSERT INTO email_sync_state (integration_id, user_id, provider, initial_watermark_at, next_poll_at, created_at, updated_at)
+    VALUES (NEW.id, NEW.user_id, NEW.provider, selko_ts(-14 * 86400), selko_now(), selko_now(), selko_now())
+    ON CONFLICT (integration_id) DO UPDATE SET
+        next_poll_at = CASE
+            WHEN email_sync_state.lease_expires_at IS NULL OR email_sync_state.lease_expires_at <= selko_now()
+            THEN selko_now() ELSE email_sync_state.next_poll_at END,
+        consecutive_failures = 0,
+        last_error_code = NULL,
+        updated_at = selko_now();
+END;
+
+-- Worker wake-ups (Postgres: pg_notify('selko_work', ...), delivered on commit).
+CREATE TRIGGER emails_notify_pending_insert AFTER INSERT ON emails FOR EACH ROW
+WHEN NEW.processing_status = 'pending' BEGIN SELECT selko_emit_work('email_pending'); END;
+CREATE TRIGGER emails_notify_pending_update AFTER UPDATE OF processing_status ON emails FOR EACH ROW
+WHEN NEW.processing_status = 'pending' BEGIN SELECT selko_emit_work('email_pending'); END;
+CREATE TRIGGER items_notify_pending_insert AFTER INSERT ON email_ingestion_items FOR EACH ROW
+WHEN NEW.acquisition_status = 'pending' BEGIN SELECT selko_emit_work('item_pending'); END;
+CREATE TRIGGER items_notify_pending_update AFTER UPDATE OF acquisition_status ON email_ingestion_items FOR EACH ROW
+WHEN NEW.acquisition_status = 'pending' BEGIN SELECT selko_emit_work('item_pending'); END;
+CREATE TRIGGER attachments_notify_pending_insert AFTER INSERT ON attachments FOR EACH ROW
+WHEN NEW.ingestion_status = 'pending' BEGIN SELECT selko_emit_work('attachment_pending'); END;
+CREATE TRIGGER attachments_notify_pending_update AFTER UPDATE OF ingestion_status ON attachments FOR EACH ROW
+WHEN NEW.ingestion_status = 'pending' BEGIN SELECT selko_emit_work('attachment_pending'); END;
+
+-- Live hints for the web app (Postgres: realtime.send, one per user and resource per transaction).
+CREATE TRIGGER trg_events_broadcast_ins AFTER INSERT ON events FOR EACH ROW
+BEGIN SELECT selko_emit_live(NEW.user_id, 'events', 'INSERT'); END;
+CREATE TRIGGER trg_events_broadcast_del AFTER DELETE ON events FOR EACH ROW
+BEGIN SELECT selko_emit_live(OLD.user_id, 'events', 'DELETE'); END;
+CREATE TRIGGER trg_events_broadcast_upd AFTER UPDATE OF review_status, title, start_datetime, end_datetime ON events FOR EACH ROW
+WHEN NEW.review_status IS NOT OLD.review_status OR NEW.title IS NOT OLD.title
+  OR NEW.start_datetime IS NOT OLD.start_datetime OR NEW.end_datetime IS NOT OLD.end_datetime
+BEGIN SELECT selko_emit_live(NEW.user_id, 'events', 'UPDATE'); END;
+CREATE TRIGGER trg_emails_broadcast_upd AFTER UPDATE OF processing_status, processing_error ON emails FOR EACH ROW
+WHEN NEW.processing_status IS NOT OLD.processing_status OR NEW.processing_error IS NOT OLD.processing_error
+BEGIN SELECT selko_emit_live(NEW.user_id, 'emails', 'UPDATE'); END;
+CREATE TRIGGER trg_event_sources_broadcast_ins AFTER INSERT ON event_sources FOR EACH ROW
+BEGIN SELECT selko_emit_live((SELECT user_id FROM events WHERE id = NEW.event_id), 'event_sources', 'INSERT'); END;
+CREATE TRIGGER trg_event_sources_broadcast_upd AFTER UPDATE OF source_origin ON event_sources FOR EACH ROW
+BEGIN SELECT selko_emit_live((SELECT user_id FROM events WHERE id = NEW.event_id), 'event_sources', 'UPDATE'); END;
+CREATE TRIGGER trg_integrations_broadcast_upd AFTER UPDATE OF status ON integrations FOR EACH ROW
+WHEN NEW.status IS NOT OLD.status
+BEGIN SELECT selko_emit_live(NEW.user_id, 'integrations', 'UPDATE'); END;
+CREATE TRIGGER trg_calendar_work_items_broadcast_ins AFTER INSERT ON calendar_work_items FOR EACH ROW
+BEGIN SELECT selko_emit_live(NEW.user_id, 'calendar_work_items', 'INSERT'); END;
+CREATE TRIGGER trg_calendar_work_items_broadcast_upd AFTER UPDATE ON calendar_work_items FOR EACH ROW
+BEGIN SELECT selko_emit_live(NEW.user_id, 'calendar_work_items', 'UPDATE'); END;
+CREATE TRIGGER trg_calendar_work_items_broadcast_del AFTER DELETE ON calendar_work_items FOR EACH ROW
+BEGIN SELECT selko_emit_live(OLD.user_id, 'calendar_work_items', 'DELETE'); END;
+CREATE TRIGGER trg_event_change_proposals_broadcast_ins AFTER INSERT ON event_change_proposals FOR EACH ROW
+BEGIN SELECT selko_emit_live(NEW.user_id, 'event_change_proposals', 'INSERT'); END;
+CREATE TRIGGER trg_event_change_proposals_broadcast_upd AFTER UPDATE ON event_change_proposals FOR EACH ROW
+BEGIN SELECT selko_emit_live(NEW.user_id, 'event_change_proposals', 'UPDATE'); END;
+CREATE TRIGGER trg_event_change_proposals_broadcast_del AFTER DELETE ON event_change_proposals FOR EACH ROW
+BEGIN SELECT selko_emit_live(OLD.user_id, 'event_change_proposals', 'DELETE'); END;
+
+-- Proposal invariant (Postgres: deferred constraint triggers): record the
+-- touched events; the transaction checks them just before COMMIT.
+CREATE TRIGGER events_change_proposal_invariant_ins AFTER INSERT ON events FOR EACH ROW
+BEGIN SELECT selko_touch_event(NEW.id); END;
+CREATE TRIGGER events_change_proposal_invariant_upd AFTER UPDATE ON events FOR EACH ROW
+BEGIN SELECT selko_touch_event(NEW.id); END;
+CREATE TRIGGER event_change_proposals_invariant_ins AFTER INSERT ON event_change_proposals FOR EACH ROW
+BEGIN SELECT selko_touch_event(NEW.event_id); END;
+CREATE TRIGGER event_change_proposals_invariant_upd AFTER UPDATE ON event_change_proposals FOR EACH ROW
+BEGIN SELECT selko_touch_event(NEW.event_id); SELECT selko_touch_event(OLD.event_id); END;
+CREATE TRIGGER event_change_proposals_invariant_del AFTER DELETE ON event_change_proposals FOR EACH ROW
+BEGIN SELECT selko_touch_event(OLD.event_id); END;
+
+-- Quota limits (Postgres migration 20260127000003 seeded these). Without them
+-- every quota check fails, and the quota service fails open: no enforcement.
+-- On an imported database the rows arrive with the data instead.
+INSERT INTO global_limits (id, limit_type, default_limit, max_allowed, is_active, created_at, updated_at) VALUES
+    ('00000000-0000-4000-8000-000000000001', 'llm_calls_daily', 100, 1000, 1, strftime('%Y-%m-%dT%H:%M:%f','now') || '000Z', strftime('%Y-%m-%dT%H:%M:%f','now') || '000Z'),
+    ('00000000-0000-4000-8000-000000000002', 'email_syncs_daily', 50, 500, 1, strftime('%Y-%m-%dT%H:%M:%f','now') || '000Z', strftime('%Y-%m-%dT%H:%M:%f','now') || '000Z'),
+    ('00000000-0000-4000-8000-000000000003', 'calendar_syncs_daily', 100, 1000, 1, strftime('%Y-%m-%dT%H:%M:%f','now') || '000Z', strftime('%Y-%m-%dT%H:%M:%f','now') || '000Z')
+ON CONFLICT (limit_type) DO NOTHING;

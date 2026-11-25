@@ -98,35 +98,38 @@ registry also supports Anthropic and OpenAI models.
 The end-to-end Email → Review → Google Calendar journey is in production.
 Current work is focused on recovery and immediacy: automatically catching up
 after an OAuth reconnection and delivering live cross-client updates without a
-manual refresh. Realtime Broadcast invalidation is shipped on the web; the remaining OAuth reconnect work is tracked in
+manual refresh (the `/live` stream). The remaining OAuth reconnect work is tracked in
 [OAuth reconnect catch-up](docs/specs/oauth-reconnect-catch-up.md).
 
 ## Architecture
 
-Frontends query Supabase directly for RLS-protected application data. FastAPI
-handles operations that require secrets: OAuth, provider ingestion, LLM
-processing, and Google Calendar writes. PostgreSQL rows are also the durable
-work queues; workers claim them with locks and bounded retries.
+One process serves the web app, the API and the background workers on one
+port, over one SQLite file. All state lives in a data directory
+(`SELKO_DATA_DIR`): `selko.db` and the stored attachments. The web app talks
+only to the API; the API signs users in itself. Database rows are also the
+durable work queues: workers claim them with fenced leases and bounded retries,
+and a committed write wakes the worker that should act on it.
 
 ```text
-Web app
-        │
-        ├── RLS-protected data ──────────────→ Supabase
-        │                                      PostgreSQL + Auth + Storage
-        │
-        └── secret-bearing operations ───────→ FastAPI
-                                               OAuth + providers + AI
-                                                        │
-                                                        └── background workers
+Browser ── one origin ──→ selko (uvicorn, one process)
+                            ├── web app (built SvelteKit, static)
+                            ├── API: sign-in, data, /live updates
+                            └── workers: mail polling, LLM extraction,
+                                calendar writes
+                                    │
+                                    └── /data: selko.db + attachments/
 ```
+
+It ships as one signed container image, `ghcr.io/tonimelisma/selko:<sha>`,
+built and checked by `.github/workflows/image.yml`.
 
 ### Stack
 
 - **Web:** SvelteKit 2, Svelte 5, DaisyUI
 - **Backend:** Python, FastAPI, Pydantic
-- **Data:** Supabase PostgreSQL, Auth, Storage, RLS
+- **Data:** SQLite (WAL, one writer), files on disk
 - **AI:** multimodal, multi-provider LLM gateway with validated fallback
-- **Tooling:** `uv`, npm
+- **Tooling:** `uv`, npm, Docker (the image)
 
 See [PRD_ARCH.md](PRD_ARCH.md) for product requirements and architecture.
 
@@ -136,9 +139,8 @@ See [PRD_ARCH.md](PRD_ARCH.md) for product requirements and architecture.
 
 - Python 3.14+
 - [uv](https://github.com/astral-sh/uv)
-- [Supabase CLI](https://supabase.com/docs/guides/cli)
-- Docker Desktop
-- Node.js for the web client
+- Node.js ≥ 22.12 for the web client
+- Docker, only to build and check the image
 
 ### Setup
 
@@ -146,15 +148,13 @@ See [PRD_ARCH.md](PRD_ARCH.md) for product requirements and architecture.
 git clone https://github.com/tonimelisma/selko.git
 cd selko
 uv sync
-cp .env.example .env
-supabase start
-supabase db reset
+cp .env.example .env     # set SELKO_JWT_SECRET: openssl rand -hex 32
 ```
 
-Run the backend:
+Run the backend (it creates and migrates `data/selko.db` on start):
 
 ```bash
-uv run python -m selko.api
+uv run uvicorn selko.api.app:app --port 8000
 ```
 
 Run the web client:
@@ -165,14 +165,24 @@ npm install
 npm run dev
 ```
 
-The repository supports isolated development, staging, and production
-configuration through `.env`, `.env.test`, and `.env.production`.
+Or run it all as production does:
+
+```bash
+./scripts/build-image.sh selko:dev
+docker run --read-only --tmpfs /tmp --cap-drop ALL --security-opt no-new-privileges \
+  --memory 400m -v selko-data:/data -p 8000:8000 \
+  -e SELKO_JWT_SECRET="$(openssl rand -hex 32)" -e ALLOWED_ORIGINS=http://localhost:8000 \
+  selko:dev
+```
 
 ## Testing
 
 ```bash
-# Backend unit tests
-uv run pytest backend/tests/ -m "not integration"
+# Backend (unit + integration; no service needed)
+./scripts/verify.sh backend
+
+# The image under the server's limits
+./scripts/image-lane.sh
 
 # Frontend
 cd frontend
@@ -189,6 +199,7 @@ Platform-specific commands and required visual verification are documented in
 |---|---|
 | [PRD_ARCH.md](PRD_ARCH.md) | Product requirements and architecture |
 | [docs/database-schema.md](docs/database-schema.md) | Database reference |
+| [docs/api-client-endpoints.md](docs/api-client-endpoints.md) | The API the web app uses |
 | [docs/job-queue.md](docs/job-queue.md) | Background-worker architecture |
 | [docs/gmail-integration.md](docs/gmail-integration.md) | Gmail ingestion |
 | [docs/llm-integration.md](docs/llm-integration.md) | Model routing and extraction |

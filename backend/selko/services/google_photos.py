@@ -14,7 +14,7 @@ from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-from supabase import Client
+from selko.db.connection import Database as Client
 
 from selko.config import Config
 from selko.services.integrations import (
@@ -43,9 +43,9 @@ def get_credentials(
     """Get Google Photos credentials from database, refreshing if needed.
 
     Args:
-        client: Authenticated Supabase client.
+        client: The process database.
         config: Configuration with Google OAuth credentials.
-        user_id: Optional user ID (required if using service role client).
+        user_id: The owning user (required).
 
     Returns:
         Valid Google Credentials, or None if not found.
@@ -123,9 +123,9 @@ def fetch_recent_photos(
     Uses mediaItems.search() with date filter and pagination.
 
     Args:
-        client: Authenticated Supabase client.
+        client: The process database.
         config: Configuration with Google OAuth credentials.
-        user_id: Optional user ID (required if using service role client).
+        user_id: The owning user (required).
         since_date: Only fetch photos taken after this date.
         max_results: Maximum number of photos to fetch.
 

@@ -1,83 +1,71 @@
-"""A content type storage will never accept must not ride the retry ladder.
+"""A content type the store will never accept must not ride the retry ladder.
 
-On 2026-10-18 one `text/markdown` attachment was rejected by the bucket's MIME
-allowlist. `upload_to_storage` wrapped the `415` in a generic
+On 2026-10-18 one `text/markdown` attachment was rejected by the Supabase
+bucket's MIME allowlist. `upload_to_storage` wrapped the `415` in a generic
 `AttachmentError`, which `classify_email_error` maps to `unknown` (retryable),
 so the row spent all 8 attempts reaching the same answer and landed in
 `dead_letter` — one of the four counts `assert-health.sh` calls never
-acceptable, which no worker clears. A single unstorable file therefore pinned
-/health to degraded indefinitely.
+acceptable, which no worker clears.
 
-The allowlist is now aligned with the worker's accept-set, so that specific
-type stores fine. These tests defend the behaviour that makes the *next* drift
-survivable: a refusal is terminal, costs one attempt, and is recorded as
-`unsupported` rather than as lost work needing an operator.
+Attachments are now files on disk, and the store accepts exactly the worker's
+accept-set (one list, `selko.services.attachments`). These tests defend the
+behaviour that keeps a refusal survivable: it is terminal, costs one attempt,
+and is recorded as `unsupported` rather than as lost work needing an operator.
 """
 
 import asyncio
-from dataclasses import replace
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 
 import pytest
 
+from selko.db.runtime import attachments_dir, use_database
 from selko.services.attachments import (
+    SUPPORTED_ATTACHMENT_MIME_PREFIXES,
+    SUPPORTED_ATTACHMENT_MIMES,
     AttachmentError,
     AttachmentTypeRejected,
-    _is_mime_rejection,
+    read_attachment_file,
     upload_to_storage,
 )
 from selko.services.email_ingestion import classify_email_error
 from selko.workers.email_ingestion import EmailIngestionWorker
 
 
-class _StorageError(Exception):
-    """Stands in for supabase-py's StorageApiError, which carries a status."""
-
-    def __init__(self, message, status=None):
-        super().__init__(message)
-        self.status = status
-
-
-def test_a_mime_refusal_is_recognised_by_status_or_body():
-    """Both, because a client may surface only one of them."""
-    assert _is_mime_rejection(_StorageError("nope", status=415)) is True
-    assert _is_mime_rejection(_StorageError("nope", status="415")) is True
-    assert _is_mime_rejection(
-        Exception("{'statusCode': 415, 'error': invalid_mime_type, 'message': "
-                  "mime type text/markdown is not supported}")
-    ) is True
+@pytest.fixture
+def store(db):
+    use_database(db)
+    yield db
+    use_database(None)
 
 
-def test_a_transient_storage_failure_stays_retryable():
-    """The narrow check is the point.
-
-    Treating a storage outage as permanent would silently drop real
-    attachments, which is worse than the dead-letter this replaces.
-    """
-    assert _is_mime_rejection(_StorageError("service unavailable", status=503)) is False
-    assert _is_mime_rejection(_StorageError("gateway timeout", status=504)) is False
-    assert _is_mime_rejection(TimeoutError("socket timed out")) is False
-    assert _is_mime_rejection(Exception("connection reset by peer")) is False
+ACCEPTED = sorted(SUPPORTED_ATTACHMENT_MIMES) + ["text/markdown", "text/plain", "image/png", "image/heic"]
 
 
-def test_upload_raises_the_terminal_error_on_a_refusal():
-    client = MagicMock()
-    client.storage.from_.return_value.upload.side_effect = _StorageError(
-        "mime type text/markdown is not supported", status=415
-    )
+@pytest.mark.parametrize("mime", ACCEPTED)
+def test_every_type_the_worker_accepts_is_stored(store, mime):
+    path = upload_to_storage(store, "user-1", "file.bin", b"payload", mime)
+    assert read_attachment_file(path) == b"payload"
+    assert (attachments_dir() / path).is_file()
 
+
+@pytest.mark.parametrize("mime", ["application/zip", "application/octet-stream", "video/mp4"])
+def test_the_store_refuses_a_type_outside_the_accept_set(store, mime):
+    """The matcher itself can fail: a type outside the set is refused, nothing is written."""
     with pytest.raises(AttachmentTypeRejected):
-        upload_to_storage(client, "user-1", "notes.md", b"# hi", "text/markdown")
+        upload_to_storage(store, "user-1", "archive.zip", b"PK", mime)
+    assert not any(p.is_file() for p in attachments_dir().rglob("*"))
 
 
-def test_upload_still_raises_the_retryable_error_otherwise():
-    client = MagicMock()
-    client.storage.from_.return_value.upload.side_effect = _StorageError(
-        "service unavailable", status=503
-    )
+def test_a_failed_write_stays_retryable(store, monkeypatch):
+    """A disk failure is not a property of the type, so it must not be terminal."""
+    import selko.services.attachments as attachments
 
+    def broken(_path, _data):
+        raise OSError("No space left on device")
+
+    monkeypatch.setattr(attachments, "write_attachment_file", broken)
     with pytest.raises(AttachmentError) as caught:
-        upload_to_storage(client, "user-1", "notes.md", b"# hi", "text/markdown")
+        upload_to_storage(store, "user-1", "notes.md", b"# hi", "text/markdown")
     assert not isinstance(caught.value, AttachmentTypeRejected)
 
 
@@ -89,40 +77,40 @@ def test_a_refusal_is_classified_terminal_with_its_own_code():
     assert classification.auth_failure is False
 
 
-def test_a_refused_attachment_is_marked_unsupported_not_retried(mock_config):
+def test_a_refused_attachment_is_marked_unsupported_not_retried(db, mock_config):
     """The regression. Before this, the row retried to dead_letter."""
 
     async def scenario():
-        worker = EmailIngestionWorker(MagicMock(), mock_config, "worker-1")
+        worker = EmailIngestionWorker(db, mock_config, "worker-1", pg_pool=db)
         worker.repository.finish_attachment = AsyncMock(return_value=True)
 
         async def rejected(_attachment):
-            raise AttachmentTypeRejected("storage rejected 'text/markdown'")
+            raise AttachmentTypeRejected("storage rejected 'application/zip'")
 
         worker.acquire_attachment = rejected
 
         # attempts well below max_attempts: if the row were merely "failed",
         # this is the state that would produce 'retry' and burn the ladder.
         await worker._process_attachment_item(
-            {"id": "att-1", "mime_type": "text/markdown", "attempts": 0, "max_attempts": 8}
+            {"id": "att-1", "mime_type": "application/zip", "attempts": 0, "max_attempts": 8}
         )
 
         worker.repository.finish_attachment.assert_awaited_once()
         args = worker.repository.finish_attachment.await_args.args
         assert args[0] == "att-1"
         assert args[2] == "unsupported", (
-            "a type storage will always refuse is unsupported, not retryable"
+            "a type the store will always refuse is unsupported, not retryable"
         )
         assert args[3] == "attachment_type_rejected"
 
     asyncio.run(scenario())
 
 
-def test_an_ordinary_failure_still_retries(mock_config):
+def test_an_ordinary_failure_still_retries(db, mock_config):
     """Guard the guard: the change must not make every failure terminal."""
 
     async def scenario():
-        worker = EmailIngestionWorker(MagicMock(), mock_config, "worker-1")
+        worker = EmailIngestionWorker(db, mock_config, "worker-1", pg_pool=db)
         worker.repository.finish_attachment = AsyncMock(return_value=True)
 
         async def blew_up(_attachment):
@@ -140,14 +128,11 @@ def test_an_ordinary_failure_still_retries(mock_config):
     asyncio.run(scenario())
 
 
-def test_the_worker_accept_set_needs_no_subtype_enumeration(mock_config):
-    """Why the fix is a wildcard in the bucket, not more entries.
+def test_the_worker_and_the_store_share_one_accept_set():
+    """Two allowlists drifted once (the bucket vs the worker); now there is one."""
+    from selko.workers import email_ingestion
 
-    The gate admits any `text/*` and `image/*` subtype, so there is no finite
-    list of subtypes that could match it. This pins that property, which is
-    the reason the bucket allowlist carries `text/*` and `image/*`.
-    """
-    from selko.workers.email_ingestion import SUPPORTED_ATTACHMENT_MIME_PREFIXES
-
+    assert email_ingestion.SUPPORTED_ATTACHMENT_MIME_PREFIXES is SUPPORTED_ATTACHMENT_MIME_PREFIXES
+    assert email_ingestion.SUPPORTED_ATTACHMENT_MIMES is SUPPORTED_ATTACHMENT_MIMES
     for exotic in ("text/markdown", "text/x-rst", "image/heic", "image/avif"):
         assert exotic.startswith(SUPPORTED_ATTACHMENT_MIME_PREFIXES), exotic

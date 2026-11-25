@@ -1,7 +1,7 @@
 """OAuth integration endpoints.
 
-These endpoints handle OAuth flows requiring server-side secrets.
-For direct integration queries, use Supabase client from frontend.
+These endpoints handle OAuth flows requiring server-side secrets, and the
+Settings folder list.
 """
 
 import logging
@@ -25,6 +25,9 @@ from selko.api.schemas.integrations import (
 )
 from selko.api.schemas.common import ErrorCode, error_detail
 from selko.config import Config
+from selko.db import email_sync as db_email_sync
+from selko.db import integrations as db_integrations
+from selko.db.connection import Database
 from selko.services.gmail import build_service, get_user_profile
 from selko.services.outlook import (
     OutlookError,
@@ -41,8 +44,8 @@ from selko.services.integrations import (
     save_oauth_credentials,
     save_provider_tokens,
 )
-from selko.services.email_folders import set_folder_preference
-from supabase import Client
+
+Client = Database
 
 # Base allowlist for Google OAuth callback hosts (Google redirects here, not the SPA)
 _STATIC_REDIRECT_HOSTS = {
@@ -69,19 +72,16 @@ async def list_email_folders(
 ) -> list[EmailFolderPreferenceResponse]:
     """List user-configurable discovered labels/folders for Settings."""
 
-    result = (
-        client.table("email_folders")
-        .select(
-            "id,provider,name,full_path,classification_decision,classification_reason,"
-            "user_override,is_included,is_system"
-        )
-        .eq("user_id", user.id)
-        .eq("provider", provider)
-        .eq("is_system", False)
-        .order("full_path")
-        .execute()
-    )
-    return [EmailFolderPreferenceResponse(**row) for row in (result.data or [])]
+    rows = db_email_sync.list_user_folders(client, user.id, provider)
+    return [_folder_response(row) for row in rows]
+
+
+_FOLDER_FIELDS = tuple(EmailFolderPreferenceResponse.model_fields)
+
+
+def _folder_response(row: dict[str, Any]) -> EmailFolderPreferenceResponse:
+    """Only the response's own columns (the row carries cursors and provider ids)."""
+    return EmailFolderPreferenceResponse(**{k: row.get(k) for k in _FOLDER_FIELDS if k in row})
 
 
 @router.patch("/{provider}/folders/{folder_id}", response_model=EmailFolderPreferenceResponse)
@@ -94,42 +94,30 @@ async def update_email_folder(
 ) -> EmailFolderPreferenceResponse:
     """Persist a folder override and request a prompt sync when enabling it."""
 
-    existing = (
-        client.table("email_folders")
-        .select("*")
-        .eq("id", folder_id)
-        .eq("user_id", user.id)
-        .eq("provider", provider)
-        .eq("is_system", False)
-        .maybe_single()
-        .execute()
-    )
-    if not existing or not existing.data:
+    existing = db_email_sync.get_user_folder(client, user.id, folder_id, provider)
+    if not existing:
         raise HTTPException(status_code=404, detail="Email folder not found")
 
-    folder = set_folder_preference(
-        client,
-        user_id=user.id,
-        folder_id=folder_id,
-        is_included=request.is_included,
+    # The only writer of is_included (02-data-layer.md §2.11): a durable user
+    # override that also resets the folder's cursor.
+    folder = db_email_sync.set_email_folder_preference(
+        client, user.id, folder_id, request.is_included
     )
     if not folder:
         raise HTTPException(status_code=404, detail="Email folder not found")
 
     if request.is_included:
         # Ask the ingestion coordinator to pick this integration up on its next
-        # tick rather than queueing a separate fetch job. The RPC is a no-op
+        # tick rather than queueing a separate fetch job. The write is a no-op
         # while a worker holds the lease, so it cannot interrupt a run in
         # progress, and it is naturally idempotent under repeated toggling.
         try:
-            integration_id = existing.data.get("integration_id")
+            integration_id = existing.get("integration_id")
             if integration_id:
-                client.rpc(
-                    "request_email_sync_now", {"p_integration_id": integration_id}
-                ).execute()
-                # Egress inc 5: in-process nudge wakes the coordinator's 60s tick
-                # immediately. DB RPC remains the durability anchor; nudge is just
-                # latency. If missed, the 60s tick catches it.
+                db_email_sync.request_email_sync_now(client, user.id, integration_id)
+                # The in-process nudge wakes the coordinator's tick
+                # immediately. The database row remains the durability anchor;
+                # the nudge is just latency. If missed, the tick catches it.
                 try:
                     from selko.api.app import ingestion_runtime as _runtime
 
@@ -140,7 +128,7 @@ async def update_email_folder(
         except Exception as exc:
             logger.warning("Folder preference saved but sync could not be requested: %s", exc)
 
-    return EmailFolderPreferenceResponse(**folder)
+    return _folder_response(folder)
 
 
 # --- IP-based rate limiter for OAuth callback ---
@@ -369,7 +357,7 @@ async def google_oauth_callback(
         else:
             providers = [provider]
 
-        # Create service role client (bypasses RLS for explicit user_id)
+        # The process database; every write below names user_id explicitly.
         from selko.services.auth import get_service_client
         client = get_service_client(config)
 
@@ -397,10 +385,9 @@ async def google_oauth_callback(
                 tz_setting = cal_service.settings().get(setting="timezone").execute()
                 user_timezone = tz_setting.get("value")
                 if user_timezone:
-                    client.table("user_calendar_settings").upsert({
-                        "user_id": str(user_id),
-                        "timezone": user_timezone,
-                    }).execute()
+                    db_integrations.upsert_calendar_settings(
+                        client, str(user_id), {"timezone": user_timezone}
+                    )
                     logger.info(f"Auto-detected timezone '{user_timezone}' for user {user_id}")
             except Exception as e:
                 logger.warning(f"Could not auto-detect timezone for user {user_id}: {e}")

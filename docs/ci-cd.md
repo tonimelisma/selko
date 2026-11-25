@@ -1,244 +1,93 @@
 # CI/CD Pipeline
 
-The CI/CD pipeline ensures code quality and manages deployments across three environments.
+Selko ships as one image: `ghcr.io/tonimelisma/selko:<sha>`, built, checked and
+cosign-signed by GitHub Actions on `main`. Production runs that image on a
+server that pulls it and verifies the signature; deployment itself lives
+outside this repository.
 
-## Overview
+| Environment | State | How it runs |
+|-------------|-------|-------------|
+| **Development** | A local `SELKO_DATA_DIR` (or a fresh file per test) | `uv run uvicorn selko.api.app:app`, the dev server, or the image via `scripts/image-lane.sh` |
+| **Production** | `/data` on the server (`selko.db` + `attachments/`) | The signed image, read-only root, `/data` its only volume |
 
-| Environment | Database | Deployment | Purpose |
-|-------------|----------|------------|---------|
-| **Development (local)** | Local Docker (`supabase start`, in the cloud VM or on the Mac) | — | Fast iteration with isolated database |
-| **Staging** | Hosted Supabase (**paused**, owner decision) | `deploy-staging` on main push while the project runs; `staging-tier2` operation on request | Pre-production validation with real services |
-| **Production** | Hosted Supabase | `deploy-production` operation, after the owner's explicit yes | Live environment |
+There is no staging environment. The image lane runs the exact image under the
+server's limits and holds it to the production health invariants; that is what
+stands in for "the shape that actually runs".
 
-Two workflows run on GitHub-hosted runners (the repo is public, so minutes
-cost nothing): `test.yml` and `frontend-tests.yml` on pushes and PRs, and
-`ops.yml` for every operation that needs a credential or a network path a
-cloud session lacks (Postgres over TCP, the production database password,
-Render deploy hooks, KVM). CI is never a merge gate — the lanes are
-(`CLAUDE.md` → "The verification process") — but it is never left red.
+CI is never a merge gate — the lanes are (`CLAUDE.md` → "The verification
+process") — but it is never left red. The repo is public, so runner minutes
+cost nothing.
 
-## Pipeline Flow
+## Workflows
 
-### On Pull Request
+| Workflow | Runs on | Jobs |
+|----------|---------|------|
+| `test.yml` | push to `main`, PRs (path-filtered: `backend/**`, `selko_import/**`, `scripts/seed_screenshot_data.py`, `pyproject.toml`, `uv.lock`) | `unit-tests`: the whole backend suite, unit + integration (SQLite needs no service) |
+| `frontend-tests.yml` | push to `main`, PRs touching `frontend/**` | `unit-tests` (Vitest), `build` (build + `svelte-check`) |
+| `image.yml` | push to `main`, PRs, manual | `image`: build → `scripts/image-lane.sh` → on `main` only, push and cosign-sign |
+
+## image.yml
 
 ```
-PR opened/updated
+docker build --build-arg GIT_COMMIT_SHA=<sha> -t ghcr.io/tonimelisma/selko:<sha> .
     |
-    +-- Unit Tests (backend, path-filtered)
-    +-- Frontend Unit Tests + build + svelte-check (frontend-tests.yml)
+scripts/image-lane.sh <image>
+    |-- throwaway Postgres holding selko_import/fixture, imported with selko_import
+    |-- scripts/image-check.sh: read-only root, --cap-drop ALL, no-new-privileges,
+    |   400 MB, /data the only volume; /health, health invariants, web shell,
+    |   non-root, sign-up/sign-in/refresh, review + /live, attachment download,
+    |   memory, the imported database
     |
-No deployment
+main only:
+    docker push  (GITHUB_TOKEN, packages: write)
+    cosign sign --yes <digest>   (keyless, OIDC: id-token: write)
+    cosign verify <digest>       (identity: image.yml@refs/heads/main)
 ```
 
-### On Push to Main
-
-```
-Merged with merge-and-cleanup.sh (squash, REST; never waits on CI)
-    |
-    +-- Same unit/frontend jobs
-    +-- deploy-staging (backend/supabase changes):
-          staging paused  -> warning "Tier 2 NOT run", nothing verified, job green
-          staging running -> migrations, deploy hook, served revision, staging suite
-          status unknown  -> red (missing token / API down is not "paused")
-```
-
-### To Production (ops.yml, after the owner's yes)
-
-```
-./scripts/ops.py dispatch schema-compat            # the prod-gate lane: db push --dry-run
-    |
-Owner says yes for <sha> (main's tip)
-    |
-./scripts/ops.py dispatch deploy-production sha=<sha> confirm="deploy <sha>"
-    |-- refuses unless <sha> is main's tip (Render's hook builds the branch tip)
-    |-- supabase db push --dry-run, supabase db push
-    |-- assert-schema-code-compat.sh --linked (R5)
-    |-- Render deploy hooks (App, Web)
-    |-- waits until api.selkoapp.com/health serves <sha>
-    |-- check-production-health.sh (T+0)
-```
-
-## Critical Deployment Principle: Atomic Updates
-
-**Database and application MUST deploy together.**
-
-**Why:** Breaking changes require synchronized deployment:
-- New code expecting new schema -> 500 errors if schema not updated
-- New schema with old code -> potential issues if not backward compatible
-
-**Implementation:** `deploy-production` runs migrations first, then deploys the
-application. If any migration step fails, the deploy hooks never fire.
-
-## GitHub Actions Jobs
-
-### test.yml / frontend-tests.yml (push, PR)
-
-| Job | Runs On | Path Filter | Purpose |
-|-----|---------|-------------|---------|
-| `unit-tests` | Every push/PR | `backend/**`, `scripts/seed_test_tokens.py`, `pyproject.toml`, `uv.lock` | Backend unit tests, no external services |
-| `unit-tests` / `build` (frontend-tests.yml) | Every push/PR | `frontend/**` | Frontend unit + build + svelte-check |
-| `deploy-staging` | Main push only | `backend/**` or `supabase/**` | Deploy + verify staging while it runs; reports "paused" otherwise |
-
-### ops.yml (repository_dispatch, typed by `scripts/ops.py`)
-
-| Operation | What it does | Writes |
-|-----------|--------------|--------|
-| `schema-compat` | `target=production\|staging`, `when=pre-deploy` (`db push --dry-run`) or `post-deploy` (R5) | nothing |
-| `deploy-production` | The production deploy above | production DB + services |
-| `rehearse-cutover` | `rehearse_cutover.py --production-url … [--faithful]` on the runner's local Supabase | nothing in production |
-| `repair-review-queue` | `repair_review_queue_integrity.py` dry run; `apply=true` needs `confirm_user` and `confirm="apply <uuid>"` plus the owner's yes | production only with apply |
-| `staging-tier2` | `verify-staging.sh` with the worker drill (`require_workers`) | staging |
-
-The `request` job validates the payload (`scripts/ops.py validate`) before any
-job that holds a secret starts; production jobs share the `production`
-concurrency group and are never cancelled mid-run. Every operation is also
-startable from the Actions tab (`workflow_dispatch`, same JSON payload).
-
-**Logs are public.** Steps that read production print counts, versions and
-migration names, and pipe through `scripts/ops.py redact`.
-
-## Required GitHub Secrets
-
-Configure at: Repository -> Settings -> Secrets and variables -> Actions. The
-full list, including the ones the ops operations added, is "Owner setup" in
-`CLAUDE.md`. Each job checks the secrets it needs and names the missing one.
-
-**Note on naming:** GitHub secrets use `STAGING_*`/`PRODUCTION_*` prefixes; the
-workflows map them to the unprefixed variables the code expects
-(`TEST_USER_EMAIL`, `SUPABASE_DB_URL`, …).
-
-## Session vs Actions
-
-### Cloud session (the default) or the Mac
-- `.env` for the local stack only (`scripts/cloud-setup.sh` writes it in a
-  cloud VM); no hosted credential
-- Tier 1 (`./scripts/verify.sh backend`) and every VM lane run here
-- Hosted-environment work is dispatched: `./scripts/ops.py dispatch <operation>`
-
-### GitHub Actions
-- Hosted credentials live only here, as Actions secrets
-- `ops.yml` operations and the push/PR test jobs
-
-## Deployment Commands
+The image that is checked is the image that is pushed: one build, loaded into
+the runner's Docker, checked, then pushed by digest. Nothing is pushed unless
+every check passed. A server verifies a pulled image with:
 
 ```bash
-# 0. The prod-gate lane (also run by ./scripts/verify-lanes.py --gate prod):
-#    production accepts this tree's migrations. A non-zero exit BLOCKS the
-#    deploy -- never proceed past it, never make it pass without verifying.
-./scripts/ops.py dispatch schema-compat
-
-# 1. After the owner's explicit yes for <sha> (main's tip):
-./scripts/ops.py dispatch deploy-production sha=<sha> confirm="deploy <sha>"
-
-# 2. Observe (deploy-log T+15m, T+24h):
-./scripts/check-production-health.sh
-uv run python scripts/smoke-ingestion.py --base-url https://api.selkoapp.com
+cosign verify ghcr.io/tonimelisma/selko:<sha> \
+  --certificate-identity "https://github.com/tonimelisma/selko/.github/workflows/image.yml@refs/heads/main" \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
 
-Render does **not** deploy on push or tag: production changes only through the
-deploy hooks in `deploy-production`.
+No secret is involved: the workflow's `GITHUB_TOKEN` pushes and GitHub's OIDC
+token signs.
 
-### Production still requires explicit approval
+## Migrations
 
-An AI agent must **ask** before any prod deploy, with the `--gate prod` lane
-table attached, and only proceed on an explicit yes for that SHA. Once the
-owner says yes, a disclosed staging failure does not create another approval
-gate.
+Migrations live in `backend/selko/db/migrations/` and apply when the process
+opens the database (`selko.db.runtime.open_database`), before it serves: a
+hash-checked ledger (`schema_migrations`), a `VACUUM INTO` backup in
+`<data>/backups/` before each, foreign keys checked before commit. Schema and
+code therefore always ship together, in one image. `python -m selko.admin
+migrate` applies them without starting the server.
 
-## Merge Workflow
-
-### CI is never a gate — the lanes are
-
-Verification is Tier 1 (`./scripts/verify.sh backend`, in the session) before
-merge and Tier 2 (`./scripts/ops.py dispatch staging-tier2`) after — paused
-with staging today. Merges use `merge-and-cleanup.sh` and never wait on CI. If
-CI on the merge commit fails, fix forward.
-
-### Default: merge-and-cleanup.sh
+## Checking CI
 
 ```bash
-# Step 1: Create the PR (REST; `gh pr create` needs GraphQL, refused in cloud sessions)
-gh api repos/tonimelisma/selko/pulls -f head=<branch> -f base=main -f title="..." -f body="..." --jq .number
-
-# Step 2: Merge (no CI gate) and clean up
-./scripts/merge-and-cleanup.sh <pr_number>
+gh api "repos/tonimelisma/selko/actions/runs?branch=main&per_page=3" \
+  --jq '.workflow_runs[] | [.id,.name,.event,.conclusion] | @tsv'
+gh api repos/tonimelisma/selko/actions/runs/<id>/jobs --jq '.jobs[] | [.id,.name,.conclusion] | @tsv'
+gh api repos/tonimelisma/selko/actions/jobs/<job id>/logs | tail -80
 ```
 
-The script:
-1. **Squash-merges** the PR over REST (GitHub deletes the remote branch: "Automatically delete head branches" is on)
-2. Cloud session: **moves the clone** onto the merged `main` and deletes the local branch
-3. Mac: **fast-forwards** `main`, **removes the worktree** (never `--force`), deletes the local branch, prunes
-
-Required PR checks (informational): `unit-tests`, `frontend-unit-tests`. The native iOS and Android apps are unmaintained and have no CI (`legacy/README.md`).
-
-### Troubleshooting
+## Production health
 
 ```bash
-# Runs on main, then the jobs of one run, then a failed job's log
-gh api "repos/tonimelisma/selko/actions/runs?branch=main&per_page=3" --jq '.workflow_runs[] | [.id,.name,.conclusion] | @tsv'
-gh api repos/tonimelisma/selko/actions/runs/<run_id>/jobs --jq '.jobs[] | [.id,.name,.conclusion] | @tsv'
-gh api repos/tonimelisma/selko/actions/jobs/<job_id>/logs | tail -80
-
-# After fixing, push and re-run the lane (or the operation)
-git push
+./scripts/check-production-health.sh          # api.selkoapp.com
+./scripts/check-production-health.sh <url>    # any deployment, e.g. a local container
 ```
 
-Common issues:
-- **Merge conflicts:** `git fetch origin main && git merge origin/main`, resolve, push, re-run `merge-and-cleanup.sh`
-- **A missing Actions secret:** the job names it; add it (Owner setup in `CLAUDE.md`)
-- **Expired Google OAuth tokens** (`RefreshError: invalid_grant`): `uv run python scripts/seed_test_tokens.py --sync --provider gmail` (dev ↔ staging; only if both are stale, reconnect Gmail for the test user in one side's web app, then re-run `--sync`)
+The invariants are in `scripts/assert-health.sh` (table in `CLAUDE.md`). Until
+production is cut over to the signed image it runs the previous hosted-Postgres
+build; its own assertions are `git show 7207aac5:scripts/assert-health.sh`.
 
-### Email Notifications
+## Historical
 
-GitHub sends automatic email notifications when:
-- CI workflow fails on your branch
-- A PR you authored has a failed check
-
-Ensure notifications are enabled in your personal GitHub settings:
-Settings → Notifications → Actions → "Send notifications for failed workflows only"
-
-### Ingestion health and alerting
-
-Point the Render health check at **`GET /health/ingestion`** (not `/health`). The
-base `/health` returns `ok` unconditionally, so it stays green while every
-ingestion loop is dead. `/health/ingestion` reports live per-task state plus
-due/lease/pending/dead-letter counts and open email-sync incidents; its
-`status` field is:
-
-- `ok` — every managed task alive, no dead letters, no open incidents, oldest
-  pending poll inside the warning SLO;
-- `degraded` — DB queries failed, OR any dead letters / open incidents, OR the
-  oldest pending poll is past `EMAIL_HEALTH_WARNING_SECONDS`;
-- `down` — any managed task is not alive (the watchdog respawned it within one
-  tick, but an outage continued past that would surface here).
-
-`/health/ingestion` is currently the **only alerting surface** for ingestion.
-`OPERATIONAL_NOTIFICATION_*` (Resend) is unset and no Resend account is
-provisioned, so `operational_incidents` rows are recorded but never emailed.
-Two paths to alert a human:
-
-1. Provision Resend and set `OPERATIONAL_NOTIFICATION_*` (the
-   `ResendOperationalNotifier` is already wired);
-2. Configure Sentry (`SENTRY_DSN`) so the watchdog's `capture_exception` on an
-   unexpectedly-exited task reaches an operator and `/health/ingestion` stays
-   the SLO probe.
-
-The structured `ingestion_sync_run` log line (`run_kind`, `provider`,
-`duration_ms`, `provider_ids_seen`, `items_inserted`, `items_existing`,
-`error_code`) is emitted once per completed sync run, so Render log search can
-answer "is ingestion moving" without a metrics backend. Never logs subjects,
-addresses, message ids or tokens.
-
-### Parallel Agent Workflow
-
-When multiple agents work simultaneously, they use git worktrees for isolation. See `docs/parallel-agents.md` for the complete guide covering:
-- Creating worktrees with feature branches
-- PR workflow (REST in cloud sessions)
-- Rebasing after other agents merge
-- Conflict resolution strategies
-
-## Related Documentation
-
-- [PRD_ARCH.md](../PRD_ARCH.md) Part 3 - Render deployment configuration
-- [PRD_ARCH.md](../PRD_ARCH.md) Part 4 - Testing strategy details
-- [parallel-agents.md](parallel-agents.md) - Multi-agent workflow guide
+Before the move to SQLite (`docs/specs/sqlite-single-process/`), CI also
+deployed a staging environment and `ops.yml` ran production deploys to Render
+with Supabase migrations. Both are gone; `docs/deploy-log/` keeps the record.

@@ -1,308 +1,169 @@
-"""Integration tests for rate limiting and quota enforcement.
+"""Rate limiting and quota enforcement over a real SQLite database.
 
 Tests verify:
-1. Database quota tables exist and work correctly
-2. Quota enforcement returns 429 when exceeded
-3. X-RateLimit headers are included in responses
-4. LLM is NOT called when quota is exceeded
+1. The quota tables carry their defaults and the quota functions work
+2. Quotas are per user, and no client route can change them
+3. Quota enforcement returns 429 when exceeded, and the LLM is not called
+4. OAuth redirect validation and error sanitization on the real app
+
+Requests carry a real Selko access token for a real account; only the quota
+decision (where a test says so) and the LLM are patched.
 """
 
+import ast
+from pathlib import Path
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
 from fastapi.testclient import TestClient
-from httpx import ASGITransport, AsyncClient
 
-from selko.api.app import app
-from selko.services.quotas import QuotaService
+from selko.api.app import create_app
+from selko.api.deps import get_config, get_llm_gateway
+from selko.config import Config
+from selko.db import quotas as db_quotas
+from selko.db import runtime
+from selko.services import accounts
+from selko.services.llm_gateway import LLMGateway
+from selko.services.quotas import QuotaCheckResult, QuotaService
+
+ROUTES_DIR = Path(__file__).resolve().parents[2] / "selko" / "api" / "routes"
+JWT_SECRET = "rate-limit-test-secret-" + "x" * 24
 
 
-@pytest.mark.integration
-@pytest.mark.development
-class TestQuotaDatabaseIntegration:
-    """Tests for quota database operations."""
-
-    def test_global_limits_table_has_defaults(self, authenticated_client):
-        """Test global_limits table has seeded defaults."""
-        result = authenticated_client.table("global_limits").select("*").execute()
-
-        assert len(result.data) >= 3
-
-        limit_types = {row["limit_type"] for row in result.data}
-        assert "llm_calls_daily" in limit_types
-        assert "email_syncs_daily" in limit_types
-        assert "calendar_syncs_daily" in limit_types
-
-    def test_usage_quotas_rls_only_own_data(
-        self, admin_client, temp_user_client, test_user_id, temp_user
-    ):
-        """Test RLS prevents users from seeing other users' quota data."""
-        temp_user_id, _, _ = temp_user
-
-        # Seed the row over the service role. The quota RPCs are no longer
-        # reachable with a user JWT (W1); this test is about table RLS, not
-        # about who may call the RPC.
-        admin_client.rpc(
-            "check_and_increment_quota",
-            {
-                "p_user_id": test_user_id,
-                "p_quota_type": "llm_calls",
-                "p_increment": 1,
-            },
-        ).execute()
-
-        # Temp user should not see test user's quota
-        result = (
-            temp_user_client.table("usage_quotas")
-            .select("*")
-            .eq("user_id", test_user_id)
-            .execute()
-        )
-
-        # RLS should filter this out
-        assert len(result.data) == 0
-
-    def test_quota_rpc_check_and_increment(self, admin_client, test_user_id):
-        """check_and_increment_quota over the service role the app actually uses.
-
-        This previously called the RPC as ``authenticated_client``. Both quota
-        RPCs take an arbitrary ``p_user_id`` and never compare it to
-        ``auth.uid()``, so that grant let any signed-in user read another
-        user's usage or burn their daily quota. Neither call site in the
-        application uses a user JWT -- ``selko/services/quotas.py`` is
-        constructed from ``get_service_role_client`` -- so the grant bought
-        nothing and W1 removed it. See the denial test below.
-        """
-        result = admin_client.rpc(
-            "check_and_increment_quota",
-            {
-                "p_user_id": test_user_id,
-                "p_quota_type": "llm_calls",
-                "p_increment": 1,
-            },
-        ).execute()
-
-        assert len(result.data) == 1
-        row = result.data[0]
-        assert row["allowed"] is True
-        assert row["current_count"] >= 1
-        assert row["quota_limit"] > 0
-
-    def test_quota_rpc_get_user_usage(self, admin_client, test_user_id):
-        """get_user_quota_usage over the service role the app actually uses."""
-        result = admin_client.rpc(
-            "get_user_quota_usage",
-            {"p_user_id": test_user_id},
-        ).execute()
-
-        assert len(result.data) == 1
-        row = result.data[0]
-        assert "llm_calls_count" in row
-        assert "llm_calls_limit" in row
-        assert "email_syncs_count" in row
-        assert "calendar_syncs_count" in row
-
-    @pytest.mark.parametrize(
-        "rpc_name, params",
-        [
-            ("check_and_increment_quota",
-             {"p_quota_type": "llm_calls", "p_increment": 1}),
-            ("get_user_quota_usage", {}),
-        ],
+@pytest.fixture
+def api_client(db, factory):
+    """The real app on the test database, signed in as a real account."""
+    config = Config(
+        environment="development",
+        google_client_id="test-client-id",
+        google_client_secret="test-client-secret",
+        jwt_secret=JWT_SECRET,
     )
-    def test_quota_rpcs_are_denied_to_a_signed_in_user(
-        self, authenticated_client, test_user_id, rpc_name, params
-    ):
-        """A user JWT must not reach a quota RPC that trusts its p_user_id.
+    runtime.use_database(db)
+    app = create_app()
+    app.state.db = db
+    app.dependency_overrides[get_config] = lambda: config
+    # The real gateway over the real quota table: the quota check lives in the
+    # gateway, so a mock here would never refuse. No test reaches a provider:
+    # the provider is a mock, and an exhausted quota refuses before it.
+    app.dependency_overrides[get_llm_gateway] = lambda: LLMGateway(MagicMock(), MagicMock(), QuotaService(db))
+    user_id = factory.user()
+    token, _ = accounts.issue_access_token(
+        accounts.TokenKeys(JWT_SECRET), user_id, "user@example.test", "session-1"
+    )
+    client = TestClient(app, raise_server_exceptions=False)
+    client.headers["Authorization"] = f"Bearer {token}"
+    client.user_id = user_id
+    yield client
+    app.dependency_overrides.clear()
+    runtime.use_database(None)
 
-        Turning the old grant into an assertion: these functions accept any
-        user id and do no ownership check, so reachability from the
-        ``authenticated`` role is itself the vulnerability.
-        """
-        with pytest.raises(Exception) as excinfo:
-            authenticated_client.rpc(
-                rpc_name, {"p_user_id": test_user_id, **params}
-            ).execute()
-        message = str(excinfo.value).lower()
-        assert "permission" in message or "does not exist" in message, message
+
+class TestQuotaDatabaseIntegration:
+    def test_global_limits_table_has_defaults(self, db):
+        rows = {r["limit_type"]: r["default_limit"] for r in db.query("SELECT * FROM global_limits")}
+        assert rows["llm_calls_daily"] > 0
+        assert rows["email_syncs_daily"] > 0
+        assert rows["calendar_syncs_daily"] > 0
+
+    def test_usage_quotas_only_own_data(self, db, factory):
+        """Successor of the RLS test: every quota read is by user."""
+        alice, bob = factory.user(), factory.user()
+        db_quotas.check_and_increment_quota(db, alice, "llm_calls", 7)
+        assert db_quotas.get_user_quota_usage(db, alice)["llm_calls_count"] == 7
+        assert db_quotas.get_user_quota_usage(db, bob)["llm_calls_count"] == 0
+
+    def test_quota_check_and_increment(self, db, factory):
+        user = factory.user()
+        result = db_quotas.check_and_increment_quota(db, user, "llm_calls", 1)
+        assert result["allowed"] is True
+        assert result["current_count"] == 1
+        assert result["quota_limit"] > 0
+        assert result["remaining"] == result["quota_limit"] - 1
+
+    def test_quota_get_user_usage(self, db, factory):
+        usage = db_quotas.get_user_quota_usage(db, factory.user())
+        for kind in ("llm_calls", "email_syncs", "calendar_syncs"):
+            assert {f"{kind}_count", f"{kind}_limit", f"{kind}_remaining"} <= usage.keys()
+
+    def test_no_client_route_mutates_quotas(self):
+        """Successor of the "quota RPCs are denied to a signed-in user" test:
+        no route module names the quota tables or the limit writer."""
+        offenders = []
+        for path in sorted(ROUTES_DIR.glob("*.py")):
+            source = path.read_text()
+            tree = ast.parse(source)
+            names = {n.attr for n in ast.walk(tree) if isinstance(n, ast.Attribute)}
+            names |= {n.id for n in ast.walk(tree) if isinstance(n, ast.Name)}
+            literals = {n.value for n in ast.walk(tree) if isinstance(n, ast.Constant) and isinstance(n.value, str)}
+            if "set_user_limit" in names or any(
+                "usage_quotas" in s or "global_limits" in s for s in literals
+            ):
+                offenders.append(path.name)
+        assert len(list(ROUTES_DIR.glob("*.py"))) > 3, "scan found no route modules"
+        assert offenders == []
 
 
-@pytest.mark.integration
-@pytest.mark.development
 class TestQuotaServiceIntegration:
-    """Tests for QuotaService with real database."""
-
-    def test_quota_service_check_and_increment(self, admin_client, test_user_id):
-        """Test QuotaService with real database."""
-        from selko.services.quotas import QuotaService
-
-        service = QuotaService(admin_client)
-
-        result = service.check_and_increment(test_user_id, "llm_calls")
-
+    def test_quota_service_check_and_increment(self, db, factory):
+        result = QuotaService(db).check_and_increment(factory.user(), "llm_calls")
         assert result.allowed is True
-        assert result.limit > 0
-        assert result.remaining >= 0
+        assert result.current_count >= 1
 
-    def test_quota_service_get_usage(self, admin_client, test_user_id):
-        """Test QuotaService.get_usage with real database."""
-        from selko.services.quotas import QuotaService
-
-        service = QuotaService(admin_client)
-
-        usage = service.get_usage(test_user_id)
-
+    def test_quota_service_get_usage(self, db, factory):
+        usage = QuotaService(db).get_usage(factory.user())
         assert usage.llm_calls_limit > 0
         assert usage.email_syncs_limit > 0
-        assert usage.calendar_syncs_limit > 0
 
 
-@pytest.mark.integration
-@pytest.mark.development
-class TestAPIRateLimitHeaders:
-    """Tests for rate limit headers in API responses."""
-
-    @pytest.fixture
-    def api_client(self, config, authenticated_client):
-        """Create test client for API."""
-        # Get auth token from authenticated client
-        session = authenticated_client.auth.get_session()
-        token = session.access_token
-
-        client = TestClient(app)
-        client.headers["Authorization"] = f"Bearer {token}"
-        return client
-
-    def test_email_sync_returns_rate_limit_headers(self, api_client):
-        """Test /emails/sync returns X-RateLimit headers."""
-        # This will fail with 404 (no Gmail integration) but should still have headers
-        response = api_client.post("/emails/sync", json={"max_results": 10})
-
-        # Even on 404, headers should be present (quota was checked)
-        # Note: If quota check happens before Gmail check, headers will be present
-        # If it returns 404 before quota check, they won't be
-        # Our implementation checks quota first, so headers should be present
-        if response.status_code == 429:
-            assert "X-RateLimit-Limit" in response.headers
-            assert "X-RateLimit-Remaining" in response.headers
-        # 404 means Gmail not connected, quota check passed
-
-    @patch("selko.api.routes.emails.fetch_emails_for_user")
-    def test_successful_sync_has_rate_limit_headers(
-        self, mock_fetch, api_client
-    ):
-        """Test successful response includes rate limit headers."""
-        mock_fetch.return_value = {
-            "fetched": 5,
-            "saved": 5,
-            "attachments_downloaded": 0,
-        }
-
-        response = api_client.post("/emails/sync", json={"max_results": 10})
-
-        # If quota exceeded, we get 429 with headers
-        if response.status_code == 429:
-            assert "X-RateLimit-Limit" in response.headers
-        # If successful, headers should be present
-        elif response.status_code == 200:
-            assert "X-RateLimit-Limit" in response.headers
-            assert "X-RateLimit-Remaining" in response.headers
-            assert "X-RateLimit-Reset" in response.headers
-
-
-@pytest.mark.integration
-@pytest.mark.development
 class TestQuotaExceeded:
-    """Tests for quota exceeded behavior."""
-
-    @pytest.fixture
-    def api_client(self, config, authenticated_client):
-        """Create test client for API."""
-        session = authenticated_client.auth.get_session()
-        token = session.access_token
-
-        client = TestClient(app)
-        client.headers["Authorization"] = f"Bearer {token}"
-        return client
-
     @patch("selko.services.quotas.QuotaService.check_and_increment")
-    def test_llm_quota_exceeded_returns_429(self, mock_quota_check, api_client):
-        """Test that exceeding LLM quota returns 429 without calling LLM."""
-        from selko.services.quotas import QuotaCheckResult
-
-        # Mock quota as exceeded
+    def test_llm_quota_exceeded_returns_429(self, mock_quota_check, api_client, factory):
         mock_quota_check.return_value = QuotaCheckResult(
-            allowed=False,
-            current_count=100,
-            limit=100,
-            remaining=0,
+            allowed=False, current_count=100, limit=100, remaining=0,
         )
+        email_id = factory.email(api_client.user_id)
 
-        # Use valid UUID format (non-existent email)
-        response = api_client.post(
-            "/emails/00000000-0000-0000-0000-000000000000/process",
-        )
+        response = api_client.post(f"/emails/{email_id}/process")
 
-        assert response.status_code in (429, 401, 404)  # 429 if quota hit, 401/404 if other checks fail first
-
-        # If we got 429, verify the response format
-        if response.status_code == 429:
-            data = response.json()
-            assert "quota" in data.get("detail", "").lower() or "quota" in data.get("error", "")
+        assert response.status_code == 429
+        assert "X-RateLimit-Limit" in response.headers
+        assert "X-RateLimit-Remaining" in response.headers
+        body = response.json()
+        assert "quota" in str(body.get("detail", "")).lower() or "quota" in str(body.get("error", "")).lower()
 
     @patch("selko.services.events.process_email_for_events")
     @patch("selko.services.quotas.QuotaService.check_and_increment")
-    def test_llm_not_called_when_quota_exceeded(
-        self, mock_quota_check, mock_process_email, api_client
-    ):
-        """Test LLM is NOT called when quota is exceeded."""
-        from selko.services.quotas import QuotaCheckResult
-
+    def test_llm_not_called_when_quota_exceeded(self, mock_quota_check, mock_process_email, api_client, factory):
         mock_quota_check.return_value = QuotaCheckResult(
-            allowed=False,
-            current_count=100,
-            limit=100,
-            remaining=0,
+            allowed=False, current_count=100, limit=100, remaining=0,
         )
 
-        # Use valid UUID format (non-existent email)
-        api_client.post("/emails/00000000-0000-0000-0000-000000000000/process")
+        api_client.post(f"/emails/{factory.email(api_client.user_id)}/process")
 
-        # process_email_for_events should NOT have been called
         mock_process_email.assert_not_called()
 
+    def test_a_real_exhausted_quota_returns_429(self, api_client, db, factory):
+        """No patch: the user's own row in usage_quotas is exhausted."""
+        QuotaService(db).set_user_limit(api_client.user_id, "llm_calls", 1)
+        QuotaService(db).check_and_increment(api_client.user_id, "llm_calls")
 
-@pytest.mark.integration
-@pytest.mark.development
+        response = api_client.post(f"/emails/{factory.email(api_client.user_id)}/process")
+
+        assert response.status_code == 429
+
+
 class TestOAuthRedirectValidation:
-    """Tests for OAuth redirect URI validation."""
-
-    @pytest.fixture
-    def api_client(self, config, authenticated_client):
-        """Create test client for API."""
-        session = authenticated_client.auth.get_session()
-        token = session.access_token
-
-        client = TestClient(app)
-        client.headers["Authorization"] = f"Bearer {token}"
-        return client
-
     def test_valid_localhost_redirect(self, api_client):
-        """Test valid localhost redirect URI is accepted."""
         response = api_client.get(
             "/integrations/google/auth",
             params={"redirect_uri": "http://localhost:8000/integrations/google/callback"},
             follow_redirects=False,
         )
-
-        # Should redirect to Google OAuth (302) or fail for other reasons
-        # But should NOT be 400 for invalid redirect
-        if response.status_code == 400:
-            detail = response.json().get("detail", "")
-            msg = detail["detail"] if isinstance(detail, dict) else detail
-            assert "redirect" not in msg.lower()
+        assert response.status_code == 302, response.text
+        assert response.headers["location"].startswith("https://accounts.google.com/")
 
     def test_invalid_redirect_host_rejected(self, api_client):
-        """Test invalid redirect host is rejected with 400."""
         response = api_client.get(
             "/integrations/google/auth",
             params={"redirect_uri": "https://evil.com/callback"},
@@ -315,7 +176,6 @@ class TestOAuthRedirectValidation:
         assert "redirect" in msg.lower()
 
     def test_invalid_redirect_path_rejected(self, api_client):
-        """Test invalid redirect path is rejected."""
         response = api_client.get(
             "/integrations/google/auth",
             params={"redirect_uri": "http://localhost:8000/malicious/path"},
@@ -325,38 +185,17 @@ class TestOAuthRedirectValidation:
         assert response.status_code == 400
 
 
-@pytest.mark.integration
-@pytest.mark.development
 class TestErrorSanitization:
-    """Tests for error message sanitization."""
-
-    @pytest.fixture
-    def api_client(self, config, authenticated_client):
-        """Create test client for API."""
-        session = authenticated_client.auth.get_session()
-        token = session.access_token
-
-        client = TestClient(app)
-        client.headers["Authorization"] = f"Bearer {token}"
-        return client
-
-    def test_email_sync_error_sanitized(self, api_client):
-        """Test email sync errors don't leak internal details."""
-        response = api_client.post("/emails/sync", json={"max_results": 10})
+    @pytest.mark.parametrize("method,path,body", [
+        ("post", "/emails/sync", {"max_results": 10}),
+        ("post", "/emails/nonexistent-id/process", None),
+    ])
+    def test_errors_do_not_leak_internals(self, api_client, method, path, body):
+        response = getattr(api_client, method)(path, json=body)
 
         if response.status_code >= 500:
             raw_detail = response.json().get("detail", "")
-            detail = raw_detail["detail"] if isinstance(raw_detail, dict) else raw_detail
-            # Should not contain stack traces or internal paths
+            detail = raw_detail["detail"] if isinstance(raw_detail, dict) else str(raw_detail)
             assert "Traceback" not in detail
-            assert "/Users/" not in detail
+            assert "/home/" not in detail and "/Users/" not in detail
             assert "Exception" not in detail
-
-    def test_process_email_error_sanitized(self, api_client):
-        """Test email processing errors don't leak details."""
-        response = api_client.post("/emails/nonexistent-id/process")
-
-        if response.status_code >= 500:
-            raw_detail = response.json().get("detail", "")
-            detail = raw_detail["detail"] if isinstance(raw_detail, dict) else raw_detail
-            assert "Traceback" not in detail

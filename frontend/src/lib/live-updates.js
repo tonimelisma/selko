@@ -1,49 +1,59 @@
 /**
- * LiveUpdateCoordinator — single private Broadcast channel per signed-in user.
- * Implements spec docs/specs/live-ui-updates.md §2-3.
+ * Live updates: one server-sent-event stream per signed-in tab
+ * (docs/specs/sqlite-single-process/03-api-auth-web.md §C).
  *
- * One topic: user:<uid>:selko-changes, event 'invalidate', payload
- * {resource, operation, entity_id, occurred_at} — invalidation hint only.
- * Consumers debounce by resource and refetch via existing RLS queries.
+ * `GET /live` is read with a streaming `fetch` carrying the normal Bearer
+ * token (no token in a URL). Frames:
+ *   event: ready       — the stream is open; catch up from the API
+ *   event: invalidate  — data: {resource, operation, occurred_at}
+ *   event: reauth      — the token behind the stream is expiring; reconnect
+ *   event: revoked     — the session was signed out; stop
+ *   : ping             — heartbeat (every 25 s)
+ * A message is only a hint: consumers debounce by resource and refetch
+ * through the API, so a lost message costs latency, never correctness.
  */
 
-import { supabase } from '$lib/supabase.js';
-
-/** @type {import('@supabase/supabase-js').RealtimeChannel | null} */
-let channel = null;
-/** @type {string | null} */
-let userId = null;
-let debounceTimers = new Map();
-let trailingRefresh = new Map();
-let inFlight = new Map();
-let listeners = new Map(); // resource -> Set<callback>
-let connectionStatus = 'disconnected';
-// F1.1 (D1): must live at module scope, not inside start() — a rejoin calls
-// start() again, and a locally-declared counter re-zeroes on every attempt,
-// which is why the backoff never advanced past its first step.
-let rejoinAttempts = 0;
-let intentionalStop = false;
+import { getAccessToken, refresh } from '$lib/auth.js';
+import { getApiBaseUrl } from '$lib/api/http.js';
 
 /**
- * @typedef {{resource: string, operation: string, entity_id?: string, occurred_at: string}} LiveInvalidation
+ * @typedef {{resource: string, operation: string, entity_id?: string, occurred_at?: string}} LiveInvalidation
  */
 
 const DEBOUNCE_MS = 350;
+const MAX_BACKOFF_MS = 60_000;
+/** No byte for this long (heartbeats come every 25 s) means a dead stream. */
+const SILENCE_TIMEOUT_MS = 60_000;
+const ALLOWED_RESOURCES = new Set([
+	'events',
+	'event_sources',
+	'event_change_proposals',
+	'calendar_work_items',
+	'emails',
+	'integrations'
+]);
 
-/**
- * Re-authorize the realtime socket after a token rotation.
- * Private channels authorize per-JWT; without this the channel goes deaf
- * when the access token expires (~1h) and nothing reports it.
- * @param {string | null} accessToken
- */
-export async function refreshAuth(accessToken) {
-	if (!accessToken) return;
-	try {
-		await supabase.realtime.setAuth(accessToken);
-	} catch (e) {
-		console.warn('[live-updates] setAuth refresh failed', e);
-	}
-}
+/** @type {string | null} */
+let userId = null;
+/** @type {AbortController | null} */
+let controller = null;
+/** Bumped whenever a connection is abandoned, so its late callbacks are ignored. */
+let connectionGen = 0;
+/** @type {ReturnType<typeof setTimeout> | null} */
+let reconnectTimer = null;
+/** @type {ReturnType<typeof setTimeout> | null} */
+let watchdogTimer = null;
+let debounceTimers = new Map();
+let trailingRefresh = new Map();
+let inFlight = new Map();
+/** @type {Map<string, Set<(inv: LiveInvalidation) => void>>} */
+let listeners = new Map();
+let connectionStatus = 'disconnected';
+// Must live at module scope, not inside start(): a reconnect calls connect()
+// again, and a locally-declared counter would re-zero on every attempt, so the
+// backoff would never advance past its first step.
+let rejoinAttempts = 0;
+let intentionalStop = true;
 
 /**
  * Subscribe to invalidation for a resource.
@@ -53,7 +63,7 @@ export async function refreshAuth(accessToken) {
  */
 export function subscribe(resource, callback) {
 	if (!listeners.has(resource)) listeners.set(resource, new Set());
-	listeners.get(resource).add(callback);
+	/** @type {Set<(inv: LiveInvalidation) => void>} */ (listeners.get(resource)).add(callback);
 	return () => {
 		const set = listeners.get(resource);
 		if (set) {
@@ -85,7 +95,6 @@ function scheduleRefresh(resource, inv) {
 	}
 	if (debounceTimers.has(resource)) {
 		clearTimeout(debounceTimers.get(resource));
-		// keep latest inv
 		trailingRefresh.set(resource, inv);
 	}
 	debounceTimers.set(resource, setTimeout(() => {
@@ -94,8 +103,7 @@ function scheduleRefresh(resource, inv) {
 		trailingRefresh.delete(resource);
 		inFlight.set(resource, true);
 		emit(resource, latest);
-		// Release in-flight after handler runs — consumers call fetch which is async;
-		// we release on next tick so trailing invalidations queue correctly.
+		// Release in-flight on the next tick so trailing invalidations queue.
 		setTimeout(() => {
 			inFlight.delete(resource);
 			if (trailingRefresh.has(resource)) {
@@ -109,8 +117,7 @@ function scheduleRefresh(resource, inv) {
 
 /**
  * Force a catch-up refetch for every subscribed resource.
- * Used on tab-visible, window-focus and network-online. Unlike start(),
- * this does not short-circuit when the channel already exists.
+ * Used on (re)connect, tab-visible, window-focus and network-online.
  */
 export function catchUp() {
 	for (const resource of [...listeners.keys()]) {
@@ -124,96 +131,218 @@ export function catchUp() {
 
 /** @param {unknown} payload */
 function handleInvalidate(payload) {
-	// payload is {resource, operation, entity_id, occurred_at}
 	/** @type {LiveInvalidation & {payload?: LiveInvalidation}} */
 	const message = /** @type {LiveInvalidation & {payload?: LiveInvalidation}} */ (payload);
 	const inv = message?.payload || message;
 	if (!inv || !inv.resource) return;
-	const allowed = new Set(['events', 'event_sources', 'event_change_proposals', 'calendar_work_items', 'emails', 'integrations']);
-	if (!allowed.has(inv.resource)) return;
+	if (!ALLOWED_RESOURCES.has(inv.resource)) return;
 	console.debug('[live-updates] invalidate', inv);
 	scheduleRefresh(inv.resource, inv);
 }
 
+function clearWatchdog() {
+	if (watchdogTimer) clearTimeout(watchdogTimer);
+	watchdogTimer = null;
+}
+
+function clearReconnect() {
+	if (reconnectTimer) clearTimeout(reconnectTimer);
+	reconnectTimer = null;
+}
+
+/** Abandon the current connection without scheduling anything. */
+function dropConnection() {
+	connectionGen += 1;
+	clearWatchdog();
+	if (controller) {
+		try {
+			controller.abort();
+		} catch {
+			// already aborted
+		}
+	}
+	controller = null;
+}
+
+/** Reconnect after the backoff (1 s doubling to 60 s, plus 0–20 % jitter). */
+function scheduleReconnect() {
+	dropConnection();
+	if (intentionalStop || !userId) return;
+	clearReconnect();
+	const base = Math.min(1000 * 2 ** rejoinAttempts, MAX_BACKOFF_MS);
+	const delay = Math.round(base * (1 + Math.random() * 0.2));
+	rejoinAttempts += 1;
+	connectionStatus = 'reconnecting';
+	reconnectTimer = setTimeout(() => {
+		reconnectTimer = null;
+		if (!intentionalStop && userId) connect();
+	}, delay);
+}
+
+/** @param {number} gen */
+function resetWatchdog(gen) {
+	clearWatchdog();
+	watchdogTimer = setTimeout(() => {
+		watchdogTimer = null;
+		if (gen !== connectionGen) return;
+		console.warn('[live-updates] stream silent, reconnecting');
+		scheduleReconnect();
+	}, SILENCE_TIMEOUT_MS);
+}
+
 /**
- * Start the private channel for a user.
- * Idempotent — calling with same userId is no-op; different user re-creates.
- * Must call supabase.realtime.setAuth() before join for private channels.
+ * Handle one SSE frame. Returns false when the stream must end.
+ * @param {string} frame
+ * @returns {boolean}
+ */
+function handleFrame(frame) {
+	let event = 'message';
+	/** @type {string[]} */
+	const data = [];
+	for (const line of frame.split(/\r?\n/)) {
+		if (!line || line.startsWith(':')) continue;
+		const colon = line.indexOf(':');
+		const field = colon === -1 ? line : line.slice(0, colon);
+		let value = colon === -1 ? '' : line.slice(colon + 1);
+		if (value.startsWith(' ')) value = value.slice(1);
+		if (field === 'event') event = value;
+		else if (field === 'data') data.push(value);
+	}
+	if (event === 'ready') {
+		rejoinAttempts = 0;
+		connectionStatus = 'connected';
+		catchUp();
+	} else if (event === 'invalidate') {
+		try {
+			handleInvalidate(JSON.parse(data.join('\n')));
+		} catch (e) {
+			console.warn('[live-updates] bad invalidate frame', e);
+		}
+	} else if (event === 'reauth') {
+		scheduleReconnect();
+		return false;
+	} else if (event === 'revoked') {
+		stop();
+		return false;
+	}
+	return true;
+}
+
+async function connect() {
+	clearReconnect();
+	dropConnection();
+	const gen = connectionGen;
+	const abort = new AbortController();
+	controller = abort;
+	connectionStatus = 'connecting';
+
+	let token = getAccessToken();
+	if (!token) token = await refresh();
+	if (gen !== connectionGen) return;
+	if (!token) {
+		// The auth module signs out when the session is gone.
+		stop();
+		return;
+	}
+
+	let response;
+	try {
+		response = await fetch(`${getApiBaseUrl()}/live`, {
+			headers: { Authorization: `Bearer ${token}`, Accept: 'text/event-stream' },
+			cache: 'no-store',
+			signal: abort.signal
+		});
+	} catch (error) {
+		if (gen !== connectionGen) return;
+		console.warn('[live-updates] connect failed', error);
+		scheduleReconnect();
+		return;
+	}
+	if (gen !== connectionGen) return;
+
+	if (response.status === 401) {
+		const renewed = await refresh();
+		if (gen !== connectionGen) return;
+		if (!renewed) {
+			stop();
+			return;
+		}
+		scheduleReconnect();
+		return;
+	}
+	if (!response.ok || !response.body) {
+		// 429 (too many streams), 503 (busy) and anything else: back off.
+		scheduleReconnect();
+		return;
+	}
+
+	const reader = response.body.getReader();
+	const decoder = new TextDecoder();
+	let buffer = '';
+	resetWatchdog(gen);
+	try {
+		while (true) {
+			const { value, done } = await reader.read();
+			if (gen !== connectionGen) return;
+			if (done) break;
+			resetWatchdog(gen);
+			buffer += decoder.decode(value, { stream: true });
+			let boundary;
+			while ((boundary = buffer.search(/\r?\n\r?\n/)) !== -1) {
+				const frame = buffer.slice(0, boundary);
+				const separator = /** @type {RegExpMatchArray} */ (buffer.slice(boundary).match(/^\r?\n\r?\n/));
+				buffer = buffer.slice(boundary + separator[0].length);
+				if (!handleFrame(frame)) {
+					try {
+						reader.cancel();
+					} catch {
+						// nothing to cancel
+					}
+					return;
+				}
+				if (gen !== connectionGen) return;
+			}
+		}
+	} catch (error) {
+		if (gen !== connectionGen) return;
+		console.warn('[live-updates] stream error', error);
+	}
+	if (gen !== connectionGen) return;
+	// The server ended the stream (restart, deploy, idle proxy): reconnect.
+	scheduleReconnect();
+}
+
+/**
+ * Open the live stream for a user. Idempotent for the same user; a different
+ * user replaces the stream.
  * @param {string} uid
  */
 export async function start(uid) {
 	if (!uid) return;
-	if (userId === uid && channel) return;
+	if (userId === uid && !intentionalStop) return;
 	await stop();
 	intentionalStop = false;
 	userId = uid;
-	connectionStatus = 'connecting';
-
-	// Ensure realtime auth is set for private channel
-	try {
-		const { data: { session } } = await supabase.auth.getSession();
-		if (session?.access_token) {
-			await supabase.realtime.setAuth(session.access_token);
-		}
-	} catch (e) {
-		console.warn('[live-updates] setAuth failed', e);
-	}
-
-	const topic = `user:${uid}:selko-changes`;
-	channel = supabase.channel(topic, { config: { private: true } });
-
-	channel.on('broadcast', { event: 'invalidate' }, (payload) => {
-		handleInvalidate(payload);
-	});
-
-	channel.subscribe((status) => {
-		connectionStatus = status;
-		console.debug('[live-updates] channel status', status);
-		if (status === 'SUBSCRIBED') {
-			rejoinAttempts = 0;
-			catchUp();
-			return;
-		}
-		if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-			// A deliberate stop() (sign-out, layout teardown) must not schedule
-			// a rejoin — only an unexpected drop should self-heal.
-			if (intentionalStop) return;
-			// A private channel that fails authorization will not self-heal.
-			// Rejoin with backoff and catch up from the database on success —
-			// the database is the source of truth, the channel is a hint.
-			const delay = Math.min(1000 * 2 ** rejoinAttempts, 60000);
-		const nextRejoinAttempts = rejoinAttempts + 1;
-		rejoinAttempts = nextRejoinAttempts;
-			const uid = userId;
-			setTimeout(() => {
-				if (!uid) return;
-				stop()
-					.then(() => start(uid))
-					.then(() => {
-						rejoinAttempts = nextRejoinAttempts;
-					})
-					.catch((error) => {
-						console.warn('[live-updates] rejoin failed', error);
-					});
-			}, delay);
-		}
-	});
+	connect();
 }
 
 /**
- * Stop and remove the channel. Idempotent.
+ * Reconnect with the current token after a token rotation, so the server's
+ * stream lifetime follows the new token. A no-op while stopped.
+ */
+export async function refreshAuth() {
+	if (intentionalStop || !userId) return;
+	connect();
+}
+
+/**
+ * Close the stream and cancel any reconnect. Idempotent.
  */
 export async function stop() {
 	intentionalStop = true;
 	rejoinAttempts = 0;
-	if (channel) {
-		try {
-			await supabase.removeChannel(channel);
-		} catch (e) {
-			console.warn('[live-updates] removeChannel failed', e);
-		}
-		channel = null;
-	}
+	clearReconnect();
+	dropConnection();
 	userId = null;
 	connectionStatus = 'disconnected';
 	// Clear timers but keep listeners for re-subscribe
@@ -227,16 +356,15 @@ export function getStatus() {
 	return connectionStatus;
 }
 
-export function getChannel() {
-	return channel;
+/** For tests: the reconnect attempt counter. */
+export function getRejoinAttempts() {
+	return rejoinAttempts;
 }
 
 // For tests
 export function __resetForTests() {
-	if (channel) {
-		try { supabase.removeChannel(channel); } catch {}
-		channel = null;
-	}
+	clearReconnect();
+	dropConnection();
 	userId = null;
 	for (const t of debounceTimers.values()) clearTimeout(t);
 	debounceTimers.clear();
@@ -245,5 +373,6 @@ export function __resetForTests() {
 	listeners.clear();
 	connectionStatus = 'disconnected';
 	rejoinAttempts = 0;
-	intentionalStop = false;
+	intentionalStop = true;
+	connectionGen = 0;
 }

@@ -8,51 +8,42 @@ import pytest
 
 
 class TestGetUserTimezone:
-    """Tests for events.get_user_timezone()."""
+    """events.get_user_timezone() reads the user's calendar settings row."""
 
-    def test_returns_timezone_from_settings(self):
-        """Test that user's configured timezone is returned."""
+    def test_returns_timezone_from_settings(self, db, factory):
         from selko.services.events import get_user_timezone
 
-        mock_client = MagicMock()
-        mock_client.table.return_value.select.return_value.eq.return_value.execute.return_value.data = [
-            {"timezone": "America/Los_Angeles"}
-        ]
+        user = factory.user()
+        factory._insert("user_calendar_settings", {"user_id": user, "timezone": "America/Los_Angeles"})
 
-        result = get_user_timezone(mock_client, "user-123")
-        assert result == "America/Los_Angeles"
+        assert get_user_timezone(db, user) == "America/Los_Angeles"
 
-    def test_returns_default_when_no_settings(self):
-        """Test that default timezone is returned when no settings exist."""
+    def test_returns_default_when_no_settings(self, db, factory):
         from selko.services.events import get_user_timezone
 
-        mock_client = MagicMock()
-        mock_client.table.return_value.select.return_value.eq.return_value.execute.return_value.data = []
+        other = factory.user()
+        factory._insert("user_calendar_settings", {"user_id": other, "timezone": "Europe/Helsinki"})
 
-        result = get_user_timezone(mock_client, "user-123")
-        assert result == "America/New_York"
+        assert get_user_timezone(db, factory.user()) == "America/New_York"
 
-    def test_returns_default_when_timezone_is_none(self):
-        """Test that default is returned when timezone column is None."""
+    def test_returns_default_when_timezone_is_empty(self, db, factory):
+        """The column is NOT NULL; an empty value still falls back to the default."""
         from selko.services.events import get_user_timezone
 
-        mock_client = MagicMock()
-        mock_client.table.return_value.select.return_value.eq.return_value.execute.return_value.data = [
-            {"timezone": None}
-        ]
+        user = factory.user()
+        factory._insert("user_calendar_settings", {"user_id": user, "timezone": ""})
 
-        result = get_user_timezone(mock_client, "user-123")
-        assert result == "America/New_York"
+        assert get_user_timezone(db, user) == "America/New_York"
 
-    def test_returns_default_on_db_error(self):
-        """Test that default is returned when DB query fails."""
+    def test_returns_default_on_db_error(self, tmp_path):
+        from selko.db.connection import Database
         from selko.services.events import get_user_timezone
 
-        mock_client = MagicMock()
-        mock_client.table.side_effect = Exception("DB error")
-
-        result = get_user_timezone(mock_client, "user-123")
-        assert result == "America/New_York"
+        broken = Database(tmp_path / "unmigrated.db")
+        try:
+            assert get_user_timezone(broken, "00000000-0000-0000-0000-000000000001") == "America/New_York"
+        finally:
+            broken.close()
 
 
 class TestNormalizeEventData:
@@ -153,34 +144,28 @@ class TestNormalizeEventData:
 
 
 class TestCalendarSettingsTimezone:
-    """Tests for calendars.get_calendar_settings() timezone inclusion."""
+    """Tests for calendars.get_calendar_settings() timezone inclusion (real SQLite `db`)."""
 
-    def test_returns_timezone_from_settings(self):
+    def test_returns_timezone_from_settings(self, db, factory):
         """Timezone from DB should be included in settings dict."""
+        from selko.db import integrations as db_integrations
         from selko.services.calendars import get_calendar_settings
 
-        mock_client = MagicMock()
-        mock_client.table.return_value.select.return_value.eq.return_value.execute.return_value.data = [
-            {
-                "target_calendar_id": "primary",
-                "default_invitees": None,
-                "timezone": "Europe/London",
-            }
-        ]
+        user_id = factory.user()
+        db_integrations.upsert_calendar_settings(
+            db, user_id, {"target_calendar_id": "primary", "timezone": "Europe/London"}
+        )
 
         with patch("selko.services.calendars.list_calendars", return_value=[]):
-            result = get_calendar_settings(mock_client, "user-123")
+            result = get_calendar_settings(db, user_id)
 
         assert result["timezone"] == "Europe/London"
 
-    def test_returns_default_timezone_when_no_settings(self):
+    def test_returns_default_timezone_when_no_settings(self, db, factory):
         """Default timezone returned when user has no settings row."""
         from selko.services.calendars import get_calendar_settings
 
-        mock_client = MagicMock()
-        mock_client.table.return_value.select.return_value.eq.return_value.execute.return_value.data = []
-
-        result = get_calendar_settings(mock_client, "user-123")
+        result = get_calendar_settings(db, factory.user())
         assert result["timezone"] == "America/New_York"
 
 

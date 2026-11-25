@@ -1,36 +1,23 @@
-import { supabase } from '$lib/supabase.js';
-import { parseSupabaseError } from '$lib/errors.js';
+import { apiFetch } from '$lib/api/client.js';
+import { toAppError } from '$lib/errors.js';
 import { reprocessEmail } from '$lib/api/backend.js';
 
+const MAX_PAGE = 500;
+
 /**
- * Fetch the narrow user-facing processing history. Event sources are joined only
- * to display structured outcomes already known by the normal pipeline.
+ * Fetch the user-facing processing history, newest first: processed and
+ * failed emails, plus skipped calendar invites (kept as the audit trail).
+ * Each row carries the event sources and their events' outcomes.
  * @param {{limit?: number, offset?: number}} [options]
+ * @returns {Promise<{data: any[], count: number | null, error: import('$lib/errors.js').AppError | null}>}
  */
 export async function fetchEmailHistory(options = {}) {
 	const { limit = 20, offset = 0 } = options;
-	try {
-		const { data, error, count } = await supabase
-			.from('emails')
-			.select(
-				'id,email_provider,subject,from_email,from_name,date_sent,processing_status,processing_error,processing_outcome,processing_explanation,processed_at,event_sources(id,event_id,source_type,events(id,title,review_status,event_change_proposals(id,kind,status,change_set,resolution_reason),calendar_work_items(id,action,status,generation,failure_code,failure_detail)))',
-				{ count: 'exact' }
-			)
-			// Calendar invites are skipped (never claimed/processed), but per product
-			// decision they must still show up here as the audit trail — not just
-			// silently vanish. Other skipped emails (e.g. ignored senders) stay hidden.
-			.or(
-				'processing_status.in.(processed,failed),' +
-					'and(processing_status.eq.skipped,processing_outcome.eq.calendar_invite)'
-			)
-			.order('date_sent', { ascending: false })
-			.order('id', { ascending: false })
-			.range(offset, offset + limit - 1);
-		if (error) throw error;
-		return { data: data ?? [], count, error: null };
-	} catch (error) {
-		return { data: [], count: null, error: parseSupabaseError(error) };
-	}
+	const { data, error } = await apiFetch('/emails/history', {
+		query: { limit: Math.min(Math.max(1, limit), MAX_PAGE), offset: Math.max(0, offset) }
+	});
+	if (error) return { data: [], count: null, error: toAppError(error) };
+	return { data: data?.items ?? [], count: data?.total ?? null, error: null };
 }
 
 /**
@@ -44,19 +31,12 @@ export async function queueEmailReprocess(emailId) {
 
 /**
  * Fetch only the processing fields needed while a user-initiated reprocess is
- * running. Keeping this query narrow avoids refreshing the whole History page.
+ * running. Keeping this narrow avoids refreshing the whole History page.
  * @param {string} emailId
+ * @returns {Promise<{data: any, error: import('$lib/errors.js').AppError | null}>}
  */
 export async function fetchEmailProcessingState(emailId) {
-	try {
-		const { data, error } = await supabase
-			.from('emails')
-			.select('id,processing_status,processing_error,processing_outcome,processing_explanation,processed_at')
-			.eq('id', emailId)
-			.maybeSingle();
-		if (error) throw error;
-		return { data, error: null };
-	} catch (error) {
-		return { data: null, error: parseSupabaseError(error) };
-	}
+	const { data, error } = await apiFetch(`/emails/${encodeURIComponent(emailId)}/processing-state`);
+	if (error) return { data: null, error: toAppError(error) };
+	return { data, error: null };
 }

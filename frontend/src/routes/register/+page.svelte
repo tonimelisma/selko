@@ -1,6 +1,6 @@
 <script>
 	import { _ } from 'svelte-i18n';
-	import { supabase } from '$lib/supabase.js';
+	import { signUp } from '$lib/auth.js';
 	import ErrorAlert from '$lib/components/ErrorAlert.svelte';
 	import LogoMark from '$lib/components/LogoMark.svelte';
 
@@ -9,6 +9,7 @@
 	let confirmPassword = $state('');
 	let error = $state('');
 	let success = $state(false);
+	let confirmationRequired = $state(false);
 	let isLoading = $state(false);
 
 	/** @param {SubmitEvent} event */
@@ -28,19 +29,14 @@
 
 		isLoading = true;
 
-		const { error: authError } = await supabase.auth.signUp({
-			email,
-			password,
-			options: {
-				emailRedirectTo: `${window.location.origin}/login`
-			}
-		});
+		const { data, error: authError } = await signUp(email, password);
 
 		isLoading = false;
 
 		if (authError) {
 			error = authError.message;
 		} else {
+			confirmationRequired = Boolean(data?.confirmation_required);
 			success = true;
 		}
 	}
@@ -61,7 +57,7 @@
 
 			{#if success}
 				<div class="alert alert-success mt-4" role="alert" aria-live="polite">
-					<span>{$_('auth.checkEmail')}</span>
+					<span>{confirmationRequired ? $_('auth.checkEmail') : $_('auth.accountCreated')}</span>
 				</div>
 				<p class="text-center mt-4">
 					<a href="/login" class="link link-primary">{$_('auth.signIn')}</a>

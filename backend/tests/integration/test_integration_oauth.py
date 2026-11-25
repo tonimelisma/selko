@@ -1,24 +1,40 @@
-"""Integration tests for OAuth integration storage.
+"""OAuth integration storage over a real SQLite database.
 
-Token columns on `integrations` are service-role-only: migration
-`20260714000004_restrict_integration_token_columns.sql` revoked INSERT/UPDATE
-and table-wide SELECT from `authenticated`, leaving column-level SELECT on
-metadata plus DELETE for disconnect. Production writes credentials through the
-service-role client (`api/routes/integrations.py` builds one for the OAuth
-callback), so these tests do the same, and separately assert that an
-authenticated session cannot reach the token columns.
+Credentials are written as the callback writes them (``save_oauth_credentials``
+on the process database) and read back through the services. The four
+column-grant tests of the Postgres era are replaced: there are no database
+roles, and the API is the only door, so the property they protected becomes
+"no client response carries a token column" (``TestNoTokenLeavesTheApi``;
+docs/specs/sqlite-single-process/05-verification.md §A.2 row 31). The staging
+test went with staging.
 """
 
 import pytest
-from postgrest.exceptions import APIError
 
 from selko.services.integrations import (
     delete_integration,
     get_oauth_credentials,
+    get_provider_integration,
     save_oauth_credentials,
     update_integration_status,
     update_oauth_credentials,
 )
+
+TOKEN_COLUMNS = {"access_token", "refresh_token", "code_verifier"}
+
+
+@pytest.fixture
+def sample_oauth_credentials():
+    from google.oauth2.credentials import Credentials
+
+    return Credentials(
+        token="test_access_token_12345",
+        refresh_token="test_refresh_token_67890",
+        token_uri="https://oauth2.googleapis.com/token",
+        client_id="test_client_id",
+        client_secret="test_client_secret",
+        scopes=["https://www.googleapis.com/auth/gmail.readonly"],
+    )
 
 
 def _credentials(token: str, sample, **overrides):
@@ -37,258 +53,104 @@ def _credentials(token: str, sample, **overrides):
     return Credentials(**fields)
 
 
-@pytest.mark.integration
-@pytest.mark.development
 class TestOAuthIntegrations:
-    """Service-role credential storage against real Supabase.
+    def test_save_oauth_credentials(self, db, factory, mock_config, sample_oauth_credentials):
+        user_id = factory.user()
+        save_oauth_credentials(db, user_id, "gmail", sample_oauth_credentials,
+                               provider_email="test@gmail.com")
 
-    `temp_user` is deleted after each test, cascading its integrations, so no
-    explicit integration cleanup is needed.
-    """
-
-    def test_save_oauth_credentials(
-        self, config, sample_oauth_credentials, admin_client, temp_user
-    ):
-        """Can save OAuth credentials to database."""
-        user_id, _, _ = temp_user
-        save_oauth_credentials(
-            admin_client,
-            user_id,
-            "gmail",
-            sample_oauth_credentials,
-            provider_email="test@gmail.com",
-        )
-
-        creds = get_oauth_credentials(admin_client, config, "gmail", user_id=user_id)
+        creds = get_oauth_credentials(db, mock_config, "gmail", user_id=user_id)
         assert creds is not None
         assert creds.token == sample_oauth_credentials.token
         assert creds.refresh_token == sample_oauth_credentials.refresh_token
 
-    def test_get_oauth_credentials_not_found(self, config, admin_client, temp_user):
-        """Returns None when the user has no integration for that provider."""
-        user_id, _, _ = temp_user
+    def test_get_oauth_credentials_not_found(self, db, factory, mock_config):
+        assert get_oauth_credentials(db, mock_config, "google_calendar", user_id=factory.user()) is None
 
-        creds = get_oauth_credentials(
-            admin_client, config, "google_calendar", user_id=user_id
-        )
+    def test_save_credentials_upsert(self, db, factory, mock_config, sample_oauth_credentials):
+        user_id = factory.user()
+        save_oauth_credentials(db, user_id, "gmail", sample_oauth_credentials)
+        save_oauth_credentials(db, user_id, "gmail", _credentials("updated_token_xyz", sample_oauth_credentials))
 
-        assert creds is None
-
-    def test_save_credentials_upsert(
-        self, config, sample_oauth_credentials, admin_client, temp_user
-    ):
-        """Saving credentials again updates the existing record."""
-        user_id, _, _ = temp_user
-        save_oauth_credentials(admin_client, user_id, "gmail", sample_oauth_credentials)
-        save_oauth_credentials(
-            admin_client,
-            user_id,
-            "gmail",
-            _credentials("updated_token_xyz", sample_oauth_credentials),
-        )
-
-        creds = get_oauth_credentials(admin_client, config, "gmail", user_id=user_id)
+        creds = get_oauth_credentials(db, mock_config, "gmail", user_id=user_id)
         assert creds.token == "updated_token_xyz"
+        rows = db.query("SELECT id FROM integrations WHERE user_id = ? AND provider = 'gmail'", (user_id,))
+        assert len(rows) == 1, "upsert must not create a second row"
 
-        rows = (
-            admin_client.table("integrations")
-            .select("id")
-            .eq("user_id", user_id)
-            .eq("provider", "gmail")
-            .execute()
-        )
-        assert len(rows.data) == 1, "upsert must not create a second row"
-
-    def test_update_integration_status(
-        self, config, sample_oauth_credentials, admin_client, temp_user
-    ):
+    def test_update_integration_status(self, db, factory, mock_config, sample_oauth_credentials):
         """A non-active status hides credentials from callers."""
-        user_id, _, _ = temp_user
-        save_oauth_credentials(admin_client, user_id, "gmail", sample_oauth_credentials)
+        user_id = factory.user()
+        save_oauth_credentials(db, user_id, "gmail", sample_oauth_credentials)
 
-        update_integration_status(admin_client, "gmail", "expired", user_id=user_id)
+        update_integration_status(db, "gmail", "expired", user_id=user_id)
 
-        creds = get_oauth_credentials(admin_client, config, "gmail", user_id=user_id)
-        assert creds is None
+        assert get_oauth_credentials(db, mock_config, "gmail", user_id=user_id) is None
 
-    def test_update_oauth_credentials(
-        self, config, sample_oauth_credentials, admin_client, temp_user
-    ):
-        """Can update OAuth tokens after a refresh."""
-        user_id, _, _ = temp_user
-        save_oauth_credentials(admin_client, user_id, "gmail", sample_oauth_credentials)
+    def test_update_oauth_credentials(self, db, factory, mock_config, sample_oauth_credentials):
+        user_id = factory.user()
+        save_oauth_credentials(db, user_id, "gmail", sample_oauth_credentials)
 
         update_oauth_credentials(
-            admin_client,
-            "gmail",
-            _credentials("refreshed_token_abc", sample_oauth_credentials),
-            user_id=user_id,
+            db, "gmail", _credentials("refreshed_token_abc", sample_oauth_credentials), user_id=user_id
         )
 
-        creds = get_oauth_credentials(admin_client, config, "gmail", user_id=user_id)
-        assert creds.token == "refreshed_token_abc"
+        assert get_oauth_credentials(db, mock_config, "gmail", user_id=user_id).token == "refreshed_token_abc"
 
-    def test_scopes_stored_as_array(
-        self, config, sample_oauth_credentials, admin_client, temp_user
-    ):
-        """Scopes round-trip as an array."""
-        user_id, _, _ = temp_user
-        save_oauth_credentials(admin_client, user_id, "gmail", sample_oauth_credentials)
+    def test_scopes_stored_as_array(self, db, factory, mock_config, sample_oauth_credentials):
+        user_id = factory.user()
+        save_oauth_credentials(db, user_id, "gmail", sample_oauth_credentials)
 
-        creds = get_oauth_credentials(admin_client, config, "gmail", user_id=user_id)
+        creds = get_oauth_credentials(db, mock_config, "gmail", user_id=user_id)
         assert creds.scopes == list(sample_oauth_credentials.scopes)
 
-    def test_provider_email_stored(
-        self, sample_oauth_credentials, admin_client, temp_user
-    ):
-        """Provider email is stored alongside credentials."""
-        user_id, _, _ = temp_user
+    def test_provider_email_stored(self, db, factory, sample_oauth_credentials):
+        user_id = factory.user()
+        save_oauth_credentials(db, user_id, "gmail", sample_oauth_credentials,
+                               provider_email="myemail@gmail.com")
+
+        assert get_provider_integration(db, "gmail", user_id=user_id)["provider_email"] == "myemail@gmail.com"
+
+    def test_multiple_providers(self, db, factory, mock_config, sample_oauth_credentials):
+        user_id = factory.user()
+        save_oauth_credentials(db, user_id, "gmail", sample_oauth_credentials)
         save_oauth_credentials(
-            admin_client,
-            user_id,
-            "gmail",
-            sample_oauth_credentials,
-            provider_email="myemail@gmail.com",
+            db, user_id, "google_calendar",
+            _credentials("calendar_token", sample_oauth_credentials, refresh_token="calendar_refresh",
+                         scopes=["https://www.googleapis.com/auth/calendar"]),
         )
 
-        result = (
-            admin_client.table("integrations")
-            .select("provider_email")
-            .eq("user_id", user_id)
-            .eq("provider", "gmail")
-            .single()
-            .execute()
-        )
-        assert result.data["provider_email"] == "myemail@gmail.com"
-
-    def test_multiple_providers(
-        self, config, sample_oauth_credentials, admin_client, temp_user
-    ):
-        """Credentials for different providers stay independent."""
-        user_id, _, _ = temp_user
-        save_oauth_credentials(admin_client, user_id, "gmail", sample_oauth_credentials)
-        save_oauth_credentials(
-            admin_client,
-            user_id,
-            "google_calendar",
-            _credentials(
-                "calendar_token",
-                sample_oauth_credentials,
-                refresh_token="calendar_refresh",
-                scopes=["https://www.googleapis.com/auth/calendar"],
-            ),
-        )
-
-        gmail = get_oauth_credentials(admin_client, config, "gmail", user_id=user_id)
-        calendar = get_oauth_credentials(
-            admin_client, config, "google_calendar", user_id=user_id
-        )
-
-        assert gmail is not None
-        assert calendar is not None
+        gmail = get_oauth_credentials(db, mock_config, "gmail", user_id=user_id)
+        calendar = get_oauth_credentials(db, mock_config, "google_calendar", user_id=user_id)
         assert gmail.token != calendar.token
 
+    def test_disconnect_removes_the_row_and_its_sync_state(self, db, factory, sample_oauth_credentials):
+        user_id = factory.user()
+        save_oauth_credentials(db, user_id, "gmail", sample_oauth_credentials)
+        integration_id = get_provider_integration(db, "gmail", user_id=user_id)["id"]
 
-@pytest.mark.integration
-@pytest.mark.development
-class TestOAuthTokensAreServiceRoleOnly:
-    """The privilege boundary from 20260714000004 is the point of that migration.
+        delete_integration(db, "gmail", user_id=user_id)
 
-    These replace the older tests that wrote tokens as `authenticated` — a path
-    production never takes and the database no longer permits.
-    """
-
-    def test_authenticated_session_cannot_read_token_columns(
-        self, sample_oauth_credentials, admin_client, temp_user, temp_user_client
-    ):
-        """Owning the row must not grant access to its OAuth tokens."""
-        user_id, _, _ = temp_user
-        save_oauth_credentials(admin_client, user_id, "gmail", sample_oauth_credentials)
-
-        with pytest.raises(APIError) as exc_info:
-            temp_user_client.table("integrations").select("access_token").eq(
-                "user_id", user_id
-            ).execute()
-
-        assert exc_info.value.code == "42501"
-
-    def test_authenticated_session_can_read_its_own_metadata(
-        self, sample_oauth_credentials, admin_client, temp_user, temp_user_client
-    ):
-        """Frontends still list integrations; only token columns are withheld."""
-        user_id, _, _ = temp_user
-        save_oauth_credentials(
-            admin_client,
-            user_id,
-            "gmail",
-            sample_oauth_credentials,
-            provider_email="visible@gmail.com",
-        )
-
-        result = (
-            temp_user_client.table("integrations")
-            .select("id,provider,status,provider_email")
-            .eq("user_id", user_id)
-            .single()
-            .execute()
-        )
-
-        assert result.data["provider"] == "gmail"
-        assert result.data["provider_email"] == "visible@gmail.com"
-
-    def test_authenticated_session_cannot_write_tokens(
-        self, sample_oauth_credentials, admin_client, temp_user, temp_user_client
-    ):
-        """INSERT/UPDATE on integrations is service-role-only."""
-        user_id, _, _ = temp_user
-        save_oauth_credentials(admin_client, user_id, "gmail", sample_oauth_credentials)
-
-        with pytest.raises(APIError) as exc_info:
-            temp_user_client.table("integrations").update(
-                {"access_token": "stolen"}
-            ).eq("user_id", user_id).execute()
-
-        assert exc_info.value.code == "42501"
-
-    def test_authenticated_session_can_still_disconnect(
-        self, sample_oauth_credentials, admin_client, temp_user, temp_user_client
-    ):
-        """DELETE is deliberately retained so users can disconnect.
-
-        Regression: postgrest-py requests `return=representation` by default,
-        which needs SELECT on every column and is therefore denied under the
-        column-level grant. Disconnect must not echo the deleted row.
-        """
-        user_id, _, _ = temp_user
-        save_oauth_credentials(admin_client, user_id, "gmail", sample_oauth_credentials)
-
-        delete_integration(temp_user_client, "gmail")
-
-        remaining = (
-            admin_client.table("integrations")
-            .select("id")
-            .eq("user_id", user_id)
-            .execute()
-        )
-        assert remaining.data == []
+        assert get_provider_integration(db, "gmail", user_id=user_id) is None
+        assert db.query_one(
+            "SELECT 1 FROM email_sync_state WHERE integration_id = ?", (integration_id,)
+        ) is None, "foreign keys cascade (PRAGMA foreign_keys=ON)"
 
 
-@pytest.mark.integration
-@pytest.mark.staging
-class TestOAuthIntegrationsStaging:
-    """Test OAuth storage in staging environment."""
+class TestNoTokenLeavesTheApi:
+    """The integration responses a client can receive never name a token column."""
 
-    def test_read_existing_credentials_staging(self, admin_client, test_user_id, config):
-        """Can retrieve existing credentials from staging DB."""
-        creds = get_oauth_credentials(
-            admin_client, config, "gmail", user_id=test_user_id
-        )
+    def test_integration_response_models_have_no_token_fields(self):
+        from selko.api.schemas import integrations as schemas
 
-        if creds is None:
-            pytest.skip(
-                "No Gmail credentials in staging; "
-                "connect Gmail for the staging test user in the staging web app to populate them"
-            )
+        for model in (schemas.IntegrationResponse, schemas.EmailFolderPreferenceResponse):
+            assert not (set(model.model_fields) & TOKEN_COLUMNS), model.__name__
 
-        assert creds.token is not None
-        assert creds.refresh_token is not None
+    def test_no_integrations_route_returns_a_raw_row(self):
+        """Every JSON integrations route declares a response model (or redirects)."""
+        from selko.api.routes import integrations as routes
+
+        for route in routes.router.routes:
+            if "GET" in route.methods and route.path.endswith("/folders"):
+                assert route.response_model is not None, route.path
+            if "PATCH" in route.methods:
+                assert route.response_model is not None, route.path

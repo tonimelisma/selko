@@ -9,14 +9,10 @@ vi.mock('$app/navigation', () => ({
 	goto: (...args) => mockGoto(...args)
 }));
 
-// Mock Supabase
+// Mock the auth module: signIn(email, password) → {user, error}
 const mockSignInWithPassword = vi.fn();
-vi.mock('$lib/supabase.js', () => ({
-	supabase: {
-		auth: {
-			signInWithPassword: (...args) => mockSignInWithPassword(...args)
-		}
-	}
+vi.mock('$lib/auth.js', () => ({
+	signIn: (email, password) => mockSignInWithPassword({ email, password })
 }));
 
 // Import after mocking
@@ -51,7 +47,7 @@ describe('Login Page', () => {
 		expect(privacyLink).toHaveAttribute('href', '/privacy');
 	});
 
-	it('submits credentials to Supabase on form submission', async () => {
+	it('submits credentials to the auth module on form submission', async () => {
 		const user = userEvent.setup();
 		mockSignInWithPassword.mockResolvedValue({
 			data: { user: { id: '123', email: 'test@example.com' } },

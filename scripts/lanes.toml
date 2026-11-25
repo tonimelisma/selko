@@ -15,55 +15,26 @@
 
 [lanes.backend]
 gate = "prod"
-description = "Tier 1: migrations applied to local Postgres, unit + integration"
+description = "Tier 1: unit + integration suites over SQLite (every migration applied to a fresh file per test)"
 command = "./scripts/verify.sh backend"
 inputs = [
     "backend/**/*.py",
-    # Non-Python files the suite reads: email fixtures, the skip budget, and
-    # the package manifests that build selko.
+    # Non-Python files the suite reads: the migrations, email fixtures, the
+    # skip budget, and the package manifests that build selko.
+    "backend/selko/db/migrations/*.sql",
     "backend/tests/fixtures/**",
     "backend/tests/skip_budget.toml",
     "backend/pyproject.toml",
-    # The real-Gmail tests get their token from it.
-    "scripts/seed_test_tokens.py",
-    "supabase/migrations/**/*.sql",
-    # Configures the local stack the integration tests run against.
-    "supabase/config.toml",
     "pyproject.toml",
     "uv.lock",
     "scripts/verify.sh",
-    # Read by test_ops.py / test_gate_contract.py: the workflow structure and
-    # the ops payload contract are asserted by this suite.
+    # The importer and its frozen fixture are tested by this suite.
+    "selko_import/**",
+    # Seeded and asserted by test_integration_seed_fixtures.py.
+    "scripts/seed_screenshot_data.py",
+    # Read by test_gate_contract.py: the workflow structure is asserted here.
     ".github/workflows/*.yml",
-    "scripts/ops.py",
 ]
-
-[lanes.schema-compat]
-gate = "prod"
-description = "Production would accept this tree's migrations (supabase db push --dry-run, in GitHub Actions)"
-# Postgres (TCP 5432/6543) is unreachable from a cloud session and the
-# production password lives only in the repository's Actions secrets, so the
-# check runs as ops.yml's schema-compat operation. The command dispatches it and
-# exits with the run's conclusion -- the same command on the Mac.
-#
-# pre-deploy, not the R5 "everything is applied" assertion: before a deploy the
-# new migrations are by definition not applied yet, so R5 can only be green
-# after the push. deploy-production runs R5 itself right after `db push`.
-# Depends on production's state as well as the tree; use --force for a fresh
-# reading after something else changed production.
-command = "./scripts/ops.py dispatch schema-compat target=production when=pre-deploy"
-inputs = [
-    "supabase/migrations/**/*.sql",
-    "backend/selko/**/*.py",
-    "scripts/ops.py",
-    ".github/workflows/ops.yml",
-]
-
-[lanes.migration-order]
-gate = "prod"
-description = "Migrations are monotonically ordered"
-command = "./scripts/check-migration-order.sh"
-inputs = ["supabase/migrations/**/*.sql"]
 
 [lanes.prod-health]
 # gate = "observe", NOT "prod". This lane measures the *currently deployed*
@@ -103,4 +74,30 @@ inputs = [
     "frontend/vitest.config.js",
     "frontend/vitest.setup.js",
     "scripts/verify.sh",
+]
+
+[lanes.image]
+gate = "prod"
+description = "The image under the server's limits: health, auth, review, live, attachment, import from a Postgres fixture"
+# Builds the image and runs scripts/image-check.sh on it with a read-only
+# root, no capabilities, 400 MB and /data as the only volume -- the same
+# script .github/workflows/image.yml runs on the image it pushes and signs.
+command = "./scripts/image-lane.sh"
+inputs = [
+    "Dockerfile",
+    ".dockerignore",
+    "backend/selko/**",
+    "backend/pyproject.toml",
+    "frontend/src/**",
+    "frontend/static/**",
+    "frontend/package.json",
+    "frontend/package-lock.json",
+    "frontend/svelte.config.js",
+    "frontend/vite.config.js",
+    "pyproject.toml",
+    "uv.lock",
+    "selko_import/**",
+    "scripts/build-image.sh",
+    "scripts/image-check.sh",
+    "scripts/image-lane.sh",
 ]

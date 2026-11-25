@@ -1,341 +1,230 @@
 // @ts-nocheck
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-// Mock Supabase client
-const mockSupabase = {
-	from: vi.fn(),
-	storage: {
-		from: vi.fn()
-	},
-	auth: {
-		getUser: vi.fn(),
-		getSession: vi.fn()
-	}
-};
-
-// Mock the supabase import
-vi.mock('$lib/supabase.js', () => ({
-	supabase: mockSupabase
+const mockApiFetch = vi.fn();
+vi.mock('$lib/api/client.js', () => ({
+	apiFetch: (...args) => mockApiFetch(...args)
 }));
 
-// Helper to create chainable query mock
-function createQueryMock(data = [], error = null, count = null) {
-	const queryMock = {
-		select: vi.fn().mockReturnThis(),
-		insert: vi.fn().mockReturnThis(),
-		update: vi.fn().mockReturnThis(),
-		delete: vi.fn().mockReturnThis(),
-		eq: vi.fn().mockReturnThis(),
-		in: vi.fn().mockReturnThis(),
-		or: vi.fn().mockReturnThis(),
-		gte: vi.fn().mockReturnThis(),
-		lte: vi.fn().mockReturnThis(),
-		order: vi.fn().mockReturnThis(),
-		range: vi.fn().mockReturnThis(),
-		limit: vi.fn().mockReturnThis(),
-		single: vi.fn().mockResolvedValue({ data, error }),
-		maybeSingle: vi.fn().mockResolvedValue({ data, error }),
-		execute: vi.fn().mockResolvedValue({ data, error, count })
-	};
-	// Make chain return promise at the end
-	queryMock.then = (resolve) => resolve({ data, error, count });
-	return queryMock;
-}
+const ok = (data, status = 200) => ({ data, error: null, status });
+const fail = (message, status, code) => ({ data: null, error: { message, status, code }, status });
+
+beforeEach(() => {
+	mockApiFetch.mockReset();
+});
 
 describe('Attachment Service', () => {
-	beforeEach(() => {
-		vi.clearAllMocks();
-	});
-
 	describe('fetchAttachments', () => {
 		it('fetches attachments for an email', async () => {
-			const mockAttachments = [
-				{ id: '1', filename: 'doc.pdf', mime_type: 'application/pdf' },
-				{ id: '2', filename: 'image.png', mime_type: 'image/png' }
-			];
-			const query = createQueryMock(mockAttachments);
-			mockSupabase.from.mockReturnValue(query);
+			const rows = [{ id: 'a1', email_id: 'email-1', filename: 'ticket.pdf', ingestion_status: 'stored' }];
+			mockApiFetch.mockResolvedValue(ok(rows));
 
 			const { fetchAttachments } = await import('../services/attachments.js');
-			const result = await fetchAttachments('email-123');
+			const result = await fetchAttachments('email-1');
 
-			expect(mockSupabase.from).toHaveBeenCalledWith('attachments');
-			expect(query.select).toHaveBeenCalledWith('*');
-			expect(query.eq).toHaveBeenCalledWith('email_id', 'email-123');
-			expect(query.order).toHaveBeenCalledWith('filename', { ascending: true });
-			expect(result.data).toEqual(mockAttachments);
-			expect(result.error).toBeNull();
+			expect(mockApiFetch).toHaveBeenCalledWith('/emails/email-1/attachments');
+			expect(result).toEqual({ data: rows, error: null });
 		});
 
-		it('returns empty array on error', async () => {
-			const query = createQueryMock([], { code: '42501', message: 'permission denied' });
-			mockSupabase.from.mockReturnValue(query);
+		it('returns an empty array on error', async () => {
+			mockApiFetch.mockResolvedValue(fail('Email not found', 404));
 
 			const { fetchAttachments } = await import('../services/attachments.js');
-			const result = await fetchAttachments('email-123');
+			const result = await fetchAttachments('email-1');
 
 			expect(result.data).toEqual([]);
-			expect(result.error).not.toBeNull();
+			expect(result.error.status).toBe(404);
 		});
 	});
 
 	describe('downloadAttachment', () => {
-		it('downloads attachment from storage', async () => {
-			const mockBlob = new Blob(['test content'], { type: 'text/plain' });
-			const storageMock = {
-				download: vi.fn().mockResolvedValue({ data: mockBlob, error: null })
-			};
-			mockSupabase.storage.from.mockReturnValue(storageMock);
+		/** @type {any} */
+		let clicked;
+		beforeEach(() => {
+			clicked = null;
+			URL.createObjectURL = vi.fn(() => 'blob:selko/1');
+			URL.revokeObjectURL = vi.fn();
+			vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function () {
+				clicked = { href: this.href, download: this.download };
+			});
+		});
+		afterEach(() => {
+			vi.restoreAllMocks();
+		});
+
+		it('fetches the bytes with the Bearer client and saves them under the filename', async () => {
+			const blob = new Blob(['%PDF']);
+			mockApiFetch.mockResolvedValue(ok(blob));
 
 			const { downloadAttachment } = await import('../services/attachments.js');
-			const result = await downloadAttachment('user-123/file.pdf');
+			const result = await downloadAttachment({ id: 'a1', filename: 'ticket.pdf' });
 
-			expect(mockSupabase.storage.from).toHaveBeenCalledWith('attachments');
-			expect(storageMock.download).toHaveBeenCalledWith('user-123/file.pdf');
-			expect(result.data).toBe(mockBlob);
+			expect(mockApiFetch).toHaveBeenCalledWith('/attachments/a1/content', expect.objectContaining({ responseType: 'blob' }));
+			expect(URL.createObjectURL).toHaveBeenCalledWith(blob);
+			expect(clicked).toEqual({ href: 'blob:selko/1', download: 'ticket.pdf' });
 			expect(result.error).toBeNull();
 		});
-	});
 
-	describe('getAttachmentUrl', () => {
-		it('creates signed URL with default expiry', async () => {
-			const storageMock = {
-				createSignedUrl: vi.fn().mockResolvedValue({
-					data: { signedUrl: 'https://example.com/signed-url' },
-					error: null
-				})
-			};
-			mockSupabase.storage.from.mockReturnValue(storageMock);
+		it('reports a file that is not stored without saving anything', async () => {
+			mockApiFetch.mockResolvedValue(fail('Attachment is not stored', 404));
 
-			const { getAttachmentUrl } = await import('../services/attachments.js');
-			const result = await getAttachmentUrl('user-123/file.pdf');
+			const { downloadAttachment } = await import('../services/attachments.js');
+			const result = await downloadAttachment({ id: 'a1', filename: 'ticket.pdf' });
 
-			expect(storageMock.createSignedUrl).toHaveBeenCalledWith('user-123/file.pdf', 3600);
-			expect(result.data).toBe('https://example.com/signed-url');
+			expect(result.error.message).toBe('Attachment is not stored');
+			expect(clicked).toBeNull();
 		});
 
-		it('creates signed URL with custom expiry', async () => {
-			const storageMock = {
-				createSignedUrl: vi.fn().mockResolvedValue({
-					data: { signedUrl: 'https://example.com/signed-url' },
-					error: null
-				})
-			};
-			mockSupabase.storage.from.mockReturnValue(storageMock);
-
-			const { getAttachmentUrl } = await import('../services/attachments.js');
-			await getAttachmentUrl('user-123/file.pdf', 7200);
-
-			expect(storageMock.createSignedUrl).toHaveBeenCalledWith('user-123/file.pdf', 7200);
+		it('only offers stored files for download', async () => {
+			const { isDownloadable } = await import('../services/attachments.js');
+			expect(isDownloadable({ ingestion_status: 'stored' })).toBe(true);
+			expect(isDownloadable({ ingestion_status: 'pending' })).toBe(false);
+			expect(isDownloadable({ ingestion_status: 'unsupported' })).toBe(false);
 		});
 	});
 });
 
 describe('Calendar Settings Service', () => {
-	beforeEach(() => {
-		vi.clearAllMocks();
-	});
-
 	describe('getCalendarSettings', () => {
-		it('fetches calendar settings', async () => {
-			const mockSettings = {
-				user_id: 'user-123',
-				target_calendar_id: 'cal-456',
-				default_invitees: 'spouse@example.com'
-			};
-			const query = createQueryMock(mockSettings);
-			mockSupabase.from.mockReturnValue(query);
+		it('unwraps the settings row', async () => {
+			const settings = { user_id: 'u1', target_calendar_id: 'primary', all_day_display_mode: 'all_day' };
+			mockApiFetch.mockResolvedValue(ok({ settings }));
 
 			const { getCalendarSettings } = await import('../services/calendar-settings.js');
 			const result = await getCalendarSettings();
 
-			expect(mockSupabase.from).toHaveBeenCalledWith('user_calendar_settings');
-			expect(query.select).toHaveBeenCalledWith('*');
-			expect(query.maybeSingle).toHaveBeenCalled();
-			expect(result.data).toEqual(mockSettings);
+			expect(mockApiFetch).toHaveBeenCalledWith('/settings/calendar');
+			expect(result).toEqual({ data: settings, error: null });
 		});
 
 		it('returns null if no settings exist', async () => {
-			const query = createQueryMock(null);
-			mockSupabase.from.mockReturnValue(query);
+			mockApiFetch.mockResolvedValue(ok({ settings: null }));
 
 			const { getCalendarSettings } = await import('../services/calendar-settings.js');
-			const result = await getCalendarSettings();
-
-			expect(result.data).toBeNull();
-			expect(result.error).toBeNull();
+			expect(await getCalendarSettings()).toEqual({ data: null, error: null });
 		});
 	});
 
 	describe('updateCalendarSettings', () => {
-		it('upserts calendar settings', async () => {
-			mockSupabase.auth.getUser.mockResolvedValue({
-				data: { user: { id: 'user-123' } }
-			});
-
-			const mockSettings = {
-				user_id: 'user-123',
-				target_calendar_id: 'cal-456',
-				default_invitees: 'spouse@example.com'
-			};
-			// Add upsert to the query mock
-			const query = createQueryMock(mockSettings);
-			query.upsert = vi.fn().mockReturnThis();
-			mockSupabase.from.mockReturnValue(query);
+		it('PATCHes only the given fields, without user_id or updated_at', async () => {
+			const saved = { user_id: 'u1', target_calendar_id: 'outlook:abc' };
+			mockApiFetch.mockResolvedValue(ok({ settings: saved }));
 
 			const { updateCalendarSettings } = await import('../services/calendar-settings.js');
-			const result = await updateCalendarSettings({
-				target_calendar_id: 'cal-456',
-				default_invitees: 'spouse@example.com'
-			});
+			const result = await updateCalendarSettings({ target_calendar_id: 'outlook:abc', default_invitees: undefined });
 
-			expect(query.upsert).toHaveBeenCalled();
-			expect(query.select).toHaveBeenCalled();
-			expect(query.single).toHaveBeenCalled();
+			expect(mockApiFetch).toHaveBeenCalledWith('/settings/calendar', {
+				method: 'PATCH',
+				body: { target_calendar_id: 'outlook:abc' }
+			});
+			expect(result.data).toEqual(saved);
 		});
 
-		it('fails if not authenticated', async () => {
-			mockSupabase.auth.getUser.mockResolvedValue({ data: { user: null } });
+		it('returns the validation error', async () => {
+			mockApiFetch.mockResolvedValue(fail('A custom all-day time needs a start before its end', 422));
 
 			const { updateCalendarSettings } = await import('../services/calendar-settings.js');
-			const result = await updateCalendarSettings({ target_calendar_id: 'cal-456' });
+			const result = await updateCalendarSettings({ all_day_display_mode: 'custom' });
 
 			expect(result.data).toBeNull();
-			expect(result.error).not.toBeNull();
+			expect(result.error.message).toBe('A custom all-day time needs a start before its end');
 		});
 	});
 });
 
 describe('Sender Rules Service', () => {
-	beforeEach(() => {
-		vi.clearAllMocks();
-	});
-
 	describe('fetchSenderRules', () => {
 		it('fetches all sender rules', async () => {
-			const mockRules = [
-				{ id: '1', sender_domain: 'example.com', action: 'auto_approve' },
-				{ id: '2', sender_email: 'noreply@test.com', action: 'ignore' }
-			];
-			const query = createQueryMock(mockRules);
-			mockSupabase.from.mockReturnValue(query);
+			const rules = [{ id: 'r1', sender_domain: 'example.com', sender_email: null, action: 'ignore' }];
+			mockApiFetch.mockResolvedValue(ok(rules));
 
 			const { fetchSenderRules } = await import('../services/sender-rules.js');
 			const result = await fetchSenderRules();
 
-			expect(mockSupabase.from).toHaveBeenCalledWith('sender_rules');
-			expect(query.order).toHaveBeenCalledWith('created_at', { ascending: false });
-			expect(result.data).toEqual(mockRules);
+			expect(mockApiFetch).toHaveBeenCalledWith('/sender-rules');
+			expect(result).toEqual({ data: rules, error: null });
 		});
 	});
 
 	describe('createSenderRule', () => {
-		it('creates a rule with domain', async () => {
-			mockSupabase.auth.getUser.mockResolvedValue({
-				data: { user: { id: 'user-1' } }
-			});
-			const mockRule = { id: '1', sender_domain: 'example.com', action: 'auto_approve' };
-			const query = createQueryMock(mockRule);
-			mockSupabase.from.mockReturnValue(query);
+		it('creates a rule with domain (the server takes the user from the token)', async () => {
+			const rule = { id: 'r1', sender_domain: 'example.com', action: 'auto_approve' };
+			mockApiFetch.mockResolvedValue(ok(rule, 201));
 
 			const { createSenderRule } = await import('../services/sender-rules.js');
-			const result = await createSenderRule({
-				sender_domain: 'example.com',
-				action: 'auto_approve'
-			});
+			const result = await createSenderRule({ sender_domain: 'example.com', action: 'auto_approve' });
 
-			expect(query.insert).toHaveBeenCalledWith(
-				expect.objectContaining({ user_id: 'user-1', sender_domain: 'example.com' })
-			);
-			expect(result.data).toEqual(mockRule);
+			expect(mockApiFetch).toHaveBeenCalledWith('/sender-rules', {
+				method: 'POST',
+				body: { sender_domain: 'example.com', action: 'auto_approve' }
+			});
+			expect(result.data).toEqual(rule);
 		});
 
 		it('creates a rule with email', async () => {
-			mockSupabase.auth.getUser.mockResolvedValue({
-				data: { user: { id: 'user-1' } }
-			});
-			const mockRule = { id: '1', sender_email: 'noreply@test.com', action: 'ignore' };
-			const query = createQueryMock(mockRule);
-			mockSupabase.from.mockReturnValue(query);
+			mockApiFetch.mockResolvedValue(ok({ id: 'r2' }, 201));
 
 			const { createSenderRule } = await import('../services/sender-rules.js');
-			const result = await createSenderRule({
-				sender_email: 'noreply@test.com',
-				action: 'ignore'
-			});
+			await createSenderRule({ sender_email: 'Boss@Example.com', action: 'ignore' });
 
-			expect(query.insert).toHaveBeenCalledWith(
-				expect.objectContaining({ user_id: 'user-1', sender_email: 'noreply@test.com' })
-			);
-			expect(result.data).toEqual(mockRule);
+			expect(mockApiFetch.mock.calls[0][1].body).toEqual({ sender_email: 'Boss@Example.com', action: 'ignore' });
 		});
 
-		it('fails without domain or email', async () => {
+		it('fails without domain or email, before calling the API', async () => {
 			const { createSenderRule } = await import('../services/sender-rules.js');
-			const result = await createSenderRule({ action: 'auto_approve' });
+			const result = await createSenderRule({ action: 'ignore' });
 
-			expect(result.data).toBeNull();
-			expect(result.error).not.toBeNull();
+			expect(mockApiFetch).not.toHaveBeenCalled();
 			expect(result.error.message).toContain('sender_domain or sender_email');
 		});
 
-		it('fails when not authenticated', async () => {
-			mockSupabase.auth.getUser.mockResolvedValue({ data: { user: null } });
+		it('shows the duplicate-rule message', async () => {
+			mockApiFetch.mockResolvedValue(fail('A record with this information already exists.', 409));
 
 			const { createSenderRule } = await import('../services/sender-rules.js');
-			const result = await createSenderRule({
-				sender_email: 'noreply@test.com',
-				action: 'ignore'
-			});
+			const result = await createSenderRule({ sender_email: 'a@b.com', action: 'ignore' });
 
-			expect(result.data).toBeNull();
-			expect(result.error).not.toBeNull();
+			expect(result.error.message).toBe('A record with this information already exists.');
+		});
+	});
+
+	describe('ignoreSenderRetroactive', () => {
+		it('posts the sender and returns the counts', async () => {
+			mockApiFetch.mockResolvedValue(ok({ rejected_new: 2, discarded_changes: 1 }));
+
+			const { ignoreSenderRetroactive } = await import('../services/sender-rules.js');
+			const result = await ignoreSenderRetroactive('spam@example.com');
+
+			expect(mockApiFetch).toHaveBeenCalledWith('/sender-rules/ignore-sender', {
+				method: 'POST',
+				body: { sender_email: 'spam@example.com' }
+			});
+			expect(result.data).toEqual({ rejected_new: 2, discarded_changes: 1 });
 		});
 	});
 
 	describe('deleteSenderRule', () => {
 		it('deletes a rule', async () => {
-			const query = createQueryMock(null);
-			mockSupabase.from.mockReturnValue(query);
+			mockApiFetch.mockResolvedValue(ok(null, 204));
 
 			const { deleteSenderRule } = await import('../services/sender-rules.js');
-			const result = await deleteSenderRule('rule-123');
+			const result = await deleteSenderRule('rule-1');
 
-			expect(mockSupabase.from).toHaveBeenCalledWith('sender_rules');
-			expect(query.delete).toHaveBeenCalled();
-			expect(query.eq).toHaveBeenCalledWith('id', 'rule-123');
+			expect(mockApiFetch).toHaveBeenCalledWith('/sender-rules/rule-1', { method: 'DELETE' });
 			expect(result.error).toBeNull();
 		});
 	});
 });
 
-describe('Event Sources Service', () => {
-	beforeEach(() => {
-		vi.clearAllMocks();
+describe('Email Folders Service', () => {
+	it('lists folders through GET /integrations/{provider}/folders', async () => {
+		const folders = [{ id: 'f1', provider: 'gmail', name: 'Receipts', is_system: false }];
+		mockApiFetch.mockResolvedValue(ok(folders));
+
+		const { fetchEmailFolders } = await import('../services/email-folders.js');
+		const result = await fetchEmailFolders('gmail');
+
+		expect(mockApiFetch).toHaveBeenCalledWith('/integrations/gmail/folders', { method: 'GET' });
+		expect(result).toEqual({ data: folders, error: null });
 	});
-
-	describe('fetchEventSources', () => {
-		it('fetches sources with joined email data', async () => {
-			const mockSources = [
-				{
-					id: '1',
-					event_id: 'event-123',
-					email_id: 'email-456',
-					source_type: 'new_invitation',
-					emails: { id: 'email-456', subject: 'Meeting invite' }
-				}
-			];
-			const query = createQueryMock(mockSources);
-			mockSupabase.from.mockReturnValue(query);
-
-			const { fetchEventSources } = await import('../services/event-sources.js');
-			const result = await fetchEventSources('event-123');
-
-			expect(mockSupabase.from).toHaveBeenCalledWith('event_sources');
-			expect(query.eq).toHaveBeenCalledWith('event_id', 'event-123');
-			expect(query.order).toHaveBeenCalledWith('created_at', { ascending: true });
-			expect(result.data).toEqual(mockSources);
-		});
-	});
-
 });

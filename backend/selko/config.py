@@ -32,11 +32,13 @@ class Config:
     """Application configuration loaded from environment variables."""
 
     environment: str
-    supabase_url: str
-    supabase_key: str  # Publishable key for client operations
+    # Where selko.db and the attachments live (the image mounts /data).
+    data_dir: str = "data"
+    # Access-token signing keys: current (kid "1") and, during a rotation,
+    # the previous one (kid "0", verify only). At least 32 bytes.
+    jwt_secret: str | None = None
+    jwt_secret_previous: str | None = None
     build_sha: Optional[str] = None
-    supabase_service_role_key: Optional[str] = None
-    supabase_jwt_secret: Optional[str] = None
     google_client_id: Optional[str] = None
     google_client_secret: Optional[str] = None
     microsoft_client_id: Optional[str] = None
@@ -68,8 +70,6 @@ class Config:
     tinker_api_key: Optional[str] = None
 
     # Test user credentials for CLI authentication
-    test_user_email: Optional[str] = None
-    test_user_password: Optional[str] = None
 
     # Storage configuration
     storage_bucket_attachments: str = "attachments"
@@ -148,15 +148,7 @@ class Config:
     recovery_refresh_interval_seconds: float = 30.0
     email_health_interval_seconds: int = 300
     email_folder_refresh_seconds: int = 3600
-    # Inc3: direct Postgres work transport (asyncpg session pooler)
-    supabase_db_url: str | None = None
-    pg_pool_min_size: int = 1
-    pg_pool_max_size: int = 4
-    pg_keepalive_seconds: int = 60
-    pg_connect_timeout_seconds: int = 10
-    pg_command_timeout_seconds: int = 30
     worker_safety_poll_seconds: int = 300
-    pg_listener_heartbeat_seconds: int = 120
     operational_notification_sender: Optional[str] = None
     operational_notification_recipient: Optional[str] = None
     operational_notification_api_key: Optional[str] = None
@@ -458,8 +450,8 @@ def load_config(env_override: Optional[str] = None) -> Config:
             if value is not None:
                 values.setdefault(key, value)
         logger.info(f"Loaded config from {env_file} ({environment})")
-    elif values.get("SUPABASE_URL"):
-        # Env vars already set (CI/CD mode)
+    elif values.get("SELKO_JWT_SECRET") or values.get("SELKO_DATA_DIR"):
+        # Configured by the environment alone (the image's env file, CI)
         logger.info(f"Using environment variables ({environment})")
     else:
         logger.error(f"Environment file not found: {env_path}")
@@ -469,20 +461,7 @@ def load_config(env_override: Optional[str] = None) -> Config:
     getenv = values.get
 
     # Get required variables
-    supabase_url = getenv("SUPABASE_URL")
-    supabase_key = getenv("SUPABASE_PUBLISHABLE_KEY")
 
-    # Validate required variables
-    missing = []
-    if not supabase_url:
-        missing.append("SUPABASE_URL")
-    if not supabase_key:
-        missing.append("SUPABASE_PUBLISHABLE_KEY")
-
-    if missing:
-        logger.error(f"Missing required environment variables: {', '.join(missing)}")
-        logger.error(f"Check your {env_file} file.")
-        sys.exit(1)
 
     llm_provider = getenv("LLM_PROVIDER", "gemini")
     llm_fallback_provider, llm_fallback_model = _resolve_fallback_route(
@@ -494,28 +473,13 @@ def load_config(env_override: Optional[str] = None) -> Config:
         if "ENABLE_BACKGROUND_PROCESSING" in values
         else environment == "production"
     )
-    supabase_db_url = getenv("SUPABASE_DB_URL")
-    if enable_background_processing and not supabase_db_url:
-        # Local import: selko.services.pg is a leaf module, but selko.services'
-        # package __init__ eagerly imports selko.services.auth, which imports
-        # this module — importing pg at module scope here would be circular.
-        from selko.services.pg import ConfigurationError
-
-        raise ConfigurationError(
-            f"SUPABASE_DB_URL is required in {environment} because "
-            "ENABLE_BACKGROUND_PROCESSING is true. Set SUPABASE_DB_URL on the "
-            f"{environment} Render service environment to the Supavisor "
-            "session pooler URL (port 5432) — it is never committed to a "
-            f".env file. See {env_file} for the marker comment."
-        )
 
     return Config(
         environment=environment,
-        supabase_url=supabase_url,
-        supabase_key=supabase_key,
-        build_sha=getenv("RENDER_GIT_COMMIT") or getenv("GIT_COMMIT_SHA"),
-        supabase_service_role_key=getenv("SUPABASE_SERVICE_ROLE_KEY"),
-        supabase_jwt_secret=getenv("SUPABASE_JWT_SECRET"),
+        data_dir=getenv("SELKO_DATA_DIR") or "data",
+        jwt_secret=getenv("SELKO_JWT_SECRET") or None,
+        jwt_secret_previous=getenv("SELKO_JWT_SECRET_PREVIOUS") or None,
+        build_sha=getenv("GIT_COMMIT_SHA"),
         google_client_id=getenv("GOOGLE_CLIENT_ID"),
         google_client_secret=getenv("GOOGLE_CLIENT_SECRET"),
         microsoft_client_id=getenv("MICROSOFT_CLIENT_ID"),
@@ -545,8 +509,6 @@ def load_config(env_override: Optional[str] = None) -> Config:
             or getenv("MODEL_API_KEY")
         ),
         tinker_api_key=getenv("TINKER_API_KEY"),
-        test_user_email=getenv("TEST_USER_EMAIL"),
-        test_user_password=getenv("TEST_USER_PASSWORD"),
         worker_calendar_sync_concurrency=int(getenv("WORKER_CALENDAR_SYNC_CONCURRENCY", "2")),
         llm_extraction_concurrency=int(getenv("LLM_EXTRACTION_CONCURRENCY", "8")),
         llm_claim_lease_seconds=int(getenv("LLM_CLAIM_LEASE_SECONDS", "900")),
@@ -581,14 +543,7 @@ def load_config(env_override: Optional[str] = None) -> Config:
         recovery_refresh_interval_seconds=float(getenv("RECOVERY_REFRESH_INTERVAL_SECONDS", "30")),
         email_health_interval_seconds=int(getenv("EMAIL_HEALTH_INTERVAL_SECONDS", "300")),
         email_folder_refresh_seconds=int(getenv("EMAIL_FOLDER_REFRESH_SECONDS", "3600")),
-        supabase_db_url=supabase_db_url,
-        pg_pool_min_size=int(getenv("PG_POOL_MIN_SIZE", "1")),
-        pg_pool_max_size=int(getenv("PG_POOL_MAX_SIZE", "4")),
-        pg_keepalive_seconds=int(getenv("PG_KEEPALIVE_SECONDS", "60")),
-        pg_connect_timeout_seconds=int(getenv("PG_CONNECT_TIMEOUT_SECONDS", "10")),
-        pg_command_timeout_seconds=int(getenv("PG_COMMAND_TIMEOUT_SECONDS", "30")),
         worker_safety_poll_seconds=max(60, int(getenv("WORKER_SAFETY_POLL_SECONDS", "300"))),
-        pg_listener_heartbeat_seconds=int(getenv("PG_LISTENER_HEARTBEAT_SECONDS", "120")),
         operational_notification_sender=getenv("OPERATIONAL_NOTIFICATION_SENDER"),
         operational_notification_recipient=getenv("OPERATIONAL_NOTIFICATION_RECIPIENT"),
         operational_notification_api_key=getenv("OPERATIONAL_NOTIFICATION_API_KEY"),

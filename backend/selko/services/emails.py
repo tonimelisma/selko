@@ -4,29 +4,20 @@ Handles email parsing and database storage.
 """
 
 import base64
-import json
 import logging
-import math
 import re
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from email.utils import getaddresses, parseaddr, parsedate_to_datetime
 from typing import Any, Optional
 
-from supabase import Client, PostgrestAPIError
-
 from selko.config import Config
-from selko.services.auth import get_current_user_id
-from selko.services.gmail import (
-    GmailError,
-    build_service,
-    extract_attachments,
-    extract_inline_images,
-    fetch_messages,
-    get_credentials,
-)
+from selko.db import emails as db_emails
+from selko.db.connection import Database
+from selko.db.errors import DbError
 from selko.services.attachments import AttachmentError, process_attachment, store_image_content
 from selko.services.email_body import select_body_text
 from selko.services.email_images import extract_data_uri_images, extract_linked_images
+from selko.services.gmail import extract_attachments, extract_inline_images
 from selko.services.ics_parser import INVITE_METHODS
 
 logger = logging.getLogger(__name__)
@@ -257,52 +248,55 @@ def _log_email_subject(parsed: dict[str, Any], action: str) -> None:
 
 
 def save_emails(
-    client: Client,
+    client: Database,
     emails: list[dict[str, Any]],
     user_id: Optional[str] = None,
 ) -> list[dict[str, Any]]:
-    """Save emails to Supabase database using upsert.
+    """Upsert parsed emails for ``user_id`` and return the stored rows.
 
-    The user_id can be provided explicitly (for service role operations)
-    or determined from the authenticated session.
-
-    Args:
-        client: Authenticated Supabase client.
-        emails: List of parsed email dicts (from parse_gmail_message).
-        user_id: Optional user ID (required if using service role client).
-
-    Returns:
-        List of saved email records (with database IDs).
+    Goes through the same atomic save the ingestion worker uses
+    (`selko.db.emails.save_email_with_attachment_descriptors`), so only the
+    columns that save accepts are written, plus the skip fields of an
+    ingest-detected invite (`mark_parsed_as_calendar_invite`). ``user_id`` is required: rows are
+    owned explicitly, there is no signed-in session to read it from.
 
     Raises:
-        EmailError: If save fails.
+        EmailError: If ``user_id`` is missing or the save fails.
     """
     if user_id is None:
-        user_id = get_current_user_id(client)
+        raise EmailError("save_emails needs the owning user_id")
     saved_records = []
 
     for parsed in emails:
-        # Add user_id to the email record
         parsed["user_id"] = user_id
-
+        # The column default, stated: the upsert key needs it.
+        parsed.setdefault("email_provider", "gmail")
         try:
-            # Single upsert instead of SELECT + INSERT/UPDATE
-            result = client.table("emails").upsert(
-                parsed, on_conflict="user_id,email_provider,provider_message_id"
-            ).execute()
-            if result.data:
-                saved_records.append(result.data[0])
-            _log_email_subject(parsed, "Saved")
-
-        except PostgrestAPIError as e:
-            raise EmailError(f"Failed to save email: {e.message}") from e
+            email_id = db_emails.save_email_with_attachment_descriptors(
+                client, user_id, parsed, []
+            )
+        except DbError as e:
+            raise EmailError(f"Failed to save email: {e}") from e
+        if parsed.get("processing_status") == "skipped":
+            # An ingest-detected invite is saved pre-skipped, never claimable.
+            db_emails.skip_email(
+                client,
+                email_id,
+                user_id=user_id,
+                outcome=parsed.get("processing_outcome"),
+                explanation=parsed.get("processing_explanation"),
+            )
+        record = db_emails.get_email(client, user_id, email_id)
+        if record:
+            saved_records.append(record)
+        _log_email_subject(parsed, "Saved")
 
     logger.info(f"Saved {len(saved_records)} emails")
     return saved_records
 
 
 def store_gmail_message_attachments(
-    client: Client,
+    client: Database,
     config: Config,
     service: Any,
     message: dict[str, Any],
@@ -317,9 +311,8 @@ def store_gmail_message_attachments(
     checked. Keeping the download helper separate makes it impossible for a
     rejected message to reach attachment storage in the reliable sync path.
 
-    The attachment owner is taken from email_record["user_id"] — the worker
-    path runs with a service-role client that has no auth session to resolve
-    the user from.
+    The attachment owner is taken from email_record["user_id"]: rows are owned
+    explicitly.
     """
 
     message_id = message["id"]
@@ -408,14 +401,13 @@ def store_gmail_message_attachments(
                 logger.warning("Failed to store data URI Gmail image for %s: %s", message_id, exc)
 
     if images_stored and not email_record.get("has_attachments"):
-        client.table("emails").update({"has_attachments": True}).eq(
-            "id", email_id
-        ).execute()
+        db_emails.mark_has_attachments(client, owner_id, email_id)
     return images_stored
 
 
+
 def fetch_emails_for_user(
-    client: Client,
+    client: Database,
     config: Config,
     max_results: int = 10,
     fetch_attachments: bool = True,
@@ -434,11 +426,11 @@ def fetch_emails_for_user(
     windows, and attachments are fetched by their own workers.
 
     Args:
-        client: Service-role Supabase client.
+        client: The process database.
         config: Configuration object.
         max_results: Ignored; retained for API compatibility.
         fetch_attachments: Ignored; retained for API compatibility.
-        user_id: Integration owner. Required when ``client`` is service-role.
+        user_id: Integration owner (required).
 
     Returns:
         Dict with zeroed counts: ingestion is asynchronous, so nothing is
@@ -449,17 +441,10 @@ def fetch_emails_for_user(
         EmailError: If the sync request could not be recorded.
     """
     if user_id is None:
-        user_id = get_current_user_id(client)
+        raise EmailError("fetch_emails_for_user needs the owning user_id")
 
     try:
-        integrations = (
-            client.table("integrations")
-            .select("id,provider")
-            .eq("user_id", user_id)
-            .in_("provider", ["gmail", "outlook"])
-            .eq("status", "active")
-            .execute()
-        ).data or []
+        integrations = db_emails.active_mail_integrations(client, user_id)
     except Exception as e:
         raise EmailError(f"Error loading email integrations: {e}") from e
 
@@ -471,9 +456,7 @@ def fetch_emails_for_user(
     try:
         for row in integrations:
             # A live lease means a run is already under way; leave it alone.
-            client.table("email_sync_state").update(
-                {"next_poll_at": datetime.now(timezone.utc).isoformat()}
-            ).eq("integration_id", row["id"]).is_("lease_owner", None).execute()
+            db_emails.request_poll(client, row["id"])
     except Exception as e:
         raise EmailError(f"Error requesting email sync: {e}") from e
 
@@ -492,12 +475,11 @@ async def claim_pending_email(
 ) -> Optional[dict[str, Any]]:
     """Atomically claim the next pending email for processing.
 
-    Uses PostgreSQL FOR UPDATE SKIP LOCKED to safely claim emails without
-    conflicts between multiple workers. Runs over the asyncpg session pooler —
-    there is one implementation, no PostgREST twin.
+    The claim runs in the single writer transaction, so two workers can never
+    take the same row. One implementation: `selko.db.emails.claim_unprocessed_email`.
 
     Args:
-        pool: asyncpg session-pooler pool.
+        pool: The process database.
         worker_id: Unique identifier for this worker process.
         lock_duration_seconds: How long to hold the lock (default: 5 minutes).
 
@@ -508,12 +490,11 @@ async def claim_pending_email(
         EmailError: If claim operation fails.
     """
     try:
-        row = await pool.fetchrow("SELECT * FROM public.claim_unprocessed_email($1, $2)", worker_id, lock_duration_seconds)
-        if row:
-            from selko.services.pg import _normalize_pg_row
-
-            email = _normalize_pg_row(dict(row))
-            subject = email.get("subject", "(no subject)")[:50]
+        email = await pool.run(
+            db_emails.claim_unprocessed_email, pool, worker_id, lock_duration_seconds
+        )
+        if email:
+            subject = (email.get("subject") or "(no subject)")[:50]
             logger.info(
                 f"Worker {worker_id} claimed email {email['id']}: {subject} "
                 f"(attempt {email.get('attempts', 0)}/{email.get('max_attempts', 0)})"
@@ -529,20 +510,14 @@ async def complete_email_processing(pool, email_id: str) -> None:
     """Mark email as processed successfully and clear the lock.
 
     Args:
-        pool: asyncpg session-pooler pool.
+        pool: The process database.
         email_id: UUID of email to mark as processed.
 
     Raises:
         EmailError: If update fails.
     """
     try:
-        await pool.execute(
-            "UPDATE public.emails"
-            " SET processing_status = 'processed', processing_error = NULL,"
-            " processed_at = $2, locked_by = NULL, locked_until = NULL"
-            " WHERE id = $1",
-            email_id, datetime.now(timezone.utc),
-        )
+        await pool.run(db_emails.complete_email_processing, pool, email_id)
         logger.info(f"Completed processing email {email_id}")
 
     except Exception as e:
@@ -560,14 +535,14 @@ async def fail_email_processing(
 ) -> dict[str, Any]:
     """Fenced retry-or-terminate transition for a claimed email.
 
-    Delegates the retry-vs-terminal decision and the row mutation to the
-    ``fail_email_processing`` SQL RPC in one transaction. Only the
+    Delegates the retry-vs-terminal decision and the row mutation to
+    `selko.db.emails.fail_email_processing`, one transaction. Only the
     ``(worker_id, generation)`` that currently owns the row's lease may
     transition it; a stale caller's request is a no-op (``fenced: true`` in
     the returned dict) so a replacement worker's claim is never overwritten.
 
     Args:
-        pool: asyncpg session-pooler pool.
+        pool: The process database.
         email_id: UUID of email that failed processing.
         worker_id: Identifier of the worker that holds the claim.
         generation: Lease generation the worker claimed (``lock_generation``).
@@ -576,18 +551,16 @@ async def fail_email_processing(
         retry_max_seconds: Cap for exponential backoff.
 
     Returns:
-        The RPC's ``{fenced, status, attempts, next_retry_at?}`` result.
+        ``{fenced, status, attempts, next_retry_at?}``.
 
     Raises:
-        EmailError: If the RPC call fails.
+        EmailError: If the transition fails.
     """
     try:
-        raw = await pool.fetchval(
-            "SELECT public.fail_email_processing($1, $2, $3, $4, $5, $6, $7)",
-            email_id, worker_id, generation, error, error,
-            retry_base_seconds, retry_max_seconds,
+        outcome = await pool.run(
+            db_emails.fail_email_processing, pool, email_id, worker_id, generation,
+            error, error, retry_base_seconds, retry_max_seconds,
         )
-        outcome = json.loads(raw) if isinstance(raw, str) else (raw or {})
         if outcome.get("fenced"):
             logger.warning(
                 f"Email {email_id} failure ignored: worker {worker_id} "
@@ -611,27 +584,24 @@ async def fail_email_processing(
         raise EmailError(f"Failed to mark email as failed: {e}") from e
 
 
-def skip_email_processing(client: Client, email_id: str) -> None:
+def skip_email_processing(client: Database, email_id: str) -> None:
     """Mark email as skipped (e.g., sender ignored).
 
     Args:
-        client: Authenticated Supabase client (should use service role).
+        client: The process database.
         email_id: UUID of email to skip.
 
     Raises:
         EmailError: If update fails.
     """
     try:
-        client.table("emails").update({
-            "processing_status": "skipped",
-            "locked_by": None,
-            "locked_until": None,
-        }).eq("id", email_id).execute()
+        db_emails.skip_email(client, email_id)
 
         logger.info(f"Skipped email {email_id}")
 
     except Exception as e:
         raise EmailError(f"Failed to skip email: {e}") from e
+
 
 
 async def unlock_expired_email_locks(pool) -> int:
@@ -640,7 +610,7 @@ async def unlock_expired_email_locks(pool) -> int:
     Handles the case where a worker crashes mid-processing and the lock expires.
 
     Args:
-        pool: asyncpg session-pooler pool.
+        pool: The process database.
 
     Returns:
         Number of emails unlocked.
@@ -649,7 +619,7 @@ async def unlock_expired_email_locks(pool) -> int:
         EmailError: If unlock fails.
     """
     try:
-        count = await pool.fetchval("SELECT public.unlock_expired_email_locks()")
+        count = await pool.run(db_emails.unlock_expired_email_locks, pool)
 
         if count:
             logger.warning(f"Unlocked {count} expired email locks")

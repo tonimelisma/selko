@@ -1,6 +1,8 @@
 """Unit tests for calendars service.
 
-Tests the calendar sync and settings functions with mocked Google Calendar API.
+The calendar sync and settings functions run on a real SQLite database (the
+`db`/`factory` fixtures); only Google Calendar's API and the OAuth credential
+lookup are mocked.
 """
 
 import json
@@ -176,18 +178,47 @@ class TestBuildCalendarEventBody:
         assert body["description"] == "Created from email\n\n---\nThis event is managed by Selko."
 
 
+@pytest.fixture
+def user(factory):
+    """A user with a connected Google Calendar (the default write target)."""
+    user_id = factory.user()
+    factory.integration(user_id, provider="google_calendar", scopes=["calendar"])
+    return user_id
+
+
+def _event(factory, user_id, **extra):
+    values = {
+        "title": "Test Meeting",
+        "start_datetime": "2026-03-15T14:00:00.000000Z",
+        "end_datetime": "2026-03-15T15:00:00.000000Z",
+        "all_day": False,
+        "review_status": "active",
+    }
+    values.update(extra)
+    return factory.event(user_id, **values)
+
+
+def _sync_log(db, event_id):
+    return [
+        db.schema.decode("calendar_sync_log", row)
+        for row in db.query(
+            "SELECT * FROM calendar_sync_log WHERE event_id = ? ORDER BY rowid", (event_id,)
+        )
+    ]
+
+
+def _settings(db, user_id, **fields):
+    from selko.db import integrations as db_integrations
+
+    db_integrations.upsert_calendar_settings(db, user_id, fields)
+
+
 class TestGetCalendarSettings:
     """Tests for retrieving calendar settings."""
 
-    def test_returns_defaults_when_no_settings(self):
+    def test_returns_defaults_when_no_settings(self, db, user):
         """Test that defaults are returned when user has no settings."""
-        mock_client = MagicMock()
-
-        mock_result = MagicMock()
-        mock_result.data = []
-        mock_client.table.return_value.select.return_value.eq.return_value.execute.return_value = mock_result
-
-        settings = get_calendar_settings(mock_client, "user-123")
+        settings = get_calendar_settings(db, user)
 
         assert settings["target_calendar_id"] is None
         assert settings["target_calendar_name"] is None
@@ -196,68 +227,103 @@ class TestGetCalendarSettings:
         assert settings["all_day_custom_start"] is None
         assert settings["all_day_custom_end"] is None
 
-    def test_returns_stored_settings(self):
+    def test_returns_stored_settings(self, db, user):
         """Test that stored settings are returned."""
-        mock_client = MagicMock()
-
-        mock_result = MagicMock()
-        mock_result.data = [{
-            "target_calendar_id": "calendar-456",
-            "default_invitees": "spouse@example.com",
-        }]
-        mock_client.table.return_value.select.return_value.eq.return_value.execute.return_value = mock_result
+        _settings(db, user, target_calendar_id="calendar-456",
+                  default_invitees="spouse@example.com")
 
         with patch("selko.services.calendars.list_calendars") as mock_list:
             mock_list.return_value = [
                 {"id": "calendar-456", "name": "Family", "is_primary": False}
             ]
-            settings = get_calendar_settings(mock_client, "user-123")
+            settings = get_calendar_settings(db, user)
 
         assert settings["target_calendar_id"] == "calendar-456"
         assert settings["target_calendar_name"] == "Family"
         assert settings["default_invitees"] == "spouse@example.com"
 
+    def test_reads_only_the_callers_settings(self, db, factory, user):
+        other = factory.user()
+        _settings(db, other, target_calendar_id="theirs", timezone="Europe/Helsinki")
+
+        settings = get_calendar_settings(db, user, include_name=False)
+
+        assert settings["target_calendar_id"] is None
+        assert settings["timezone"] == "America/New_York"
+
 
 class TestUpdateCalendarSettings:
     """Tests for updating calendar settings."""
 
-    def test_upserts_settings(self):
+    def test_upserts_settings(self, db, user):
         """Test that settings are upserted."""
-        mock_client = MagicMock()
-
-        mock_upsert = MagicMock()
-        mock_client.table.return_value.upsert.return_value = mock_upsert
-        mock_upsert.execute.return_value = MagicMock()
-
         update_calendar_settings(
-            mock_client,
-            "user-123",
+            db,
+            user,
             target_calendar_id="calendar-789",
             default_invitees="spouse@example.com"
         )
 
-        mock_client.table.assert_called_with("user_calendar_settings")
-        mock_client.table.return_value.upsert.assert_called_once()
+        stored = get_calendar_settings(db, user, include_name=False)
+        assert stored["target_calendar_id"] == "calendar-789"
+        assert stored["default_invitees"] == "spouse@example.com"
 
-        call_args = mock_client.table.return_value.upsert.call_args[0][0]
-        assert call_args["user_id"] == "user-123"
-        assert call_args["target_calendar_id"] == "calendar-789"
-        assert call_args["default_invitees"] == "spouse@example.com"
+        update_calendar_settings(db, user, target_calendar_id="calendar-2")
+        stored = get_calendar_settings(db, user, include_name=False)
+        assert stored["target_calendar_id"] == "calendar-2"
+        # The payload always carries default_invitees, so omitting it clears it.
+        assert stored["default_invitees"] is None
+
+    def test_custom_all_day_window_round_trips(self, db, user):
+        update_calendar_settings(
+            db, user,
+            all_day_display_mode="custom",
+            all_day_custom_start="08:15",
+            all_day_custom_end="16:45",
+        )
+        stored = get_calendar_settings(db, user, include_name=False)
+        assert stored["all_day_display_mode"] == "custom"
+        assert stored["all_day_custom_start"].startswith("08:15")
+        assert stored["all_day_custom_end"].startswith("16:45")
+
+        # Switching to a preset keeps the saved custom times.
+        update_calendar_settings(db, user, all_day_display_mode="day_9_to_5")
+        stored = get_calendar_settings(db, user, include_name=False)
+        assert stored["all_day_display_mode"] == "day_9_to_5"
+        assert stored["all_day_custom_start"].startswith("08:15")
+
+
+class TestGetAllDayPolicyAndTimezone:
+    def test_reads_the_stored_policy(self, db, user):
+        from selko.services.calendars import get_all_day_policy_and_timezone
+
+        _settings(db, user, timezone="Europe/Helsinki", all_day_display_mode="day_9_to_5")
+
+        policy, tz = get_all_day_policy_and_timezone(db, user)
+
+        assert tz == "Europe/Helsinki"
+        assert policy.mode.value == "day_9_to_5"
+
+    def test_defaults_without_a_row(self, db, user):
+        from selko.services.calendars import get_all_day_policy_and_timezone
+
+        policy, tz = get_all_day_policy_and_timezone(db, user)
+
+        assert tz == "America/New_York"
+        assert policy.mode.value == "all_day"
 
 
 class TestListCalendars:
     """Tests for listing Google calendars."""
 
-    def test_returns_calendars_with_selection_state(self):
+    def test_returns_calendars_with_selection_state(self, db, user):
         """Test that calendars are returned with selection state."""
-        mock_client = MagicMock()
+        _settings(db, user, target_calendar_id="cal-2")
 
         with patch("selko.services.calendars.get_credentials") as mock_creds, \
-             patch("selko.services.calendars.build") as mock_build, \
-             patch("selko.services.calendars.get_calendar_settings") as mock_settings:
+             patch("selko.services.calendars.build") as mock_build:
 
             mock_creds.return_value = MagicMock()
-            mock_settings.return_value = {"target_calendar_id": "cal-2"}
 
             mock_service = MagicMock()
             mock_build.return_value = mock_service
@@ -268,7 +334,7 @@ class TestListCalendars:
                 ]
             }
 
-            calendars = list_calendars(mock_client, "user-123")
+            calendars = list_calendars(db, user)
 
             assert len(calendars) == 2
             assert calendars[0]["id"] == "cal-1"
@@ -277,23 +343,20 @@ class TestListCalendars:
             assert calendars[1]["id"] == "cal-2"
             assert calendars[1]["is_selected"] is True
 
-    def test_raises_error_when_no_credentials(self):
+    def test_raises_error_when_no_credentials(self, db, user):
         """Test that error is raised when no credentials found."""
-        mock_client = MagicMock()
-
         with patch("selko.services.calendars.get_credentials") as mock_creds:
             mock_creds.return_value = None
 
             with pytest.raises(CalendarsError) as exc_info:
-                list_calendars(mock_client, "user-123")
+                list_calendars(db, user)
 
             assert "No Google Calendar credentials found" in str(exc_info.value)
 
-    def test_provider_401_marks_calendar_integration_expired(self):
+    def test_provider_401_marks_calendar_integration_expired(self, db, user):
         """Calendar-list token rejection must trigger reconnect UI state."""
         from googleapiclient.errors import HttpError
 
-        mock_client = MagicMock()
         mock_response = MagicMock(status=401, reason="Unauthorized")
 
         with (
@@ -307,94 +370,51 @@ class TestListCalendars:
             build.return_value.calendarList.return_value.list.return_value.execute.side_effect = HttpError(
                 mock_response, b"Unauthorized"
             )
-            list_calendars(mock_client, "user-123")
+            list_calendars(db, user)
 
         update_status.assert_called_once_with(
-            mock_client,
+            db,
             "google_calendar",
             "expired",
-            user_id="user-123",
+            user_id=user,
         )
 
 
 class TestSyncEventToCalendar:
     """Tests for syncing events to Google Calendar."""
 
-    def test_creates_new_calendar_event(self):
+    def test_creates_new_calendar_event(self, db, factory, user):
         """Test creating a new calendar event."""
-        mock_client = MagicMock()
-
-        # Setup event fetch
-        mock_event_result = MagicMock()
-        mock_event_result.data = {
-            "id": "event-123",
-            "user_id": "user-456",
-            "title": "Test Meeting",
-            "start_datetime": "2026-03-15T14:00:00Z",
-            "end_datetime": "2026-03-15T15:00:00Z",
-            "all_day": False,
-            "location": None,
-            "description": None,
-            "source_attribution": None,
-            "google_calendar_event_id": None,  # Not synced yet
-        }
+        event_id = _event(factory, user)
 
         with patch("selko.services.calendars.get_credentials") as mock_creds, \
-             patch("selko.services.calendars.build") as mock_build, \
-             patch("selko.services.calendars.get_calendar_settings") as mock_settings:
+             patch("selko.services.calendars.build") as mock_build:
 
             mock_creds.return_value = MagicMock()
-            mock_settings.return_value = {
-                "target_calendar_id": "primary",
-                "default_invitees": None,
-            }
-
             mock_service = MagicMock()
             mock_build.return_value = mock_service
+            mock_service.events.return_value.list.return_value.execute.return_value = {"items": []}
             mock_service.events.return_value.insert.return_value.execute.return_value = {
                 "id": "google-event-abc123"
             }
 
-            # Setup Supabase mocks
-            mock_table = MagicMock()
-            mock_client.table.return_value = mock_table
-
-            # For select (fetch event)
-            mock_select = MagicMock()
-            mock_table.select.return_value = mock_select
-            mock_select.eq.return_value.single.return_value.execute.return_value = mock_event_result
-
-            # For update
-            mock_update = MagicMock()
-            mock_table.update.return_value = mock_update
-            mock_update.eq.return_value.execute.return_value = MagicMock()
-
-            # For insert (sync log)
-            mock_insert = MagicMock()
-            mock_table.insert.return_value = mock_insert
-            mock_insert.execute.return_value = MagicMock()
-
-            result = sync_event_to_calendar(mock_client, "user-456", "event-123")
+            result = sync_event_to_calendar(db, user, event_id)
 
             assert result == "google-event-abc123"
             mock_service.events.return_value.insert.assert_called_once()
+            body = mock_service.events.return_value.insert.call_args.kwargs["body"]
+            assert body["summary"] == "Test Meeting"
+            assert body["extendedProperties"]["private"]["selko_event_id"] == event_id
 
-    def test_recovers_existing_event_before_retry_insert(self):
+        log = _sync_log(db, event_id)
+        assert [(r["action"], r["google_calendar_event_id"], r["user_id"]) for r in log] == [
+            ("created", "google-event-abc123", user)
+        ]
+        assert log[0]["snapshot_synced"]["summary"] == "Test Meeting"
+
+    def test_recovers_existing_event_before_retry_insert(self, db, factory, user):
         """An ambiguous earlier insert must not create a duplicate on retry."""
-        mock_client = MagicMock()
-        mock_event_result = MagicMock()
-        mock_event_result.data = {
-            "id": "event-123",
-            "user_id": "user-456",
-            "title": "Test Meeting",
-            "start_datetime": "2026-03-15T14:00:00Z",
-            "end_datetime": "2026-03-15T15:00:00Z",
-            "all_day": False,
-            "location": None,
-            "description": None,
-            "source_attribution": None,
-            "google_calendar_event_id": None,
-        }
+        event_id = _event(factory, user)
 
         with (
             patch(
@@ -402,13 +422,6 @@ class TestSyncEventToCalendar:
                 return_value=MagicMock(),
             ),
             patch("selko.services.calendars.build") as mock_build,
-            patch(
-                "selko.services.calendars.get_calendar_settings",
-                return_value={
-                    "target_calendar_id": "primary",
-                    "default_invitees": None,
-                },
-            ),
         ):
             mock_service = MagicMock()
             mock_build.return_value = mock_service
@@ -422,333 +435,204 @@ class TestSyncEventToCalendar:
                 "id": "google-recovered-123"
             }
 
-            mock_table = MagicMock()
-            mock_client.table.return_value = mock_table
-            mock_table.select.return_value.eq.return_value.single.return_value.execute.return_value = (
-                mock_event_result
-            )
-            mock_table.update.return_value.eq.return_value.execute.return_value = (
-                MagicMock()
-            )
-            mock_table.insert.return_value.execute.return_value = MagicMock()
-
-            result = sync_event_to_calendar(
-                mock_client, "user-456", "event-123"
-            )
+            result = sync_event_to_calendar(db, user, event_id)
 
         assert result == "google-recovered-123"
         mock_service.events.return_value.list.assert_called_once_with(
             calendarId="primary",
-            privateExtendedProperty="selko_event_id=event-123",
+            privateExtendedProperty=f"selko_event_id={event_id}",
             showDeleted=False,
             maxResults=2,
         )
         mock_service.events.return_value.insert.assert_not_called()
         mock_service.events.return_value.update.assert_called_once()
+        assert [r["action"] for r in _sync_log(db, event_id)] == ["updated"]
 
-    def test_updates_existing_calendar_event(self):
+    def test_updates_existing_calendar_event(self, db, factory, user):
         """Test updating an existing calendar event."""
-        mock_client = MagicMock()
-
-        # Setup event with existing Google Calendar event ID
-        mock_event_result = MagicMock()
-        mock_event_result.data = {
-            "id": "event-123",
-            "user_id": "user-456",
-            "title": "Updated Meeting",
-            "start_datetime": "2026-03-15T14:00:00Z",
-            "end_datetime": "2026-03-15T16:00:00Z",  # Changed
-            "all_day": False,
-            "location": "New Room",
-            "description": None,
-            "source_attribution": None,
-            "google_calendar_event_id": "google-existing-123",  # Already synced
-        }
+        event_id = _event(
+            factory, user, title="Updated Meeting", location="New Room",
+            end_datetime="2026-03-15T16:00:00.000000Z",
+            google_calendar_event_id="google-existing-123",
+        )
 
         with patch("selko.services.calendars.get_credentials") as mock_creds, \
-             patch("selko.services.calendars.build") as mock_build, \
-             patch("selko.services.calendars.get_calendar_settings") as mock_settings:
+             patch("selko.services.calendars.build") as mock_build:
 
             mock_creds.return_value = MagicMock()
-            mock_settings.return_value = {
-                "target_calendar_id": "primary",
-                "default_invitees": None,
-            }
-
             mock_service = MagicMock()
             mock_build.return_value = mock_service
-
-            # Existing event get
             mock_service.events.return_value.get.return_value.execute.return_value = {
                 "id": "google-existing-123",
                 "summary": "Old Title",
             }
-
-            # Update
             mock_service.events.return_value.update.return_value.execute.return_value = {
                 "id": "google-existing-123"
             }
 
-            # Setup Supabase mocks
-            mock_table = MagicMock()
-            mock_client.table.return_value = mock_table
-
-            mock_select = MagicMock()
-            mock_table.select.return_value = mock_select
-            mock_select.eq.return_value.single.return_value.execute.return_value = mock_event_result
-
-            mock_update = MagicMock()
-            mock_table.update.return_value = mock_update
-            mock_update.eq.return_value.execute.return_value = MagicMock()
-
-            mock_insert = MagicMock()
-            mock_table.insert.return_value = mock_insert
-            mock_insert.execute.return_value = MagicMock()
-
-            result = sync_event_to_calendar(mock_client, "user-456", "event-123")
+            result = sync_event_to_calendar(db, user, event_id)
 
             assert result == "google-existing-123"
             mock_service.events.return_value.update.assert_called_once()
+            body = mock_service.events.return_value.update.call_args.kwargs["body"]
+            assert body["summary"] == "Updated Meeting"
+            assert body["location"] == "New Room"
 
-    def test_recreates_deleted_calendar_event(self):
+    def test_recreates_deleted_calendar_event(self, db, factory, user):
         """Test that deleted calendar events are recreated."""
-        mock_client = MagicMock()
+        from googleapiclient.errors import HttpError
 
-        mock_event_result = MagicMock()
-        mock_event_result.data = {
-            "id": "event-123",
-            "user_id": "user-456",
-            "title": "Meeting",
-            "start_datetime": "2026-03-15T14:00:00Z",
-            "end_datetime": "2026-03-15T15:00:00Z",
-            "all_day": False,
-            "location": None,
-            "description": None,
-            "source_attribution": None,
-            "google_calendar_event_id": "google-deleted-123",  # Was synced but deleted
-        }
+        event_id = _event(factory, user, google_calendar_event_id="google-deleted-123")
 
         with patch("selko.services.calendars.get_credentials") as mock_creds, \
-             patch("selko.services.calendars.build") as mock_build, \
-             patch("selko.services.calendars.get_calendar_settings") as mock_settings:
-
-            from googleapiclient.errors import HttpError
+             patch("selko.services.calendars.build") as mock_build:
 
             mock_creds.return_value = MagicMock()
-            mock_settings.return_value = {
-                "target_calendar_id": "primary",
-                "default_invitees": None,
-            }
-
             mock_service = MagicMock()
             mock_build.return_value = mock_service
-
-            # Get returns 404 (deleted)
             mock_resp = MagicMock()
             mock_resp.status = 404
             mock_service.events.return_value.get.return_value.execute.side_effect = HttpError(
                 mock_resp, b"Not found"
             )
-
-            # Insert creates new
             mock_service.events.return_value.insert.return_value.execute.return_value = {
                 "id": "google-new-456"
             }
 
-            # Setup Supabase mocks
-            mock_table = MagicMock()
-            mock_client.table.return_value = mock_table
-
-            mock_select = MagicMock()
-            mock_table.select.return_value = mock_select
-            mock_select.eq.return_value.single.return_value.execute.return_value = mock_event_result
-
-            mock_update = MagicMock()
-            mock_table.update.return_value = mock_update
-            mock_update.eq.return_value.execute.return_value = MagicMock()
-
-            mock_insert = MagicMock()
-            mock_table.insert.return_value = mock_insert
-            mock_insert.execute.return_value = MagicMock()
-
-            result = sync_event_to_calendar(mock_client, "user-456", "event-123")
+            result = sync_event_to_calendar(db, user, event_id)
 
             assert result == "google-new-456"
             mock_service.events.return_value.insert.assert_called_once()
+        assert [r["action"] for r in _sync_log(db, event_id)] == ["created"]
 
-    def test_marks_event_as_sync_failed_on_error(self):
-        """Test that event is marked as sync_failed on error."""
-        mock_client = MagicMock()
-
-        mock_event_result = MagicMock()
-        mock_event_result.data = {
-            "id": "event-123",
-            "user_id": "user-456",
-            "title": "Meeting",
-            "start_datetime": "2026-03-15T14:00:00Z",
-            "end_datetime": "2026-03-15T15:00:00Z",
-            "all_day": False,
-            "location": None,
-            "description": None,
-            "source_attribution": None,
-            "google_calendar_event_id": None,
-        }
+    def test_failure_leaves_event_and_log_untouched(self, db, factory, user):
+        """A failed write changes nothing locally: the worker's fenced call owns failure state."""
+        event_id = _event(factory, user)
+        before = factory.row("events", event_id)
 
         with patch("selko.services.calendars.get_credentials") as mock_creds, \
-             patch("selko.services.calendars.build") as mock_build, \
-             patch("selko.services.calendars.get_calendar_settings") as mock_settings:
+             patch("selko.services.calendars.build") as mock_build:
 
             mock_creds.return_value = MagicMock()
-            mock_settings.return_value = {
-                "target_calendar_id": "primary",
-                "default_invitees": None,
-            }
-
             mock_service = MagicMock()
             mock_build.return_value = mock_service
+            mock_service.events.return_value.list.return_value.execute.return_value = {"items": []}
             mock_service.events.return_value.insert.return_value.execute.side_effect = Exception(
                 "API Error"
             )
 
-            # Setup Supabase mocks
-            mock_table = MagicMock()
-            mock_client.table.return_value = mock_table
-
-            mock_select = MagicMock()
-            mock_table.select.return_value = mock_select
-            mock_select.eq.return_value.single.return_value.execute.return_value = mock_event_result
-
-            mock_update = MagicMock()
-            mock_table.update.return_value = mock_update
-            mock_update.eq.return_value.execute.return_value = MagicMock()
-
             with pytest.raises(CalendarsError):
-                sync_event_to_calendar(mock_client, "user-456", "event-123")
+                sync_event_to_calendar(db, user, event_id)
 
-            mock_table.update.assert_not_called()
+        assert factory.row("events", event_id) == before
+        assert _sync_log(db, event_id) == []
 
-    def test_provider_401_marks_calendar_integration_expired(self):
+    def test_refuses_another_users_event(self, db, factory, user):
+        other = factory.user()
+        event_id = _event(factory, other)
+
+        with patch("selko.services.calendars.get_credentials", return_value=MagicMock()), \
+             patch("selko.services.calendars.build") as mock_build:
+            with pytest.raises(CalendarsError):
+                sync_event_to_calendar(db, user, event_id)
+
+        mock_build.return_value.events.return_value.insert.assert_not_called()
+
+    def test_provider_401_marks_calendar_integration_expired(self, db, factory, user):
         """A direct Google API token rejection must trigger reconnect UI state."""
         from googleapiclient.errors import HttpError
 
-        mock_client = MagicMock()
-        mock_event_result = MagicMock(data={
-            "id": "event-123",
-            "user_id": "user-456",
-            "title": "Meeting",
-            "start_datetime": "2026-03-15T14:00:00Z",
-            "end_datetime": "2026-03-15T15:00:00Z",
-            "all_day": False,
-            "location": None,
-            "description": None,
-            "source_attribution": None,
-            "google_calendar_event_id": None,
-        })
-        mock_table = MagicMock()
-        mock_client.table.return_value = mock_table
-        mock_table.select.return_value.eq.return_value.single.return_value.execute.return_value = mock_event_result
+        event_id = _event(factory, user)
         mock_response = MagicMock(status=401, reason="Unauthorized")
 
         with (
             patch("selko.services.calendars.get_credentials", return_value=MagicMock()),
-            patch(
-                "selko.services.calendars.get_calendar_settings",
-                return_value={"target_calendar_id": "primary"},
-            ),
             patch("selko.services.calendars.build") as build,
             patch(
                 "selko.services.calendars.update_integration_status"
             ) as update_status,
             pytest.raises(CalendarsError),
         ):
+            build.return_value.events.return_value.list.return_value.execute.return_value = {"items": []}
             build.return_value.events.return_value.insert.return_value.execute.side_effect = HttpError(
                 mock_response, b"Unauthorized"
             )
-            sync_event_to_calendar(mock_client, "user-456", "event-123")
+            sync_event_to_calendar(db, user, event_id)
 
         update_status.assert_called_once_with(
-            mock_client,
+            db,
             "google_calendar",
             "expired",
-            user_id="user-456",
+            user_id=user,
         )
 
 
-@pytest.mark.skip(reason="inline cancellation was removed; cancellation is worker-owned")
-class TestRemovedInlineCancellation:
-    """Tests for cancelling calendar events."""
+class TestCancelEventToCalendar:
+    """The worker-owned cancellation write (replaces the removed inline cancellation)."""
 
-    def test_prefixes_title_with_cancelled(self):
-        """Test that title is prefixed with CANCELLED:."""
-        mock_client = MagicMock()
+    def test_prefixes_title_with_cancelled_once(self, db, factory, user):
+        event_id = _event(factory, user, title="Meeting", google_calendar_event_id="g-1")
 
-        mock_event_result = MagicMock()
-        mock_event_result.data = {
-            "id": "event-123",
-            "title": "Meeting",
-            "google_calendar_event_id": None,
-        }
+        with patch("selko.services.calendars.get_credentials", return_value=MagicMock()), \
+             patch("selko.services.calendars.build") as mock_build:
+            service = mock_build.return_value
+            service.events.return_value.get.return_value.execute.return_value = {
+                "id": "g-1", "summary": "Meeting", "etag": "e1",
+            }
+            cancel_event_to_calendar(db, user, event_id)
+            body = service.events.return_value.update.call_args.kwargs["body"]
+            assert body["summary"] == "CANCELLED: Meeting"
 
-        mock_table = MagicMock()
-        mock_client.table.return_value = mock_table
+            service.events.return_value.get.return_value.execute.return_value = {
+                "id": "g-1", "summary": "CANCELLED: Meeting", "etag": "e2",
+            }
+            _set_title(db, event_id, "CANCELLED: Meeting")
+            cancel_event_to_calendar(db, user, event_id)
+            body = service.events.return_value.update.call_args.kwargs["body"]
+            assert body["summary"] == "CANCELLED: Meeting"
 
-        mock_select = MagicMock()
-        mock_table.select.return_value = mock_select
-        mock_select.eq.return_value.single.return_value.execute.return_value = mock_event_result
+        # Each cancellation's audit row is kept. Postgres's action domain lacked
+        # 'cancelled', so every one was refused and the error swallowed.
+        assert [r["action"] for r in _sync_log(db, event_id)] == ["cancelled", "cancelled"]
 
-        mock_update = MagicMock()
-        mock_table.update.return_value = mock_update
-        mock_update.eq.return_value.execute.return_value = MagicMock()
+    def test_delete_remote_deletes_and_logs(self, db, factory, user):
+        event_id = _event(factory, user, google_calendar_event_id="g-2")
 
-        cancel_event_to_calendar(mock_client, "user-456", "event-123")
+        with patch("selko.services.calendars.get_credentials", return_value=MagicMock()), \
+             patch("selko.services.calendars.build") as mock_build:
+            service = mock_build.return_value
+            service.events.return_value.get.return_value.execute.return_value = {"id": "g-2"}
+            cancel_event_to_calendar(db, user, event_id, delete_remote=True)
+            service.events.return_value.delete.assert_called_once()
 
-        # Verify update was called with CANCELLED prefix
-        update_calls = mock_table.update.call_args_list
-        assert len(update_calls) > 0
-        first_call_args = update_calls[0][0][0]
-        assert "CANCELLED: Meeting" in first_call_args.get("title", "")
+        log = _sync_log(db, event_id)
+        assert [r["action"] for r in log] == ["deleted"]
+        assert log[0]["snapshot_synced"] == {"deleted_google_event_id": "g-2"}
 
-    def test_does_not_double_prefix(self):
-        """Test that already-cancelled events don't get double prefix."""
-        mock_client = MagicMock()
+    def test_local_only_event_touches_no_calendar(self, db, factory, user):
+        event_id = _event(factory, user)
 
-        mock_event_result = MagicMock()
-        mock_event_result.data = {
-            "id": "event-123",
-            "title": "CANCELLED: Meeting",
-            "google_calendar_event_id": None,
-        }
+        with patch("selko.services.calendars.build") as mock_build:
+            cancel_event_to_calendar(db, user, event_id)
 
-        mock_table = MagicMock()
-        mock_client.table.return_value = mock_table
+        mock_build.assert_not_called()
+        assert _sync_log(db, event_id) == []
 
-        mock_select = MagicMock()
-        mock_table.select.return_value = mock_select
-        mock_select.eq.return_value.single.return_value.execute.return_value = mock_event_result
 
-        mock_update = MagicMock()
-        mock_table.update.return_value = mock_update
-        mock_update.eq.return_value.execute.return_value = MagicMock()
-
-        cancel_event_to_calendar(mock_client, "user-456", "event-123")
-
-        # Should not add another CANCELLED prefix
-        # The function should short-circuit when title already has prefix
+def _set_title(db, event_id, title):
+    with db.write() as tx:
+        tx.execute("UPDATE events SET title = ? WHERE id = ?", (title, event_id))
 
 
 class TestFetchCalendarEventsForDateRange:
     """Tests for Google Calendar read-back."""
 
-    def test_fetches_events_successfully(self):
+    def test_fetches_events_successfully(self, db, user):
         """Test successful GCal events fetch."""
-        mock_client = MagicMock()
-
         with patch("selko.services.calendars.get_credentials") as mock_creds, \
-             patch("selko.services.calendars.build") as mock_build, \
-             patch("selko.services.calendars.get_calendar_settings") as mock_settings:
+             patch("selko.services.calendars.build") as mock_build:
 
             mock_creds.return_value = MagicMock()
-            mock_settings.return_value = {"target_calendar_id": "primary"}
 
             mock_service = MagicMock()
             mock_build.return_value = mock_service
@@ -760,7 +644,7 @@ class TestFetchCalendarEventsForDateRange:
             }
 
             result = fetch_calendar_events_for_date_range(
-                mock_client, "user-123",
+                db, user,
                 "2026-03-15T00:00:00Z", "2026-03-15T23:59:59Z"
             )
 
@@ -777,37 +661,43 @@ class TestFetchCalendarEventsForDateRange:
                 timeZone="America/New_York",
             )
 
-    def test_returns_empty_no_credentials(self):
-        """Test that missing credentials return empty list."""
-        mock_client = MagicMock()
+    def test_reads_the_stored_target_calendar_and_timezone(self, db, user):
+        _settings(db, user, target_calendar_id="family@group", timezone="Europe/Helsinki")
 
+        with patch("selko.services.calendars.get_credentials", return_value=MagicMock()), \
+             patch("selko.services.calendars.build") as mock_build:
+            mock_build.return_value.events.return_value.list.return_value.execute.return_value = {"items": []}
+            fetch_calendar_events_for_date_range(db, user, "a", "b")
+
+        kwargs = mock_build.return_value.events.return_value.list.call_args.kwargs
+        assert kwargs["calendarId"] == "family@group"
+        assert kwargs["timeZone"] == "Europe/Helsinki"
+
+    def test_returns_empty_no_credentials(self, db, user):
+        """Test that missing credentials return empty list."""
         with patch("selko.services.calendars.get_credentials") as mock_creds:
             mock_creds.return_value = None
 
             result = fetch_calendar_events_for_date_range(
-                mock_client, "user-123",
+                db, user,
                 "2026-03-15T00:00:00Z", "2026-03-15T23:59:59Z"
             )
 
         assert result == []
 
-    def test_returns_empty_on_api_error(self):
+    def test_returns_empty_on_api_error(self, db, user):
         """Test that API errors return empty list (non-fatal)."""
-        mock_client = MagicMock()
-
         with patch("selko.services.calendars.get_credentials") as mock_creds, \
-             patch("selko.services.calendars.build") as mock_build, \
-             patch("selko.services.calendars.get_calendar_settings") as mock_settings:
+             patch("selko.services.calendars.build") as mock_build:
 
             mock_creds.return_value = MagicMock()
-            mock_settings.return_value = {"target_calendar_id": "primary"}
 
             mock_service = MagicMock()
             mock_build.return_value = mock_service
             mock_service.events.return_value.list.return_value.execute.side_effect = Exception("API error")
 
             result = fetch_calendar_events_for_date_range(
-                mock_client, "user-123",
+                db, user,
                 "2026-03-15T00:00:00Z", "2026-03-15T23:59:59Z"
             )
 
@@ -945,102 +835,172 @@ class TestClassifyCalendarError:
 class TestSyncEventToCalendarOAuthScopeRequired:
     """An insufficient-scope 403 must be tagged distinctly from a plain sync failure."""
 
-    def test_marks_integration_expired_and_tags_event_without_dead_lettering(self):
-        mock_client = MagicMock()
-        mock_event_result = MagicMock(data={
-            "id": "event-123",
-            "user_id": "user-456",
-            "title": "Meeting",
-            "start_datetime": "2026-03-15T14:00:00Z",
-            "end_datetime": "2026-03-15T15:00:00Z",
-            "all_day": False,
-            "location": None,
-            "description": None,
-            "source_attribution": None,
-            "google_calendar_event_id": None,
-        })
-        mock_table = MagicMock()
-        mock_client.table.return_value = mock_table
-        mock_table.select.return_value.eq.return_value.single.return_value.execute.return_value = mock_event_result
+    def test_marks_integration_expired_and_tags_event_without_dead_lettering(self, db, factory, user):
+        event_id = _event(factory, user)
+        before = factory.row("events", event_id)
 
         with (
             patch("selko.services.calendars.get_credentials", return_value=MagicMock()),
-            patch(
-                "selko.services.calendars.get_calendar_settings",
-                return_value={"target_calendar_id": "primary"},
-            ),
             patch("selko.services.calendars.build") as build,
             patch(
                 "selko.services.calendars.update_integration_status"
             ) as update_status,
-            pytest.raises(CalendarsError),
+            pytest.raises(CalendarsError) as exc_info,
         ):
+            build.return_value.events.return_value.list.return_value.execute.return_value = {"items": []}
             build.return_value.events.return_value.insert.return_value.execute.side_effect = (
                 _http_error(403, reason="insufficientPermissions")
             )
-            sync_event_to_calendar(mock_client, "user-456", "event-123")
+            sync_event_to_calendar(db, user, event_id)
 
+        assert exc_info.value.classification.code == "oauth_scope_required"
         update_status.assert_called_once_with(
-            mock_client,
+            db,
             "google_calendar",
             "expired",
-            user_id="user-456",
+            user_id=user,
         )
-        # The worker's fenced calendar-work RPC owns local failure state;
+        # The worker's fenced calendar-work call owns local failure state;
         # this provider adapter only expires the integration capability.
-        mock_table.update.assert_not_called()
+        assert factory.row("events", event_id) == before
+
+
+def _blocked_item(db, factory, user_id):
+    from selko.db.codec import new_id
+
+    event_id = factory.event(user_id, review_status="active")
+    factory._insert("calendar_work_items", {
+        "id": new_id(), "event_id": event_id, "user_id": user_id, "action": "upsert",
+        "generation": 1, "status": "failed", "desired_event": {"title": "x"},
+        "failure_code": "oauth_required",
+    })
+    return event_id
 
 
 class TestRequeueCalendarRecoveryBatch:
-    """Pool wrapper for the calendar recovery worker's tagging step."""
+    """Database wrapper for the calendar recovery worker's tagging step."""
 
-    def test_returns_tagged_count_from_rpc(self, fake_pg_pool):
+    def test_tags_the_claimed_recoverys_blocked_events(self, db, factory):
         import asyncio
 
-        fake_pg_pool.rows.append(42)
+        from selko.db import recovery as db_recovery
+
+        user_id = factory.user()
+        event_id = _blocked_item(db, factory, user_id)
+        db_recovery.complete_integration_reauthorization(
+            db, user_id, "google_calendar", access_token="a", scopes=["calendar"]
+        )
+        claimed = db_recovery.claim_integration_recovery(db, "worker-1", lock_seconds=120)
 
         result = asyncio.run(requeue_calendar_recovery_batch(
-            fake_pg_pool, "recovery-1", "worker-1", batch_size=50
+            db, claimed["id"], "worker-1", batch_size=50
         ))
 
-        assert result == 42
-        sql, args = fake_pg_pool.calls[0]
-        assert "requeue_calendar_recovery_batch" in sql
-        assert args == ("recovery-1", "worker-1", 50)
+        assert result == 1
+        assert factory.row("events", event_id)["recovery_id"] == claimed["id"]
 
-    def test_wraps_rpc_failure(self, fake_pg_pool):
+    def test_lost_claim_returns_minus_one(self, db, factory):
         import asyncio
 
-        class Boom(RuntimeError):
-            pass
+        assert asyncio.run(requeue_calendar_recovery_batch(db, "no-such", "worker-1")) == -1
 
-        async def fail(*_args, **_kwargs):
-            raise Boom("boom")
-
-        fake_pg_pool.fetchval = fail
+    def test_wraps_database_failure(self, db):
+        import asyncio
 
         with pytest.raises(CalendarsError):
-            asyncio.run(requeue_calendar_recovery_batch(fake_pg_pool, "recovery-1", "worker-1"))
+            asyncio.run(requeue_calendar_recovery_batch(db, "recovery-1", "worker-1", batch_size=-1))
 
 
 class TestRefreshWaitingCalendarRecoveries:
-    """Pool wrapper for the calendar recovery worker's completion-check step."""
+    """Database wrapper for the calendar recovery worker's completion-check step."""
 
-    def test_returns_processed_count_from_rpc(self, fake_pg_pool):
+    def test_finalizes_a_drained_waiting_recovery(self, db, factory):
         import asyncio
 
-        fake_pg_pool.rows.append(5)
+        from selko.db import recovery as db_recovery
 
-        result = asyncio.run(refresh_waiting_calendar_recoveries(fake_pg_pool, batch_size=10))
+        user_id = factory.user()
+        db_recovery.complete_integration_reauthorization(
+            db, user_id, "google_calendar", access_token="a", scopes=["calendar"]
+        )
+        claimed = db_recovery.claim_integration_recovery(db, "worker-1", lock_seconds=120)
+        asyncio.run(requeue_calendar_recovery_batch(db, claimed["id"], "worker-1"))
 
-        assert result == 5
-        sql, args = fake_pg_pool.calls[0]
-        assert "refresh_waiting_calendar_recoveries" in sql
-        assert args == (10,)
+        result = asyncio.run(refresh_waiting_calendar_recoveries(db, batch_size=10))
 
-    def test_defaults_to_zero_when_rpc_returns_none(self, fake_pg_pool):
+        assert result == 1
+        assert factory.row("integration_recoveries", claimed["id"])["status"] == "completed"
+
+    def test_zero_when_nothing_is_waiting(self, db):
         import asyncio
 
-        fake_pg_pool.rows.append(None)
+        assert asyncio.run(refresh_waiting_calendar_recoveries(db)) == 0
 
-        assert asyncio.run(refresh_waiting_calendar_recoveries(fake_pg_pool)) == 0
+    def test_wraps_database_failure(self, db):
+        import asyncio
+
+        with pytest.raises(CalendarsError):
+            asyncio.run(refresh_waiting_calendar_recoveries(db, batch_size=-1))
+
+
+class TestCalendarsRoute:
+    """GET /calendars through the real dependencies and database; Google mocked."""
+
+    @pytest.fixture
+    def client(self, db):
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+
+        from selko.api.deps import get_current_user
+        from selko.api.routes import calendars as calendars_route
+        from selko.db.runtime import use_database
+
+        app = FastAPI()
+        app.include_router(calendars_route.router)
+        state = {}
+        app.dependency_overrides[get_current_user] = lambda: state["user"]
+        use_database(db)
+        try:
+            with TestClient(app) as test_client:
+                test_client.user_state = state
+                yield test_client
+        finally:
+            use_database(None)
+
+    @staticmethod
+    def _as(client, user_id):
+        from selko.api.deps import CurrentUser
+
+        client.user_state["user"] = CurrentUser(id=user_id, email=None, token="t")
+
+    def test_lists_the_callers_calendars_with_their_selection(self, db, client, user):
+        _settings(db, user, target_calendar_id="cal-2")
+        self._as(client, user)
+
+        with patch("selko.services.calendars.get_credentials", return_value=MagicMock()) as creds, \
+                patch("selko.services.calendars.build") as mock_build:
+            mock_build.return_value.calendarList.return_value.list.return_value.execute.return_value = {
+                "items": [
+                    {"id": "cal-1", "summary": "Primary", "primary": True},
+                    {"id": "cal-2", "summary": "Work", "primary": False},
+                ]
+            }
+            response = client.get("/calendars")
+
+        assert response.status_code == 200
+        assert response.json() == [
+            {"id": "cal-1", "name": "Primary", "is_primary": True, "is_selected": False,
+             "provider": "google_calendar"},
+            {"id": "cal-2", "name": "Work", "is_primary": False, "is_selected": True,
+             "provider": "google_calendar"},
+        ]
+        assert creds.call_args.args[0] is db
+        assert creds.call_args.args[1] == user
+
+    def test_no_calendar_connection_is_404(self, db, factory, client):
+        self._as(client, factory.user())
+
+        with patch("selko.services.calendars.get_credentials", return_value=None):
+            response = client.get("/calendars")
+
+        assert response.status_code == 404

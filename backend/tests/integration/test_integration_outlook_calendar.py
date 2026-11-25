@@ -1,47 +1,31 @@
-"""Migration 20261031000001 against a real database.
+"""Calendar routing with Google and Outlook side by side, on a real SQLite database.
 
-SQL that has never been executed has not been tested: these call the claim,
-recovery and reauthorization functions the migration redefines, with Google
-and Outlook integrations side by side.
+Ported from the migration 20261031000001 tests: the claim, recovery and
+reauthorization (`selko.db.calendar_work`, `selko.db.recovery`) and the
+worker's recovery wrapper (`services.calendars`), with Google and Outlook
+integrations side by side.
 """
 
 import pytest
 
+from selko.db import calendar_work
+from selko.db import integrations as db_integrations
+from selko.db import recovery as db_recovery
 from selko.services.calendars import requeue_calendar_recovery_batch
-from selko.services.events import claim_approved_event_for_sync
-from selko.services.integrations import (
-    claim_integration_recovery,
-    complete_integration_reauthorization,
-)
 
 OUTLOOK_CALENDAR_SCOPES = ["Mail.Read", "User.Read", "Calendars.ReadWrite"]
 
 
 @pytest.fixture
-def user_id(isolated_user):
-    return isolated_user["id"]
+def user_id(factory):
+    return factory.user()
 
 
-@pytest.fixture(autouse=True)
-def _cleanup(admin_client, user_id):
-    def clear():
-        admin_client.table("events").delete().eq("user_id", user_id).execute()
-        admin_client.table("integration_recoveries").delete().eq("user_id", user_id).execute()
-        admin_client.table("user_calendar_settings").delete().eq("user_id", user_id).execute()
-        admin_client.table("integrations").delete().eq("user_id", user_id).in_(
-            "provider", ["google_calendar", "outlook"]
-        ).execute()
-
-    clear()
-    yield
-    clear()
-
-
-def _connect(admin_client, user_id, provider, scopes):
-    complete_integration_reauthorization(
-        admin_client,
-        user_id=user_id,
-        provider=provider,
+def _connect(db, user_id, provider, scopes):
+    db_recovery.complete_integration_reauthorization(
+        db,
+        user_id,
+        provider,
         access_token="access",
         refresh_token="refresh",
         token_expiry=None,
@@ -50,145 +34,126 @@ def _connect(admin_client, user_id, provider, scopes):
     )
 
 
-def _approved_event(admin_client, user_id, google_calendar_event_id=None):
-    event = admin_client.table("events").insert({
-        "user_id": user_id,
-        "title": "Outlook calendar test event",
-        "start_datetime": "2026-11-05T14:00:00Z",
-        "review_status": "active",
-        "google_calendar_event_id": google_calendar_event_id,
-    }).execute().data[0]
-    admin_client.rpc("enqueue_calendar_work", {
-        "p_event_id": event["id"],
-        "p_user_id": user_id,
-        "p_action": "upsert",
-        "p_desired_event": {"title": event["title"]},
-    }).execute()
-    return event["id"]
+def _approved_event(db, factory, user_id, google_calendar_event_id=None):
+    event_id = factory.event(
+        user_id,
+        review_status="active",
+        title="Outlook calendar test event",
+        start_datetime="2026-11-05T14:00:00.000000Z",
+        google_calendar_event_id=google_calendar_event_id,
+    )
+    calendar_work.enqueue_calendar_work(
+        db, user_id, event_id, "upsert", {"title": "Outlook calendar test event"}
+    )
+    return event_id
 
 
-def _target(admin_client, user_id, calendar_id):
-    admin_client.table("user_calendar_settings").upsert({
-        "user_id": user_id, "target_calendar_id": calendar_id,
-    }).execute()
+def _target(db, user_id, calendar_id):
+    db_integrations.upsert_calendar_settings(db, user_id, {"target_calendar_id": calendar_id})
 
 
-async def _claim_for(pg_pool, user_id, providers=None):
-    """Claim until this user's item comes up; other suites may leave work."""
-    for _ in range(50):
-        event = await claim_approved_event_for_sync(pg_pool, "outlook-it", 60, providers=providers)
-        if event is None:
-            return None
-        if str(event["user_id"]) == str(user_id):
-            return event
-    return None
+def _claim(db, providers=None):
+    claimed = calendar_work.claim_calendar_work_item(db, "outlook-it", 60, providers=providers)
+    return None if claimed is None else claimed[0]
 
 
 @pytest.mark.integration
-@pytest.mark.development
 class TestClaimRoutesByProvider:
-    async def test_an_outlook_only_user_is_claimed_and_stamped_outlook(self, admin_client, user_id, pg_pool):
-        _connect(admin_client, user_id, "outlook", OUTLOOK_CALENDAR_SCOPES)
-        _approved_event(admin_client, user_id)
+    async def test_an_outlook_only_user_is_claimed_and_stamped_outlook(self, db, factory, user_id):
+        _connect(db, user_id, "outlook", OUTLOOK_CALENDAR_SCOPES)
+        _approved_event(db, factory, user_id)
 
-        claimed = await _claim_for(pg_pool, user_id)
+        claimed = _claim(db)
 
         assert claimed is not None
-        assert claimed["calendar_work_item_provider"] == "outlook"
+        assert claimed["provider"] == "outlook"
 
-    async def test_a_mail_only_outlook_grant_is_never_claimed(self, admin_client, user_id, pg_pool):
+    async def test_a_mail_only_outlook_grant_is_never_claimed(self, db, factory, user_id):
         """Claiming it would only fail on Graph; it waits for the reconnect."""
-        _connect(admin_client, user_id, "outlook", ["Mail.Read", "User.Read"])
-        event_id = _approved_event(admin_client, user_id)
+        _connect(db, user_id, "outlook", ["Mail.Read", "User.Read"])
+        event_id = _approved_event(db, factory, user_id)
 
-        assert await _claim_for(pg_pool, user_id) is None
-        item = admin_client.table("calendar_work_items").select("status,provider").eq(
-            "event_id", event_id
-        ).single().execute().data
-        assert item == {"status": "pending", "provider": None}
+        assert _claim(db) is None
+        item = db.query_one(
+            "SELECT status, provider FROM calendar_work_items WHERE event_id = ?", (event_id,))
+        assert (item["status"], item["provider"]) == ("pending", None)
 
         # Granting the calendar makes the very same item claimable.
-        _connect(admin_client, user_id, "outlook", OUTLOOK_CALENDAR_SCOPES)
-        claimed = await _claim_for(pg_pool, user_id)
-        assert claimed is not None and claimed["id"] == event_id
+        _connect(db, user_id, "outlook", OUTLOOK_CALENDAR_SCOPES)
+        claimed = _claim(db)
+        assert claimed is not None and claimed["event_id"] == event_id
 
-    async def test_the_target_calendar_chooses_the_provider(self, admin_client, user_id, pg_pool):
-        _connect(admin_client, user_id, "google_calendar", ["calendar"])
-        _connect(admin_client, user_id, "outlook", OUTLOOK_CALENDAR_SCOPES)
-        _target(admin_client, user_id, "outlook:AAMkCAL")
-        _approved_event(admin_client, user_id)
+    async def test_the_target_calendar_chooses_the_provider(self, db, factory, user_id):
+        _connect(db, user_id, "google_calendar", ["calendar"])
+        _connect(db, user_id, "outlook", OUTLOOK_CALENDAR_SCOPES)
+        _target(db, user_id, "outlook:AAMkCAL")
+        _approved_event(db, factory, user_id)
 
-        claimed = await _claim_for(pg_pool, user_id)
+        assert _claim(db)["provider"] == "outlook"
 
-        assert claimed["calendar_work_item_provider"] == "outlook"
+    async def test_an_event_already_in_google_stays_in_google(self, db, factory, user_id):
+        _connect(db, user_id, "google_calendar", ["calendar"])
+        _connect(db, user_id, "outlook", OUTLOOK_CALENDAR_SCOPES)
+        _target(db, user_id, "outlook:AAMkCAL")
+        _approved_event(db, factory, user_id, google_calendar_event_id="googleid123")
 
-    async def test_an_event_already_in_google_stays_in_google(self, admin_client, user_id, pg_pool):
-        _connect(admin_client, user_id, "google_calendar", ["calendar"])
-        _connect(admin_client, user_id, "outlook", OUTLOOK_CALENDAR_SCOPES)
-        _target(admin_client, user_id, "outlook:AAMkCAL")
-        _approved_event(admin_client, user_id, google_calendar_event_id="googleid123")
+        assert _claim(db)["provider"] == "google_calendar"
 
-        claimed = await _claim_for(pg_pool, user_id)
+    async def test_an_open_circuit_excludes_only_its_provider(self, db, factory, user_id):
+        _connect(db, user_id, "outlook", OUTLOOK_CALENDAR_SCOPES)
+        _approved_event(db, factory, user_id)
 
-        assert claimed["calendar_work_item_provider"] == "google_calendar"
-
-    async def test_an_open_circuit_excludes_only_its_provider(self, admin_client, user_id, pg_pool):
-        _connect(admin_client, user_id, "outlook", OUTLOOK_CALENDAR_SCOPES)
-        _approved_event(admin_client, user_id)
-
-        assert await _claim_for(pg_pool, user_id, providers=["google_calendar"]) is None
-        assert await _claim_for(pg_pool, user_id, providers=["outlook"]) is not None
+        assert _claim(db, providers=["google_calendar"]) is None
+        assert _claim(db, providers=["outlook"]) is not None
 
 
 @pytest.mark.integration
-@pytest.mark.development
 class TestRecoveryPerProvider:
-    async def test_a_mail_only_outlook_consent_opens_no_recovery(self, admin_client, user_id):
-        _connect(admin_client, user_id, "outlook", ["Mail.Read", "User.Read"])
-        rows = admin_client.table("integration_recoveries").select("id").eq("user_id", user_id).execute().data
+    async def test_a_mail_only_outlook_consent_opens_no_recovery(self, db, user_id):
+        _connect(db, user_id, "outlook", ["Mail.Read", "User.Read"])
+        rows = db.query("SELECT id FROM integration_recoveries WHERE user_id = ?", (user_id,))
         assert rows == []
 
-    async def test_an_outlook_calendar_consent_opens_a_recovery(self, admin_client, user_id):
-        _connect(admin_client, user_id, "outlook", OUTLOOK_CALENDAR_SCOPES)
-        rows = admin_client.table("integration_recoveries").select("provider,status").eq(
-            "user_id", user_id
-        ).execute().data
-        assert rows == [{"provider": "outlook", "status": "pending"}]
+    async def test_an_outlook_calendar_consent_opens_a_recovery(self, db, user_id):
+        _connect(db, user_id, "outlook", OUTLOOK_CALENDAR_SCOPES)
+        rows = db.query(
+            "SELECT provider, status FROM integration_recoveries WHERE user_id = ?", (user_id,))
+        assert [tuple(r) for r in rows] == [("outlook", "pending")]
 
-    async def test_reconnecting_requeues_parked_items_for_that_provider_only(
-        self, admin_client, user_id, pg_pool
-    ):
+    async def test_reconnecting_requeues_parked_items_for_that_provider_only(self, db, factory, user_id):
         """The recovery used to tag parked items and leave them parked forever."""
-        _connect(admin_client, user_id, "google_calendar", ["calendar"])
-        _connect(admin_client, user_id, "outlook", OUTLOOK_CALENDAR_SCOPES)
-        admin_client.table("integration_recoveries").delete().eq("user_id", user_id).execute()
+        _connect(db, user_id, "google_calendar", ["calendar"])
+        _connect(db, user_id, "outlook", OUTLOOK_CALENDAR_SCOPES)
+        with db.write() as tx:
+            tx.execute("DELETE FROM integration_recoveries WHERE user_id = ?", (user_id,))
 
-        outlook_event = _approved_event(admin_client, user_id, google_calendar_event_id="outlook:E1")
-        google_event = _approved_event(admin_client, user_id, google_calendar_event_id="googleid1")
-        admin_client.table("calendar_work_items").update({
-            "status": "blocked", "failure_code": "oauth_required", "attempts": 3,
-        }).in_("event_id", [outlook_event, google_event]).execute()
+        outlook_event = _approved_event(db, factory, user_id, google_calendar_event_id="outlook:E1")
+        google_event = _approved_event(db, factory, user_id, google_calendar_event_id="googleid1")
+        with db.write() as tx:
+            tx.execute(
+                "UPDATE calendar_work_items SET status = 'blocked', failure_code = 'oauth_required', "
+                "attempts = 3 WHERE event_id IN (?, ?)",
+                (outlook_event, google_event),
+            )
 
-        _connect(admin_client, user_id, "outlook", OUTLOOK_CALENDAR_SCOPES)
-        recovery = None
-        for _ in range(50):
-            recovery = await claim_integration_recovery(pg_pool, "outlook-it", lock_seconds=120)
-            if recovery is None or str(recovery["user_id"]) == str(user_id):
-                break
+        _connect(db, user_id, "outlook", OUTLOOK_CALENDAR_SCOPES)
+        recovery = db_recovery.claim_integration_recovery(db, "outlook-it", lock_seconds=120)
         assert recovery is not None and recovery["provider"] == "outlook"
 
-        requeued = await requeue_calendar_recovery_batch(pg_pool, recovery["id"], "outlook-it")
+        requeued = await requeue_calendar_recovery_batch(db, recovery["id"], "outlook-it")
         assert requeued == 1
 
         items = {
             row["event_id"]: row
-            for row in admin_client.table("calendar_work_items").select(
-                "event_id,status,attempts,max_attempts"
-            ).in_("event_id", [outlook_event, google_event]).execute().data
+            for row in db.query(
+                "SELECT event_id, status, attempts, max_attempts FROM calendar_work_items "
+                "WHERE event_id IN (?, ?)",
+                (outlook_event, google_event),
+            )
         }
         assert items[outlook_event]["status"] == "pending"
         assert items[outlook_event]["attempts"] < items[outlook_event]["max_attempts"]
         assert items[google_event]["status"] == "blocked"
 
-        claimed = await _claim_for(pg_pool, user_id)
-        assert claimed is not None and claimed["id"] == outlook_event
+        claimed = _claim(db)
+        assert claimed is not None and claimed["event_id"] == outlook_event

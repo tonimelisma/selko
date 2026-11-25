@@ -5,10 +5,9 @@ inside the FastAPI process (the async monolith this deployment uses) or in a
 standalone worker process. Keeping the wiring in one place means the two entry
 points cannot drift apart.
 
-Running in-process is safe because ownership is enforced by database leases,
-not by process topology: `claim_due_email_sync` selects `FOR UPDATE SKIP
-LOCKED` and refuses any integration whose lease is still live, so extra
-instances contend harmlessly instead of double-writing.
+Ownership is enforced by database leases: `claim_due_email_sync` runs in the
+single writer transaction and refuses any integration whose lease is still
+live, so concurrent loops contend harmlessly instead of double-writing.
 
 A watchdog supervises every spawned task: any task that ends ``done()`` while
 the runtime is not stopping is logged with its traceback and respawned from its
@@ -26,9 +25,10 @@ import time
 from datetime import datetime, timezone
 from typing import Any
 
-from supabase import Client
-
 from selko.config import Config
+from selko.db import email_sync
+from selko.db.connection import Database
+from selko.db.health import health_work_state
 from selko.services import calendar_mirror, events
 from selko.services.calendar_providers import outlook_scopes_allow_calendar
 from selko.services.egress import log_egress_summary
@@ -62,7 +62,7 @@ def build_notifier(config: Config) -> ResendOperationalNotifier | None:
 class IngestionRuntime:
     """Owns the v2 task set and shuts it down without dropping leases."""
 
-    def __init__(self, client: Client, config: Config, *, pg_pool=None, work_listener=None, instance_id: str | None = None):
+    def __init__(self, client: Database, config: Config, *, pg_pool=None, work_listener=None, instance_id: str | None = None):
         self.client = client
         self.config = config
         self.pg_pool = pg_pool
@@ -211,15 +211,7 @@ class IngestionRuntime:
             except asyncio.TimeoutError:
                 pass
             try:
-                rows = (
-                    self.client.table("integrations")
-                    .select("id,user_id,provider,scopes")
-                    .in_("provider", ["google_calendar", "outlook"])
-                    .eq("status", "active")
-                    .execute()
-                    .data
-                    or []
-                )
+                rows = await self.client.run(email_sync.active_calendar_integrations, self.client)
             except Exception:
                 logger.exception("Could not list calendars to mirror")
                 continue
@@ -411,12 +403,9 @@ class IngestionRuntime:
             "stale_sync_runs": None,
         }
         try:
-            result = self.client.rpc(
-                "health_work_state",
-                {"p_warning_seconds": int(self.config.email_health_warning_seconds or 1800)},
-            ).execute()
-            data = getattr(result, "data", None)
-            row = (data or [None])[0] if isinstance(data, list) else data
+            row = health_work_state(
+                self.client, int(self.config.email_health_warning_seconds or 1800)
+            )
             if not isinstance(row, dict):
                 raise ValueError("health_work_state returned no row")
 

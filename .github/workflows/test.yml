@@ -4,13 +4,8 @@ name: Tests
 # - Markdown-only changes: No test jobs run
 # - Backend changes: Unit tests run
 # - Frontend changes: Handled by frontend-tests.yml (separate workflow)
-# - Backend/Supabase changes on main: staging deploy + Tier 2 (only while the
-#   staging project is running -- it is paused by owner decision, and the job
-#   says so instead of failing every push)
-#
-# Production deploys, schema checks against hosted projects, the cutover
-# rehearsal, the review-queue repair, and an explicit Tier 2 run are operations of ops.yml, started by repository_dispatch through
-# scripts/ops.py.
+# - The image (build, checks under the server's limits, push and sign on
+#   main): image.yml
 
 on:
   push:
@@ -27,7 +22,6 @@ jobs:
       pull-requests: read
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
-      supabase: ${{ steps.filter.outputs.supabase }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4
@@ -36,12 +30,11 @@ jobs:
           filters: |
             backend:
               - 'backend/**'
-              - 'scripts/seed_test_tokens.py'
+              - 'selko_import/**'
+              - 'scripts/seed_screenshot_data.py'
               - 'pyproject.toml'
               - 'uv.lock'
               - '.github/workflows/test.yml'
-            supabase:
-              - 'supabase/**'
 
   unit-tests:
     name: Unit Tests
@@ -73,114 +66,7 @@ jobs:
           uv sync --extra test
           uv pip install pytest-xdist
 
-      - name: Run unit tests
-        run: uv run pytest backend/tests/ -m "not integration" -v --tb=short -n auto
-
-  deploy-staging:
-    name: Deploy to Staging
-    runs-on: ubuntu-latest
-    # Only run on main branch pushes when backend/supabase files changed
-    # Note: always() required because skipped dependencies would fail this job otherwise
-    # We check that required jobs either succeeded or were skipped (not failed)
-    if: |
-      always() &&
-      github.event_name == 'push' && github.ref == 'refs/heads/main' &&
-      (needs.changes.outputs.backend == 'true' || needs.changes.outputs.supabase == 'true') &&
-      (needs.unit-tests.result == 'success' || needs.unit-tests.result == 'skipped')
-    needs: [changes, unit-tests]
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-
-      # Staging is paused by owner decision. A paused project used to fail
-      # `supabase link` on every backend push, so main was red for a reason no
-      # commit could fix -- and a permanently red signal is ignored as fast as
-      # a permanently green one. Paused is now reported as exactly that, and
-      # nothing below runs; a failure to *ask* (missing token, API down) is
-      # still red. `scripts/ops.py dispatch staging-tier2` is the explicit
-      # Tier 2 run, and there a paused project is red.
-      - name: Is staging running?
-        id: staging
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-        run: |
-          set +e
-          ./scripts/supabase-project-status.sh lxmysergoeaegxlyfzwk
-          rc=$?
-          set -e
-          case "$rc" in
-            0) echo "active=true" >>"$GITHUB_OUTPUT" ;;
-            3) echo "active=false" >>"$GITHUB_OUTPUT"
-               echo "::warning::Staging is paused (owner decision): Tier 2 was NOT run for this push." ;;
-            *) exit 1 ;;
-          esac
-
-      - name: Setup Supabase CLI
-        if: steps.staging.outputs.active == 'true'
-        uses: supabase/setup-cli@689adcfb80d947100a1eab127289b97d1fb07b13 # v3
-        with:
-          version: 2.118.0  # pinned: v3 changed db push to target the local stack by default
-
-      - name: Link to Staging Supabase
-        if: steps.staging.outputs.active == 'true'
-        run: supabase link --project-ref lxmysergoeaegxlyfzwk
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-
-      - name: Install uv for the staging verifier
-        if: steps.staging.outputs.active == 'true'
-        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
-
-      - name: Set up Python
-        if: steps.staging.outputs.active == 'true'
-        run: uv python install 3.14
-
-      - name: Install verifier dependencies
-        if: steps.staging.outputs.active == 'true'
-        run: uv sync --extra test
-
-      # The worker drill (STAGING_REQUIRE_WORKERS=1) needs the
-      # STAGING_SUPABASE_DB_URL secret and runs in ops.yml's staging-tier2
-      # operation; this push-triggered run deploys and checks the revision.
-      # verify-staging.sh also runs the staging integration suite, serially
-      # (the old parallel integration-tests-staging job raced on shared rows).
-      - name: Deploy staging and verify the deployed revision
-        if: steps.staging.outputs.active == 'true'
-        run: ./scripts/verify-staging.sh
-        env:
-          ENVIRONMENT: staging
-          STAGING_RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_APP_STAGING }}
-          STAGING_API_BASE_URL: https://selko.onrender.com
-          STAGING_APPLY_MIGRATIONS: "1"
-          STAGING_REQUIRE_WORKERS: "0"
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_DB_PASSWORD: ${{ secrets.STAGING_SUPABASE_DB_PASSWORD }}
-          SUPABASE_DB_URL: ${{ secrets.STAGING_SUPABASE_DB_URL }}
-          SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
-          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.STAGING_SUPABASE_PUBLISHABLE_KEY }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.STAGING_SUPABASE_SERVICE_ROLE_KEY }}
-          TEST_USER_EMAIL: ${{ secrets.STAGING_TEST_USER_EMAIL }}
-          TEST_USER_PASSWORD: ${{ secrets.STAGING_TEST_USER_PASSWORD }}
-          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
-          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
-
-      - name: State what this job did not verify
-        if: always()
-        env:
-          JOB_STATUS: ${{ job.status }}
-          STAGING_ACTIVE: ${{ steps.staging.outputs.active }}
-        run: |
-          # Runs on failure too, so it must not claim what a failed step skipped.
-          if [ "$STAGING_ACTIVE" = "false" ]; then
-            echo "Verified here: NOTHING. Staging is paused (owner decision)."
-          elif [ "$JOB_STATUS" = "success" ]; then
-            echo "Verified here: staging migrations applied, deploy hook fired,"
-            echo "  /health served the pushed revision, root health assertion."
-          else
-            echo "Verified here: NOTHING. An earlier step ended '$JOB_STATUS'; see"
-            echo "  its log. Staging may not have this revision at all."
-          fi
-          echo "NOT verified here: worker leases, generation fencing, expiry"
-          echo "  reclaim, LISTEN/NOTIFY. Those need a live worker on the"
-          echo "  Supavisor session pooler and are proven by the staging-tier2"
-          echo "  operation (scripts/ops.py dispatch staging-tier2, which runs"
-          echo "  drill-staging-workers.sh). A green tick here is not a Tier 2 pass."
+      # Unit and integration: the integration suite needs no service, every
+      # test gets its own migrated SQLite file.
+      - name: Run backend tests
+        run: uv run pytest backend/tests/ -v --tb=short -n auto

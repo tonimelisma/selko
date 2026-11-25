@@ -1,16 +1,19 @@
 """Photos service for Selko.
 
-Handles photo data operations: saving metadata, claiming for processing,
-and updating processing status.
+Handles photo data operations: saving metadata and updating processing
+status. Google Photos ingestion is parked; the claim
+(``claim_pending_photo``) had no caller and was not ported
+(docs/specs/sqlite-single-process/02-data-layer.md §2.12).
 """
 
 import logging
-from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
-from supabase import Client, PostgrestAPIError
+from selko.db import parked as db_parked
+from selko.db.connection import Database
+from selko.db.errors import DbError
 
-from selko.services.retry_utils import calculate_retry_delay
+Client = Database
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +34,7 @@ def save_photo_metadata(
     Uses upsert to handle the case where a photo already exists (re-fetch).
 
     Args:
-        client: Authenticated Supabase client.
+        client: The process database.
         user_id: UUID of the user.
         photo_data: Dict with photo metadata (from parse_photo_metadata).
 
@@ -44,84 +47,27 @@ def save_photo_metadata(
     photo_data["user_id"] = user_id
 
     try:
-        result = client.table("photos").upsert(
-            photo_data, on_conflict="user_id,google_photo_id"
-        ).execute()
+        saved = db_parked.upsert_photo(client, user_id, photo_data)
+    except DbError as e:
+        raise PhotosError(f"Failed to save photo metadata: {e}") from e
 
-        if result.data:
-            logger.debug(
-                f"Saved photo metadata: {photo_data.get('filename', 'unknown')}"
-            )
-            return result.data[0]
-
-        return None
-
-    except PostgrestAPIError as e:
-        raise PhotosError(f"Failed to save photo metadata: {e.message}") from e
-
-
-def claim_pending_photo(
-    client: Client,
-    worker_id: str,
-    lock_duration_seconds: int = 300,
-) -> Optional[dict[str, Any]]:
-    """Atomically claim the next pending photo for processing.
-
-    Uses PostgreSQL FOR UPDATE SKIP LOCKED via RPC to safely claim photos
-    without conflicts between multiple workers.
-
-    Args:
-        client: Authenticated Supabase client (should use service role).
-        worker_id: Unique identifier for this worker process.
-        lock_duration_seconds: How long to hold the lock (default: 5 minutes).
-
-    Returns:
-        Photo dict if claimed, None if no pending photos available.
-
-    Raises:
-        PhotosError: If claim operation fails.
-    """
-    try:
-        result = client.rpc("claim_pending_photo", {
-            "p_worker_id": worker_id,
-            "p_lock_duration_seconds": lock_duration_seconds,
-        }).execute()
-
-        if result.data and len(result.data) > 0:
-            photo = result.data[0]
-            filename = photo.get("filename", "(unknown)")[:50]
-            logger.info(
-                f"Worker {worker_id} claimed photo {photo['id']}: {filename} "
-                f"(attempt {photo['attempts']}/{photo['max_attempts']})"
-            )
-            return photo
-
-        return None
-
-    except Exception as e:
-        raise PhotosError(f"Failed to claim pending photo: {e}") from e
+    logger.debug(f"Saved photo metadata: {photo_data.get('filename', 'unknown')}")
+    return saved
 
 
 def complete_photo_processing(client: Client, photo_id: str) -> None:
     """Mark photo as processed successfully and clear the lock.
 
     Args:
-        client: Authenticated Supabase client (should use service role).
+        client: The process database.
         photo_id: UUID of photo to mark as processed.
 
     Raises:
         PhotosError: If update fails.
     """
     try:
-        client.table("photos").update({
-            "processing_status": "processed",
-            "processed_at": datetime.now(timezone.utc).isoformat(),
-            "locked_by": None,
-            "locked_until": None,
-        }).eq("id", photo_id).execute()
-
+        db_parked.complete_photo(client, photo_id)
         logger.info(f"Completed processing photo {photo_id}")
-
     except Exception as e:
         raise PhotosError(f"Failed to complete photo processing: {e}") from e
 
@@ -135,84 +81,56 @@ def fail_photo_processing(
 
     If attempts < max_attempts, sets status back to 'pending' for retry
     with exponential backoff. Otherwise, sets status to 'failed' permanently
-    (dead letter).
+    (dead letter). The read and the write are one transaction.
 
     Args:
-        client: Authenticated Supabase client (should use service role).
+        client: The process database.
         photo_id: UUID of photo that failed processing.
         error: Error message to store.
 
     Raises:
-        PhotosError: If update fails.
+        PhotosError: If update fails (including an unknown photo).
     """
     try:
-        # Fetch current photo to check retry eligibility
-        result = client.table("photos").select(
-            "attempts, max_attempts"
-        ).eq("id", photo_id).single().execute()
-
-        photo = result.data
-        attempts = photo["attempts"]
-        max_attempts = photo["max_attempts"]
-        should_retry = attempts < max_attempts
-
-        update_data: dict[str, Any] = {
-            "processing_status": "pending" if should_retry else "failed",
-            "processing_error": error,
-            "locked_by": None,
-            "locked_until": None,
-        }
-
-        if should_retry:
-            delay, next_retry_at = calculate_retry_delay(attempts)
-            update_data["next_retry_at"] = next_retry_at
-        else:
-            # Dead letter: permanently failed
-            update_data["dead_letter_reason"] = error
-            update_data["dead_letter_at"] = datetime.now(timezone.utc).isoformat()
-
-        client.table("photos").update(update_data).eq("id", photo_id).execute()
-
-        if should_retry:
-            logger.warning(
-                f"Photo {photo_id} processing failed "
-                f"(attempt {attempts}/{max_attempts}): {error}. "
-                f"Will retry in {delay}s."
-            )
-        else:
-            logger.error(
-                f"Photo {photo_id} processing failed permanently "
-                f"after {attempts} attempts: {error}. "
-                f"Moved to dead letter."
-            )
-
+        outcome = db_parked.fail_photo(client, photo_id, error)
     except Exception as e:
         raise PhotosError(f"Failed to mark photo as failed: {e}") from e
 
+    attempts, max_attempts = outcome["attempts"], outcome["max_attempts"]
+    if outcome["should_retry"]:
+        logger.warning(
+            f"Photo {photo_id} processing failed "
+            f"(attempt {attempts}/{max_attempts}): {error}. "
+            f"Will retry in {outcome['delay_seconds']}s."
+        )
+    else:
+        logger.error(
+            f"Photo {photo_id} processing failed permanently "
+            f"after {attempts} attempts: {error}. "
+            f"Moved to dead letter."
+        )
 
-def get_photo(client: Client, photo_id: str) -> Optional[dict[str, Any]]:
-    """Get a single photo record by ID.
+
+def get_photo(
+    client: Client, photo_id: str, user_id: Optional[str] = None
+) -> Optional[dict[str, Any]]:
+    """Get one of the user's photo records by ID.
 
     Args:
-        client: Authenticated Supabase client.
+        client: The process database.
         photo_id: UUID of the photo.
+        user_id: The owning user (required).
 
     Returns:
-        Photo dict, or None if not found.
+        Photo dict, or None if not found (another user's photo is not found).
 
     Raises:
-        PhotosError: If query fails.
+        PhotosError: If user_id is missing or the query fails.
     """
+    if not user_id:
+        raise PhotosError("Failed to get photo: user_id is required")
     try:
-        result = client.table("photos").select("*").eq(
-            "id", photo_id
-        ).maybe_single().execute()
-
-        if result is None or not result.data:
-            return None
-
-        return result.data
-
+        return db_parked.get_photo(client, user_id, photo_id)
     except Exception as e:
         raise PhotosError(f"Failed to get photo: {e}") from e
 
@@ -223,7 +141,7 @@ async def unlock_expired_photo_locks(pool) -> int:
     Handles the case where a worker crashes mid-processing and the lock expires.
 
     Args:
-        pool: asyncpg session-pooler pool.
+        pool: The process database.
 
     Returns:
         Number of photos unlocked.
@@ -232,7 +150,7 @@ async def unlock_expired_photo_locks(pool) -> int:
         PhotosError: If unlock fails.
     """
     try:
-        count = await pool.fetchval("SELECT public.unlock_expired_photo_locks()")
+        count = await pool.run(db_parked.unlock_expired_photo_locks, pool)
 
         if count:
             logger.warning(f"Unlocked {count} expired photo locks")

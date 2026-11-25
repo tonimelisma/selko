@@ -1,67 +1,46 @@
 /**
- * Service layer index - re-exports all Supabase service functions
+ * Service layer index - re-exports the data service functions.
  *
- * These services handle direct Supabase queries. For server-side operations
- * (sync, LLM processing, OAuth), use the backend API client instead.
+ * Every service calls Selko's API through `$lib/api/client.js` and returns
+ * `{data, error[, count]}`. Server-side operations (sync, LLM processing,
+ * OAuth) live in the backend API client.
  *
  * @example
- * import { fetchEmails, fetchPendingEvents } from '$lib/services';
+ * import { fetchPendingEventsWithSources } from '$lib/services';
  * import { syncEmails, processEmail } from '$lib/api/backend';
  */
 
 // Email operations
-export {
-	fetchEmails,
-	getEmail,
-	updateEmailReadStatus
-} from './emails.js';
+export { getEmail } from './emails.js';
 
-export { fetchEmailHistory, queueEmailReprocess } from './email-history.js';
+export { fetchEmailHistory, fetchEmailProcessingState, queueEmailReprocess } from './email-history.js';
 
 // Event operations
 export {
-	fetchPendingEvents,
 	fetchPendingEventsWithSources,
-	fetchEvents,
 	fetchActivityEvents,
 	getEvent,
 	updateEventStatus,
 	updateEvent
 } from './events.js';
 
-// Event source operations (undo/redo)
-export {
-	fetchEventSources,
-} from './event-sources.js';
-
 // Integration operations
 export {
 	fetchIntegrations,
-	getIntegration,
-	getIntegrationByProvider,
-	isProviderConnected,
-	disconnectIntegration,
-	disconnectIntegrations
+	disconnectIntegrations,
+	fetchCalendarRecovery
 } from './integrations.js';
 
 // Attachment operations
-export {
-	fetchAttachments,
-	getAttachment,
-	downloadAttachment,
-	getAttachmentUrl
-} from './attachments.js';
+export { fetchAttachments, fetchAttachmentContent, downloadAttachment } from './attachments.js';
 
 // Sender rule operations
 export {
 	fetchSenderRules,
 	createSenderRule,
 	deleteSenderRule,
-	findMatchingRule
+	ignoreSenderRetroactive
 } from './sender-rules.js';
 
 // Calendar settings operations
-export {
-	getCalendarSettings,
-	updateCalendarSettings
-} from './calendar-settings.js';
+export { getCalendarSettings, updateCalendarSettings } from './calendar-settings.js';

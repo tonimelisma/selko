@@ -10,15 +10,18 @@ import time
 from datetime import datetime, timedelta, timezone
 from typing import Any, Iterable
 
-from supabase import Client
-
 from selko.config import Config
+from selko.db import attachments as db_attachments
+from selko.db import email_sync
+from selko.db import emails as db_emails
+from selko.db.connection import Database
 from selko.services.attachments import (
     AttachmentTypeRejected,
     calculate_content_hash,
     download_gmail_attachment,
     upload_to_storage,
 )
+import selko.services.attachments as _attachments
 from selko.services.email_folders import upsert_discovered_folders
 from selko.services.email_sync_health import EmailSyncHealthEvaluator
 from selko.services.email_ingestion import (
@@ -71,19 +74,10 @@ from selko.workers.concurrency import _try_acquire
 logger = logging.getLogger(__name__)
 
 EMAIL_PROVIDERS = {"gmail", "outlook"}
-SUPPORTED_ATTACHMENT_MIME_PREFIXES = ("image/", "text/")
-SUPPORTED_ATTACHMENT_MIMES = {
-    "application/pdf",
-    "application/rtf",
-    "application/ics",
-    "text/calendar",
-    "application/msword",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    "application/vnd.ms-excel",
-    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    "application/vnd.ms-powerpoint",
-    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-}
+# The accept-set lives with the file store, so the worker and the store can
+# never disagree about which types are stored (re-exported under the old names).
+SUPPORTED_ATTACHMENT_MIME_PREFIXES = _attachments.SUPPORTED_ATTACHMENT_MIME_PREFIXES
+SUPPORTED_ATTACHMENT_MIMES = _attachments.SUPPORTED_ATTACHMENT_MIMES
 
 
 def _chunks(values: Iterable[Any], size: int = 100) -> Iterable[list[Any]]:
@@ -116,7 +110,7 @@ class EmailIngestionWorker:
 
     def __init__(
         self,
-        client: Client,
+        client: Database,
         config: Config,
         worker_id: str,
         *,
@@ -127,7 +121,8 @@ class EmailIngestionWorker:
         self.client = client
         self.config = config
         self.worker_id = worker_id
-        self.repository = EmailIngestionRepository(config, pg_pool)
+        # pg_pool and client are the same process database; either may be passed.
+        self.repository = EmailIngestionRepository(config, pg_pool or client)
         self._work_listener = work_listener
         self._health_evaluator = health_evaluator
         # C4: executor width, NOT poller count. One claim loop per type drains
@@ -303,8 +298,10 @@ class EmailIngestionWorker:
             raise ValueError(f"Unsupported email provider: {claim.provider}")
 
     def _integration(self, integration_id: str) -> dict[str, Any]:
-        result = self.client.table("integrations").select("*").eq("id", integration_id).single().execute()
-        return result.data
+        integration = email_sync.get_integration_by_id(self.client, integration_id)
+        if integration is None:
+            raise ValueError(f"integration {integration_id} not found")
+        return integration
 
     async def _discover_gmail(self, claim: SyncClaim, *, lookback_days: int | None = None) -> dict[str, int]:
         totals = {"provider_ids_seen": 0, "items_inserted": 0, "items_existing": 0}
@@ -314,22 +311,14 @@ class EmailIngestionWorker:
             raise ProviderAuthenticationError("Gmail credentials are unavailable")
         service = build_service(credentials)
         labels = list_labels(service)
-        excluded_result = (
-            self.client.table("email_folders")
-            .select("provider_folder_id")
-            .eq("integration_id", claim.integration_id)
-            .eq("provider", "gmail")
-            .eq("is_included", False)
-            .execute()
+        excluded = set(
+            email_sync.folder_ids(self.client, claim.integration_id, "gmail", is_included=False)
         )
-        excluded = {row.get("provider_folder_id") for row in (excluded_result.data or [])}
         # Inc1 payload: hourly folder refresh — skip listing/upsert inside interval
         _folders_due = True
         try:
-            _state = self.client.table("email_sync_state").select("folders_refreshed_at").eq("integration_id", claim.integration_id).single().execute()
-            _fr = (_state.data or {}).get("folders_refreshed_at")
+            _fr = email_sync.folders_refreshed_at(self.client, claim.integration_id)
             if _fr:
-                from datetime import datetime, timezone
                 _prev = datetime.fromisoformat(str(_fr).replace("Z", "+00:00"))
                 _age = (datetime.now(timezone.utc) - _prev).total_seconds()
                 if _age < self.config.email_folder_refresh_seconds:
@@ -356,7 +345,7 @@ class EmailIngestionWorker:
             ],
             )
             try:
-                self.client.table("email_sync_state").update({"folders_refreshed_at": __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat()}).eq("integration_id", claim.integration_id).execute()
+                email_sync.mark_folders_refreshed(self.client, claim.integration_id)
             except Exception:
                 pass
         cursor = integration.get("sync_cursor")
@@ -517,10 +506,8 @@ class EmailIngestionWorker:
         # Inc1 payload: hourly folder refresh
         _folders_due = True
         try:
-            _state = self.client.table("email_sync_state").select("folders_refreshed_at").eq("integration_id", claim.integration_id).single().execute()
-            _fr = (_state.data or {}).get("folders_refreshed_at")
+            _fr = email_sync.folders_refreshed_at(self.client, claim.integration_id)
             if _fr:
-                from datetime import datetime, timezone
                 _prev = datetime.fromisoformat(str(_fr).replace("Z", "+00:00"))
                 _age = (datetime.now(timezone.utc) - _prev).total_seconds()
                 if _age < self.config.email_folder_refresh_seconds:
@@ -538,16 +525,10 @@ class EmailIngestionWorker:
                 folders=discovered,
             )
             try:
-                self.client.table("email_sync_state").update({"folders_refreshed_at": __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat()}).eq("integration_id", claim.integration_id).execute()
+                email_sync.mark_folders_refreshed(self.client, claim.integration_id)
             except Exception:
                 pass
-        rows = (
-            self.client.table("email_folders")
-            .select("*")
-            .eq("integration_id", claim.integration_id)
-            .eq("provider", "outlook")
-            .execute()
-        )
+        rows = email_sync.folders_for_integration(self.client, claim.integration_id, "outlook")
         failures: list[BaseException] = []
         since = datetime.now(timezone.utc) - timedelta(days=lookback_days or 14)
         # 6b deliberately does not bound the Outlook pass. The quota cliff it
@@ -556,12 +537,12 @@ class EmailIngestionWorker:
         # with the folder listing, so an Outlook reconcile is O(folders), not
         # O(messages). Capping here would mean breaking out of this loop with
         # folders left unvisited — and `rows` has no ORDER BY, so which folders
-        # get skipped is whatever order Postgres returns. That risks a folder
+        # get skipped is whatever order the database returns. That risks a folder
         # going unreconciled indefinitely to solve a cost problem Outlook does
         # not have. Per-message identity filtering is also unavailable here: a
         # message in two folders must be seen under both so upsert_discovered
         # can union its provider_folder_ids.
-        for folder in rows.data or []:
+        for folder in rows:
             if not folder.get("is_included") or not folder.get("is_scannable", True):
                 continue
             try:
@@ -635,7 +616,7 @@ class EmailIngestionWorker:
                     _accumulate_page_totals(totals, page_totals)
             except GraphHttpError as exc:
                 if exc.status_code == 404:
-                    self.client.table("email_folders").delete().eq("id", folder["id"]).execute()
+                    email_sync.delete_folder(self.client, claim.integration_id, folder["id"])
                     continue
                 logger.warning(
                     "Outlook folder %s discovery failed code=%s (%d failures so far)",
@@ -888,7 +869,9 @@ class EmailIngestionWorker:
         mime = str(attachment.get("mime_type") or "application/octet-stream").lower()
         if not (mime.startswith(SUPPORTED_ATTACHMENT_MIME_PREFIXES) or mime in SUPPORTED_ATTACHMENT_MIMES):
             return "unsupported"
-        email = self.client.table("emails").select("user_id,email_provider,provider_message_id,integration_id").eq("id", attachment["email_id"]).single().execute().data
+        email = db_emails.acquisition_context(self.client, attachment["email_id"])
+        if email is None:
+            raise ValueError(f"email {attachment['email_id']} not found")
         if email["email_provider"] == "gmail":
             credentials = get_gmail_credentials(self.client, self.config, user_id=email["user_id"])
             if not credentials:
@@ -927,11 +910,10 @@ class EmailIngestionWorker:
             data = base64.b64decode(descriptor.get("contentBytes") or "", validate=True)
         content_hash = calculate_content_hash(data)
         storage_path = upload_to_storage(self.client, email["user_id"], attachment.get("filename") or "unnamed", data, mime, self.config.storage_bucket_attachments)
-        self.client.table("attachments").update({
-            "storage_path": storage_path,
-            "content_hash": content_hash,
-            "size_bytes": len(data),
-        }).eq("id", attachment["id"]).eq("locked_by", self.worker_id).execute()
+        db_attachments.store_result(
+            self.client, attachment["id"], self.worker_id,
+            storage_path=storage_path, content_hash=content_hash, size_bytes=len(data),
+        )
         return "stored"
 
     async def coordinator_loop(self) -> None:
@@ -966,7 +948,7 @@ class EmailIngestionWorker:
         ``claim_due_sync`` / ``claim_due_reconciliation`` / ``claim_item`` /
         ``claim_attachment`` are all called at the top of the ``run_*_once``
         bodies, *outside* their inner ``try``. Before this guard, a single
-        transient Supabase error (a "Server disconnected without sending a
+        transient database or provider error (a "Server disconnected without sending a
         response" mid-claim) propagated up through ``coordinator_loop`` /
         ``_claim_loop``, the task ended ``done()`` with an exception, and
         ``IngestionRuntime.stop()`` later gathered with ``return_exceptions=True``

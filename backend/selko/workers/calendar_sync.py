@@ -13,9 +13,8 @@ import asyncio
 import logging
 from typing import Any
 
-from supabase import Client
-
 from selko.config import Config
+from selko.db.connection import Database
 from selko.services.calendars import (
     cancel_event_to_calendar,
     sync_event_to_calendar,
@@ -26,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 
 async def sync_event(
-    client: Client,
+    client: Database,
     config: Config,
     event: dict[str, Any],
 ) -> str:
@@ -36,7 +35,7 @@ async def sync_event(
     Status updates are handled by the worker pool.
 
     Args:
-        client: Supabase client (with service role).
+        client: The process database.
         config: Application configuration.
         event: Full event record (from claim_approved_event).
 
@@ -68,7 +67,7 @@ async def sync_event(
 
 
 async def cancel_event(
-    client: Client,
+    client: Database,
     config: Config,
     event: dict[str, Any],
 ) -> None:

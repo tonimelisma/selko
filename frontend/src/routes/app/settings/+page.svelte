@@ -3,7 +3,8 @@
 	import { goto } from '$app/navigation';
 	import { _ } from 'svelte-i18n';
 	import { user } from '$lib/stores.js';
-	import { supabase } from '$lib/supabase.js';
+	import { signOut } from '$lib/auth.js';
+	import * as liveUpdates from '$lib/live-updates.js';
 	import { fetchIntegrations, disconnectIntegrations } from '$lib/services/integrations.js';
 	import { GOOGLE_PROVIDERS } from '$lib/google-connection.js';
 	import { hasWritableCalendar, needsOutlookCalendarReconnect } from '$lib/calendar-providers.js';
@@ -353,7 +354,8 @@
 	}
 
 	async function handleLogout() {
-		await supabase.auth.signOut();
+		await liveUpdates.stop();
+		await signOut();
 		goto('/login');
 	}
 </script>

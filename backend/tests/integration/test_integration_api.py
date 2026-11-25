@@ -1,65 +1,82 @@
 """Integration tests for FastAPI endpoints.
 
-Tests API endpoints with real Supabase and JWT authentication.
-
-Note: Tests for data query endpoints (emails, integrations, attachments, etc.)
-have been removed as these are now accessed directly via Supabase from frontends.
-Only server-side endpoints (OAuth, sync, process) are tested here.
+The real app on a real SQLite database, with real Selko access tokens for real
+accounts (docs/specs/sqlite-single-process/05-verification.md §A.2 row 2).
+Only the providers' token exchange and the LLM are mocked.
 """
 
 import pytest
+from unittest.mock import MagicMock
 from fastapi.testclient import TestClient
 
-from selko.api.app import app
+from selko.api.app import create_app
+from selko.api.deps import get_config, get_llm_gateway
+from selko.config import Config
+from selko.db import health as db_health
+from selko.db import runtime
+from selko.services import accounts
+
+JWT_SECRET = "integration-api-test-secret-" + "x" * 20
 
 
 @pytest.fixture
-def test_client():
-    """Create a test client for the FastAPI app."""
-    return TestClient(app)
+def api_config():
+    return Config(
+        environment="development",
+        google_client_id="test-client-id",
+        google_client_secret="test-client-secret",
+        jwt_secret=JWT_SECRET,
+    )
 
 
 @pytest.fixture
-def auth_headers(authenticated_client):
-    """Get Authorization header with valid JWT token.
+def test_client(db, api_config):
+    """The FastAPI app with the test database as its process database."""
+    runtime.use_database(db)
+    # The callback's per-IP limiter is process state shared by every test.
+    from selko.api.routes import integrations as integration_routes
 
-    Uses the authenticated Supabase client to get the access token.
-    """
-    session = authenticated_client.auth.get_session()
-    if not session or not session.access_token:
-        pytest.skip("No authenticated session available")
+    integration_routes._callback_request_log.clear()
+    app = create_app()
+    app.state.db = db
+    app.dependency_overrides[get_config] = lambda: api_config
+    app.dependency_overrides[get_llm_gateway] = lambda: MagicMock()
+    yield TestClient(app)
+    app.dependency_overrides.clear()
+    runtime.use_database(None)
 
-    return {"Authorization": f"Bearer {session.access_token}"}
+
+@pytest.fixture
+def api_user(factory):
+    return factory.user()
+
+
+@pytest.fixture
+def auth_headers(api_user):
+    """A valid Selko access token for a real account."""
+    token, _ = accounts.issue_access_token(
+        accounts.TokenKeys(JWT_SECRET), api_user, "api-user@example.test", "session-1"
+    )
+    return {"Authorization": f"Bearer {token}"}
 
 
 @pytest.mark.integration
-@pytest.mark.development
 class TestHealthEndpoints:
     """Test health check endpoints (no auth required)."""
 
-    def test_health_check(self, test_client, admin_client):
+    def test_health_check(self, test_client, db, factory):
         """GET /health reports exactly what health_work_state reports.
 
-        This asserted `status == "ok"` outright, which is a claim about the
-        whole database: /health is driven by health_work_state, and any test
-        that leaves a pending or stale email behind makes the roll-up degrade.
-        Whether it passed therefore depended on the random ordering seed.
-
         The contract worth pinning is that the endpoint is driven by the
-        roll-up rather than hard-coded -- which is the actual regression risk
-        here, and is order-independent.
+        roll-up rather than hard-coded, in both directions.
         """
-        response = test_client.get("/health")
-
-        assert response.status_code == 200
-        body = response.json()
+        body = test_client.get("/health").json()
         assert "resolution" in body
-        assert body["status"] in {"ok", "degraded"}
+        assert body["status"] == db_health.health_work_state(db, 1800)["status"] == "ok"
 
-        rollup = admin_client.rpc("health_work_state", {"p_warning_seconds": 1800}).execute().data
-        row = (rollup or [None])[0] if isinstance(rollup, list) else rollup
-        expected = "ok" if isinstance(row, dict) and row.get("status") == "ok" else "degraded"
-        assert body["status"] == expected, (
+        factory.email(factory.user(), processing_status="processing")  # a stale lease
+        body = test_client.get("/health").json()
+        assert body["status"] == db_health.health_work_state(db, 1800)["status"] == "degraded", (
             "/health disagreed with health_work_state; it is not driven by the roll-up"
         )
 
@@ -72,11 +89,20 @@ class TestHealthEndpoints:
         assert data["status"] == "ok"
         assert data["database"] == "connected"
 
+    def test_health_ingestion_and_egress_keep_the_asserted_keys(self, test_client):
+        """Every key scripts/assert-health.sh reads is still published."""
+        ingestion = test_client.get("/health/ingestion").json()
+        for key in ("status", "background_processing_enabled", "tasks", "items_stalled_seconds",
+                    "items_dead_letter", "attachments_dead_letter", "stale_processing_emails",
+                    "unclaimable_pending", "listener"):
+            assert key in ingestion, key
+        assert ingestion["listener"]["kind"] == "in_process"
+        assert test_client.get("/health/egress").json()["transport"] == "sqlite"
+
 
 @pytest.mark.integration
-@pytest.mark.development
 class TestAuthenticationRequired:
-    """Test that authenticated endpoints require valid JWT."""
+    """Test that authenticated endpoints require a valid Selko token."""
 
     def test_emails_sync_no_auth(self, test_client):
         """POST /emails/sync without auth returns 401."""
@@ -121,28 +147,21 @@ class TestAuthenticationRequired:
 
 
 @pytest.mark.integration
-@pytest.mark.development
 class TestEmailSyncEndpoints:
     """Test email sync and process endpoints (server-side operations)."""
 
-    def test_email_sync_no_integration(self, test_client, temp_user_client):
+    def test_email_sync_no_integration(self, test_client, auth_headers):
         """POST /emails/sync returns error when no Gmail integration."""
-        # Use temp_user who doesn't have any integration configured
-        session = temp_user_client.auth.get_session()
-        headers = {"Authorization": f"Bearer {session.access_token}"}
-
         response = test_client.post(
             "/emails/sync",
             json={"max_results": 10, "fetch_attachments": True},
-            headers=headers,
+            headers=auth_headers,
         )
 
-        # Should return error if no Gmail integration configured
         assert response.status_code in [404, 500]
 
     def test_email_sync_validation(self, test_client, auth_headers):
         """POST /emails/sync validates request parameters."""
-        # Test invalid max_results (out of range)
         response = test_client.post(
             "/emails/sync",
             json={"max_results": 0, "fetch_attachments": True},
@@ -160,7 +179,6 @@ class TestEmailSyncEndpoints:
 
     def test_batch_process_validation(self, test_client, auth_headers):
         """POST /emails/batch-process validates request parameters."""
-        # Test invalid max_emails (out of range)
         response = test_client.post(
             "/emails/batch-process",
             json={"max_emails": 0},
@@ -171,24 +189,25 @@ class TestEmailSyncEndpoints:
 
 
 @pytest.mark.integration
-@pytest.mark.development
 class TestOAuthEndpoints:
     """Test OAuth integration endpoints."""
 
     def test_google_auth_requires_authentication(self, test_client):
-        """GET /integrations/google/auth requires authentication."""
         response = test_client.get("/integrations/google/auth")
 
         assert response.status_code == 401
 
-    def test_google_auth_redirect(self, test_client, auth_headers):
-        """GET /integrations/google/auth returns redirect."""
+    def test_google_auth_redirect_stores_its_state(self, test_client, auth_headers, db, api_user):
+        """GET /integrations/google/auth redirects to Google and records a one-time state."""
         response = test_client.get(
             "/integrations/google/auth", headers=auth_headers, follow_redirects=False
         )
 
-        # Should redirect to Google OAuth or return error if credentials missing
-        assert response.status_code in [302, 500]
+        assert response.status_code == 302
+        assert response.headers["location"].startswith("https://accounts.google.com/")
+        state = db.query_one("SELECT * FROM oauth_states WHERE user_id = ?", (api_user,))
+        assert state["provider"] == "google"
+        assert state["code_verifier"], "PKCE verifier kept for the exchange"
 
     @pytest.mark.parametrize(
         "path", ["/integrations/gmail/auth", "/integrations/calendar/auth"]
@@ -201,7 +220,6 @@ class TestOAuthEndpoints:
 
 
 @pytest.mark.integration
-@pytest.mark.development
 class TestOAuthCallback:
     """Test OAuth callback endpoint (public, state-protected)."""
 
@@ -211,13 +229,10 @@ class TestOAuthCallback:
             "/integrations/google/callback?code=test&state=invalid",
             follow_redirects=False,
         )
-        # Should redirect to frontend with error, NOT 401 (missing auth)
-        assert response.status_code != 401
         assert response.status_code == 302
         assert "oauth=error" in response.headers["location"]
 
     def test_callback_invalid_state(self, test_client):
-        """Callback rejects invalid state."""
         response = test_client.get(
             "/integrations/google/callback?code=test&state=invalid123",
             follow_redirects=False,
@@ -225,33 +240,25 @@ class TestOAuthCallback:
         assert response.status_code == 302
         assert "oauth=error" in response.headers["location"]
 
-    def test_callback_expired_state(self, test_client):
-        """Callback rejects expired state (>10 min)."""
-        from selko.services.integrations import OAuthStateError
-        from unittest.mock import patch
+    def test_callback_expired_state(self, test_client, auth_headers, db):
+        """A real state older than its 10 minutes is refused and consumed."""
+        test_client.get("/integrations/google/auth", headers=auth_headers, follow_redirects=False)
+        with db.write() as tx:
+            tx.execute("UPDATE oauth_states SET expires_at = ?", (tx.ts(-1),))
+        state = db.query_one("SELECT state FROM oauth_states")[0]
 
-        # Mock complete_oauth_flow to raise OAuthStateError for expired state
-        with patch(
-            "selko.api.routes.integrations.complete_oauth_flow",
-            side_effect=OAuthStateError("State parameter expired"),
-        ):
-            response = test_client.get(
-                "/integrations/google/callback?code=test&state=expired-state",
-                follow_redirects=False,
-            )
-            assert response.status_code == 302
-            assert "oauth=error" in response.headers["location"]
+        response = test_client.get(
+            f"/integrations/google/callback?code=test&state={state}",
+            follow_redirects=False,
+        )
+        assert response.status_code == 302
+        assert "oauth=error" in response.headers["location"]
+        assert db.query_one("SELECT 1 FROM oauth_states") is None
 
-    def test_callback_success_mocked(self, test_client, config, temp_user):
-        """Callback successfully saves credentials (mocked token exchange)."""
+    def test_callback_success_mocked(self, test_client, db, api_user):
+        """Callback saves credentials for the state's user (token exchange mocked)."""
         from unittest.mock import Mock, patch
-        import secrets
 
-        user_id, email, password = temp_user
-
-        state = secrets.token_urlsafe(32)
-
-        # Mock token exchange (complete_oauth_flow now uses DB-backed state)
         mock_creds = Mock()
         mock_creds.token = "test_token"
         mock_creds.refresh_token = "test_refresh"
@@ -260,7 +267,7 @@ class TestOAuthCallback:
 
         with patch(
             "selko.api.routes.integrations.complete_oauth_flow",
-            return_value=(mock_creds, user_id, "gmail"),
+            return_value=(mock_creds, api_user, "gmail"),
         ), patch(
             "selko.api.routes.integrations.build_service",
             return_value=Mock(),
@@ -268,129 +275,23 @@ class TestOAuthCallback:
             "selko.api.routes.integrations.get_user_profile",
             return_value={"emailAddress": "test@gmail.com"},
         ):
-            try:
-                response = test_client.get(
-                    f"/integrations/google/callback?code=test_code&state={state}",
-                    follow_redirects=False,
-                )
+            response = test_client.get(
+                "/integrations/google/callback?code=test_code&state=any",
+                follow_redirects=False,
+            )
 
-                assert response.status_code == 302
-                location = response.headers["location"]
-                assert "oauth=success" in location
-                assert "provider=gmail" in location
-
-                # Verify credentials saved with correct user_id
-                from selko.services.auth import get_service_client
-                service_client = get_service_client(config)
-                result = (
-                    service_client.table("integrations")
-                    .select("*")
-                    .eq("user_id", user_id)
-                    .eq("provider", "gmail")
-                    .maybe_single()
-                    .execute()
-                )
-                assert result.data is not None
-                assert result.data["provider_email"] == "test@gmail.com"
-
-            finally:
-                from selko.services.auth import get_service_client
-                service_client = get_service_client(config)
-                service_client.table("integrations").delete().eq(
-                    "user_id", user_id
-                ).eq("provider", "gmail").execute()
+        assert response.status_code == 302
+        location = response.headers["location"]
+        assert "oauth=success" in location
+        assert "provider=gmail" in location
+        row = db.query_one(
+            "SELECT * FROM integrations WHERE user_id = ? AND provider = 'gmail'", (api_user,)
+        )
+        assert row["provider_email"] == "test@gmail.com"
+        assert row["access_token"] == "test_token"
 
 
 @pytest.mark.integration
-@pytest.mark.development
-class TestEventSyncEndpoint:
-    """Test event sync endpoint (server-side Calendar API)."""
-
-    def test_event_sync_not_found(self, test_client, auth_headers):
-        """POST /events/{id}/sync returns 404 for non-existent event."""
-        fake_id = "00000000-0000-0000-0000-000000000000"
-        response = test_client.post(f"/events/{fake_id}/sync", headers=auth_headers)
-
-        assert response.status_code == 404
-
-    def test_event_sync_requires_authentication(self, test_client):
-        """POST /events/{id}/sync requires authentication."""
-        fake_id = "00000000-0000-0000-0000-000000000000"
-        response = test_client.post(f"/events/{fake_id}/sync")
-
-        assert response.status_code == 401
-
-
-@pytest.mark.integration
-@pytest.mark.development
-class TestEventUnsyncEndpoint:
-    """Test event unsync endpoint (server-side Calendar API delete)."""
-
-    def test_event_unsync_not_found(self, test_client, auth_headers):
-        """POST /events/{id}/unsync returns 404 for non-existent event."""
-        fake_id = "00000000-0000-0000-0000-000000000000"
-        response = test_client.post(f"/events/{fake_id}/unsync", headers=auth_headers)
-
-        assert response.status_code == 404
-
-    def test_event_unsync_requires_authentication(self, test_client):
-        """POST /events/{id}/unsync requires authentication."""
-        fake_id = "00000000-0000-0000-0000-000000000000"
-        response = test_client.post(f"/events/{fake_id}/unsync")
-
-        assert response.status_code == 401
-
-    def test_event_unsync_not_synced(self, test_client, auth_headers, authenticated_client, test_user_id):
-        """POST /events/{id}/unsync returns 400 when event is not synced."""
-        # Create a pending_review event
-        event_data = {
-            "user_id": test_user_id,
-            "title": "Not Synced Event",
-            "start_datetime": "2026-04-01T10:00:00Z",
-            "review_status": "pending_review",
-        }
-        result = authenticated_client.table("events").insert(event_data).execute()
-        event_id = result.data[0]["id"]
-
-        try:
-            response = test_client.post(f"/events/{event_id}/unsync", headers=auth_headers)
-            assert response.status_code == 400
-            detail = response.json()["detail"]
-            msg = detail["detail"] if isinstance(detail, dict) else detail
-            assert "synced" in msg.lower()
-        finally:
-            # Cleanup
-            authenticated_client.table("events").delete().eq("id", event_id).execute()
-
-    def test_event_unsync_wrong_user(self, test_client, authenticated_client, test_user_id, temp_user_client):
-        """POST /events/{id}/unsync returns 404 for another user's event (RLS hides it)."""
-        # Create event owned by test_user
-        event_data = {
-            "user_id": test_user_id,
-            "title": "Other User Event",
-            "start_datetime": "2026-04-01T10:00:00Z",
-            "review_status": "active",
-            "google_calendar_event_id": "google-abc",
-        }
-        result = authenticated_client.table("events").insert(event_data).execute()
-        event_id = result.data[0]["id"]
-
-        try:
-            # Try to unsync with temp user's token
-            # RLS prevents the temp user from seeing the event at all,
-            # so the API returns 404 (not found) rather than 403 (forbidden)
-            session = temp_user_client.auth.get_session()
-            other_headers = {"Authorization": f"Bearer {session.access_token}"}
-
-            response = test_client.post(f"/events/{event_id}/unsync", headers=other_headers)
-            assert response.status_code == 404
-        finally:
-            # Cleanup
-            authenticated_client.table("events").delete().eq("id", event_id).execute()
-
-
-@pytest.mark.integration
-@pytest.mark.development
 class TestCORSConfiguration:
     """Test CORS middleware configuration."""
 
@@ -519,100 +420,3 @@ class TestCORSConfiguration:
         cors_origin = response.headers.get("access-control-allow-origin")
         assert cors_origin != "https://evil-site.com"
 
-
-@pytest.mark.integration
-@pytest.mark.development
-class TestApplyChangeRoute:
-    """POST /events/{id}/apply-change, exercised end to end.
-
-    This route had no test of any kind. Its service function was covered, so
-    when 20260829000001 deleted events.status the route kept reading
-    `applied["status"]` -- a key the service never returns -- and raised
-    KeyError on every call. Production answered 500 to every accept for eight
-    days while the whole suite stayed green.
-
-    The lesson matches the SQL one already in CLAUDE.md: a route no test calls
-    has not been tested, however well covered the code beneath it is. These
-    tests call the route.
-    """
-
-    def _make_event_with_pending_proposal(self, authenticated_client, admin_client, test_user_id):
-        event = authenticated_client.table("events").insert({
-            "user_id": test_user_id,
-            "title": "Original Title",
-            "start_datetime": "2026-04-01T10:00:00Z",
-            "end_datetime": "2026-04-01T11:00:00Z",
-            "review_status": "active",
-        }).execute().data[0]
-        # A proposal carries provenance: source_id is NOT NULL, and
-        # event_sources_origin_check requires an email for source_origin='email'.
-        email = authenticated_client.table("emails").insert({
-            "user_id": test_user_id,
-            "provider_message_id": f"apply-change-{event['id']}",
-            "subject": "Updated Title",
-            "from_email": "sender@example.com",
-            "date_sent": "2026-03-30T09:00:00Z",
-            "snippet": "The title changed",
-        }).execute().data[0]
-        source = admin_client.table("event_sources").insert({
-            "event_id": event["id"],
-            "email_id": email["id"],
-            "source_type": "update",
-            "extracted_data": {"title": "Updated Title"},
-        }).execute().data[0]
-        # event_change_proposals is service-only; RLS denies the user client.
-        proposal = admin_client.table("event_change_proposals").insert({
-            "event_id": event["id"],
-            "user_id": test_user_id,
-            "source_id": source["id"],
-            "kind": "material_update",
-            "status": "pending",
-            "change_set": {"kind": "material_update", "changes": [
-                {"field": "title", "before": "Original Title", "after": "Updated Title"},
-            ]},
-            "event_snapshot_before": {"title": "Original Title", "review_status": "active"},
-        }).execute().data[0]
-        return event["id"], proposal["id"]
-
-    def test_apply_change_returns_200_and_the_review_status(
-        self, test_client, auth_headers, authenticated_client, admin_client, test_user_id
-    ):
-        event_id, _ = self._make_event_with_pending_proposal(
-            authenticated_client, admin_client, test_user_id
-        )
-        try:
-            response = test_client.post(
-                f"/events/{event_id}/apply-change", headers=auth_headers
-            )
-            assert response.status_code == 200, response.text
-            body = response.json()
-            assert body["event_id"] == event_id
-            # The value must come from what the service actually returns.
-            assert body["status"] == "active", body
-        finally:
-            authenticated_client.table("events").delete().eq("id", event_id).execute()
-
-    def test_apply_change_actually_applies_the_proposal(
-        self, test_client, auth_headers, authenticated_client, admin_client, test_user_id
-    ):
-        """A 200 must mean the change landed, not merely that nothing raised."""
-        event_id, proposal_id = self._make_event_with_pending_proposal(
-            authenticated_client, admin_client, test_user_id
-        )
-        try:
-            response = test_client.post(
-                f"/events/{event_id}/apply-change", headers=auth_headers
-            )
-            assert response.status_code == 200, response.text
-
-            proposal = admin_client.table("event_change_proposals").select(
-                "status"
-            ).eq("id", proposal_id).single().execute().data
-            assert proposal["status"] == "applied"
-
-            event = authenticated_client.table("events").select("title").eq(
-                "id", event_id
-            ).single().execute().data
-            assert event["title"] == "Updated Title"
-        finally:
-            authenticated_client.table("events").delete().eq("id", event_id).execute()

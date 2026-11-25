@@ -1,5 +1,10 @@
-"""Tests for Google Photos integration."""
+"""Tests for the parked Google Photos integration, over a real SQLite database.
 
+``claim_pending_photo`` is gone with its tests: it had no caller and was not
+ported (docs/specs/sqlite-single-process/02-data-layer.md §2.12, function 60).
+"""
+
+import asyncio
 from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 
@@ -7,7 +12,6 @@ import pytest
 
 from selko.services.photos import (
     PhotosError,
-    claim_pending_photo,
     complete_photo_processing,
     fail_photo_processing,
     get_photo,
@@ -15,290 +19,177 @@ from selko.services.photos import (
     unlock_expired_photo_locks,
 )
 from selko.services.google_photos import (
-    PhotosError as GooglePhotosError,
     get_credentials,
     parse_photo_metadata,
 )
 
 
+def _photo(google_id="photo-1", **extra):
+    return {"google_photo_id": google_id, "filename": "IMG_001.jpg", "mime_type": "image/jpeg",
+            "width": 100, "height": 50, **extra}
+
+
+def _row(db, photo_id):
+    return dict(db.query_one("SELECT * FROM photos WHERE id = ?", (photo_id,)))
+
+
+def _parse(ts):
+    return datetime.fromisoformat(ts.replace("Z", "+00:00"))
+
+
 class TestSavePhotoMetadata:
-    """Test photo metadata save and deduplication."""
+    def test_saves_photo_metadata(self, db, factory):
+        user = factory.user()
+        saved = save_photo_metadata(db, user, _photo(date_taken="2026-01-15T10:30:00+00:00"))
+        assert saved["user_id"] == user
+        assert saved["google_photo_id"] == "photo-1"
+        assert saved["filename"] == "IMG_001.jpg"
+        assert saved["processing_status"] == "pending"
+        assert saved["date_taken"] == "2026-01-15T10:30:00.000000Z"
 
-    def test_saves_photo_metadata(self, mock_supabase_client):
-        """Verify photo metadata is saved correctly."""
-        photo_data = {
-            "google_photo_id": "photo-123",
-            "filename": "vacation.jpg",
-            "mime_type": "image/jpeg",
-            "date_taken": "2026-01-15T10:30:00+00:00",
-            "width": 4032,
-            "height": 3024,
-        }
+    def test_refetch_updates_the_same_row(self, db, factory):
+        user = factory.user()
+        first = save_photo_metadata(db, user, _photo())
+        second = save_photo_metadata(db, user, _photo(filename="renamed.jpg"))
+        assert second["id"] == first["id"]
+        assert second["filename"] == "renamed.jpg"
+        assert db.query_one("SELECT count(*) FROM photos")[0] == 1
 
-        mock_supabase_client.table().upsert().execute.return_value = MagicMock(
-            data=[{**photo_data, "id": "uuid-1", "user_id": "test-user-id"}]
-        )
+    def test_same_photo_id_for_two_users_is_two_rows(self, db, factory):
+        save_photo_metadata(db, factory.user(), _photo())
+        save_photo_metadata(db, factory.user(), _photo())
+        assert db.query_one("SELECT count(*) FROM photos")[0] == 2
 
-        result = save_photo_metadata(
-            mock_supabase_client, "test-user-id", photo_data
-        )
-
-        assert result is not None
-        assert result["google_photo_id"] == "photo-123"
-        mock_supabase_client.table.assert_called_with("photos")
-
-    def test_saves_with_user_id(self, mock_supabase_client):
-        """Verify user_id is added to photo data."""
-        photo_data = {
-            "google_photo_id": "photo-456",
-            "filename": "test.jpg",
-        }
-
-        mock_supabase_client.table().upsert().execute.return_value = MagicMock(
-            data=[{**photo_data, "id": "uuid-2", "user_id": "test-user-id"}]
-        )
-
-        save_photo_metadata(mock_supabase_client, "test-user-id", photo_data)
-
-        upsert_call = mock_supabase_client.table().upsert.call_args
-        data = upsert_call[0][0]
-        assert data["user_id"] == "test-user-id"
-
-    def test_handles_upsert_conflict(self, mock_supabase_client):
-        """Verify upsert uses correct conflict columns for deduplication."""
-        photo_data = {
-            "google_photo_id": "photo-789",
-            "filename": "duplicate.jpg",
-        }
-
-        mock_supabase_client.table().upsert().execute.return_value = MagicMock(
-            data=[{**photo_data, "id": "uuid-3", "user_id": "test-user-id"}]
-        )
-
-        save_photo_metadata(mock_supabase_client, "test-user-id", photo_data)
-
-        upsert_call = mock_supabase_client.table().upsert.call_args
-        assert upsert_call[1]["on_conflict"] == "user_id,google_photo_id"
-
-    def test_returns_none_on_empty_result(self, mock_supabase_client):
-        """Verify None is returned when upsert returns no data."""
-        mock_supabase_client.table().upsert().execute.return_value = MagicMock(
-            data=[]
-        )
-
-        result = save_photo_metadata(
-            mock_supabase_client,
-            "test-user-id",
-            {"google_photo_id": "photo-empty"},
-        )
-
-        assert result is None
-
-    def test_raises_on_api_error(self, mock_supabase_client):
-        """Verify PhotosError is raised on API error."""
-        from supabase import PostgrestAPIError
-
-        mock_supabase_client.table().upsert().execute.side_effect = (
-            PostgrestAPIError({"message": "DB error", "code": "500", "details": "", "hint": ""})
-        )
-
-        with pytest.raises(PhotosError, match="Failed to save photo metadata"):
-            save_photo_metadata(
-                mock_supabase_client,
-                "test-user-id",
-                {"google_photo_id": "photo-err"},
-            )
-
-
-class TestClaimPendingPhoto:
-    """Test photo claiming function."""
-
-    def test_claims_photo_successfully(self, mock_supabase_client):
-        """Verify a pending photo can be claimed."""
-        claimed_photo = {
-            "id": "photo-uuid-1",
-            "filename": "ticket.jpg",
-            "attempts": 1,
-            "max_attempts": 3,
-        }
-        mock_supabase_client.rpc().execute.return_value = MagicMock(
-            data=[claimed_photo]
-        )
-
-        result = claim_pending_photo(mock_supabase_client, "worker-1")
-
-        assert result is not None
-        assert result["id"] == "photo-uuid-1"
-        mock_supabase_client.rpc.assert_called_with(
-            "claim_pending_photo",
-            {"p_worker_id": "worker-1", "p_lock_duration_seconds": 300},
-        )
-
-    def test_returns_none_when_no_pending(self, mock_supabase_client):
-        """Verify None is returned when no pending photos exist."""
-        mock_supabase_client.rpc().execute.return_value = MagicMock(data=[])
-
-        result = claim_pending_photo(mock_supabase_client, "worker-1")
-
-        assert result is None
-
-    def test_custom_lock_duration(self, mock_supabase_client):
-        """Verify custom lock duration is passed to RPC."""
-        mock_supabase_client.rpc().execute.return_value = MagicMock(data=[])
-
-        claim_pending_photo(mock_supabase_client, "worker-1", lock_duration_seconds=600)
-
-        mock_supabase_client.rpc.assert_called_with(
-            "claim_pending_photo",
-            {"p_worker_id": "worker-1", "p_lock_duration_seconds": 600},
-        )
-
-    def test_raises_on_error(self, mock_supabase_client):
-        """Verify PhotosError is raised on RPC error."""
-        mock_supabase_client.rpc().execute.side_effect = Exception("RPC failed")
-
-        with pytest.raises(PhotosError, match="Failed to claim pending photo"):
-            claim_pending_photo(mock_supabase_client, "worker-1")
+    def test_raises_on_database_error(self, db, factory):
+        with pytest.raises(PhotosError):
+            save_photo_metadata(db, factory.user(), {"filename": "no-google-id.jpg"})
+        with pytest.raises(PhotosError):
+            save_photo_metadata(db, "00000000-0000-0000-0000-000000000000", _photo())
 
 
 class TestCompletePhotoProcessing:
-    """Test photo processing completion."""
-
-    def test_marks_as_processed(self, mock_supabase_client):
-        """Verify photo is marked as processed with timestamp."""
-        complete_photo_processing(mock_supabase_client, "photo-uuid-1")
-
-        mock_supabase_client.table.assert_called_with("photos")
-        update_call = mock_supabase_client.table().update.call_args
-        data = update_call[0][0]
-        assert data["processing_status"] == "processed"
-        assert data["locked_by"] is None
-        assert data["locked_until"] is None
-        assert "processed_at" in data
-
-    def test_raises_on_error(self, mock_supabase_client):
-        """Verify PhotosError is raised on update failure."""
-        mock_supabase_client.table().update().eq().execute.side_effect = Exception(
-            "DB error"
-        )
-
-        with pytest.raises(PhotosError, match="Failed to complete photo processing"):
-            complete_photo_processing(mock_supabase_client, "photo-uuid-1")
+    def test_marks_as_processed_and_clears_the_lock(self, db, factory):
+        user = factory.user()
+        photo = save_photo_metadata(db, user, _photo(locked_by="w1", processing_status="processing"))
+        complete_photo_processing(db, photo["id"])
+        row = _row(db, photo["id"])
+        assert row["processing_status"] == "processed"
+        assert row["processed_at"] is not None
+        assert row["locked_by"] is None and row["locked_until"] is None
 
 
 class TestFailPhotoProcessing:
-    """Test photo processing failure with retry and dead-letter logic."""
+    def _failing(self, db, factory, attempts, max_attempts=3):
+        user = factory.user()
+        return save_photo_metadata(db, user, _photo(
+            processing_status="processing", attempts=attempts, max_attempts=max_attempts, locked_by="w1",
+        ))
 
-    def test_retries_when_attempts_remaining(self, mock_supabase_client):
-        """Verify status is set back to pending when retries remain."""
-        mock_supabase_client.table().select().eq().single().execute.return_value = (
-            MagicMock(data={"attempts": 1, "max_attempts": 3})
-        )
+    def test_retries_when_attempts_remaining(self, db, factory):
+        photo = self._failing(db, factory, attempts=1)
+        fail_photo_processing(db, photo["id"], "API timeout")
+        row = _row(db, photo["id"])
+        assert row["processing_status"] == "pending"
+        assert row["processing_error"] == "API timeout"
+        assert row["locked_by"] is None
+        assert row["next_retry_at"] is not None
 
-        fail_photo_processing(mock_supabase_client, "photo-uuid-1", "Download failed")
+    def test_dead_letters_when_max_attempts_reached(self, db, factory):
+        photo = self._failing(db, factory, attempts=3)
+        fail_photo_processing(db, photo["id"], "Permanent error")
+        row = _row(db, photo["id"])
+        assert row["processing_status"] == "failed"
+        assert row["dead_letter_reason"] == "Permanent error"
+        assert row["dead_letter_at"] is not None
 
-        update_call = mock_supabase_client.table().update.call_args
-        data = update_call[0][0]
-        assert data["processing_status"] == "pending"
-        assert data["processing_error"] == "Download failed"
-        assert "next_retry_at" in data
-        assert data["locked_by"] is None
+    @pytest.mark.parametrize("attempts,delay", [(1, 60), (2, 120)])
+    def test_exponential_backoff(self, db, factory, attempts, delay):
+        photo = self._failing(db, factory, attempts=attempts)
+        before = datetime.now(timezone.utc)
+        fail_photo_processing(db, photo["id"], "Error")
+        retry_at = _parse(_row(db, photo["id"])["next_retry_at"])
+        assert before + timedelta(seconds=delay - 5) < retry_at < before + timedelta(seconds=delay + 5)
 
-    def test_dead_letters_when_max_attempts_exceeded(self, mock_supabase_client):
-        """Verify status is set to failed when max attempts reached."""
-        mock_supabase_client.table().select().eq().single().execute.return_value = (
-            MagicMock(data={"attempts": 3, "max_attempts": 3})
-        )
-
-        fail_photo_processing(mock_supabase_client, "photo-uuid-1", "Final failure")
-
-        update_call = mock_supabase_client.table().update.call_args
-        data = update_call[0][0]
-        assert data["processing_status"] == "failed"
-        assert data["dead_letter_reason"] == "Final failure"
-        assert "dead_letter_at" in data
-
-    def test_exponential_backoff_first_retry(self, mock_supabase_client):
-        """Verify first retry delay is 60 seconds."""
-        mock_supabase_client.table().select().eq().single().execute.return_value = (
-            MagicMock(data={"attempts": 1, "max_attempts": 3})
-        )
-
-        fail_photo_processing(mock_supabase_client, "photo-uuid-1", "error")
-
-        update_call = mock_supabase_client.table().update.call_args
-        data = update_call[0][0]
-        # First retry: base_delay * 2^(1-1) = 60 * 1 = 60s
-        next_retry = datetime.fromisoformat(data["next_retry_at"])
-        now = datetime.now(timezone.utc)
-        delta = (next_retry - now).total_seconds()
-        assert 55 <= delta <= 65  # Allow some tolerance
-
-    def test_exponential_backoff_second_retry(self, mock_supabase_client):
-        """Verify second retry delay is 120 seconds."""
-        mock_supabase_client.table().select().eq().single().execute.return_value = (
-            MagicMock(data={"attempts": 2, "max_attempts": 3})
-        )
-
-        fail_photo_processing(mock_supabase_client, "photo-uuid-1", "error")
-
-        update_call = mock_supabase_client.table().update.call_args
-        data = update_call[0][0]
-        # Second retry: base_delay * 2^(2-1) = 60 * 2 = 120s
-        next_retry = datetime.fromisoformat(data["next_retry_at"])
-        now = datetime.now(timezone.utc)
-        delta = (next_retry - now).total_seconds()
-        assert 115 <= delta <= 125  # Allow some tolerance
+    def test_unknown_photo_raises(self, db):
+        with pytest.raises(PhotosError):
+            fail_photo_processing(db, "00000000-0000-0000-0000-000000000000", "Error")
 
 
 class TestGetPhoto:
-    """Test fetching a single photo record."""
+    def test_returns_the_users_photo(self, db, factory):
+        user = factory.user()
+        photo = save_photo_metadata(db, user, _photo())
+        assert get_photo(db, photo["id"], user_id=user)["google_photo_id"] == "photo-1"
 
-    def test_returns_photo_when_found(self, mock_supabase_client):
-        """Verify photo is returned when found."""
-        photo = {"id": "photo-uuid-1", "filename": "test.jpg"}
-        mock_supabase_client.table().select().eq().maybe_single().execute.return_value = (
-            MagicMock(data=photo)
-        )
+    def test_returns_none_when_not_found_or_not_owned(self, db, factory):
+        alice, bob = factory.user(), factory.user()
+        photo = save_photo_metadata(db, alice, _photo())
+        assert get_photo(db, photo["id"], user_id=bob) is None
+        assert get_photo(db, "00000000-0000-0000-0000-000000000000", user_id=alice) is None
 
-        result = get_photo(mock_supabase_client, "photo-uuid-1")
-
-        assert result is not None
-        assert result["id"] == "photo-uuid-1"
-
-    def test_returns_none_when_not_found(self, mock_supabase_client):
-        """Verify None is returned when photo doesn't exist."""
-        mock_supabase_client.table().select().eq().maybe_single().execute.return_value = (
-            MagicMock(data=None)
-        )
-
-        result = get_photo(mock_supabase_client, "nonexistent")
-
-        assert result is None
+    def test_requires_a_user(self, db):
+        with pytest.raises(PhotosError):
+            get_photo(db, "00000000-0000-0000-0000-000000000000")
 
 
 class TestUnlockExpiredPhotoLocks:
-    """Test expired photo lock recovery."""
+    def test_unlocks_only_expired_locks(self, db, factory):
+        user = factory.user()
+        expired = save_photo_metadata(db, user, _photo("p1", processing_status="processing", locked_by="w"))
+        live = save_photo_metadata(db, user, _photo("p2", processing_status="processing", locked_by="w"))
+        with db.write() as tx:
+            tx.execute("UPDATE photos SET locked_until = ? WHERE id = ?", (tx.ts(-60), expired["id"]))
+            tx.execute("UPDATE photos SET locked_until = ? WHERE id = ?", (tx.ts(600), live["id"]))
 
-    def test_unlocks_expired_locks(self, fake_pg_pool):
-        """Verify expired locks are unlocked."""
-        import asyncio
+        assert asyncio.run(unlock_expired_photo_locks(db)) == 1
+        assert _row(db, expired["id"])["processing_status"] == "pending"
+        assert _row(db, live["id"])["processing_status"] == "processing"
 
-        fake_pg_pool.rows.append(2)
+    def test_returns_zero_when_no_expired_locks(self, db):
+        assert asyncio.run(unlock_expired_photo_locks(db)) == 0
 
-        count = asyncio.run(unlock_expired_photo_locks(fake_pg_pool))
 
-        assert count == 2
+class TestPhotoFetchWorker:
+    """workers/photo_fetch over the database: save, stamp, schedule."""
 
-    def test_returns_zero_when_no_expired_locks(self, fake_pg_pool):
-        """Verify zero is returned when no locks are expired."""
-        import asyncio
+    def test_fetch_saves_photos_and_stamps_the_sync(self, db, factory, monkeypatch):
+        from selko.workers import photo_fetch
 
-        fake_pg_pool.rows.append(0)
+        user = factory.user()
+        factory.integration(user, "google_photos", last_photo_sync_at="2026-01-01T00:00:00.000000Z")
+        seen = {}
 
-        count = asyncio.run(unlock_expired_photo_locks(fake_pg_pool))
+        def fake_fetch(client, config, user_id, since_date, max_results):
+            seen["since"] = since_date
+            return [{"id": "g1", "filename": "a.jpg", "mediaMetadata": {}}]
 
-        assert count == 0
+        monkeypatch.setattr(photo_fetch, "fetch_recent_photos", fake_fetch)
+        photo_fetch._process_photo_fetch_sync(db, MagicMock(), {"user_id": user})
+
+        assert seen["since"] == datetime(2026, 1, 1, tzinfo=timezone.utc)
+        assert db.query_one("SELECT google_photo_id FROM photos WHERE user_id = ?", (user,))[0] == "g1"
+        stamped = db.query_one(
+            "SELECT last_photo_sync_at FROM integrations WHERE user_id = ? AND provider = 'google_photos'", (user,)
+        )[0]
+        assert stamped > "2026-01-01T00:00:00.000000Z"
+
+    def test_scheduler_enqueues_once_per_active_user(self, db, factory, monkeypatch):
+        from selko.db import runtime
+        from selko.workers import photo_fetch
+
+        active, inactive, queued = factory.user(), factory.user(), factory.user()
+        factory.integration(active, "google_photos")
+        factory.integration(inactive, "google_photos", status="expired")
+        factory.integration(queued, "google_photos")
+        photo_fetch.enqueue_scheduled_task(db, queued, "photo_fetch", {"user_id": queued})
+        runtime.use_database(db)
+        try:
+            asyncio.run(photo_fetch.schedule_photo_fetches())
+            asyncio.run(photo_fetch.schedule_photo_fetches())
+        finally:
+            runtime.use_database(None)
+        rows = db.query("SELECT user_id FROM scheduled_tasks WHERE task_type = 'photo_fetch'")
+        assert sorted(r[0] for r in rows) == sorted([active, queued])
 
 
 class TestParsePhotoMetadata:
@@ -387,23 +278,23 @@ class TestGetCredentials:
     """Test Google Photos credential handling."""
 
     @patch("selko.services.google_photos.get_oauth_credentials")
-    def test_returns_none_when_no_integration(self, mock_get_oauth):
+    def test_returns_none_when_no_integration(self, mock_get_oauth, db):
         """Verify None is returned when no Google Photos integration exists."""
         mock_get_oauth.return_value = None
 
-        result = get_credentials(MagicMock(), MagicMock(), user_id="test-user")
+        result = get_credentials(db, MagicMock(), user_id="test-user")
 
         assert result is None
         mock_get_oauth.assert_called_once()
 
     @patch("selko.services.google_photos.get_oauth_credentials")
-    def test_returns_valid_credentials(self, mock_get_oauth):
+    def test_returns_valid_credentials(self, mock_get_oauth, db):
         """Verify valid credentials are returned without refresh."""
         mock_creds = MagicMock()
         mock_creds.expired = False
         mock_get_oauth.return_value = mock_creds
 
-        result = get_credentials(MagicMock(), MagicMock(), user_id="test-user")
+        result = get_credentials(db, MagicMock(), user_id="test-user")
 
         assert result is mock_creds
 
@@ -411,7 +302,7 @@ class TestGetCredentials:
     @patch("selko.services.google_photos.Request")
     @patch("selko.services.google_photos.get_oauth_credentials")
     def test_refreshes_expired_credentials(
-        self, mock_get_oauth, mock_request, mock_update
+        self, mock_get_oauth, mock_request, mock_update, db
     ):
         """Verify expired credentials are refreshed."""
         mock_creds = MagicMock()
@@ -419,7 +310,7 @@ class TestGetCredentials:
         mock_creds.refresh_token = "refresh-token"
         mock_get_oauth.return_value = mock_creds
 
-        result = get_credentials(MagicMock(), MagicMock(), user_id="test-user")
+        result = get_credentials(db, MagicMock(), user_id="test-user")
 
         assert result is mock_creds
         mock_creds.refresh.assert_called_once()
@@ -428,7 +319,7 @@ class TestGetCredentials:
     @patch("selko.services.google_photos.Request")
     @patch("selko.services.google_photos.get_oauth_credentials")
     def test_handles_refresh_failure(
-        self, mock_get_oauth, mock_request, mock_update_status
+        self, mock_get_oauth, mock_request, mock_update_status, db
     ):
         """Verify None is returned when refresh fails."""
         from google.auth.exceptions import RefreshError
@@ -439,7 +330,7 @@ class TestGetCredentials:
         mock_creds.refresh.side_effect = RefreshError("Token revoked")
         mock_get_oauth.return_value = mock_creds
 
-        result = get_credentials(MagicMock(), MagicMock(), user_id="test-user")
+        result = get_credentials(db, MagicMock(), user_id="test-user")
 
         assert result is None
         mock_update_status.assert_called_once()

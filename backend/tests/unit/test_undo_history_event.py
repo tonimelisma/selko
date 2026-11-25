@@ -1,214 +1,159 @@
-"""Unit tests for undo_history_event calendar side effects."""
+"""undo_history_event's calendar side effects, on a real database.
 
-from unittest.mock import MagicMock, patch
+The provider read (`calendars.get_calendar_event`) and the divergence check
+(`calendars.assert_calendar_not_diverged`, a provider read) are mocked; the
+proposal reopen and the undo enqueue are the real data-layer transitions.
+"""
+
+from unittest.mock import patch
 
 import pytest
 
+from selko.db.codec import new_id
 from selko.services.calendars import CalendarDivergedError
 from selko.services.events import EventsError, undo_history_event
 
+SNAPSHOT = {
+    "title": "Old Title",
+    "start_datetime": "2026-09-13T10:00:00-07:00",
+    "end_datetime": "2026-09-13T14:00:00-07:00",
+    "all_day": False,
+    "location": "Lot A",
+    "description": "Old",
+    "importance": "action_required",
+}
 
-def _event_row(**overrides):
-    base = {
-        "id": "event-123",
-        "user_id": "user-456",
+
+def _event(factory, user, **overrides):
+    values = {
         "title": "Bike Fest",
-        "status": "synced",
         "google_calendar_event_id": "gcal-abc",
-        "synced_at": "2026-07-12T01:00:00+00:00",
-        "start_datetime": "2026-09-13T17:00:00+00:00",
-        "end_datetime": "2026-09-13T21:00:00+00:00",
+        "synced_at": "2026-07-12T01:00:00.000000Z",
+        "start_datetime": "2026-09-13T17:00:00.000000Z",
+        "end_datetime": "2026-09-13T21:00:00.000000Z",
         "all_day": False,
         "location": "Park",
         "description": "Fun",
         "importance": "action_required",
     }
-    base.update(overrides)
-    return base
+    values.update(overrides)
+    return factory.event(user, review_status=values.pop("review_status", "active"), **values)
 
 
-def _mock_event_and_sources(mock_client, event, sources):
-    event_result = MagicMock()
-    event_result.data = event
-    sources_result = MagicMock()
-    sources_result.data = sources
-    proposal_result = MagicMock()
-    proposal_result.data = (
-        {
-            "id": "proposal-1",
-            "event_id": event["id"],
-            "source_id": sources[0]["id"],
-            "kind": "material_update",
-            "status": "applied",
-            "change_set": {"kind": "material_update", "changes": []},
-            "event_snapshot_before": sources[0]["event_snapshot_before"],
-        }
-        if sources
-        else None
-    )
+def _applied_change(factory, user, event, snapshot=SNAPSHOT):
+    source = factory.event_source(event, factory.email(user), source_type="update")
+    return factory._insert("event_change_proposals", {
+        "id": new_id(), "event_id": event, "user_id": user, "source_id": source,
+        "kind": "material_update", "status": "applied",
+        "change_set": {"kind": "material_update",
+                       "changes": [{"field": "title", "before": "Old Title", "after": "New Title"}]},
+        "event_snapshot_before": snapshot, "resolution_reason": "user_applied",
+        "resolved_at": "2026-07-12T02:00:00.000000Z",
+    })
 
-    def table_side_effect(name):
-        table = MagicMock()
-        if name == "events":
-            table.select.return_value.eq.return_value.single.return_value.execute.return_value = (
-                event_result
-            )
-            table.update.return_value.eq.return_value.execute.return_value = MagicMock()
-        elif name == "event_sources":
-            table.select.return_value.eq.return_value.eq.return_value.order.return_value.execute.return_value = (
-                sources_result
-            )
-        elif name == "event_change_proposals":
-            table.select.return_value.eq.return_value.eq.return_value.order.return_value.limit.return_value.maybe_single.return_value.execute.return_value = proposal_result
-        return table
 
-    mock_client.table.side_effect = table_side_effect
-    return mock_client
+def _work(db, event):
+    return [db.schema.decode("calendar_work_items", r) for r in db.query(
+        "SELECT * FROM calendar_work_items WHERE event_id = ? ORDER BY generation", (event,))]
+
+
+def _undo(db, event, user, *, force=False, live=None, diverged=None):
+    with patch("selko.services.events.calendars.assert_calendar_not_diverged",
+               side_effect=diverged) as check, \
+         patch("selko.services.events.calendars.get_calendar_event", return_value=live):
+        status = undo_history_event(db, event, user, force=force)
+    return status, check
 
 
 class TestUndoHistoryEventCalendar:
-    def test_new_synced_queues_calendar_delete(self):
-        mock_client = MagicMock()
-        _mock_event_and_sources(mock_client, _event_row(), sources=[])
+    def test_new_synced_queues_calendar_delete(self, db, factory):
+        user = factory.user()
+        event = _event(factory, user)
 
-        with patch(
-            "selko.services.events.calendars.assert_calendar_not_diverged"
-        ) as mock_assert, patch(
-            "selko.services.events.calendars.get_calendar_event",
-            return_value={"etag": "v1"},
-        ):
-            status = undo_history_event(
-                mock_client, "event-123", "user-456", force=False
-            )
+        status, check = _undo(db, event, user, live={"etag": "v1"})
 
         assert status == "pending_review"
-        mock_assert.assert_called_once()
-        params = mock_client.rpc.call_args.args[1]
-        assert mock_client.rpc.call_args.args[0] == "undo_event_and_enqueue_calendar_work"
-        assert params["p_action"] == "cancel"
+        check.assert_called_once()
+        (item,) = _work(db, event)
+        assert (item["action"], item["status"]) == ("cancel", "pending")
+        assert item["expected_provider_revision"] == "v1"
+        assert item["force_overwrite"] is False
+        assert factory.row("events", event)["review_status"] == "pending_review"
 
-    def test_diverged_without_force_raises(self):
-        mock_client = MagicMock()
-        _mock_event_and_sources(mock_client, _event_row(), sources=[])
+    def test_diverged_without_force_raises(self, db, factory):
+        user = factory.user()
+        event = _event(factory, user)
 
-        with patch(
-            "selko.services.events.calendars.assert_calendar_not_diverged",
-            side_effect=CalendarDivergedError("edited", ["title"]),
-        ), patch(
-            "selko.services.events.calendars.get_calendar_event",
-            return_value={"etag": "v1"},
-        ):
-            with pytest.raises(CalendarDivergedError):
-                undo_history_event(
-                    mock_client, "event-123", "user-456", force=False
-                )
+        with pytest.raises(CalendarDivergedError):
+            _undo(db, event, user, live={"etag": "v1"},
+                  diverged=CalendarDivergedError("edited", ["title"]))
 
-    def test_diverged_with_force_queues_delete(self):
-        mock_client = MagicMock()
-        _mock_event_and_sources(mock_client, _event_row(), sources=[])
+        assert _work(db, event) == [], "nothing is queued for a diverged event"
+        assert factory.row("events", event)["review_status"] == "active"
 
-        with patch(
-            "selko.services.events.calendars.assert_calendar_not_diverged"
-        ) as mock_assert, patch(
-            "selko.services.events.calendars.get_calendar_event",
-            return_value={"etag": "v1"},
-        ):
-            status = undo_history_event(
-                mock_client, "event-123", "user-456", force=True
-            )
+    def test_diverged_with_force_queues_delete(self, db, factory):
+        user = factory.user()
+        event = _event(factory, user)
+
+        status, check = _undo(db, event, user, force=True, live={"etag": "v1"})
 
         assert status == "pending_review"
-        mock_assert.assert_not_called()
-        assert mock_client.rpc.call_args.args[1]["p_force_overwrite"] is True
+        check.assert_not_called()
+        (item,) = _work(db, event)
+        assert item["action"] == "cancel"
+        assert item["force_overwrite"] is True
 
-    def test_applied_change_restores_calendar(self):
-        mock_client = MagicMock()
-        sources = [
-            {
-                "id": "src-1",
-                "source_type": "update",
-                "is_undone": False,
-                "event_snapshot_before": {
-                    "title": "Old Title",
-                    "start_datetime": "2026-09-13T10:00:00-07:00",
-                    "end_datetime": "2026-09-13T14:00:00-07:00",
-                    "all_day": False,
-                    "location": "Lot A",
-                    "description": "Old",
-                    "importance": "action_required",
-                },
-            }
-        ]
-        _mock_event_and_sources(mock_client, _event_row(title="New Title"), sources)
+    def test_applied_change_restores_calendar(self, db, factory):
+        user = factory.user()
+        event = _event(factory, user, title="New Title")
+        proposal = _applied_change(factory, user, event)
 
-        with patch(
-            "selko.services.events.calendars.assert_calendar_not_diverged"
-        ), patch(
-            "selko.services.events.calendars.get_calendar_event",
-            return_value={"id": "gcal-abc", "etag": "v1"},
-        ):
-            status = undo_history_event(
-                mock_client, "event-123", "user-456", force=False
-            )
+        status, _ = _undo(db, event, user, live={"id": "gcal-abc", "etag": "v1"})
 
         assert status == "active"
-        params = mock_client.rpc.call_args.args[1]
-        assert mock_client.rpc.call_args.args[0] == "reopen_event_change_proposal"
-        assert params["p_action"] == "upsert"
-        restored = params["p_desired_event"]
-        assert restored["title"] == "Old Title"
+        assert factory.row("event_change_proposals", proposal)["status"] == "pending"
+        row = factory.row("events", event)
+        assert (row["title"], row["location"], row["review_status"]) == ("Old Title", "Lot A", "active")
+        (item,) = _work(db, event)
+        assert item["action"] == "upsert"
+        assert item["desired_event"]["title"] == "Old Title"
+        assert item["expected_provider_revision"] == "v1"
 
-    def test_gcal_404_clears_sync_on_change_undo(self):
-        mock_client = MagicMock()
-        sources = [
-            {
-                "id": "src-1",
-                "source_type": "update",
-                "is_undone": False,
-                "event_snapshot_before": {
-                    "title": "Old Title",
-                    "start_datetime": "2026-09-13T10:00:00-07:00",
-                    "end_datetime": "2026-09-13T14:00:00-07:00",
-                    "all_day": False,
-                    "location": None,
-                    "description": None,
-                    "importance": "action_required",
-                },
-            }
-        ]
-        _mock_event_and_sources(mock_client, _event_row(), sources)
+    def test_gcal_404_clears_sync_on_change_undo(self, db, factory):
+        user = factory.user()
+        event = _event(factory, user)
+        _applied_change(factory, user, event, snapshot={**SNAPSHOT, "location": None, "description": None})
 
-        with patch(
-            "selko.services.events.calendars.assert_calendar_not_diverged"
-        ), patch(
-            "selko.services.events.calendars.get_calendar_event",
-            return_value=None,
-        ):
-            status = undo_history_event(
-                mock_client, "event-123", "user-456", force=False
-            )
+        status, _ = _undo(db, event, user, live=None)
 
         assert status == "active"
-        params = mock_client.rpc.call_args.args[1]
-        assert mock_client.rpc.call_args.args[0] == "reopen_event_change_proposal"
-        assert params["p_action"] is None
+        assert _work(db, event) == [], "no provider event left: nothing to write back"
+        assert factory.row("events", event)["title"] == "Old Title"
 
-    def test_unsynced_local_only(self):
-        mock_client = MagicMock()
-        _mock_event_and_sources(
-            mock_client,
-            _event_row(google_calendar_event_id=None, status="rejected"),
-            sources=[],
-        )
+    def test_unsynced_local_only(self, db, factory):
+        user = factory.user()
+        event = _event(factory, user, google_calendar_event_id=None, synced_at=None,
+                       review_status="rejected")
 
-        status = undo_history_event(mock_client, "event-123", "user-456", force=False)
+        with patch("selko.services.events.calendars.get_calendar_event") as read:
+            status = undo_history_event(db, event, user, force=False)
 
         assert status == "pending_review"
-        assert mock_client.rpc.call_args.args[1]["p_action"] is None
+        read.assert_not_called()
+        assert _work(db, event) == []
+        assert factory.row("events", event)["review_status"] == "pending_review"
 
-    def test_synced_requires_user_id(self):
-        mock_client = MagicMock()
-        _mock_event_and_sources(mock_client, _event_row(), sources=[])
+    def test_synced_requires_user_id(self, db, factory):
+        user = factory.user()
+        event = _event(factory, user)
 
         with pytest.raises(EventsError, match="user_id is required"):
-            undo_history_event(mock_client, "event-123")
+            undo_history_event(db, event)
+
+    def test_another_users_event_is_not_found(self, db, factory):
+        owner, other = factory.user(), factory.user()
+        event = _event(factory, owner, google_calendar_event_id=None, synced_at=None)
+
+        with pytest.raises(EventsError, match="not found"):
+            undo_history_event(db, event, other)
+        assert factory.row("events", event)["review_status"] == "active"

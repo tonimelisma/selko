@@ -1,0 +1,78 @@
+# The Selko image: build it, check it the way the server runs it, and on main
+# publish ghcr.io/tonimelisma/selko:<sha> signed keylessly with cosign.
+#
+# The image that is checked is the image that is pushed and signed: one build,
+# loaded into the runner's Docker, checked by scripts/image-lane.sh, then
+# pushed by digest. Nothing is pushed unless every check passed.
+#
+# A server verifies a pulled image with:
+#   cosign verify ghcr.io/tonimelisma/selko:<sha> \
+#     --certificate-identity "https://github.com/tonimelisma/selko/.github/workflows/image.yml@refs/heads/main" \
+#     --certificate-oidc-issuer https://token.actions.githubusercontent.com
+name: Image
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: image-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
+jobs:
+  image:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    permissions:
+      contents: read
+      packages: write   # push to ghcr.io (main only)
+      id-token: write   # cosign keyless signing (main only)
+    env:
+      IMAGE: ghcr.io/tonimelisma/selko:${{ github.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+
+      - name: Build the image
+        run: |
+          docker build --build-arg "GIT_COMMIT_SHA=${GITHUB_SHA}" -t "$IMAGE" .
+          docker image inspect "$IMAGE" --format 'size {{.Size}} bytes'
+
+      # The same script as the session's image lane: a throwaway Postgres holding
+      # selko_import/fixture, imported with selko_import, then image-check.sh.
+      - name: Check the image (read-only root, no capabilities, 400 MB, /data only)
+        env:
+          SELKO_FIXTURE_POSTGRES_IMAGE: postgres:17
+        run: |
+          uv sync --frozen --package selko
+          ./scripts/image-lane.sh "$IMAGE"
+
+      - name: Push and sign
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "$GH_TOKEN" | docker login ghcr.io -u "${GITHUB_ACTOR}" --password-stdin
+          docker push "$IMAGE"
+          digest="$(docker image inspect "$IMAGE" --format '{{index .RepoDigests 0}}')"
+          echo "pushed $digest"
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+        id: push
+
+      - name: Install cosign
+        if: steps.push.outputs.digest != ''
+        uses: sigstore/cosign-installer@v3
+
+      - name: Sign the pushed digest
+        if: steps.push.outputs.digest != ''
+        run: |
+          cosign sign --yes "${{ steps.push.outputs.digest }}"
+          cosign verify "${{ steps.push.outputs.digest }}" \
+            --certificate-identity "https://github.com/${GITHUB_REPOSITORY}/.github/workflows/image.yml@refs/heads/main" \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com >/dev/null
+          echo "signed and verified ${{ steps.push.outputs.digest }}"

@@ -6,8 +6,9 @@ readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
     "selko",
-    # scripts/cleanup_review_incident_20260713.py (came in through the CLI before)
-    "rich>=15.0.0",
+    # selko_import only: reads the old Postgres database once, at cutover.
+    # Not a dependency of selko, so the image never carries a Postgres driver.
+    "asyncpg>=0.30.0",
 ]
 
 [project.optional-dependencies]

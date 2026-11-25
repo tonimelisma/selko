@@ -1,6 +1,6 @@
 """Unit tests for calendar drift detection and undo helpers."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -101,29 +101,59 @@ class TestCalendarEventDiverged:
 
 
 class TestAssertCalendarNotDiverged:
-    def test_force_skips_check(self):
-        mock_client = MagicMock()
-        # Should not raise even with no mocks for get
-        assert_calendar_not_diverged(
-            mock_client, "user-1", "event-1", "gcal-1", force=True
-        )
+    """The sync log is real (SQLite `db`); only the live Google read is mocked."""
 
-    def test_missing_snapshot_requires_force(self):
-        mock_client = MagicMock()
+    @pytest.fixture
+    def synced(self, db, factory):
+        user_id = factory.user()
+        event_id = factory.event(user_id, review_status="active", google_calendar_event_id="gcal-1")
+        return user_id, event_id
+
+    @staticmethod
+    def _log(db, user_id, event_id, snapshot, action="created"):
+        from selko.db import calendar_work
+
+        calendar_work.log_calendar_sync(db, user_id, event_id, "gcal-1", action, snapshot)
+
+    def test_force_skips_check(self, db, synced):
+        user_id, event_id = synced
+        with patch("selko.services.calendars.get_calendar_event") as live:
+            assert_calendar_not_diverged(db, user_id, event_id, "gcal-1", force=True)
+        live.assert_not_called()
+
+    def test_missing_snapshot_requires_force(self, db, synced):
+        user_id, event_id = synced
         with patch(
             "selko.services.calendars.get_calendar_event",
             return_value={"summary": "X"},
-        ), patch(
-            "selko.services.calendars.get_latest_sync_snapshot",
-            return_value=None,
         ):
             with pytest.raises(CalendarDivergedError) as exc:
-                assert_calendar_not_diverged(
-                    mock_client, "user-1", "event-1", "gcal-1", force=False
-                )
+                assert_calendar_not_diverged(db, user_id, event_id, "gcal-1", force=False)
             assert "unknown" in exc.value.changed_fields
 
-    def test_matching_snapshot_ok(self):
+    def test_a_deletion_log_is_not_a_snapshot(self, db, synced):
+        user_id, event_id = synced
+        self._log(db, user_id, event_id, {"deleted_google_event_id": "gcal-1"}, action="deleted")
+        with patch(
+            "selko.services.calendars.get_calendar_event",
+            return_value={"summary": "X"},
+        ):
+            with pytest.raises(CalendarDivergedError) as exc:
+                assert_calendar_not_diverged(db, user_id, event_id, "gcal-1", force=False)
+            assert "unknown" in exc.value.changed_fields
+
+    def test_another_users_snapshot_is_never_used(self, db, factory, synced):
+        user_id, event_id = synced
+        snap = {"summary": "X", "location": "", "description": "",
+                "start": {"dateTime": "2026-01-01T10:00:00+00:00"},
+                "end": {"dateTime": "2026-01-01T11:00:00+00:00"}}
+        self._log(db, user_id, event_id, snap)
+        with patch("selko.services.calendars.get_calendar_event", return_value=dict(snap)):
+            with pytest.raises(CalendarDivergedError):
+                assert_calendar_not_diverged(db, factory.user(), event_id, "gcal-1", force=False)
+
+    def test_matching_snapshot_ok(self, db, synced):
+        user_id, event_id = synced
         snap = {
             "summary": "Meeting",
             "location": "",
@@ -131,19 +161,16 @@ class TestAssertCalendarNotDiverged:
             "start": {"dateTime": "2026-01-01T10:00:00+00:00"},
             "end": {"dateTime": "2026-01-01T11:00:00+00:00"},
         }
-        mock_client = MagicMock()
+        self._log(db, user_id, event_id, {**snap, "summary": "Older"})
+        self._log(db, user_id, event_id, snap, action="updated")
         with patch(
             "selko.services.calendars.get_calendar_event",
             return_value=dict(snap),
-        ), patch(
-            "selko.services.calendars.get_latest_sync_snapshot",
-            return_value=snap,
         ):
-            assert_calendar_not_diverged(
-                mock_client, "user-1", "event-1", "gcal-1", force=False
-            )
+            assert_calendar_not_diverged(db, user_id, event_id, "gcal-1", force=False)
 
-    def test_divergence_includes_structured_values(self):
+    def test_divergence_includes_structured_values(self, db, synced):
+        user_id, event_id = synced
         snap = {
             "summary": "Meeting",
             "location": "",
@@ -165,18 +192,13 @@ class TestAssertCalendarNotDiverged:
             },
             "htmlLink": "https://calendar.google.com/event?eid=test",
         }
-        mock_client = MagicMock()
+        self._log(db, user_id, event_id, snap)
         with patch(
             "selko.services.calendars.get_calendar_event",
             return_value=live,
-        ), patch(
-            "selko.services.calendars.get_latest_sync_snapshot",
-            return_value=snap,
         ):
             with pytest.raises(CalendarDivergedError) as exc:
-                assert_calendar_not_diverged(
-                    mock_client, "user-1", "event-1", "gcal-1", force=False
-                )
+                assert_calendar_not_diverged(db, user_id, event_id, "gcal-1", force=False)
 
         assert exc.value.changed_fields == ["start"]
         assert exc.value.differences == [

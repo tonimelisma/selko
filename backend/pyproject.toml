@@ -10,11 +10,8 @@ dependencies = [
     "google-auth-oauthlib>=1.4.0",
     "google-genai>=2.11.0",
     "python-dotenv>=1.2.2",
-    "supabase>=2.31.0",
     "fastapi>=0.139.0",
     "uvicorn[standard]>=0.51.0",
-    "python-jose[cryptography]>=3.3.0",
-    "apscheduler>=3.11.3",
     "slowapi>=0.1.10",
     "openai>=2.45.0",
     "pillow>=12.3.0",
@@ -24,8 +21,10 @@ dependencies = [
     "anthropic>=0.116.0",
     "msal>=1.37.0",
     "requests>=2.34.2",
+    "httpx>=0.28.1",
     "sentry-sdk[fastapi]>=2.20.0",
-    "asyncpg>=0.30.0",
+    "bcrypt>=5.0.0",
+    "pyjwt>=2.13.0",
 ]
 
 [project.optional-dependencies]
@@ -51,10 +50,6 @@ python_functions = ["test_*"]
 asyncio_mode = "auto"
 markers = [
     "integration: marks tests as integration tests (deselect with '-m \"not integration\"')",
-    "development: tests that run against local Supabase with real Gmail (requires seeded tokens)",
-    "staging: tests that run against staging Supabase + real Gmail",
-    "gmail: needs a live Gmail grant; deselected when both dev and staging grants are dead",
-    "drill: staging acceptance drill entrypoints",
     "production: read-only smoke tests for production",
     "llm: marks tests as requiring real LLM API calls (deselect with '-m \"not llm\"')",
     "slow: tests that take >10 seconds",

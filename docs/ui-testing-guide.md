@@ -65,7 +65,7 @@ Config file: `frontend/playwright.config.ts`
 
 Test files go in `frontend/tests/e2e/`. File naming: `*.spec.ts`.
 
-**Auth fixture:** Tests that need authentication use the shared auth fixture from `frontend/tests/e2e/fixtures/auth.ts`. This logs in once via the UI and reuses stored Supabase auth state.
+**Auth:** `frontend/tests/e2e/auth.setup.ts` (the `setup` project) logs in once via the UI and saves the browser state to `tests/e2e/.auth/user.json`; the other projects reuse it. That state carries the `selko_refresh` cookie, from which the app restores its session.
 
 ```typescript
 import { test } from './fixtures/auth';
@@ -77,8 +77,8 @@ test('authenticated page works', async ({ page }) => {
 ```
 
 **Prerequisites:**
-- Local Supabase running (`supabase start`)
-- Test user created (`test@selko.local` / `testpass123`)
+- The local API running over a data directory (`uv run uvicorn selko.api.app:app --port 8000`), or set `SELKO_E2E_BASE_URL` to an API that serves the built app
+- Test user created (`test@selko.local` / `testpass123`), e.g. through `/register`
 
 ### Debugging Failed Tests
 
@@ -144,4 +144,4 @@ Add to `.github/workflows/frontend-tests.yml`:
   run: cd frontend && npm run test:e2e
 ```
 
-Requires Supabase to be running in CI (use `supabase start` in workflow).
+Needs the API running in CI (no database service: it creates its own SQLite file).

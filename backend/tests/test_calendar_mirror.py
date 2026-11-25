@@ -1,4 +1,8 @@
-"""Contracts for the calendar mirror (I2 of event-identity-reach)."""
+"""Contracts for the calendar mirror (I2 of event-identity-reach).
+
+Database reads and writes run on a real SQLite database (`db`/`factory`);
+only the calendar provider is faked.
+"""
 
 from __future__ import annotations
 
@@ -153,49 +157,126 @@ def test_the_runtime_actually_runs_the_mirror():
     )
 
 
-def test_entries_are_indexed_even_though_upsert_returns_nothing():
-    """The mirror must index what it stores, not what the upsert echoes back.
+class _FakeAdapter:
+    """A provider adapter that serves fixed mirror pages (Google's API stays mocked)."""
+
+    def __init__(self, pages, *, expire_first=False):
+        self.pages = list(pages)
+        self.calls: list[dict] = []
+        self.expire_first = expire_first
+
+    def mirror_page(self, calendar_id, *, sync_token, window, page_token=None):
+        from selko.services.calendar_providers import CalendarSyncTokenExpired
+
+        self.calls.append({"calendar_id": calendar_id, "sync_token": sync_token, "page_token": page_token})
+        if self.expire_first:
+            self.expire_first = False
+            raise CalendarSyncTokenExpired("gone")
+        return self.pages.pop(0) if self.pages else {"items": [], "nextSyncToken": "tok-final"}
+
+
+def _mirror_user(factory):
+    user_id = factory.user()
+    integration_id = factory.integration(user_id, provider="google_calendar", scopes=["calendar"])
+    return user_id, integration_id
+
+
+def _hints(db, user_id):
+    return [dict(r) for r in db.query(
+        "SELECT calendar_entry_id, event_id, kind FROM event_identity_hints WHERE user_id = ? "
+        "ORDER BY rowid", (user_id,))]
+
+
+def _sync(db, user_id, integration_id, adapter, calendar_id="me@example.com"):
+    from unittest.mock import patch
+
+    from selko.services import calendar_mirror
+
+    with patch.object(calendar_mirror, "_mirror_adapter", return_value=adapter):
+        return calendar_mirror.sync_calendar(db, user_id, integration_id, calendar_id)
+
+
+def test_entries_are_indexed_from_what_the_database_stores(db, factory):
+    """The mirror must index what it stores, not what the write echoes back.
 
     Production mirrored 1595 calendar entries carrying 1595 iCalUIDs and wrote
     zero identity hints, because the code indexed `upsert(...).execute().data`
-    and PostgREST returned no representation. The mirror existed and the index
-    it exists to populate stayed empty.
-
-    Every other test passed: they cover the row mapping and the runtime wiring,
-    and neither can see what the database hands back.
+    and PostgREST returned no representation. This runs the whole pass on a
+    real database: the entry ids the hints carry are the stored rows' ids.
     """
-    from selko.services.calendar_mirror import _reload_stored, _write_entry_hints
+    user_id, integration_id = _mirror_user(factory)
+    adapter = _FakeAdapter([{"items": [_entry()], "nextSyncToken": "tok-1"}])
 
-    client = MagicMock()
-    upserted: list[dict] = []
+    summary = _sync(db, user_id, integration_id, adapter)
 
-    def table(name):
-        handle = MagicMock()
-        if name == "calendar_entries":
-            # The shape that caused the bug: an upsert that echoes nothing.
-            handle.upsert.return_value.execute.return_value.data = None
-            handle.select.return_value.eq.return_value.in_.return_value.execute.return_value.data = [
-                {"id": "entry-1", "ical_uid": "uid-1@example.com", "original_start": "", "deleted_at": None},
-            ]
-        elif name == "event_identity_hints":
-            handle.upsert.side_effect = lambda payload, **kw: (
-                upserted.extend(payload), MagicMock()
-            )[1]
-        return handle
-
-    client.table.side_effect = table
-
-    stored = _reload_stored(client, "user-1", [{"provider_event_id": "evt-1"}])
-    assert stored, "entries must be read back when the upsert returns nothing"
-
-    _write_entry_hints(client, "user-1", stored)
-    assert upserted, "a mirrored entry with an iCalUID must produce a hint"
-    assert upserted[0]["calendar_entry_id"] == "entry-1"
-    assert upserted[0]["kind"] == "ical_uid"
-    assert upserted[0]["event_id"] is None
+    assert summary["entries"] == 1 and summary["full_resync"] is True
+    entry = db.query_one("SELECT id, ical_uid FROM calendar_entries WHERE user_id = ?", (user_id,))
+    assert entry["ical_uid"] == "uid-1@example.com"
+    hints = _hints(db, user_id)
+    assert hints, "a mirrored entry with an iCalUID must produce a hint"
+    assert {h["calendar_entry_id"] for h in hints} == {entry["id"]}
+    assert hints[0]["kind"] == "ical_uid"
+    assert hints[0]["event_id"] is None
 
 
-def test_entries_mirrored_before_indexing_worked_are_repaired():
+def test_the_sync_token_is_saved_and_used_next_pass(db, factory):
+    from selko.db import mirror as db_mirror
+
+    user_id, integration_id = _mirror_user(factory)
+    _sync(db, user_id, integration_id,
+          _FakeAdapter([{"items": [_entry()], "nextSyncToken": "tok-1"}]))
+    assert db_mirror.get_state(db, user_id, integration_id, "me@example.com") == {"sync_token": "tok-1"}
+
+    adapter = _FakeAdapter([{"items": [], "nextSyncToken": "tok-2"}])
+    summary = _sync(db, user_id, integration_id, adapter)
+
+    assert adapter.calls[0]["sync_token"] == "tok-1"
+    assert summary == {"entries": 0, "full_resync": False, "has_sync_token": True, "arrived": []}
+    state = db.query_one(
+        "SELECT sync_token, last_full_resync_at, consecutive_failures FROM calendar_mirror_state "
+        "WHERE integration_id = ?", (integration_id,))
+    assert state["sync_token"] == "tok-2"
+    assert state["last_full_resync_at"] is None
+    assert state["consecutive_failures"] == 0
+
+
+def test_an_expired_sync_token_triggers_one_full_resync(db, factory):
+    user_id, integration_id = _mirror_user(factory)
+    _sync(db, user_id, integration_id,
+          _FakeAdapter([{"items": [], "nextSyncToken": "tok-1"}]))
+
+    adapter = _FakeAdapter([{"items": [_entry()], "nextSyncToken": "tok-new"}], expire_first=True)
+    summary = _sync(db, user_id, integration_id, adapter)
+
+    assert [c["sync_token"] for c in adapter.calls] == ["tok-1", None]
+    assert summary["full_resync"] is True
+    assert summary["entries"] == 1
+
+
+def test_a_second_pass_updates_the_entry_in_place(db, factory):
+    user_id, integration_id = _mirror_user(factory)
+    _sync(db, user_id, integration_id, _FakeAdapter([{"items": [_entry()], "nextSyncToken": "t"}]))
+    _sync(db, user_id, integration_id, _FakeAdapter([{"items": [
+        _entry(summary="Renamed standup", status="cancelled"),
+    ], "nextSyncToken": "t2"}]))
+
+    rows = db.query("SELECT title, status, deleted_at FROM calendar_entries WHERE user_id = ?", (user_id,))
+    assert len(rows) == 1
+    assert rows[0]["title"] == "Renamed standup"
+    assert rows[0]["deleted_at"] is not None
+
+
+def _stored_entry(db, user_id, integration_id, provider_event_id, uid):
+    from selko.db import mirror as db_mirror
+
+    row = entry_row(
+        _entry(id=provider_event_id, iCalUID=uid),
+        user_id=user_id, integration_id=integration_id, calendar_id="me@example.com",
+    )
+    return db_mirror.upsert_entries(db, user_id, [row])[0]
+
+
+def test_entries_mirrored_before_indexing_worked_are_repaired(db, factory):
     """Indexing must be a repair, not a side effect of writing.
 
     Once a sync token exists an unchanged calendar returns no rows, so nothing
@@ -203,64 +284,53 @@ def test_entries_mirrored_before_indexing_worked_are_repaired():
     and 0 hints because indexing only ran for rows a pass happened to write --
     every entry mirrored before the fix was unreachable for good.
     """
-    from selko.services.calendar_mirror import _index_unhinted_entries
+    from selko.services.calendar_mirror import _index_unhinted_entries, _write_entry_hints
 
-    client = MagicMock()
-    written: list[dict] = []
+    user_id, integration_id = _mirror_user(factory)
+    first = _stored_entry(db, user_id, integration_id, "evt-1", "uid-1@example.com")
+    second = _stored_entry(db, user_id, integration_id, "evt-2", "uid-2@example.com")
+    _write_entry_hints(db, user_id, [first])
 
-    def table(name):
-        handle = MagicMock()
-        if name == "calendar_entries":
-            chain = handle.select.return_value.eq.return_value.not_.is_.return_value.is_.return_value.limit.return_value
-            chain.execute.return_value.data = [
-                {"id": "entry-1", "ical_uid": "uid-1@example.com", "original_start": ""},
-                {"id": "entry-2", "ical_uid": "uid-2@example.com", "original_start": ""},
-            ]
-        elif name == "event_identity_hints":
-            handle.select.return_value.eq.return_value.not_.is_.return_value.execute.return_value.data = [
-                {"calendar_entry_id": "entry-1"},
-            ]
-            handle.upsert.side_effect = lambda payload, **kw: (
-                written.extend(payload), MagicMock()
-            )[1]
-        return handle
+    indexed = _index_unhinted_entries(db, user_id)
 
-    client.table.side_effect = table
-
-    indexed = _index_unhinted_entries(client, "user-1")
     assert indexed == 1, "only the entry lacking a hint should be indexed"
-    assert [row["calendar_entry_id"] for row in written] == ["entry-2"]
+    assert {h["calendar_entry_id"] for h in _hints(db, user_id)} == {first["id"], second["id"]}
 
 
-def test_indexing_is_a_no_op_when_everything_is_already_indexed():
+def test_indexing_is_a_no_op_when_everything_is_already_indexed(db, factory):
     """The repair must not rewrite hints on every sync."""
+    from selko.services.calendar_mirror import _index_unhinted_entries, _write_entry_hints
+
+    user_id, integration_id = _mirror_user(factory)
+    first = _stored_entry(db, user_id, integration_id, "evt-1", "uid-1@example.com")
+    _write_entry_hints(db, user_id, [first])
+    before = _hints(db, user_id)
+
+    assert _index_unhinted_entries(db, user_id) == 0
+    assert _hints(db, user_id) == before
+
+
+def test_indexing_never_reads_another_users_entries(db, factory):
     from selko.services.calendar_mirror import _index_unhinted_entries
 
-    client = MagicMock()
-    written: list[dict] = []
+    user_id, integration_id = _mirror_user(factory)
+    other, other_integration = _mirror_user(factory)
+    _stored_entry(db, other, other_integration, "evt-9", "uid-9@example.com")
 
-    def table(name):
-        handle = MagicMock()
-        if name == "calendar_entries":
-            chain = handle.select.return_value.eq.return_value.not_.is_.return_value.is_.return_value.limit.return_value
-            chain.execute.return_value.data = [
-                {"id": "entry-1", "ical_uid": "uid-1@example.com", "original_start": ""},
-            ]
-        elif name == "event_identity_hints":
-            handle.select.return_value.eq.return_value.not_.is_.return_value.execute.return_value.data = [
-                {"calendar_entry_id": "entry-1"},
-            ]
-            handle.upsert.side_effect = lambda payload, **kw: (
-                written.extend(payload), MagicMock()
-            )[1]
-        return handle
-
-    client.table.side_effect = table
-    assert _index_unhinted_entries(client, "user-1") == 0
-    assert written == []
+    assert _index_unhinted_entries(db, user_id) == 0
+    assert _hints(db, user_id) == []
 
 
-def test_every_calendar_is_mirrored_not_only_the_write_target():
+def test_reload_stored_returns_the_stored_ids(db, factory):
+    from selko.services.calendar_mirror import _reload_stored
+
+    user_id, integration_id = _mirror_user(factory)
+    stored = _stored_entry(db, user_id, integration_id, "evt-1", "uid-1@example.com")
+
+    assert [r["id"] for r in _reload_stored(db, user_id, [{"provider_event_id": "evt-1"}])] == [stored["id"]]
+
+
+def test_every_calendar_is_mirrored_not_only_the_write_target(db):
     """target_calendar_id is where Selko writes, not where invites arrive.
 
     This account carries three calendars, and the interview invitations Selko
@@ -283,7 +353,7 @@ def test_every_calendar_is_mirrored_not_only_the_write_target():
     ]
     calendar_mirror.sync_calendar = fake_sync
     try:
-        totals = calendar_mirror.sync_all_calendars(MagicMock(), "u1", "i1")
+        totals = calendar_mirror.sync_all_calendars(db, "u1", "i1")
     finally:
         calendar_mirror.list_provider_calendars = original_list
         calendar_mirror.sync_calendar = original_sync
@@ -292,7 +362,7 @@ def test_every_calendar_is_mirrored_not_only_the_write_target():
     assert totals == {"calendars": 3, "entries": 3, "failed": 0, "arrived": []}
 
 
-def test_one_failing_calendar_does_not_stop_the_others():
+def test_one_failing_calendar_does_not_stop_the_others(db):
     """A permission error on one subscription must not blind the rest."""
     from selko.services import calendar_mirror
 
@@ -308,7 +378,7 @@ def test_one_failing_calendar_does_not_stop_the_others():
     ]
     calendar_mirror.sync_calendar = fake_sync
     try:
-        totals = calendar_mirror.sync_all_calendars(MagicMock(), "u1", "i1")
+        totals = calendar_mirror.sync_all_calendars(db, "u1", "i1")
     finally:
         calendar_mirror.list_provider_calendars = original_list
         calendar_mirror.sync_calendar = original_sync
@@ -316,7 +386,7 @@ def test_one_failing_calendar_does_not_stop_the_others():
     assert totals == {"calendars": 2, "entries": 4, "failed": 1, "arrived": []}
 
 
-def test_the_primary_alias_is_never_mirrored_alongside_its_real_id():
+def test_the_primary_alias_is_never_mirrored_alongside_its_real_id(db):
     """"primary" is an alias, and list_calendars also returns the real id.
 
     Mirroring both stores every event twice under two calendar ids, and one
@@ -341,7 +411,7 @@ def test_the_primary_alias_is_never_mirrored_alongside_its_real_id():
     ]
     calendar_mirror.sync_calendar = fake_sync
     try:
-        totals = calendar_mirror.sync_all_calendars(MagicMock(), "u1", "i1")
+        totals = calendar_mirror.sync_all_calendars(db, "u1", "i1")
     finally:
         calendar_mirror.list_provider_calendars = original_list
         calendar_mirror.sync_calendar = original_sync
@@ -392,24 +462,18 @@ class TestJoinUrlsReachTheHints:
         )
         assert row["join_url"] is None
 
-    def test_the_stored_join_url_becomes_a_join_hint(self):
+    def test_the_stored_join_url_becomes_a_join_hint(self, db, factory):
         """The regression that matters: the hint writer must not drop it."""
         from selko.services import calendar_mirror
 
-        client = MagicMock()
-        captured: dict = {}
+        user_id, integration_id = _mirror_user(factory)
+        stored = _stored_entry(db, user_id, integration_id, "evt-1", None)
 
-        def capture(payload, on_conflict=None):
-            captured["payload"] = payload
-            return MagicMock()
-
-        client.table.return_value.upsert.side_effect = capture
-
-        calendar_mirror._write_entry_hints(client, "u1", [
-            {"id": "entry-1", "ical_uid": None, "join_url": "https://snowflake.zoom.us/j/123"},
+        calendar_mirror._write_entry_hints(db, user_id, [
+            {"id": stored["id"], "ical_uid": None, "join_url": "https://snowflake.zoom.us/j/123"},
         ])
 
-        kinds = {h["kind"] for h in captured["payload"]}
+        kinds = {h["kind"] for h in _hints(db, user_id)}
         assert "join_url" in kinds
 
 

@@ -5,12 +5,27 @@ with mocked external dependencies.
 """
 
 import asyncio
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from selko.services.events import WorkItemLease
 from selko.workers.concurrency import _try_acquire
 from selko.workers.pool import WorkerPool
+
+
+SELKO_ROOT = Path(__file__).resolve().parents[1] / "selko"
+
+
+def _source_files() -> list[Path]:
+    """Every module under backend/selko/, resolved from this file (never the cwd).
+
+    A cwd-relative path made these guards pass vacuously when pytest ran from
+    backend/: rglob found nothing and every assertion was skipped.
+    """
+    files = sorted(SELKO_ROOT.rglob("*.py"))
+    assert len(files) > 50, f"guard scanned {len(files)} files under {SELKO_ROOT}"
+    return files
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -21,8 +36,6 @@ from selko.workers.pool import WorkerPool
 def mock_config():
     """Mock Config returned by load_config."""
     cfg = MagicMock()
-    cfg.supabase_url = "http://localhost:54321"
-    cfg.supabase_key = "test-key"
     cfg.supabase_service_role_key = "test-service-key"
     cfg.event_sync_timeout = 120
     return cfg
@@ -281,51 +294,66 @@ class TestSingleTransportWiring:
     retain a PostgREST fallback branch."""
 
     @pytest.mark.asyncio
-    async def test_worker_pool_claims_over_the_pool(self, fake_pg_pool, fake_work_listener):
-        """A configured pool must actually reach the claim call."""
-        from selko.config import load_config
+    async def test_worker_pool_claims_through_the_db_layer(self, db, factory, mock_config):
+        """The pool's database reaches the calendar claim: the work item moves to
+        `processing` under this worker (a row change, not a recorded SQL string)."""
+        from selko.db import calendar_work
 
-        pool = WorkerPool(fake_pg_pool, fake_work_listener)
-        pool.config = load_config()
-        await pool._process_any_work("test-worker")
-        assert any("claim_calendar_work" in sql for sql, _ in fake_pg_pool.calls)
+        user = factory.user()
+        factory.integration(user, provider="google_calendar", access_token="t")
+        event_id = factory.event(user, review_status="active",
+                                 start_datetime="2026-09-01T14:00:00.000000Z",
+                                 end_datetime="2026-09-01T15:00:00.000000Z")
+        queued = calendar_work.enqueue_calendar_work(db, user, event_id, "upsert", {
+            "title": "Event", "start_datetime": "2026-09-01T14:00:00Z",
+            "end_datetime": "2026-09-01T15:00:00Z", "all_day": False,
+        })
+        pool = WorkerPool(db, db.signals)
+        pool.config = mock_config
+        mock_config.llm_claim_lease_seconds = 900
+
+        with (
+            patch("selko.workers.pool.get_service_client", return_value=db),
+            patch.object(pool, "_process_event_sync", new_callable=AsyncMock) as process,
+        ):
+            assert await pool._process_any_work("test-worker") is True
+            await asyncio.sleep(0)
+
+        item = factory.row("calendar_work_items", queued["id"])
+        assert (item["status"], item["locked_by"]) == ("processing", "test-worker")
+        assert process.await_args.args[2]["id"] == event_id
 
     def test_no_worker_module_retains_a_postgrest_fallback(self):
         """Rule 4 regression: one implementation per operation, no branches."""
-        import pathlib
         import re
 
         banned = re.compile(r"_via_pool|if .*pg_pool is not None")
-        for path in pathlib.Path("backend/selko").rglob("*.py"):
+        for path in _source_files():
             text = path.read_text()
             assert not banned.search(text), f"{path} still branches on transport"
 
-    def test_event_writes_go_through_commit_rpc(self):
-        """No active service or worker may insert directly into ``events``."""
-        import ast
-        from pathlib import Path
+    @pytest.mark.asyncio
+    async def test_worker_pool_claims_email_through_the_db_layer(self, db, factory, mock_config):
+        """The pool's database reaches the email claim: a row changes, not a recorded string."""
+        user = factory.user()
+        email_id = factory.email(user, subject="Wire me")
+        pool = WorkerPool(db, db.signals)
+        pool.config = mock_config
+        mock_config.llm_claim_lease_seconds = 900
 
-        offenders = []
-        for path in Path("backend/selko").rglob("*.py"):
-            if "/services/" not in str(path) and "/workers/" not in str(path):
-                continue
-            tree = ast.parse(path.read_text(), filename=str(path))
-            for node in ast.walk(tree):
-                if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Attribute):
-                    continue
-                if node.func.attr != "insert" or not node.func.value.args:
-                    continue
-                table_call = node.func.value.func
-                if not isinstance(table_call, ast.Attribute) or table_call.attr != "table":
-                    continue
-                if (
-                    node.func.value.args
-                    and isinstance(node.func.value.args[0], ast.Constant)
-                    and node.func.value.args[0].value == "events"
-                ):
-                    offenders.append(f"{path}:{node.lineno}")
+        # The calendar claim belongs to the events port; it finds nothing here.
+        with (
+            patch("selko.workers.pool.claim_approved_event_for_sync", new=AsyncMock(return_value=None)),
+            patch("selko.workers.pool.get_service_client", return_value=db),
+            patch.object(pool, "_process_email", new_callable=AsyncMock) as process,
+        ):
+            assert await pool._process_any_work("wired-worker") is True
+            await asyncio.sleep(0)
 
-        assert not offenders, "direct events inserts remain: " + ", ".join(offenders)
+        row = factory.row("emails", email_id)
+        assert (row["processing_status"], row["locked_by"], row["attempts"]) == ("processing", "wired-worker", 1)
+        claimed = process.await_args.args[2]
+        assert claimed["id"] == email_id
 
 
 class TestProcessIntegrationRecovery:
@@ -513,14 +541,31 @@ class TestServiceClientReuse:
 
 
 class TestEmailProcessWorker:
-    """Tests for email processing (LLM event extraction)."""
+    """Email processing (LLM event extraction) against a real temporary database."""
+
+    @staticmethod
+    def _pool(db, mock_config):
+        pool = WorkerPool(db, db.signals)
+        pool.config = mock_config
+        mock_config.email_processing_timeout = 30
+        mock_config.email_retry_base_seconds = 60
+        mock_config.email_retry_max_seconds = 1800
+        return pool
+
+    @staticmethod
+    def _claimed_email(db, factory, worker_id: str = "worker-1") -> dict:
+        from selko.db import emails as db_emails
+
+        factory.email(factory.user(), subject="Meetup", date_sent="2026-11-01T10:00:00.000000Z")
+        email = db_emails.claim_unprocessed_email(db, worker_id, 300)
+        assert email is not None
+        return email
 
     @pytest.mark.asyncio
-    async def test_processes_email_for_events(self, mock_config):
+    async def test_processes_email_for_events(self, db, mock_config):
         """Happy path: calls process_email_for_events via gateway."""
         from selko.workers.email_process import process_email
 
-        mock_client = MagicMock()
         email = {"id": "e1", "user_id": "u1", "subject": "Dinner reservation"}
 
         with (
@@ -531,21 +576,35 @@ class TestEmailProcessWorker:
                 return_value={"num_events": 1, "num_new": 1, "num_updated": 0},
             ) as mock_proc,
         ):
-            await process_email(mock_client, mock_config, email)
+            await process_email(db, mock_config, email)
 
         mock_proc.assert_called_once()
         # process_email_for_events(client, gateway, email_id, user_id, config=config)
         args = mock_proc.call_args[0]
+        assert args[0] is db
         assert args[2] == "e1"  # email_id is 3rd positional arg
 
     @pytest.mark.asyncio
-    async def test_pool_email_processing_uses_wait_for(self, mock_config, fake_pg_pool, fake_work_listener):
+    async def test_process_email_job_reads_the_email_from_the_database(self, db, factory, mock_config):
+        from selko.services.events import EventsError
+        from selko.workers.email_process import process_email_process_job
+
+        user = factory.user()
+        email_id = factory.email(user, subject="From the store")
+
+        with patch("selko.workers.email_process.process_email", new_callable=AsyncMock) as proc:
+            await process_email_process_job(db, mock_config, "job-1", {"email_id": email_id})
+            stored = proc.await_args.args[2]
+            assert (stored["id"], stored["user_id"], stored["subject"]) == (email_id, user, "From the store")
+
+            with pytest.raises(EventsError, match="not found"):
+                await process_email_process_job(db, mock_config, "job-2", {"email_id": "00000000-0000-4000-8000-00000000dead"})
+
+    @pytest.mark.asyncio
+    async def test_pool_email_processing_uses_wait_for(self, db, factory, mock_config):
         """Python 3.10 has no asyncio.timeout; pool must use wait_for."""
-        pool = WorkerPool(fake_pg_pool, fake_work_listener)
-        pool.config = mock_config
-        mock_config.email_processing_timeout = 30
-        mock_client = MagicMock()
-        email = {"id": "e1", "user_id": "u1", "subject": "Meetup"}
+        pool = self._pool(db, mock_config)
+        email = self._claimed_email(db, factory)
 
         with (
             patch(
@@ -560,7 +619,7 @@ class TestEmailProcessWorker:
                 return await coro
 
             mock_wait_for.side_effect = _run
-            await pool._process_email(mock_client, "worker-1", email)
+            await pool._process_email(db, "worker-1", email)
 
         mock_wait_for.assert_called_once()
         assert mock_wait_for.call_args.kwargs["timeout"] == 30
@@ -568,32 +627,59 @@ class TestEmailProcessWorker:
         mock_cb.record_success.assert_called_with("llm")
 
     @pytest.mark.asyncio
-    async def test_pool_does_not_overwrite_skipped_email(self, mock_config, fake_pg_pool, fake_work_listener):
+    async def test_pool_does_not_overwrite_skipped_email(self, db, factory, mock_config):
         """Regression: a sender-ignored/calendar-invite email must stay
         'skipped', not get flipped back to 'processed' by the pool."""
-        pool = WorkerPool(fake_pg_pool, fake_work_listener)
-        pool.config = mock_config
-        mock_config.email_processing_timeout = 30
-        mock_client = MagicMock()
-        email = {"id": "e1", "user_id": "u1", "subject": "Meetup"}
+        from selko.db import emails as db_emails
+
+        pool = self._pool(db, mock_config)
+        email = self._claimed_email(db, factory)
+
+        async def extraction_skips(_client, _config, claimed):
+            db_emails.skip_email(db, claimed["id"])
+            return {"num_events": 0, "num_new": 0, "num_updated": 0, "skipped": True}
 
         with (
-            patch(
-                "selko.workers.email_process.process_email",
-                new_callable=AsyncMock,
-                return_value={
-                    "num_events": 0, "num_new": 0, "num_updated": 0, "skipped": True,
-                },
-            ),
+            patch("selko.workers.email_process.process_email", new=AsyncMock(side_effect=extraction_skips)),
             patch("selko.workers.pool.circuit_breaker"),
-            patch("asyncio.wait_for", new_callable=AsyncMock) as mock_wait_for,
         ):
-            async def _run(coro, timeout=None):
-                return await coro
+            await pool._process_email(db, "worker-1", email)
 
-            mock_wait_for.side_effect = _run
-            await pool._process_email(mock_client, "worker-1", email)
+        assert factory.row("emails", email["id"])["processing_status"] == "skipped"
 
+    @pytest.mark.asyncio
+    async def test_a_failed_extraction_returns_the_email_for_retry(self, db, factory, mock_config):
+        pool = self._pool(db, mock_config)
+        email = self._claimed_email(db, factory)
+
+        with (
+            patch("selko.workers.email_process.process_email", new=AsyncMock(side_effect=RuntimeError("llm down"))),
+            patch("selko.workers.pool.circuit_breaker") as cb,
+        ):
+            await pool._process_email(db, "worker-1", email)
+
+        row = factory.row("emails", email["id"])
+        assert row["processing_status"] == "pending"
+        assert row["processing_error"] == "llm down"
+        assert row["locked_by"] is None
+        assert row["next_retry_at"] is not None
+        cb.record_failure.assert_called_with("llm")
+
+    @pytest.mark.asyncio
+    async def test_a_zombie_failure_cannot_overwrite_a_new_claim(self, db, factory, mock_config):
+        """The failure is fenced on (worker, generation): a stale worker changes nothing."""
+        pool = self._pool(db, mock_config)
+        email = self._claimed_email(db, factory)
+        stale = {**email, "lock_generation": email["lock_generation"] - 1}
+
+        with (
+            patch("selko.workers.email_process.process_email", new=AsyncMock(side_effect=RuntimeError("late"))),
+            patch("selko.workers.pool.circuit_breaker"),
+        ):
+            await pool._process_email(db, "worker-1", stale)
+
+        row = factory.row("emails", email["id"])
+        assert (row["processing_status"], row["locked_by"]) == ("processing", "worker-1")
 
 
 # ===========================================================================
@@ -619,68 +705,6 @@ class TestCalendarSyncWorker:
             result = await sync_event(mock_client, mock_config, event)
 
         assert result == "google-cal-event-123"
-
-    @pytest.mark.asyncio
-    async def test_circuit_breaker_not_recorded_on_complete_failure(self, mock_config, fake_pg_pool, fake_work_listener):
-        """Circuit breaker should not record success if complete_*_processing raises."""
-        # This test verifies B5: record_success must be AFTER complete_*_processing
-        pool = WorkerPool(fake_pg_pool, fake_work_listener, idle_sleep_seconds=0.01, error_backoff_seconds=0.01)
-        # The fix ensures record_success is the last statement, so if
-        # complete_email_processing raises, record_success is never called.
-        # This is a structural verification - the actual test is that the code ordering is correct.
-        assert True  # Structural fix verified by code review
-
-    @pytest.mark.asyncio
-    async def test_sync_failure_raises(self, mock_config):
-        """Calendar sync failure propagates CalendarsError."""
-        from selko.services.calendars import CalendarsError
-        from selko.workers.calendar_sync import sync_event
-
-        mock_client = MagicMock()
-        event = {"id": "ev1", "user_id": "u1", "title": "Meeting"}
-
-        with patch(
-            "selko.workers.calendar_sync.sync_event_to_calendar",
-            side_effect=CalendarsError("No Google Calendar credentials"),
-        ):
-            with pytest.raises(CalendarsError):
-                await sync_event(mock_client, mock_config, event)
-
-    @pytest.mark.asyncio
-    async def test_worker_is_single_calendar_writer(self, mock_config, fake_pg_pool, fake_work_listener):
-        """A claimed event is quota-checked and written exactly once by its worker."""
-        pool = WorkerPool(fake_pg_pool, fake_work_listener)
-        pool.config = mock_config
-        mock_client = MagicMock()
-        event = {
-            "id": "ev1",
-            "user_id": "u1",
-            "title": "Meeting",
-            "sync_attempts": 1,
-            "calendar_work_lease": WorkItemLease("work-ev1", "worker-1", 1),
-        }
-        quota_result = MagicMock(allowed=True)
-
-        with (
-            patch("selko.workers.pool.QuotaService") as quota_service,
-            patch(
-                "selko.workers.calendar_sync.sync_event",
-                new_callable=AsyncMock,
-                return_value="google-1",
-            ) as sync,
-            patch("selko.workers.pool.complete_event_sync", new=AsyncMock()) as complete,
-            patch("selko.workers.pool.circuit_breaker"),
-        ):
-            quota_service.return_value.check_and_increment.return_value = quota_result
-            await pool._process_event_sync(mock_client, "worker-1", event)
-
-        quota_service.return_value.check_and_increment.assert_called_once_with(
-            "u1", "calendar_syncs"
-        )
-        sync.assert_awaited_once_with(mock_client, mock_config, event)
-        complete.assert_awaited_once_with(
-            fake_pg_pool, event["calendar_work_lease"], "google-1"
-        )
 
     @pytest.mark.asyncio
     async def test_worker_cancels_calendar_event_with_fenced_completion(
@@ -726,454 +750,6 @@ class TestCalendarSyncWorker:
         cancel.assert_awaited_once_with(mock_client, mock_config, event)
         complete.assert_awaited_once_with(fake_pg_pool, event["calendar_work_lease"])
         sync.assert_not_awaited()
-
-    @pytest.mark.asyncio
-    async def test_worker_defers_without_writing_when_calendar_quota_is_exhausted(
-        self, mock_config, fake_pg_pool, fake_work_listener
-    ):
-        """Quota denial releases the claim without consuming an attempt."""
-        pool = WorkerPool(fake_pg_pool, fake_work_listener)
-        pool.config = mock_config
-        mock_client = MagicMock()
-        event = {
-            "id": "ev1",
-            "user_id": "u1",
-            "title": "Meeting",
-            "calendar_work_item_action": "upsert",
-            "calendar_work_lease": WorkItemLease("work-ev1", "worker-1", 1),
-            "calendar_work_item_attempts": 2,
-        }
-        quota_result = MagicMock(
-            allowed=False,
-            resets_at="2026-08-01T00:00:00+00:00",
-        )
-
-        with (
-            patch("selko.workers.pool.QuotaService") as quota_service,
-            patch(
-                "selko.workers.calendar_sync.sync_event",
-                new_callable=AsyncMock,
-            ) as sync,
-            patch("selko.workers.pool.defer_event_sync_for_quota", new=AsyncMock()) as defer,
-            patch("selko.workers.pool.complete_event_sync", new=AsyncMock()) as complete,
-        ):
-            quota_service.return_value.check_and_increment.return_value = quota_result
-            await pool._process_event_sync(mock_client, "worker-1", event)
-
-        defer.assert_awaited_once_with(
-            fake_pg_pool,
-            event["calendar_work_lease"],
-            "2026-08-01T00:00:00+00:00",
-        )
-        sync.assert_not_awaited()
-        complete.assert_not_awaited()
-
-    @pytest.mark.asyncio
-    async def test_worker_parks_event_without_dead_lettering_on_oauth_failure(
-        self, mock_config, fake_pg_pool, fake_work_listener
-    ):
-        """An OAuth-blocked sync must not dead-letter the event or trip the
-        shared google_calendar circuit breaker.
-
-        docs/specs/oauth-reconnect-catch-up.md item 1: user auth failures are
-        isolated per user, never counted against the shared provider circuit.
-        """
-        from selko.services.calendars import CalendarAuthRequiredError
-
-        pool = WorkerPool(fake_pg_pool, fake_work_listener)
-        pool.config = mock_config
-        mock_client = MagicMock()
-        event = {
-            "id": "ev1",
-            "user_id": "u1",
-            "title": "Meeting",
-            "calendar_work_item_action": "upsert",
-            "calendar_work_lease": WorkItemLease("work-ev1", "worker-1", 1),
-            "calendar_work_item_attempts": 1,
-        }
-        quota_result = MagicMock(allowed=True)
-
-        with (
-            patch("selko.workers.pool.QuotaService") as quota_service,
-            patch(
-                "selko.workers.calendar_sync.sync_event",
-                new_callable=AsyncMock,
-                side_effect=CalendarAuthRequiredError(
-                    "Google Calendar needs to be reconnected."
-                ),
-            ),
-            patch("selko.workers.pool.park_event_for_oauth_reauth", new=AsyncMock()) as park,
-            patch("selko.workers.pool.fail_event_sync", new=AsyncMock()) as fail,
-            patch("selko.workers.pool.circuit_breaker") as cb,
-        ):
-            quota_service.return_value.check_and_increment.return_value = quota_result
-            await pool._process_event_sync(mock_client, "worker-1", event)
-
-        park.assert_awaited_once_with(
-            fake_pg_pool,
-            event["calendar_work_lease"],
-            "oauth_required",
-            "Google Calendar needs to be reconnected.",
-        )
-        fail.assert_not_awaited()
-        cb.record_failure.assert_not_called()
-
-    @pytest.mark.asyncio
-    async def test_worker_dead_letters_and_trips_circuit_on_provider_failure(
-        self, mock_config, fake_pg_pool, fake_work_listener
-    ):
-        """A non-OAuth failure keeps today's behavior: fail_event_sync and
-        the shared circuit breaker both still fire.
-        """
-        pool = WorkerPool(fake_pg_pool, fake_work_listener)
-        pool.config = mock_config
-        mock_client = MagicMock()
-        event = {
-            "id": "ev1",
-            "user_id": "u1",
-            "title": "Meeting",
-            "sync_attempts": 1,
-            "calendar_work_lease": WorkItemLease("work-ev1", "worker-1", 1),
-        }
-        quota_result = MagicMock(allowed=True)
-
-        with (
-            patch("selko.workers.pool.QuotaService") as quota_service,
-            patch(
-                "selko.workers.calendar_sync.sync_event",
-                new_callable=AsyncMock,
-                side_effect=Exception("Calendar API down"),
-            ),
-            patch("selko.workers.pool.park_event_for_oauth_reauth", new=AsyncMock()) as park,
-            patch("selko.workers.pool.fail_event_sync", new=AsyncMock()) as fail,
-            patch("selko.workers.pool.circuit_breaker") as cb,
-        ):
-            quota_service.return_value.check_and_increment.return_value = quota_result
-            await pool._process_event_sync(mock_client, "worker-1", event)
-
-        fail.assert_awaited_once_with(
-            fake_pg_pool, event["calendar_work_lease"], "Calendar API down"
-        )
-        park.assert_not_awaited()
-        cb.record_failure.assert_called_once_with("google_calendar")
-
-
-class TestSingleTransportWiring:
-    """C2: the pool must actually reach the asyncpg claim, and no module may
-    retain a PostgREST fallback branch."""
-
-    @pytest.mark.asyncio
-    async def test_worker_pool_claims_over_the_pool(self, fake_pg_pool, fake_work_listener):
-        """A configured pool must actually reach the claim call."""
-        from selko.config import load_config
-
-        pool = WorkerPool(fake_pg_pool, fake_work_listener)
-        pool.config = load_config()
-        await pool._process_any_work("test-worker")
-        assert any("claim_calendar_work" in sql for sql, _ in fake_pg_pool.calls)
-
-    def test_no_worker_module_retains_a_postgrest_fallback(self):
-        """Rule 4 regression: one implementation per operation, no branches."""
-        import pathlib
-        import re
-
-        banned = re.compile(r"_via_pool|if .*pg_pool is not None")
-        for path in pathlib.Path("backend/selko").rglob("*.py"):
-            text = path.read_text()
-            assert not banned.search(text), f"{path} still branches on transport"
-
-
-class TestProcessIntegrationRecovery:
-    """Tests for the calendar OAuth reconnect recovery polling step."""
-
-    @pytest.mark.asyncio
-    async def test_claims_pending_recovery_and_tags_batch(self, pool, mock_config):
-        pool.config = mock_config
-        mock_client = MagicMock()
-
-        with (
-            patch(
-                "selko.workers.pool.claim_integration_recovery",
-                new=AsyncMock(return_value={"id": "recovery-1"}),
-            ) as claim,
-            patch(
-                "selko.workers.pool.requeue_calendar_recovery_batch",
-                new=AsyncMock(return_value=3),
-            ) as requeue,
-            patch("selko.workers.pool.refresh_waiting_calendar_recoveries", new=AsyncMock()) as refresh,
-        ):
-            result = await pool._process_integration_recovery(mock_client, "worker-1")
-
-        assert result is True
-        claim.assert_awaited_once_with(pool.pg_pool, "worker-1", lock_seconds=120)
-        requeue.assert_awaited_once_with(pool.pg_pool, "recovery-1", "worker-1")
-        refresh.assert_not_called()
-
-    @pytest.mark.asyncio
-    async def test_falls_back_to_refreshing_waiting_recoveries(self, pool, mock_config):
-        pool.config = mock_config
-        mock_client = MagicMock()
-
-        with (
-            patch("selko.workers.pool.claim_integration_recovery", new=AsyncMock(return_value=None)),
-            patch(
-                "selko.workers.pool.refresh_waiting_calendar_recoveries",
-                new=AsyncMock(return_value=2),
-            ) as refresh,
-        ):
-            result = await pool._process_integration_recovery(mock_client, "worker-1")
-
-        assert result is True
-        refresh.assert_awaited_once_with(pool.pg_pool)
-
-    @pytest.mark.asyncio
-    async def test_lost_claim_is_not_treated_as_processed(self, pool, mock_config):
-        """A requeue that returns -1 (claim lost) must not be logged as tagged
-        work or reported as processed."""
-        pool.config = mock_config
-        mock_client = MagicMock()
-
-        with (
-            patch(
-                "selko.workers.pool.claim_integration_recovery",
-                new=AsyncMock(return_value={"id": "recovery-1"}),
-            ) as claim,
-            patch(
-                "selko.workers.pool.requeue_calendar_recovery_batch",
-                new=AsyncMock(return_value=-1),
-            ) as requeue,
-            patch("selko.workers.pool.refresh_waiting_calendar_recoveries", new=AsyncMock()) as refresh,
-        ):
-            result = await pool._process_integration_recovery(mock_client, "worker-1")
-
-        assert result is False
-        requeue.assert_awaited_once_with(pool.pg_pool, "recovery-1", "worker-1")
-        refresh.assert_not_called()
-
-    @pytest.mark.asyncio
-    async def test_returns_false_when_nothing_to_do(self, pool, mock_config):
-        pool.config = mock_config
-        mock_client = MagicMock()
-
-        with (
-            patch("selko.workers.pool.claim_integration_recovery", new=AsyncMock(return_value=None)),
-            patch(
-                "selko.workers.pool.refresh_waiting_calendar_recoveries",
-                new=AsyncMock(return_value=0),
-            ),
-        ):
-            result = await pool._process_integration_recovery(mock_client, "worker-1")
-
-        assert result is False
-
-    @pytest.mark.asyncio
-    async def test_idle_recovery_probe_is_throttled(self, pool, mock_config):
-        """6d: idle ticks must not issue recovery RPCs at tick speed.
-
-        This runs on every idle tick of every worker. Unthrottled, at
-        `worker_pool_size=3` and a 1s idle sleep, it was roughly 500k no-op
-        round-trips a day with nothing recovering.
-        """
-        pool.config = mock_config
-        mock_client = MagicMock()
-
-        with (
-            patch(
-                "selko.workers.pool.claim_integration_recovery",
-                new=AsyncMock(return_value=None),
-            ) as claim,
-            patch(
-                "selko.workers.pool.refresh_waiting_calendar_recoveries",
-                new=AsyncMock(return_value=0),
-            ) as refresh,
-        ):
-            for _ in range(50):
-                assert (
-                    await pool._process_integration_recovery(mock_client, "worker-1")
-                    is False
-                )
-
-        # 50 idle ticks inside one interval must cost exactly one probe.
-        assert claim.call_count == 1
-        assert refresh.call_count == 1
-
-    @pytest.mark.asyncio
-    async def test_active_recovery_releases_the_throttle(self, pool, mock_config):
-        """An in-flight catch-up must keep advancing at full tick speed."""
-        pool.config = mock_config
-        mock_client = MagicMock()
-
-        with (
-            patch(
-                "selko.workers.pool.claim_integration_recovery",
-                new=AsyncMock(return_value={"id": "recovery-1"}),
-            ) as claim,
-            patch(
-                "selko.workers.pool.requeue_calendar_recovery_batch",
-                new=AsyncMock(return_value=3),
-            ),
-            patch("selko.workers.pool.refresh_waiting_calendar_recoveries", new=AsyncMock()),
-        ):
-            await pool._process_integration_recovery(mock_client, "worker-1")
-            await pool._process_integration_recovery(mock_client, "worker-1")
-
-        assert claim.call_count == 2
-
-
-# ===========================================================================
-# Service client reuse (regression: per-poll client creation leaked memory
-# and OOM-killed the production instance)
-# ===========================================================================
-
-
-class TestServiceClientReuse:
-    """Tests that the pool reuses one service client across poll iterations."""
-
-    @pytest.mark.asyncio
-    async def test_client_created_once_across_iterations(self, pool, mock_config):
-        """Repeated polls must not create a new supabase client each time."""
-        pool.config = mock_config
-
-        with (
-            patch("selko.workers.pool.get_service_client") as mock_create,
-            patch("selko.workers.pool.claim_pending_email", new=AsyncMock(return_value=None)),
-            patch("selko.workers.pool.claim_approved_event_for_sync", new=AsyncMock(return_value=None)),
-            patch("selko.workers.pool.claim_integration_recovery", new=AsyncMock(return_value=None)),
-            patch(
-                "selko.workers.pool.refresh_waiting_calendar_recoveries",
-                new=AsyncMock(return_value=0),
-            ),
-        ):
-            for _ in range(5):
-                await pool._process_any_work("w-0")
-
-        assert mock_create.call_count == 1
-
-    @pytest.mark.asyncio
-    async def test_start_resets_cached_client(self, pool, mock_config):
-        """start() drops any cached client so a restart uses fresh config."""
-        pool._client = MagicMock()
-
-        with patch("selko.workers.pool.load_config", return_value=mock_config):
-            pool._scheduler_loop = AsyncMock()
-            await pool.start()
-
-        assert pool._client is None
-        await pool.stop()
-
-
-# ===========================================================================
-# Email process worker
-# ===========================================================================
-
-
-class TestEmailProcessWorker:
-    """Tests for email processing (LLM event extraction)."""
-
-    @pytest.mark.asyncio
-    async def test_processes_email_for_events(self, mock_config):
-        """Happy path: calls process_email_for_events via gateway."""
-        from selko.workers.email_process import process_email
-
-        mock_client = MagicMock()
-        email = {"id": "e1", "user_id": "u1", "subject": "Dinner reservation"}
-
-        with (
-            patch("selko.workers.email_process.LLMLoggingService"),
-            patch("selko.workers.email_process.create_llm_gateway"),
-            patch(
-                "selko.workers.email_process.process_email_for_events",
-                return_value={"num_events": 1, "num_new": 1, "num_updated": 0},
-            ) as mock_proc,
-        ):
-            await process_email(mock_client, mock_config, email)
-
-        mock_proc.assert_called_once()
-        # process_email_for_events(client, gateway, email_id, user_id, config=config)
-        args = mock_proc.call_args[0]
-        assert args[2] == "e1"  # email_id is 3rd positional arg
-
-    @pytest.mark.asyncio
-    async def test_pool_email_processing_uses_wait_for(self, mock_config, fake_pg_pool, fake_work_listener):
-        """Python 3.10 has no asyncio.timeout; pool must use wait_for."""
-        pool = WorkerPool(fake_pg_pool, fake_work_listener)
-        pool.config = mock_config
-        mock_config.email_processing_timeout = 30
-        mock_client = MagicMock()
-        email = {"id": "e1", "user_id": "u1", "subject": "Meetup"}
-
-        with (
-            patch(
-                "selko.workers.email_process.process_email",
-                new_callable=AsyncMock,
-                return_value={"num_events": 1, "num_new": 1, "num_updated": 0},
-            ) as mock_proc,
-            patch("selko.workers.pool.circuit_breaker") as mock_cb,
-            patch("asyncio.wait_for", new_callable=AsyncMock) as mock_wait_for,
-        ):
-            async def _run(coro, timeout=None):
-                return await coro
-
-            mock_wait_for.side_effect = _run
-            await pool._process_email(mock_client, "worker-1", email)
-
-        mock_wait_for.assert_called_once()
-        assert mock_wait_for.call_args.kwargs["timeout"] == 30
-        mock_proc.assert_called_once()
-        mock_cb.record_success.assert_called_with("llm")
-
-    @pytest.mark.asyncio
-    async def test_pool_does_not_overwrite_skipped_email(self, mock_config, fake_pg_pool, fake_work_listener):
-        """Regression: a sender-ignored/calendar-invite email must stay
-        'skipped', not get flipped back to 'processed' by the pool."""
-        pool = WorkerPool(fake_pg_pool, fake_work_listener)
-        pool.config = mock_config
-        mock_config.email_processing_timeout = 30
-        mock_client = MagicMock()
-        email = {"id": "e1", "user_id": "u1", "subject": "Meetup"}
-
-        with (
-            patch(
-                "selko.workers.email_process.process_email",
-                new_callable=AsyncMock,
-                return_value={
-                    "num_events": 0, "num_new": 0, "num_updated": 0, "skipped": True,
-                },
-            ),
-            patch("selko.workers.pool.circuit_breaker"),
-            patch("asyncio.wait_for", new_callable=AsyncMock) as mock_wait_for,
-        ):
-            async def _run(coro, timeout=None):
-                return await coro
-
-            mock_wait_for.side_effect = _run
-            await pool._process_email(mock_client, "worker-1", email)
-
-
-
-# ===========================================================================
-# Calendar sync worker
-# ===========================================================================
-
-
-class TestCalendarSyncWorker:
-    """Tests for calendar sync worker."""
-
-    @pytest.mark.asyncio
-    async def test_syncs_event_to_calendar(self, mock_config):
-        """Happy path: calls sync_event_to_calendar and returns google_event_id."""
-        from selko.workers.calendar_sync import sync_event
-
-        mock_client = MagicMock()
-        event = {"id": "ev1", "user_id": "u1", "title": "Team standup"}
-
-        with patch(
-            "selko.workers.calendar_sync.sync_event_to_calendar",
-            return_value="google-cal-event-123",
-        ):
-            result = await sync_event(mock_client, mock_config, event)
-
-        assert result == "google-cal-event-123"
 
     @pytest.mark.asyncio
     async def test_circuit_breaker_not_recorded_on_complete_failure(self, mock_config, fake_pg_pool, fake_work_listener):
@@ -1369,39 +945,10 @@ class TestCalendarSyncWorker:
 
 
 def test_no_compat_shims_in_workers():
-    """Rule 5: delete, do not deprecate."""
-    import pathlib
+    """Rule 5: delete, do not deprecate (anywhere under backend/selko/)."""
     import re
 
     banned = re.compile(r"kept for compat|retained for compat|deprecated alias|Legacy alias")
-    for path in pathlib.Path("backend/selko/workers").rglob("*.py"):
+    for path in _source_files():
         text = path.read_text()
         assert not banned.search(text), f"{path} still carries a compat shim"
-
-
-def test_event_writes_go_through_commit_rpc():
-    """No active service or worker may insert directly into ``events``."""
-    import ast
-    from pathlib import Path
-
-    offenders = []
-    for path in Path("backend/selko").rglob("*.py"):
-        if "/services/" not in str(path) and "/workers/" not in str(path):
-            continue
-        tree = ast.parse(path.read_text(), filename=str(path))
-        for node in ast.walk(tree):
-            if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Attribute):
-                continue
-            if node.func.attr != "insert" or not isinstance(node.func.value, ast.Call):
-                continue
-            table_call = node.func.value.func
-            if not isinstance(table_call, ast.Attribute) or table_call.attr != "table":
-                continue
-            if (
-                node.func.value.args
-                and isinstance(node.func.value.args[0], ast.Constant)
-                and node.func.value.args[0].value == "events"
-            ):
-                offenders.append(f"{path}:{node.lineno}")
-
-    assert not offenders, "direct events inserts remain: " + ", ".join(offenders)

@@ -10,34 +10,12 @@ from datetime import datetime, timezone
 from typing import Protocol
 
 import requests
-from supabase import Client
 
 from selko.config import Config
+from selko.db import email_sync, ops
+from selko.db.connection import Database
 
 logger = logging.getLogger(__name__)
-
-# PostgREST caps a single response (1000 rows by default). The dead-letter scan
-# pages explicitly rather than trusting one shot: a silent truncation would stop
-# opening incidents for every integration past the cap, and a monitoring system
-# that under-reports is indistinguishable from a healthy one.
-_DEAD_LETTER_PAGE_SIZE = 1000
-_DEAD_LETTER_MAX_PAGES = 100
-
-
-def _embedded_integration_id(row: dict) -> str | None:
-    """Read ``integration_id`` out of a PostgREST embedded ``emails`` resource.
-
-    PostgREST returns a many-to-one embed as an object, but some client and
-    schema-cache combinations surface it as a single-element list. Accept both:
-    guessing wrong silently drops every attachment dead-letter incident.
-    """
-    embedded = row.get("emails")
-    if isinstance(embedded, list):
-        embedded = embedded[0] if embedded else None
-    if not isinstance(embedded, dict):
-        return None
-    return embedded.get("integration_id")
-
 
 @dataclass(frozen=True)
 class SafeIncident:
@@ -121,7 +99,7 @@ def _parse_datetime(value: str | None) -> datetime | None:
 
 
 class EmailSyncHealthEvaluator:
-    def __init__(self, client: Client, config: Config, notifier: OperationalNotifier | None = None):
+    def __init__(self, client: Database, config: Config, notifier: OperationalNotifier | None = None):
         self.client = client
         self.config = config
         self.notifier = notifier
@@ -140,47 +118,8 @@ class EmailSyncHealthEvaluator:
         return SafeIncident(key, state.get("provider", "email"), incident_type, severity, summary,
                             state.get("last_started_at"), state.get("last_success_at"), state.get("user_id"))
 
-    def _dead_letter_integration_ids(
-        self,
-        *,
-        table: str,
-        status_column: str,
-        columns: str,
-        extract,
-    ) -> set[str]:
-        """Integration IDs owning at least one dead-letter row in ``table``.
-
-        Replaces the per-integration ``count="exact"`` pair that made the
-        evaluator O(states) queries per cycle. Paged rather than single-shot
-        because PostgREST truncates at ``_DEAD_LETTER_PAGE_SIZE`` and a
-        truncated dead-letter scan silently stops raising incidents.
-        """
-        found: set[str] = set()
-        offset = 0
-        for _ in range(_DEAD_LETTER_MAX_PAGES):
-            rows = (
-                self.client.table(table)
-                .select(columns)
-                .eq(status_column, "dead_letter")
-                .range(offset, offset + _DEAD_LETTER_PAGE_SIZE - 1)
-                .execute()
-            ).data or []
-            for row in rows:
-                integration_id = extract(row)
-                if integration_id:
-                    found.add(integration_id)
-            if len(rows) < _DEAD_LETTER_PAGE_SIZE:
-                return found
-            offset += _DEAD_LETTER_PAGE_SIZE
-        logger.warning(
-            "Dead-letter scan of %s hit the %d-page ceiling; incident coverage may be partial",
-            table,
-            _DEAD_LETTER_MAX_PAGES,
-        )
-        return found
-
     async def evaluate_once(self) -> int:
-        states = self.client.table("email_sync_state").select("*").execute().data or []
+        states = email_sync.all_states(self.client)
         # Polling incidents apply only to integrations we are actually polling.
         #
         # An expired integration is intentionally not claimable, so its poll age
@@ -200,11 +139,10 @@ class EmailSyncHealthEvaluator:
         # Dead-letter incidents below are deliberately still evaluated for every
         # integration: data needing repair does not stop needing repair because
         # a token lapsed.
-        integration_rows = (
-            self.client.table("integrations").select("id,status").execute().data or []
-        )
         active_integration_ids = {
-            row["id"] for row in integration_rows if row.get("status") == "active"
+            integration_id
+            for integration_id, status in email_sync.integration_statuses(self.client).items()
+            if status == "active"
         }
         now = datetime.now(timezone.utc)
         expected: dict[str, SafeIncident] = {}
@@ -241,21 +179,10 @@ class EmailSyncHealthEvaluator:
                 incident = self._incident(state, "repeated_failures", "critical", "Three consecutive email polling runs failed")
                 expected[incident.incident_key] = incident
 
-        # 6e: two grouped scans replace two count="exact" queries *per state*
-        # per cycle. At 1000 integrations the old shape issued >2000 queries
-        # every 300s; this is now a fixed small number regardless of scale.
-        dead_item_integrations = self._dead_letter_integration_ids(
-            table="email_ingestion_items",
-            status_column="acquisition_status",
-            columns="integration_id",
-            extract=lambda row: row.get("integration_id"),
-        )
-        dead_attachment_integrations = self._dead_letter_integration_ids(
-            table="attachments",
-            status_column="ingestion_status",
-            columns="email_id,emails!inner(integration_id)",
-            extract=_embedded_integration_id,
-        )
+        # Two grouped scans, not two counts *per state* per cycle: a fixed
+        # number of queries regardless of how many integrations exist.
+        dead_item_integrations = email_sync.dead_letter_item_integration_ids(self.client)
+        dead_attachment_integrations = email_sync.dead_letter_attachment_integration_ids(self.client)
 
         for state in states:
             integration_id = state["integration_id"]
@@ -267,62 +194,47 @@ class EmailSyncHealthEvaluator:
                 expected[incident.incident_key] = incident
 
         for incident in expected.values():
-            _maybe = self.client.table("operational_incidents").select("*").eq("incident_key", incident.incident_key).maybe_single().execute()
-            existing = getattr(_maybe, "data", None)
-            if not existing:
-                self.client.table("operational_incidents").insert({
-                    "incident_key": incident.incident_key,
-                    "integration_id": incident.incident_key.split(":")[1],
-                    "user_id": incident.user_id,
-                    "incident_type": incident.incident_type,
-                    "severity": incident.severity,
-                    "status": "open",
-                    "safe_summary": incident.safe_summary,
-                }).execute()
-                if self.notifier:
-                    try:
-                        await self.notifier.send_incident_opened(incident)
-                        self.client.table("operational_incidents").update({"opened_notification_sent_at": now.isoformat()}).eq("incident_key", incident.incident_key).execute()
-                    except Exception:
-                        logger.exception("Operational incident notification failed")
-            else:
-                self.client.table("operational_incidents").update({
-                    "status": "open", "severity": incident.severity, "safe_summary": incident.safe_summary,
-                    "last_seen_at": now.isoformat(), "resolved_at": None,
-                    "opened_notification_sent_at": None if existing.get("status") == "resolved" else existing.get("opened_notification_sent_at"),
-                    # A re-opened incident must be able to send a second
-                    # recovery notification when it resolves again.
-                    "resolved_notification_sent_at": None if existing.get("status") == "resolved" else existing.get("resolved_notification_sent_at"),
-                }).eq("incident_key", incident.incident_key).execute()
-                if self.notifier and existing.get("status") == "resolved":
-                    try:
-                        await self.notifier.send_incident_opened(incident)
-                        self.client.table("operational_incidents").update({"opened_notification_sent_at": now.isoformat()}).eq("incident_key", incident.incident_key).execute()
-                    except Exception:
-                        logger.exception("Operational incident re-open notification failed")
+            # Read-then-insert-or-reopen in one transaction.
+            _, previous_status = ops.raise_incident(
+                self.client,
+                incident_key=incident.incident_key,
+                integration_id=incident.incident_key.split(":")[1],
+                user_id=incident.user_id,
+                incident_type=incident.incident_type,
+                severity=incident.severity,
+                safe_summary=incident.safe_summary,
+            )
+            # Notify on a new incident, and again when a resolved one re-opens.
+            if self.notifier and previous_status in (None, "resolved"):
+                try:
+                    await self.notifier.send_incident_opened(incident)
+                    ops.update_incident(
+                        self.client, incident.incident_key,
+                        {"opened_notification_sent_at": now.isoformat()},
+                    )
+                except Exception:
+                    logger.exception("Operational incident notification failed")
 
         # 6e: scope the resolution sweep to email-sync:* so the first non-email
         # subsystem to write to operational_incidents does not have its incidents
         # silently auto-resolved by this evaluator. The table name is generic;
         # an unscoped sweep would resolve any open row not in this evaluator's
         # `expected` set, including foreign subsystems'.
-        open_rows = (
-            self.client.table("operational_incidents")
-            .select("*")
-            .eq("status", "open")
-            .like("incident_key", "email-sync:%")
-            .execute()
-            .data or []
-        )
+        open_rows = ops.open_incidents(self.client, "email-sync:")
         for row in open_rows:
             if row.get("incident_key") in expected:
                 continue
-            self.client.table("operational_incidents").update({"status": "resolved", "resolved_at": now.isoformat(), "last_seen_at": now.isoformat()}).eq("id", row["id"]).execute()
+            ops.update_incident_by_id(
+                self.client, row["id"],
+                {"status": "resolved", "resolved_at": now.isoformat(), "last_seen_at": now.isoformat()},
+            )
             if self.notifier and not row.get("resolved_notification_sent_at"):
                 incident = SafeIncident(row["incident_key"], "email", row.get("incident_type", "email_sync"), row.get("severity", "warning"), row.get("safe_summary", "Email polling recovered"))
                 try:
                     await self.notifier.send_incident_resolved(incident)
-                    self.client.table("operational_incidents").update({"resolved_notification_sent_at": now.isoformat()}).eq("id", row["id"]).execute()
+                    ops.update_incident_by_id(
+                        self.client, row["id"], {"resolved_notification_sent_at": now.isoformat()}
+                    )
                 except Exception:
                     logger.exception("Operational recovery notification failed")
         self._last_evaluated_monotonic = time.monotonic()

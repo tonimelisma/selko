@@ -8,8 +8,9 @@ One scheduler task drains the queue in priority order:
 
 Photo ingestion is parked (egress inc 1). Email ingestion *discovery* is
 owned solely by IngestionRuntime; the LLM extraction of already-saved emails
-runs here. Work arrives by NOTIFY through the WorkListener; the safety-net
-poll is a floor, not a schedule. Durability stays in SQL leases.
+runs here. Work arrives by an in-process wake-up (``selko.db.bus.WorkSignals``,
+set after the writing transaction commits); the safety-net poll is a floor,
+not a schedule. Durability stays in the database leases.
 """
 
 import asyncio
@@ -284,13 +285,7 @@ class WorkerPool:
         logger.info(f"{worker_id}: scheduler stopped")
 
     def _get_client(self) -> Any:
-        """Return the shared service client, creating it on first use.
-
-        Workers must reuse one client: creating a fresh supabase client per
-        poll iteration leaks its unclosed httpx pools and SSL contexts
-        (~2 MB/min at 3 workers polling every second), which OOM-killed the
-        512 MB production instance every ~3 hours.
-        """
+        """Return the process database (looked up once and kept)."""
         if self._client is None:
             self._client = get_service_client(self.config)
         return self._client
@@ -475,7 +470,7 @@ class WorkerPool:
         """Process an email for event extraction.
 
         Args:
-            client: Supabase client.
+            client: The process database.
             worker_id: Unique identifier for this worker.
             email: The claimed email record.
         """
@@ -531,7 +526,7 @@ class WorkerPool:
         """Sync an approved event to the user's calendar.
 
         Args:
-            client: Supabase client.
+            client: The process database.
             worker_id: Unique identifier for this worker.
             event: The claimed event record.
         """

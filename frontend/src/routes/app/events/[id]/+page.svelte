@@ -7,7 +7,7 @@
 	import { getEvent, updateEvent, updateEventStatus, isNewReviewEvent } from '$lib/services/events.js';
 	import { undoHistoryEvent } from '$lib/api/backend.js';
 	import { getEmail } from '$lib/services/emails.js';
-	import { fetchAttachments } from '$lib/services/attachments.js';
+	import { fetchAttachments, downloadAttachment, isDownloadable } from '$lib/services/attachments.js';
 	import { fetchIntegrations } from '$lib/services/integrations.js';
 	import { hasWritableCalendar } from '$lib/calendar-providers.js';
 	import {
@@ -42,6 +42,18 @@ import StatusBadge from '$lib/components/StatusBadge.svelte';
 	/** @type {{event: any, timer: ReturnType<typeof setTimeout>} | null} */
 	let rejectedUndo = $state(null);
 	let undoingReject = $state(false);
+	/** @type {string | null} */
+	let downloadingId = $state(null);
+
+	/** @param {any} attachment */
+	async function handleDownload(attachment) {
+		downloadingId = attachment.id;
+		const { error: downloadError } = await downloadAttachment(attachment);
+		downloadingId = null;
+		if (downloadError) {
+			error = $_('eventSource.downloadFailed', { values: { filename: attachment.filename } });
+		}
+	}
 
 	// Form fields
 	let title = $state('');
@@ -273,7 +285,19 @@ import StatusBadge from '$lib/components/StatusBadge.svelte';
 										<p class="font-medium">{$_('eventSource.attachments', { values: { count: attachments.length } })}</p>
 										<ul class="list-disc list-inside mt-1">
 											{#each attachments as attachment}
-												<li class="text-base-content/70">{attachment.filename}</li>
+												<li class="text-base-content/70">
+													{#if isDownloadable(attachment)}
+														<button
+															type="button"
+															class="link link-primary inline-flex min-h-11 items-center text-left"
+															aria-label={$_('eventSource.downloadAttachment', { values: { filename: attachment.filename } })}
+															disabled={downloadingId === attachment.id}
+															onclick={() => handleDownload(attachment)}
+														>{attachment.filename}</button>
+													{:else}
+														{attachment.filename}
+													{/if}
+												</li>
 											{/each}
 										</ul>
 									</div>
@@ -307,7 +331,19 @@ import StatusBadge from '$lib/components/StatusBadge.svelte';
 										<p class="font-medium">{$_('eventSource.attachments', { values: { count: attachments.length } })}</p>
 										<ul class="list-disc list-inside mt-1">
 											{#each attachments as attachment}
-												<li class="text-base-content/70">{attachment.filename}</li>
+												<li class="text-base-content/70">
+													{#if isDownloadable(attachment)}
+														<button
+															type="button"
+															class="link link-primary inline-flex min-h-11 items-center text-left"
+															aria-label={$_('eventSource.downloadAttachment', { values: { filename: attachment.filename } })}
+															disabled={downloadingId === attachment.id}
+															onclick={() => handleDownload(attachment)}
+														>{attachment.filename}</button>
+													{:else}
+														{attachment.filename}
+													{/if}
+												</li>
 											{/each}
 										</ul>
 									</div>

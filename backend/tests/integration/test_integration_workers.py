@@ -1,749 +1,305 @@
 """Integration tests for status-based worker processing.
 
-Tests the worker job handlers with real Supabase database but mocked
-external APIs (Gmail, Google Calendar, Gemini).
+Email and calendar claiming run on a real SQLite database (`db`/`factory`);
+external APIs (Gmail, Google Calendar, the LLM) stay mocked.
 """
 
 import asyncio
 import logging
-from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
-from supabase import Client
 
-from selko.config import Config
-from selko.services.auth import get_service_client
 from selko.services.emails import (
     claim_pending_email,
     complete_email_processing,
     fail_email_processing,
     unlock_expired_email_locks,
 )
-from selko.services.events import (
-    claim_approved_event_for_sync,
-    complete_event_sync,
-    fail_event_sync,
-    unlock_expired_event_locks,
-)
-from selko.services.scheduled_tasks import (
-    claim_scheduled_task,
-    complete_scheduled_task,
-    enqueue_scheduled_task,
-    fail_scheduled_task,
-    unlock_expired_scheduled_tasks,
-)
 
 logger = logging.getLogger(__name__)
 
 
-@pytest.fixture
-def service_client(config: Config) -> Client:
-    """Get a service role client for testing worker operations."""
-    return get_service_client(config)
-
-
-@pytest.fixture
-def test_user_id(isolated_user):
-    """Use a throwaway user so worker claim batches cannot cross tests."""
-    return isolated_user["id"]
-
-
-@pytest.fixture
-def authenticated_client(service_client):
-    """Worker tests use service-role writes for their isolated user."""
-    return service_client
-
-
-@pytest.fixture(autouse=True)
-def cleanup_test_data(service_client: Client, test_user_id: str):
-    """Clean up all test data before and after each test."""
-    # Clean up scheduled tasks
-    try:
-        service_client.table("scheduled_tasks").delete().eq("user_id", test_user_id).execute()
-    except Exception as e:
-        logger.warning(f"Failed to cleanup scheduled tasks: {e}")
-
-    # Reset any pending emails to processed to avoid test pollution
-    try:
-        service_client.table("emails").update({
-            "processing_status": "processed",
-            "locked_by": None,
-            "locked_until": None,
-        }).eq("user_id", test_user_id).in_(
-            "processing_status", ["pending", "processing"]
-        ).execute()
-    except Exception as e:
-        logger.warning(f"Failed to reset pending emails: {e}")
-
-    # Remove calendar work items so claims cannot cross test boundaries.
-    try:
-        service_client.table("calendar_work_items").delete().eq(
-            "user_id", test_user_id
-        ).execute()
-    except Exception as e:
-        logger.warning(f"Failed to reset approved events: {e}")
-
-    yield
-
-    # Clean up after test
-    try:
-        service_client.table("scheduled_tasks").delete().eq("user_id", test_user_id).execute()
-    except Exception as e:
-        logger.warning(f"Failed to cleanup scheduled tasks after test: {e}")
+def _pending_email(factory, user_id: str, *, date_sent: str = "2000-01-01T00:00:00.000000Z", **extra) -> str:
+    return factory.email(
+        user_id,
+        provider_message_id=f"claim-test-{uuid4().hex[:8]}",
+        subject=extra.pop("subject", "Test Email"),
+        from_email="test@example.com",
+        date_sent=date_sent,
+        provider_labels=["INBOX"],
+        **extra,
+    )
 
 
 @pytest.mark.integration
-@pytest.mark.development
 class TestEmailStatusBasedClaiming:
-    """Tests for email status-based claiming (replacing email_process jobs)."""
+    """Email status-based claiming on the real database."""
 
-    async def test_claim_pending_email_directly(
-        self, service_client, authenticated_client, test_user_id, pg_pool
-    ):
-        """Test that worker can claim a pending email directly from the emails table."""
-        # Create a pending email
-        email_data = {
-            "user_id": test_user_id,
-            "provider_message_id": f"claim-test-{uuid4().hex[:8]}",
-            "subject": "Test Email for Claiming",
-            "from_email": "test@example.com",
-            "date_sent": "1900-01-01T00:00:00Z",
-            "snippet": "Test content",
-            "provider_labels": ["INBOX"],
-            "processing_status": "pending",
-        }
+    async def test_claim_pending_email_directly(self, db, factory):
+        """A worker claims a pending email directly from the emails table."""
+        email_id = _pending_email(factory, factory.user(), date_sent="1900-01-01T00:00:00.000000Z")
 
-        result = authenticated_client.table("emails").insert(email_data).execute()
-        email_id = result.data[0]["id"]
-
-        # Claim the email
-        claimed = await claim_pending_email(pg_pool, "test-worker-1")
+        claimed = await claim_pending_email(db, "test-worker-1")
 
         assert claimed is not None
-        assert str(claimed["id"]) == email_id
+        assert claimed["id"] == email_id
         assert claimed["processing_status"] == "processing"
         assert claimed["locked_by"] == "test-worker-1"
         assert claimed["attempts"] == 1
 
-    async def test_complete_email_processing_updates_status(
-        self, service_client, authenticated_client, test_user_id, pg_pool
-    ):
-        """Test that completing email processing updates status correctly."""
-        # Create and claim an email
-        email_data = {
-            "user_id": test_user_id,
-            "provider_message_id": f"complete-test-{uuid4().hex[:8]}",
-            "subject": "Test Email",
-            "from_email": "test@example.com",
-            "date_sent": "2000-01-01T00:00:00Z",
-            "processing_status": "pending",
-            "provider_labels": ["INBOX"],
-        }
+    async def test_complete_email_processing_updates_status(self, db, factory):
+        email_id = _pending_email(factory, factory.user())
+        await claim_pending_email(db, "test-worker")
 
-        result = authenticated_client.table("emails").insert(email_data).execute()
-        email_id = result.data[0]["id"]
+        await complete_email_processing(db, email_id)
 
-        await claim_pending_email(pg_pool, "test-worker")
+        email = factory.row("emails", email_id)
+        assert email["processing_status"] == "processed"
+        assert email["processed_at"] is not None
+        assert email["locked_by"] is None
 
-        # Complete processing
-        await complete_email_processing(pg_pool, email_id)
+    async def test_fail_email_processing_with_retry(self, db, factory):
+        email_id = _pending_email(factory, factory.user(), max_attempts=3)
 
-        # Verify status
-        email = authenticated_client.table("emails").select("*").eq(
-            "id", email_id
-        ).single().execute()
-
-        assert email.data["processing_status"] == "processed"
-        assert email.data["processed_at"] is not None
-        assert email.data["locked_by"] is None
-
-    async def test_fail_email_processing_with_retry(
-        self, service_client, authenticated_client, test_user_id, pg_pool
-    ):
-        """Test that failing email processing allows retry."""
-        # Create email with max_attempts=3
-        email_data = {
-            "user_id": test_user_id,
-            "provider_message_id": f"fail-test-{uuid4().hex[:8]}",
-            "subject": "Test Email",
-            "from_email": "test@example.com",
-            "date_sent": "2000-01-01T00:00:00Z",
-            "processing_status": "pending",
-            "provider_labels": ["INBOX"],
-            "max_attempts": 3,
-        }
-
-        result = authenticated_client.table("emails").insert(email_data).execute()
-        email_id = result.data[0]["id"]
-
-        # Claim and fail
-        claimed = await claim_pending_email(pg_pool, "worker-1")
+        claimed = await claim_pending_email(db, "worker-1")
         await fail_email_processing(
-            pg_pool, email_id, "worker-1", claimed["lock_generation"],
-            "Test error", 60, 1800,
+            db, email_id, "worker-1", claimed["lock_generation"], "Test error", 60, 1800,
         )
 
-        # Should be back to pending for retry
-        email = authenticated_client.table("emails").select("*").eq(
-            "id", email_id
-        ).single().execute()
+        email = factory.row("emails", email_id)
+        assert email["processing_status"] == "pending"
+        assert email["processing_error"] == "Test error"
+        assert email["locked_by"] is None
 
-        assert email.data["processing_status"] == "pending"
-        assert email.data["processing_error"] == "Test error"
-        assert email.data["locked_by"] is None
+    async def test_concurrent_workers_no_duplicate_email_processing(self, db, factory):
+        """Concurrent claimers over the single writer never share an email."""
+        email_id = _pending_email(factory, factory.user())
 
-    async def test_concurrent_workers_no_duplicate_email_processing(
-        self, service_client, authenticated_client, test_user_id, pg_pool
-    ):
-        """Test that SKIP LOCKED prevents concurrent workers from claiming same email."""
-        # Clean up any existing pending emails first
-        service_client.table("emails").update({
-            "processing_status": "processed"
-        }).eq("user_id", test_user_id).eq("processing_status", "pending").execute()
+        results = await asyncio.gather(*(claim_pending_email(db, f"worker-{i}") for i in range(10)))
 
-        # Create a single email
-        email_data = {
-            "user_id": test_user_id,
-            "provider_message_id": f"concurrent-test-{uuid4().hex[:8]}",
-            "subject": "Test Email",
-            "from_email": "test@example.com",
-            # Keep this row ahead of unrelated global queue work.
-            "date_sent": "1900-01-01T00:00:00Z",
-            "processing_status": "pending",
-            "provider_labels": ["INBOX"],
-        }
+        claimed = [r for r in results if r is not None]
+        assert [r["id"] for r in claimed] == [email_id]
+        assert factory.row("emails", email_id)["lock_generation"] == claimed[0]["lock_generation"]
 
-        result = authenticated_client.table("emails").insert(email_data).execute()
-        email_id = result.data[0]["id"]
+    async def test_email_lock_expiry_recovery(self, db, factory):
+        """An expired lease is released and the email is claimable again."""
+        email_id = _pending_email(factory, factory.user())
+        await claim_pending_email(db, "worker-1", lock_duration_seconds=1)
+        with db.write() as tx:
+            tx.execute("UPDATE emails SET locked_until = ? WHERE id = ?", (tx.ts(-10), email_id))
 
-        # The claim RPC is global. Consume unrelated rows until this test's
-        # row is the one under test, then assert the ownership property.
-        claimed_1 = None
-        for _ in range(20):
-            candidate = await claim_pending_email(pg_pool, "worker-1")
-            if candidate is None:
-                break
-            if str(candidate["id"]) == email_id:
-                claimed_1 = candidate
-                break
-            await complete_email_processing(pg_pool, str(candidate["id"]))
-        assert claimed_1 is not None
+        count = await unlock_expired_email_locks(db)
+        assert count == 1
 
-        # Worker 2 must not claim the same email, even if another global row
-        # is available in the bounded queue.
-        claimed_2 = await claim_pending_email(pg_pool, "worker-2")
-        assert claimed_2 is None or str(claimed_2["id"]) != email_id
-
-    async def test_email_lock_expiry_recovery(
-        self, service_client, authenticated_client, test_user_id, pg_pool
-    ):
-        """Test that expired email locks can be recovered."""
-        # Create and claim an email with short lock
-        provider_message_id = f"expiry-test-{uuid4().hex[:8]}"
-        email_data = {
-            "user_id": test_user_id,
-            "provider_message_id": provider_message_id,
-            "subject": "Test Email",
-            "from_email": "test@example.com",
-            # The claim RPC is intentionally global and oldest-first; make
-            # this test's row win even when another isolated test left work.
-            "date_sent": "2000-01-01T00:00:00Z",
-            "processing_status": "pending",
-            "provider_labels": ["INBOX"],
-        }
-
-        authenticated_client.table("emails").insert(email_data).execute()
-
-        await claim_pending_email(pg_pool, "worker-1", lock_duration_seconds=1)
-
-        # Set lock_until to past directly instead of waiting
-        past_time = (datetime.now(timezone.utc) - timedelta(seconds=10)).isoformat()
-        service_client.table("emails").update({
-            "locked_until": past_time
-        }).eq("provider_message_id", provider_message_id).execute()
-
-        # Unlock expired locks
-        count = await unlock_expired_email_locks(pg_pool)
-        assert count >= 1
-
-        # Should be claimable again
-        claimed = await claim_pending_email(pg_pool, "worker-2")
-        assert claimed is not None
+        claimed = await claim_pending_email(db, "worker-2")
+        assert claimed is not None and claimed["id"] == email_id
+        assert claimed["attempts"] == 2
 
 
 @pytest.mark.integration
-@pytest.mark.development
 class TestEventStatusBasedClaiming:
-    """Tests for event status-based claiming (replacing calendar_sync jobs)."""
+    """Calendar work claiming on a real SQLite database (`selko.db.calendar_work`)."""
 
-    @pytest.fixture(autouse=True)
-    def _active_google_calendar_integration(self, service_client, test_user_id):
-        """claim_approved_event requires an active google_calendar integration
-        for the event's user (oauth-reconnect-catch-up.md structured failure
-        classification: workers must not burn attempts on users who are
-        known to be disconnected).
+    @pytest.fixture
+    def calendar_user(self, factory):
+        """The claim requires an active calendar integration for the event's user
+        (oauth-reconnect-catch-up.md structured failure classification: workers
+        must not burn attempts on users who are known to be disconnected).
         """
-        service_client.table("integrations").upsert(
-            {
-                "user_id": test_user_id,
-                "provider": "google_calendar",
-                "status": "active",
-                "access_token": "test-access-token",
-            },
-            on_conflict="user_id,provider",
-        ).execute()
-        yield
-        service_client.table("integrations").delete().eq(
-            "user_id", test_user_id
-        ).eq("provider", "google_calendar").execute()
+        user_id = factory.user()
+        factory.integration(user_id, provider="google_calendar", access_token="test-access-token")
+        return user_id
 
-    async def test_claim_approved_event_directly(
-        self, service_client, authenticated_client, test_user_id, pg_pool
-    ):
+    @staticmethod
+    def _queued_event(db, factory, user_id, title="Test Event", review_status="active"):
+        from selko.db import calendar_work
+
+        event_id = factory.event(
+            user_id, review_status=review_status, title=title,
+            start_datetime="2026-05-01T14:00:00.000000Z",
+        )
+        calendar_work.enqueue_calendar_work(db, user_id, event_id, "upsert", {"title": title})
+        return event_id
+
+    async def test_claim_approved_event_directly(self, db, factory, calendar_user):
         """Test that worker can claim an approved event directly."""
-        # Create an approved event
-        event_data = {
-            "user_id": test_user_id,
-            "title": "Test Event for Claiming",
-            "start_datetime": "2026-05-01T14:00:00Z",
-            "review_status": "active",
-        }
+        from selko.db import calendar_work
 
-        result = authenticated_client.table("events").insert(event_data).execute()
-        event_id = result.data[0]["id"]
-        authenticated_client.rpc("enqueue_calendar_work", {
-            "p_event_id": event_id,
-            "p_user_id": test_user_id,
-            "p_action": "upsert",
-            "p_desired_event": {"title": event_data["title"]},
-        }).execute()
+        event_id = self._queued_event(db, factory, calendar_user, "Test Event for Claiming")
 
-        # Claim the event
-        claimed = await claim_approved_event_for_sync(pg_pool, "test-worker-1")
+        claimed = await db.run(calendar_work.claim_calendar_work_item, db, "test-worker-1")
 
         assert claimed is not None
-        assert str(claimed["id"]) == event_id
-        assert claimed["calendar_work_item_action"] == "upsert"
-        assert claimed["calendar_work_item_attempts"] == 1
-        work_item = service_client.table("calendar_work_items").select("status").eq(
-            "event_id", event_id
-        ).single().execute().data
-        assert work_item["status"] == "processing"
+        item, event = claimed
+        assert event["id"] == event_id
+        assert item["action"] == "upsert"
+        assert item["attempts"] == 1
+        assert factory.row("calendar_work_items", item["id"])["status"] == "processing"
 
-    async def test_complete_event_sync_updates_status(
-        self, service_client, authenticated_client, test_user_id, pg_pool
-    ):
+    async def test_complete_event_sync_updates_status(self, db, factory, calendar_user):
         """Test that completing event sync updates status correctly."""
-        # Create and claim an event
-        event_data = {
-            "user_id": test_user_id,
-            "title": "Test Event",
-            "start_datetime": "2026-05-01T14:00:00Z",
-            "review_status": "active",
-        }
+        from selko.db import calendar_work
 
-        result = authenticated_client.table("events").insert(event_data).execute()
-        event_id = result.data[0]["id"]
-        authenticated_client.rpc("enqueue_calendar_work", {
-            "p_event_id": event_id,
-            "p_user_id": test_user_id,
-            "p_action": "upsert",
-            "p_desired_event": {"title": event_data["title"]},
-        }).execute()
+        event_id = self._queued_event(db, factory, calendar_user)
+        item, _ = calendar_work.claim_calendar_work_item(db, "test-worker")
 
-        claimed = await claim_approved_event_for_sync(pg_pool, "test-worker")
+        assert calendar_work.complete_calendar_work(
+            db, item["id"], "test-worker", item["generation"], "google-event-123"
+        ) is True
 
-        # Complete sync
-        await complete_event_sync(
-            pg_pool,
-            claimed["calendar_work_lease"],
-            "google-event-123",
-        )
+        event = factory.row("events", event_id)
+        assert event["review_status"] == "active"
+        assert event["google_calendar_event_id"] == "google-event-123"
+        assert event["synced_at"] is not None
 
-        # Verify status
-        event = authenticated_client.table("events").select("*").eq(
-            "id", event_id
-        ).single().execute()
-
-        assert event.data["review_status"] == "active"
-        assert event.data["google_calendar_event_id"] == "google-event-123"
-        assert event.data["synced_at"] is not None
-
-    async def test_fail_event_sync_with_retry(
-        self, service_client, authenticated_client, test_user_id, pg_pool
-    ):
+    async def test_fail_event_sync_with_retry(self, db, factory, calendar_user):
         """Test that failing event sync allows retry."""
+        from selko.db import calendar_work
+
         # The work item owns the retry budget.
-        event_data = {
-            "user_id": test_user_id,
-            "title": "Test Event",
-            "start_datetime": "2026-05-01T14:00:00Z",
-            "review_status": "active",
-        }
+        event_id = self._queued_event(db, factory, calendar_user)
+        item, _ = calendar_work.claim_calendar_work_item(db, "worker-1")
+        assert calendar_work.fail_calendar_work(
+            db, item["id"], "worker-1", item["generation"],
+            "calendar_sync_failed", "Test sync error",
+        ) == {"fenced": False, "status": "pending"}
 
-        result = authenticated_client.table("events").insert(event_data).execute()
-        event_id = result.data[0]["id"]
-        authenticated_client.rpc("enqueue_calendar_work", {
-            "p_event_id": event_id,
-            "p_user_id": test_user_id,
-            "p_action": "upsert",
-            "p_desired_event": {"title": event_data["title"]},
-        }).execute()
-
-        # Claim and fail
-        claimed = await claim_approved_event_for_sync(pg_pool, "worker-1")
-        await fail_event_sync(
-            pg_pool,
-            claimed["calendar_work_lease"],
-            "Test sync error",
-        )
-
-        # Should be back to approved for retry
-        event = authenticated_client.table("events").select("*").eq(
-            "id", event_id
-        ).single().execute()
-
-        assert event.data["review_status"] == "active"
-        work_item = authenticated_client.table("calendar_work_items").select(
-            "status,failure_code,failure_detail,locked_by"
-        ).eq("event_id", event_id).single().execute().data
+        assert factory.row("events", event_id)["review_status"] == "active"
+        work_item = factory.row("calendar_work_items", item["id"])
         assert work_item["status"] == "pending"
         assert work_item["failure_code"] == "calendar_sync_failed"
         assert work_item["failure_detail"] == "Test sync error"
         assert work_item["locked_by"] is None
+        assert work_item["next_retry_at"] is not None
 
-    async def test_concurrent_workers_no_duplicate_event_sync(
-        self, service_client, authenticated_client, test_user_id, pg_pool
-    ):
-        """Test that SKIP LOCKED prevents concurrent workers from claiming same event."""
-        # Clean up any existing approved events first
-        service_client.table("events").update({
-            "review_status": "active"
-        }).eq("user_id", test_user_id).eq("review_status", "active").execute()
+    async def test_concurrent_workers_no_duplicate_event_sync(self, db, factory, calendar_user):
+        """Concurrent claims through the single writer never share an item."""
+        from selko.db import calendar_work
 
-        # Create a single event
-        event_data = {
-            "user_id": test_user_id,
-            "title": "Test Event",
-            "start_datetime": "2026-05-01T14:00:00Z",
-            "review_status": "active",
-        }
+        self._queued_event(db, factory, calendar_user)
 
-        authenticated_client.table("events").insert(event_data).execute()
-        event_id = authenticated_client.table("events").select("id").eq(
-            "user_id", test_user_id
-        ).eq("title", "Test Event").single().execute().data["id"]
-        authenticated_client.rpc("enqueue_calendar_work", {
-            "p_event_id": event_id,
-            "p_user_id": test_user_id,
-            "p_action": "upsert",
-            "p_desired_event": {"title": event_data["title"]},
-        }).execute()
+        claims = await asyncio.gather(*(
+            db.run(calendar_work.claim_calendar_work_item, db, f"worker-{i}") for i in range(4)
+        ))
 
-        # Worker 1 claims it
-        claimed_1 = await claim_approved_event_for_sync(pg_pool, "worker-1")
-        assert claimed_1 is not None
+        assert sum(claim is not None for claim in claims) == 1
 
-        # Worker 2 tries to claim - should get None (only one event exists)
-        claimed_2 = await claim_approved_event_for_sync(pg_pool, "worker-2")
-        assert claimed_2 is None
-
-    async def test_claim_excludes_users_without_active_calendar_integration(
-        self, service_client, authenticated_client, test_user_id, pg_pool
-    ):
+    async def test_claim_excludes_users_without_active_calendar_integration(self, db, factory, calendar_user):
         """An expired google_calendar integration must not be claimed for sync.
 
-        Otherwise workers keep burning sync_attempts toward dead-letter on a
-        user who is already known to need reauthorization.
+        Otherwise workers keep burning attempts toward dead-letter on a user
+        who is already known to need reauthorization.
         """
-        service_client.table("integrations").update({"status": "expired"}).eq(
-            "user_id", test_user_id
-        ).eq("provider", "google_calendar").execute()
+        from selko.db import calendar_work
 
-        event_data = {
-            "user_id": test_user_id,
-            "title": "Blocked on expired calendar auth",
-            "start_datetime": "2026-05-01T14:00:00Z",
-            "review_status": "active",
-        }
-        authenticated_client.table("events").insert(event_data).execute()
-        event_id = authenticated_client.table("events").select("id").eq(
-            "user_id", test_user_id
-        ).eq("title", event_data["title"]).single().execute().data["id"]
-        authenticated_client.rpc("enqueue_calendar_work", {
-            "p_event_id": event_id,
-            "p_user_id": test_user_id,
-            "p_action": "upsert",
-            "p_desired_event": {"title": event_data["title"]},
-        }).execute()
+        with db.write() as tx:
+            tx.execute(
+                "UPDATE integrations SET status = 'expired' WHERE user_id = ? AND provider = 'google_calendar'",
+                (calendar_user,),
+            )
+        event_id = self._queued_event(db, factory, calendar_user, "Blocked on expired calendar auth")
 
-        claimed = await claim_approved_event_for_sync(pg_pool, "worker-1")
-        assert claimed is None
+        assert calendar_work.claim_calendar_work_item(db, "worker-1") is None
+        row = db.query_one("SELECT status, attempts FROM calendar_work_items WHERE event_id = ?", (event_id,))
+        assert (row["status"], row["attempts"]) == ("pending", 0)
 
+    async def test_multiple_workers_get_different_events(self, db, factory, calendar_user):
+        """Test that multiple workers claim different events."""
+        from selko.db import calendar_work
 
-@pytest.mark.integration
-@pytest.mark.development
-class TestScheduledTasks:
-    """Tests for scheduled tasks (photo_fetch only)."""
+        event_ids = [
+            self._queued_event(db, factory, calendar_user, f"Test Event {i}", "pending_review")
+            for i in range(3)
+        ]
 
-    def test_enqueue_and_claim_scheduled_task(
-        self, service_client, test_user_id, pg_pool
-    ):
-        """Test basic scheduled task enqueue and claim operations."""
-        # Enqueue a task
-        task_id = enqueue_scheduled_task(
-            service_client,
-            user_id=test_user_id,
-            task_type="photo_fetch",
-            payload={"max_emails": 50},
-        )
+        claims = await asyncio.gather(*(
+            db.run(calendar_work.claim_calendar_work_item, db, f"worker-{i}") for i in range(3)
+        ))
 
-        assert task_id is not None
-
-        # Claim the task
-        claimed = claim_scheduled_task(
-            service_client,
-            task_types=["photo_fetch"],
-            worker_id="test-worker-1",
-        )
-
-        assert claimed is not None
-        assert claimed["id"] == task_id
-        assert claimed["status"] == "processing"
-        assert claimed["locked_by"] == "test-worker-1"
-
-    async def test_complete_scheduled_task(
-        self, service_client, test_user_id, pg_pool
-    ):
-        """Test marking a scheduled task as completed."""
-        # Enqueue and claim
-        task_id = enqueue_scheduled_task(
-            service_client,
-            user_id=test_user_id,
-            task_type="photo_fetch",
-            payload={},
-        )
-
-        claim_scheduled_task(service_client, ["photo_fetch"], "test-worker")
-
-        # Complete
-        complete_scheduled_task(service_client, task_id)
-
-        # Verify
-        task = service_client.table("scheduled_tasks").select("*").eq(
-            "id", task_id
-        ).single().execute()
-
-        assert task.data["status"] == "completed"
-        assert task.data["completed_at"] is not None
-        assert task.data["locked_by"] is None
-
-    async def test_fail_scheduled_task(
-        self, service_client, test_user_id, pg_pool
-    ):
-        """Test marking a scheduled task as failed."""
-        # Enqueue and claim
-        task_id = enqueue_scheduled_task(
-            service_client,
-            user_id=test_user_id,
-            task_type="photo_fetch",
-            payload={},
-        )
-
-        claim_scheduled_task(service_client, ["photo_fetch"], "test-worker")
-
-        # Fail
-        fail_scheduled_task(service_client, task_id, "Test error")
-
-        # Verify - scheduled tasks don't retry
-        task = service_client.table("scheduled_tasks").select("*").eq(
-            "id", task_id
-        ).single().execute()
-
-        assert task.data["status"] == "failed"
-        assert task.data["last_error"] == "Test error"
+        claimed_ids = {event["id"] for _, event in claims}
+        assert claimed_ids == set(event_ids)
+        assert {item["locked_by"] for item, _ in claims} == {"worker-0", "worker-1", "worker-2"}
 
 
 @pytest.mark.integration
-@pytest.mark.development
 class TestCalendarSyncWorker:
-    """Tests for calendar_sync worker with mocked Google API."""
+    """Tests for calendar_sync worker on a real SQLite database with mocked Google API."""
 
     @pytest.mark.asyncio
-    async def test_processes_approved_event(
-        self, service_client, authenticated_client, test_user_id, config
-    ):
+    async def test_processes_approved_event(self, db, factory):
         """Test that calendar_sync worker processes an approved event."""
         from selko.workers.calendar_sync import sync_event
 
-        # Create an approved event
-        event_data = {
-            "user_id": test_user_id,
-            "title": "Worker Test Event",
-            "start_datetime": "2026-05-01T14:00:00Z",
-            "end_datetime": "2026-05-01T15:00:00Z",
-            "review_status": "active",
-        }
+        user_id = factory.user()
+        factory.integration(user_id, provider="google_calendar")
+        event_id = factory.event(
+            user_id, review_status="active", title="Worker Test Event",
+            start_datetime="2026-05-01T14:00:00.000000Z",
+            end_datetime="2026-05-01T15:00:00.000000Z",
+        )
+        event = factory.row("events", event_id)
 
-        result = authenticated_client.table("events").insert(event_data).execute()
-        event = result.data[0]
-
-        # Mock Google Calendar API
         with patch("selko.services.calendars.get_credentials") as mock_creds, \
              patch("selko.services.calendars.build") as mock_build:
 
             mock_creds.return_value = MagicMock()
-
             mock_service = MagicMock()
             mock_build.return_value = mock_service
+            mock_service.events.return_value.list.return_value.execute.return_value = {"items": []}
             mock_service.events.return_value.insert.return_value.execute.return_value = {
                 "id": "google-worker-test-123"
             }
 
-            # Process the event
-            google_event_id = await sync_event(service_client, config, event)
+            google_event_id = await sync_event(db, MagicMock(), event)
 
         assert google_event_id == "google-worker-test-123"
+        body = mock_service.events.return_value.insert.call_args.kwargs["body"]
+        assert body["summary"] == "Worker Test Event"
+        log = db.query("SELECT action FROM calendar_sync_log WHERE event_id = ?", (event_id,))
+        assert [r["action"] for r in log] == ["created"]
 
 
 @pytest.mark.integration
-@pytest.mark.development
 class TestEmailProcessWorker:
-    """Tests for email_process worker with mocked Gemini."""
+    """The email_process worker with a mocked LLM gateway, on the real database."""
 
     @pytest.mark.asyncio
-    async def test_processes_email_for_events(
-        self, service_client, authenticated_client, test_user_id, config, mock_llm_gateway
-    ):
-        """Test that email_process worker extracts events from email."""
+    async def test_processes_email_for_events(self, db, factory, mock_config):
         from selko.workers.email_process import process_email
 
-        # Create a test email
-        email_data = {
-            "user_id": test_user_id,
-            "provider_message_id": f"worker-test-{uuid4().hex[:8]}",
-            "subject": "Birthday Party Invitation",
-            "from_email": "friend@example.com",
-            "from_name": "Best Friend",
-            "date_sent": "2000-01-01T00:00:00Z",
-            "snippet": "You're invited to Jake's birthday party on May 20th at 2pm!",
-            "provider_labels": ["INBOX"],
-            "processing_status": "pending",
-        }
+        user_id = factory.user()
+        email_id = _pending_email(
+            factory, user_id, subject="Birthday Party Invitation",
+            snippet="You're invited to Jake's birthday party on May 20th at 2pm!",
+        )
+        email = factory.row("emails", email_id)
 
-        result = authenticated_client.table("emails").insert(email_data).execute()
-        email = result.data[0]
+        # The worker builds its gateway via create_llm_gateway(); the extraction
+        # itself (another service) receives the database and the claimed row.
+        with patch("selko.workers.email_process.create_llm_gateway", return_value=MagicMock()), \
+             patch("selko.workers.email_process.process_email_for_events",
+                   return_value={"num_events": 0, "num_new": 0, "num_updated": 0}) as extract:
+            result = await process_email(db, mock_config, email)
 
-        # Process with mocked LLM Gateway. The worker builds its gateway via
-        # create_llm_gateway(); patching the old LLMGateway symbol silently
-        # stopped matching when that factory was introduced.
-        with patch(
-            "selko.workers.email_process.create_llm_gateway",
-            return_value=mock_llm_gateway,
-        ):
-            await process_email(service_client, config, email)
-
-        # Note: The worker doesn't update status directly - that's done by pool.py
-        # We just verify no exception was raised
+        assert result["num_events"] == 0
+        args = extract.call_args.args
+        assert args[0] is db
+        assert (args[2], args[3]) == (email_id, user_id)
+        assert args[5]["id"] == email_id
 
 
 @pytest.mark.integration
-@pytest.mark.development
 class TestWorkerConcurrency:
-    """Tests for concurrent worker behavior."""
+    """Concurrent worker behaviour over the single writer."""
 
-    @pytest.fixture(autouse=True)
-    def _active_google_calendar_integration(self, service_client, test_user_id):
-        """claim_approved_event requires an active google_calendar integration
-        for the event's user (oauth-reconnect-catch-up.md structured failure
-        classification). TestEventStatusBasedClaiming got this fixture in #236;
-        the concurrency class missed it, so its event-claiming test only passed
-        when a seeded calendar integration happened to be active."""
-        service_client.table("integrations").upsert(
-            {
-                "user_id": test_user_id,
-                "provider": "google_calendar",
-                "status": "active",
-                "access_token": "test-access-token",
-            },
-            on_conflict="user_id,provider",
-        ).execute()
-        yield
-        service_client.table("integrations").delete().eq(
-            "user_id", test_user_id
-        ).eq("provider", "google_calendar").execute()
+    async def test_multiple_workers_get_different_emails(self, db, factory):
+        user_id = factory.user()
+        email_ids = {_pending_email(factory, user_id, subject=f"Test Email {i}") for i in range(3)}
 
-    async def test_multiple_workers_get_different_emails(
-        self, service_client, authenticated_client, test_user_id, pg_pool
-    ):
-        """Test that multiple workers claim different emails."""
-        # Create multiple pending emails
-        email_ids = []
-        for i in range(3):
-            email_data = {
-                "user_id": test_user_id,
-                "provider_message_id": f"multi-test-{uuid4().hex[:8]}",
-                "subject": f"Test Email {i}",
-                "from_email": "test@example.com",
-                "date_sent": "2000-01-01T00:00:00Z",
-                "processing_status": "pending",
-                "provider_labels": ["INBOX"],
-            }
-            result = authenticated_client.table("emails").insert(email_data).execute()
-            email_ids.append(result.data[0]["id"])
+        results = await asyncio.gather(*(claim_pending_email(db, f"worker-{i}") for i in range(3)))
 
-        # Multiple workers claim emails
-        claimed_ids = set()
-        for i in range(3):
-            claimed = await claim_pending_email(pg_pool, f"worker-{i}")
-            if claimed:
-                claimed_ids.add(str(claimed["id"]))
-
-        # All emails should be claimed by different workers
-        assert len(claimed_ids) == 3
-        assert claimed_ids == {str(i) for i in email_ids}
-
-    async def test_multiple_workers_get_different_events(
-        self, service_client, authenticated_client, test_user_id, pg_pool
-    ):
-        """Test that multiple workers claim different events."""
-        # Calendar delivery is owned by calendar_work_items. Provision the
-        # integration and enqueue each event explicitly so this test exercises
-        # the same authoritative path as production workers.
-        service_client.table("integrations").upsert({
-            "user_id": test_user_id,
-            "provider": "google_calendar",
-            "status": "active",
-            "access_token": "multi-worker-test-token",
-        }, on_conflict="user_id,provider").execute()
-
-        # Create multiple queued events
-        event_ids = []
-        for i in range(3):
-            event_data = {
-                "user_id": test_user_id,
-                "title": f"Test Event {i}",
-                "start_datetime": f"2026-05-0{i+1}T14:00:00Z",
-                "review_status": "pending_review",
-            }
-            result = authenticated_client.table("events").insert(event_data).execute()
-            event_ids.append(result.data[0]["id"])
-            authenticated_client.rpc("enqueue_calendar_work", {
-                "p_event_id": event_ids[-1],
-                "p_user_id": test_user_id,
-                "p_action": "upsert",
-                "p_desired_event": {"title": event_data["title"]},
-            }).execute()
-
-        # Multiple workers claim events
-        claimed_ids = set()
-        for i in range(3):
-            claimed = await claim_approved_event_for_sync(pg_pool, f"worker-{i}")
-            if claimed:
-                claimed_ids.add(str(claimed["id"]))
-
-        # All events should be claimed by different workers
-        assert len(claimed_ids) == 3
-        assert claimed_ids == {str(i) for i in event_ids}
+        claimed = {r["id"]: r["locked_by"] for r in results if r}
+        assert set(claimed) == email_ids
+        assert len(set(claimed.values())) == 3

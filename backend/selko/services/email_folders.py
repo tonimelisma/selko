@@ -6,8 +6,8 @@ import logging
 from datetime import datetime, timezone
 from typing import Any, Iterable
 
-from supabase import Client
-
+from selko.db import email_sync
+from selko.db.connection import Database
 from selko.services.folder_classification import (
     FolderClassification,
     classify_email_folder,
@@ -83,7 +83,7 @@ def _fallback_classification() -> FolderClassification:
 
 
 def upsert_discovered_folders(
-    client: Client,
+    client: Database,
     *,
     user_id: str,
     integration_id: str,
@@ -98,15 +98,9 @@ def upsert_discovered_folders(
     Existing user overrides survive a rename or path change.
     """
 
-    existing_result = (
-        client.table("email_folders")
-        .select("*")
-        .eq("integration_id", integration_id)
-        .execute()
-    )
     existing = {
         row.get("provider_folder_id"): row
-        for row in (existing_result.data or [])
+        for row in email_sync.folders_for_integration(client, integration_id)
         if row.get("provider_folder_id")
     }
 
@@ -208,35 +202,4 @@ def upsert_discovered_folders(
     if not rows:
         return []
 
-    result = (
-        client.table("email_folders")
-        .upsert(rows, on_conflict="integration_id,provider_folder_id")
-        .execute()
-    )
-    return result.data or rows
-
-
-def set_folder_preference(
-    client: Client,
-    *,
-    user_id: str,
-    folder_id: str,
-    is_included: bool,
-) -> dict[str, Any] | None:
-    """Persist a durable user override and reset the cursor when enabling a folder."""
-
-    # The authenticated client must use the SECURITY DEFINER RPC. The table
-    # UPDATE privilege is intentionally revoked so callers cannot mutate
-    # provider metadata or system-folder rows alongside the preference.
-    result = client.rpc(
-        "set_email_folder_preference",
-        {
-            "p_folder_id": folder_id,
-            "p_is_included": bool(is_included),
-        },
-    ).execute()
-    if not result or not result.data:
-        return None
-    if isinstance(result.data, list):
-        return result.data[0] if result.data else None
-    return result.data
+    return email_sync.upsert_folders(client, integration_id, rows) or rows

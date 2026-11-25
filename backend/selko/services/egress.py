@@ -35,7 +35,6 @@ logger = logging.getLogger(__name__)
 
 # Destinations. Kept coarse on purpose: the question is which *system* the bytes
 # went to, not which host answered.
-SUPABASE = "supabase"
 GMAIL = "gmail"
 GRAPH = "graph"
 LLM = "llm"

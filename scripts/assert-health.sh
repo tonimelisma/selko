@@ -95,15 +95,15 @@ case "$surface" in
       (.status == "ok") and
       (.background_processing_enabled == true) and
       (.tasks | type == "array" and length > 0 and all(.[]; .alive == true)) and
-      (.listener | type == "object" and .connected == true) and
+      (.listener | type == "object" and .kind == "in_process" and .bound == true) and
       has("items_stalled_seconds") and
       ((.items_stalled_seconds // 0) <= 1800)
     '
     failure="ingestion health does not prove the worker/listener is running, or claimable acquisition work has sat unclaimed for over 30 minutes"
     ;;
   egress)
-    filter='(.transport == "asyncpg")'
-    failure="egress health does not prove the asyncpg worker transport is active"
+    filter='(.transport == "sqlite")'
+    failure="egress health does not prove the worker transport is SQLite"
     ;;
   *)
     echo "ERROR: expected health surface 'root', 'work-state', 'ingestion', or 'egress'" >&2

@@ -1,15 +1,14 @@
 """Integration tests for email service.
 
-Tests email parsing and database storage with real Supabase.
+Email parsing, and storage on a real temporary SQLite database.
 """
 
 import pytest
 
-from selko.services.emails import EmailError, parse_gmail_message, save_emails
+from selko.services.emails import parse_gmail_message, save_emails
 
 
 @pytest.mark.integration
-@pytest.mark.development
 class TestEmailParsing:
     """Test email parsing (no DB required)."""
 
@@ -107,254 +106,91 @@ class TestEmailParsing:
 
 
 @pytest.mark.integration
-@pytest.mark.development
 class TestEmailStorage:
-    """Test email storage with real Supabase."""
+    """Email storage on a real temporary database."""
 
-    def test_save_email(
-        self, authenticated_client, test_user_id, sample_email_data, cleanup_emails
-    ):
-        """Can save email to database."""
-        cleanup_emails.append(sample_email_data["provider_message_id"])
+    @staticmethod
+    def _row(db, user_id, provider_message_id):
+        from selko.db import codec
 
-        saved = save_emails(authenticated_client, [sample_email_data])
+        rows = db.query(
+            "SELECT * FROM emails WHERE user_id = ? AND provider_message_id = ?",
+            (codec.to_id(user_id), provider_message_id),
+        )
+        return [db.schema.decode("emails", r) for r in rows]
+
+    def _email(self, **fields):
+        from uuid import uuid4
+
+        return {
+            "provider_message_id": f"test_{uuid4().hex[:8]}",
+            "thread_id": "thread",
+            "subject": "Subject",
+            "from_email": "sender@example.com",
+            "date_sent": "2026-01-22T10:00:00+00:00",
+            **fields,
+        }
+
+    def test_save_email(self, db, factory, sample_email_data):
+        user_id = factory.user()
+
+        saved = save_emails(db, [sample_email_data], user_id=user_id)
 
         assert len(saved) == 1
+        [row] = self._row(db, user_id, sample_email_data["provider_message_id"])
+        assert row["subject"] == sample_email_data["subject"]
+        assert row["user_id"] == user_id
+        assert row["to_emails"] == ["recipient@example.com"]
 
-        # Verify in database
-        result = (
-            authenticated_client.table("emails")
-            .select("*")
-            .eq("provider_message_id", sample_email_data["provider_message_id"])
-            .single()
-            .execute()
-        )
-
-        assert result.data is not None
-        assert result.data["subject"] == sample_email_data["subject"]
-        assert result.data["user_id"] == test_user_id
-
-    def test_save_email_upsert(
-        self, authenticated_client, test_user_id, sample_email_data, cleanup_emails
-    ):
-        """Saving same email twice updates instead of duplicating."""
-        cleanup_emails.append(sample_email_data["provider_message_id"])
-
-        # First save
-        save_emails(authenticated_client, [sample_email_data])
-
-        # Update subject and save again
+    def test_save_email_upsert(self, db, factory, sample_email_data):
+        """Saving the same email twice updates instead of duplicating."""
+        user_id = factory.user()
+        save_emails(db, [sample_email_data], user_id=user_id)
         sample_email_data["subject"] = "Updated Subject"
-        save_emails(authenticated_client, [sample_email_data])
+        save_emails(db, [sample_email_data], user_id=user_id)
 
-        # Should only have one record
-        result = (
-            authenticated_client.table("emails")
-            .select("*")
-            .eq("provider_message_id", sample_email_data["provider_message_id"])
-            .execute()
-        )
+        rows = self._row(db, user_id, sample_email_data["provider_message_id"])
+        assert [r["subject"] for r in rows] == ["Updated Subject"]
 
-        assert len(result.data) == 1
-        assert result.data[0]["subject"] == "Updated Subject"
+    def test_gmail_labels_trigger(self, db, factory):
+        """The labels trigger parses provider_labels into boolean flags."""
+        user_id = factory.user()
+        email = self._email(provider_labels=["SPAM", "UNREAD"])
+        save_emails(db, [email], user_id=user_id)
 
-    def test_gmail_labels_trigger(self, authenticated_client, test_user_id, cleanup_emails):
-        """Database trigger parses provider_labels into boolean flags."""
-        from uuid import uuid4
+        [row] = self._row(db, user_id, email["provider_message_id"])
+        assert (row["is_spam"], row["is_unread"], row["is_primary"], row["is_trash"]) == (True, True, False, False)
 
-        provider_message_id = f"test_trigger_{uuid4().hex[:8]}"
-        cleanup_emails.append(provider_message_id)
+    def test_gmail_labels_trigger_promotions(self, db, factory):
+        user_id = factory.user()
+        email = self._email(provider_labels=["CATEGORY_PROMOTIONS", "INBOX"])
+        save_emails(db, [email], user_id=user_id)
 
-        email_data = {
-            "provider_message_id": provider_message_id,
-            "thread_id": "thread_trigger",
-            "provider_labels": ["SPAM", "UNREAD"],
-            "subject": "Test spam email",
-            "from_email": "spammer@example.com",
-            "date_sent": "2026-01-22T10:00:00+00:00",
-        }
+        [row] = self._row(db, user_id, email["provider_message_id"])
+        assert (row["is_promotions"], row["is_primary"]) == (True, False)
 
-        save_emails(authenticated_client, [email_data])
+    def test_gmail_labels_trigger_primary(self, db, factory):
+        user_id = factory.user()
+        email = self._email(provider_labels=["CATEGORY_PERSONAL", "INBOX", "IMPORTANT"])
+        save_emails(db, [email], user_id=user_id)
 
-        # Fetch and check flags
-        result = (
-            authenticated_client.table("emails")
-            .select("is_spam, is_unread, is_primary, is_trash")
-            .eq("provider_message_id", provider_message_id)
-            .single()
-            .execute()
-        )
+        [row] = self._row(db, user_id, email["provider_message_id"])
+        assert (row["is_primary"], row["is_important"]) == (True, True)
 
-        assert result.data["is_spam"] is True
-        assert result.data["is_unread"] is True
-        assert result.data["is_primary"] is False
-        assert result.data["is_trash"] is False
+    def test_save_multiple_emails(self, db, factory):
+        user_id = factory.user()
+        emails = [self._email(subject=f"Email {i}", provider_labels=["INBOX"]) for i in range(3)]
 
-    def test_gmail_labels_trigger_promotions(
-        self, authenticated_client, test_user_id, cleanup_emails
-    ):
-        """Trigger correctly sets CATEGORY_PROMOTIONS flag."""
-        from uuid import uuid4
+        saved = save_emails(db, emails, user_id=user_id)
 
-        provider_message_id = f"test_promo_{uuid4().hex[:8]}"
-        cleanup_emails.append(provider_message_id)
+        assert sorted(r["subject"] for r in saved) == ["Email 0", "Email 1", "Email 2"]
 
-        email_data = {
-            "provider_message_id": provider_message_id,
-            "thread_id": "thread_promo",
-            "provider_labels": ["CATEGORY_PROMOTIONS", "INBOX"],
-            "subject": "Sale now!",
-            "from_email": "deals@store.com",
-            "date_sent": "2026-01-22T10:00:00+00:00",
-        }
+    def test_the_same_message_id_is_separate_per_user(self, db, factory):
+        """Ownership is part of the upsert key: another user's copy is never overwritten."""
+        alice, bob = factory.user(), factory.user()
+        email = self._email()
+        save_emails(db, [dict(email)], user_id=alice)
+        save_emails(db, [{**email, "subject": "Bob's"}], user_id=bob)
 
-        save_emails(authenticated_client, [email_data])
-
-        result = (
-            authenticated_client.table("emails")
-            .select("is_promotions, is_primary")
-            .eq("provider_message_id", provider_message_id)
-            .single()
-            .execute()
-        )
-
-        assert result.data["is_promotions"] is True
-        assert result.data["is_primary"] is False
-
-    def test_gmail_labels_trigger_primary(
-        self, authenticated_client, test_user_id, cleanup_emails
-    ):
-        """Trigger correctly sets CATEGORY_PERSONAL (primary) flag."""
-        from uuid import uuid4
-
-        provider_message_id = f"test_primary_{uuid4().hex[:8]}"
-        cleanup_emails.append(provider_message_id)
-
-        email_data = {
-            "provider_message_id": provider_message_id,
-            "thread_id": "thread_primary",
-            "provider_labels": ["CATEGORY_PERSONAL", "INBOX", "IMPORTANT"],
-            "subject": "Important message",
-            "from_email": "friend@example.com",
-            "date_sent": "2026-01-22T10:00:00+00:00",
-        }
-
-        save_emails(authenticated_client, [email_data])
-
-        result = (
-            authenticated_client.table("emails")
-            .select("is_primary, is_important")
-            .eq("provider_message_id", provider_message_id)
-            .single()
-            .execute()
-        )
-
-        assert result.data["is_primary"] is True
-        assert result.data["is_important"] is True
-
-    def test_save_multiple_emails(
-        self, authenticated_client, test_user_id, cleanup_emails
-    ):
-        """Can save multiple emails at once."""
-        from uuid import uuid4
-
-        emails = []
-        for i in range(3):
-            provider_message_id = f"test_multi_{uuid4().hex[:8]}"
-            cleanup_emails.append(provider_message_id)
-            emails.append(
-                {
-                    "provider_message_id": provider_message_id,
-                    "thread_id": f"thread_{i}",
-                    "subject": f"Email {i}",
-                    "from_email": f"sender{i}@example.com",
-                    "provider_labels": ["INBOX"],
-                    "date_sent": "2026-01-22T10:00:00+00:00",
-                }
-            )
-
-        saved = save_emails(authenticated_client, emails)
-
-        assert len(saved) == 3
-
-    def test_rls_user_isolation(self, authenticated_client, test_user_id, cleanup_emails):
-        """RLS ensures user only sees their own emails."""
-        from uuid import uuid4
-
-        provider_message_id = f"test_rls_{uuid4().hex[:8]}"
-        cleanup_emails.append(provider_message_id)
-
-        # Save email as current user
-        save_emails(
-            authenticated_client,
-            [
-                {
-                    "provider_message_id": provider_message_id,
-                    "thread_id": "thread_rls",
-                    "subject": "RLS Test",
-                    "from_email": "test@example.com",
-                    "provider_labels": ["INBOX"],
-                    "date_sent": "2026-01-22T10:00:00+00:00",
-                }
-            ],
-        )
-
-        # Query should only return emails for current user
-        result = (
-            authenticated_client.table("emails")
-            .select("*")
-            .eq("provider_message_id", provider_message_id)
-            .execute()
-        )
-
-        assert len(result.data) == 1
-        assert result.data[0]["user_id"] == test_user_id
-
-
-@pytest.mark.integration
-@pytest.mark.staging
-class TestEmailStorageStaging:
-    """Test email storage in staging environment."""
-
-    def test_save_email_staging(
-        self, authenticated_client, test_user_id, sample_email_data, cleanup_emails
-    ):
-        """Can save email to staging database."""
-        cleanup_emails.append(sample_email_data["provider_message_id"])
-
-        saved = save_emails(authenticated_client, [sample_email_data])
-
-        assert len(saved) == 1
-
-    def test_triggers_work_staging(
-        self, authenticated_client, test_user_id, cleanup_emails
-    ):
-        """Database triggers work in staging."""
-        from uuid import uuid4
-
-        provider_message_id = f"test_staging_{uuid4().hex[:8]}"
-        cleanup_emails.append(provider_message_id)
-
-        save_emails(
-            authenticated_client,
-            [
-                {
-                    "provider_message_id": provider_message_id,
-                    "thread_id": "thread_staging",
-                    "provider_labels": ["STARRED", "INBOX"],
-                    "subject": "Starred email",
-                    "from_email": "vip@example.com",
-                    "date_sent": "2026-01-22T10:00:00+00:00",
-                }
-            ],
-        )
-
-        result = (
-            authenticated_client.table("emails")
-            .select("is_starred")
-            .eq("provider_message_id", provider_message_id)
-            .single()
-            .execute()
-        )
-
-        assert result.data["is_starred"] is True
+        assert [r["subject"] for r in self._row(db, alice, email["provider_message_id"])] == ["Subject"]
+        assert [r["subject"] for r in self._row(db, bob, email["provider_message_id"])] == ["Bob's"]

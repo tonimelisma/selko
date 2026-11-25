@@ -1,6 +1,17 @@
 import { test, expect } from '@playwright/test';
 import type { Browser, BrowserContext, Page } from '@playwright/test';
 
+/**
+ * Wait for the page to load and its data to render. Not 'networkidle': the
+ * app holds the /live update stream open, so the network never goes idle.
+ */
+async function settle(page: import('@playwright/test').Page) {
+  await page.waitForLoadState('load');
+  await page.locator('main, form').first().waitFor({ state: 'visible', timeout: 15000 });
+  await page.waitForTimeout(750);
+}
+
+
 /** Relative path from frontend/ to docs/screenshots/ at project root. */
 const SCREENSHOT_DIR = '../docs/screenshots';
 const SCREENSHOT_USER = 'screenshots@selko.local';
@@ -26,7 +37,7 @@ async function waitForLoginForm(page: Page): Promise<void> {
   // fixed 1 s delay used to stand in for this and lost the race on a slow CPU
   // (a throttled cloud-session container): the click then submitted the bare
   // HTML form as a GET to /login? and the test timed out waiting for /app.
-  await page.waitForLoadState('networkidle');
+  await settle(page);
 }
 
 /**
@@ -107,7 +118,7 @@ test.describe('Screenshot capture', () => {
           height: vp.height,
         }, appearance);
         // Already at /app after login
-        await page.waitForLoadState('networkidle');
+        await settle(page);
         // Allow time for data to render after network settles
         await page.waitForTimeout(1000);
         await page.screenshot({
@@ -122,13 +133,13 @@ test.describe('Screenshot capture', () => {
           width: vp.width,
           height: vp.height,
         }, appearance);
-        await page.waitForLoadState('networkidle');
+        await settle(page);
         await page.waitForTimeout(1000);
 
         // Click the first event card link to navigate to event detail
         const firstEventLink = page.locator('a[href*="/app/events/"]').first();
         await firstEventLink.click();
-        await page.waitForLoadState('networkidle');
+        await settle(page);
         // Wait for form content to be visible (indicates data loaded)
         await page.waitForSelector('#event-title', { timeout: 10000 });
         await page.waitForTimeout(500);
@@ -145,7 +156,7 @@ test.describe('Screenshot capture', () => {
           height: vp.height,
         }, appearance);
         await page.goto('/app/history');
-        await page.waitForLoadState('networkidle');
+        await settle(page);
         await page.waitForTimeout(1000);
         await page.screenshot({
           path: `${SCREENSHOT_DIR}/web-history-${vp.name}-${appearance}.png`,
@@ -160,7 +171,7 @@ test.describe('Screenshot capture', () => {
           height: vp.height,
         }, appearance);
         await page.goto('/app/settings');
-        await page.waitForLoadState('networkidle');
+        await settle(page);
         await page.waitForTimeout(1000);
         await page.screenshot({
           path: `${SCREENSHOT_DIR}/web-settings-${vp.name}-${appearance}.png`,

@@ -22,11 +22,13 @@ under 2000 px.
 > **Do NOT** manually seed data, run `capture-web-screenshots.sh` directly, or
 > use MCP tools for screenshot capture. Those are internals of the script.
 
-**Only prerequisite:** Local Supabase must be running (`supabase start`; a cloud
-session's setup starts it).
-
-The web app reads `frontend/.env`: `VITE_SUPABASE_URL=http://localhost:54321`
-and the local demo key.
+**No prerequisite service.** The script builds the web app (same origin, as in
+the image), seeds a throwaway SQLite data directory (`.verify/screenshot-data`)
+with `scripts/seed_screenshot_data.py`, starts the API on port 8000 serving the
+built app, points Playwright at it (`SELKO_E2E_BASE_URL`), and stops the API
+when done. Port 8000 must be free. The run raises the sign-in rate limits for
+its own API only (24 sign-ins from one address in a minute). The API log is
+`.verify/screenshot-api.log`.
 
 ---
 

@@ -1,92 +1,22 @@
-import { supabase } from '$lib/supabase.js';
-import { parseSupabaseError } from '$lib/errors.js';
+import { apiFetch } from '$lib/api/client.js';
+import { toAppError } from '$lib/errors.js';
 
 /**
  * @typedef {import('$lib/types.js').Integration} Integration
- * @typedef {import('$lib/types.js').IntegrationProvider} IntegrationProvider
  * @typedef {import('$lib/types.js').IntegrationRecovery} IntegrationRecovery
+ * @typedef {import('$lib/errors.js').AppError} AppError
  */
 
 /**
- * Fetch all integrations for the current user
- * @returns {Promise<{data: Integration[], count: number | null, error: import('$lib/errors.js').SupabaseError | null}>}
+ * Fetch all integrations for the current user, newest first. The API never
+ * sends token columns.
+ * @returns {Promise<{data: Integration[], count: number | null, error: AppError | null}>}
  */
 export async function fetchIntegrations() {
-	try {
-		const { data, error, count } = await supabase
-			.from('integrations')
-			.select('id, user_id, provider, status, provider_email, scopes, last_sync_at, created_at, updated_at', { count: 'exact' })
-			.order('created_at', { ascending: false });
-
-		if (error) throw error;
-
-		return { data: data ?? [], count, error: null };
-	} catch (error) {
-		return { data: [], count: null, error: parseSupabaseError(error) };
-	}
-}
-
-/**
- * Get a single integration by ID
- * @param {string} integrationId - The integration UUID
- * @returns {Promise<{data: Integration | null, error: import('$lib/errors.js').SupabaseError | null}>}
- */
-export async function getIntegration(integrationId) {
-	try {
-		const { data, error } = await supabase
-			.from('integrations')
-			.select('id, user_id, provider, status, provider_email, scopes, last_sync_at, created_at, updated_at')
-			.eq('id', integrationId)
-			.single();
-
-		if (error) throw error;
-
-		return { data, error: null };
-	} catch (error) {
-		return { data: null, error: parseSupabaseError(error) };
-	}
-}
-
-/**
- * Get integration by provider
- * @param {IntegrationProvider} provider - The provider name
- * @returns {Promise<{data: Integration | null, error: import('$lib/errors.js').SupabaseError | null}>}
- */
-export async function getIntegrationByProvider(provider) {
-	try {
-		const { data, error } = await supabase
-			.from('integrations')
-			.select('id, user_id, provider, status, provider_email, scopes, last_sync_at, created_at, updated_at')
-			.eq('provider', provider)
-			.single();
-
-		if (error) {
-			// Not found is not an error for this use case
-			if (error.code === 'PGRST116') {
-				return { data: null, error: null };
-			}
-			throw error;
-		}
-
-		return { data, error: null };
-	} catch (error) {
-		return { data: null, error: parseSupabaseError(error) };
-	}
-}
-
-/**
- * Disconnect (delete) an integration
- * @param {string} integrationId - The integration UUID
- * @returns {Promise<{data: boolean | null, error: import('$lib/errors.js').SupabaseError | null}>}
- */
-export async function disconnectIntegration(integrationId) {
-	try {
-		const { error } = await supabase.from('integrations').delete().eq('id', integrationId);
-		if (error) throw error;
-		return { data: true, error: null };
-	} catch (error) {
-		return { data: null, error: parseSupabaseError(error) };
-	}
+	const { data, error } = await apiFetch('/integrations');
+	if (error) return { data: [], count: null, error: toAppError(error) };
+	const rows = data ?? [];
+	return { data: rows, count: rows.length, error: null };
 }
 
 /**
@@ -94,63 +24,28 @@ export async function disconnectIntegration(integrationId) {
  * Gmail and Google Calendar share one Google token, so the Google card
  * removes both rows together rather than leaving half a connection behind.
  * @param {string[]} integrationIds - The integration UUIDs
- * @returns {Promise<{data: boolean | null, error: import('$lib/errors.js').SupabaseError | null}>}
+ * @returns {Promise<{data: boolean | null, error: AppError | null}>}
  */
 export async function disconnectIntegrations(integrationIds) {
-	try {
-		const { error } = await supabase.from('integrations').delete().in('id', integrationIds);
-		if (error) throw error;
-		return { data: true, error: null };
-	} catch (error) {
-		return { data: null, error: parseSupabaseError(error) };
-	}
+	const { error } = await apiFetch('/integrations/disconnect', {
+		method: 'POST',
+		body: { integration_ids: integrationIds }
+	});
+	if (error) return { data: null, error: toAppError(error) };
+	return { data: true, error: null };
 }
 
 /**
- * Check if a provider is connected and active
- * @param {IntegrationProvider} provider - The provider name
- * @returns {Promise<boolean>}
- */
-export async function isProviderConnected(provider) {
-	const { data, error } = await getIntegrationByProvider(provider);
-
-	if (error || !data) {
-		return false;
-	}
-
-	return data.status === 'active';
-}
-
-/**
- * Fetch the latest Google Calendar reconnect recovery generation.
- *
- * RLS only exposes the current user's own recovery rows. Only
- * google_calendar currently creates recoveries (email resumes from provider
- * cursors with no recovery record). The catch-up UI polls this while the
- * latest generation is in flight.
- *
- * @returns {Promise<{data: IntegrationRecovery | null, error: import('$lib/errors.js').SupabaseError | null}>}
+ * Fetch the latest Google Calendar reconnect recovery generation (or null).
+ * Only google_calendar creates recoveries (email resumes from provider cursors
+ * with no recovery record). The catch-up UI polls this while the latest
+ * generation is in flight.
+ * @returns {Promise<{data: IntegrationRecovery | null, error: AppError | null}>}
  */
 export async function fetchCalendarRecovery() {
-	try {
-		const { data, error } = await supabase
-			.from('integration_recoveries')
-			.select('id, integration_id, user_id, provider, status, discovered_count, completed_count, remaining_count, withdrawn_count, error_detail, requested_at')
-			.eq('provider', 'google_calendar')
-			.order('requested_at', { ascending: false })
-			.limit(1)
-			.maybeSingle();
-
-		if (error) {
-			// No recovery rows yet is not an error for this use case.
-			if (error.code === 'PGRST116') {
-				return { data: null, error: null };
-			}
-			throw error;
-		}
-
-		return { data: data ?? null, error: null };
-	} catch (error) {
-		return { data: null, error: parseSupabaseError(error) };
-	}
+	const { data, error } = await apiFetch('/integrations/recovery', {
+		query: { provider: 'google_calendar' }
+	});
+	if (error) return { data: null, error: toAppError(error) };
+	return { data: data?.recovery ?? null, error: null };
 }

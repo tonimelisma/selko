@@ -16,7 +16,7 @@ import pytest
 from selko.services.egress import (
     GMAIL,
     MAX_TRACKED_OPERATIONS,
-    SUPABASE,
+    GRAPH,
     egress_snapshot,
     operation_from_url,
     record_egress,
@@ -32,15 +32,15 @@ def _clean_meter():
 
 
 def test_snapshot_attributes_bytes_by_destination_and_operation():
-    record_egress(SUPABASE, "POST /rest/v1/rpc/claim_due_email_sync", request_bytes=600, response_bytes=40)
-    record_egress(SUPABASE, "POST /rest/v1/rpc/claim_due_email_sync", request_bytes=600, response_bytes=40)
+    record_egress(GRAPH, "POST /rest/v1/rpc/claim_due_email_sync", request_bytes=600, response_bytes=40)
+    record_egress(GRAPH, "POST /rest/v1/rpc/claim_due_email_sync", request_bytes=600, response_bytes=40)
     record_egress(GMAIL, "GET /gmail/v1/users/me/messages/{id}?format=full", response_bytes=50_000)
 
     snapshot = egress_snapshot()
 
     assert snapshot["total_calls"] == 3
     assert snapshot["total_bytes"] == 600 + 40 + 600 + 40 + 50_000
-    assert snapshot["by_destination"][SUPABASE]["calls"] == 2
+    assert snapshot["by_destination"][GRAPH]["calls"] == 2
     assert snapshot["by_destination"][GMAIL]["bytes"] == 50_000
     # Ranked by bytes, so the biggest consumer is the first thing an operator sees.
     assert snapshot["top_operations"][0]["destination"] == GMAIL
@@ -106,7 +106,7 @@ def test_operation_names_collapse_uuid_segments():
 def test_counter_cardinality_is_bounded():
     """A future call site that passes something high-cardinality must not OOM us."""
     for index in range(MAX_TRACKED_OPERATIONS + 50):
-        record_egress(SUPABASE, f"operation-{index}", response_bytes=1)
+        record_egress(GRAPH, f"operation-{index}", response_bytes=1)
 
     snapshot = egress_snapshot(top_n=1000)
 
@@ -119,7 +119,7 @@ def test_counter_cardinality_is_bounded():
 
 
 def test_projection_extrapolates_the_observed_rate():
-    record_egress(SUPABASE, "POST /rest/v1/rpc/noop", response_bytes=1_000)
+    record_egress(GRAPH, "POST /rest/v1/rpc/noop", response_bytes=1_000)
 
     snapshot = egress_snapshot()
 
@@ -189,28 +189,6 @@ def test_llm_validated_call_records_egress():
     snap = egress_snapshot()
     assert snap["by_destination"][LLM]["calls"] == 1
     assert snap["by_destination"][LLM]["bytes"] > 0
-
-def test_fixed_idle_rate_stays_under_ceiling():
-    """Inc6: a new unconditional poll should fail CI, not a billing cycle."""
-    from selko.services.egress import egress_snapshot, record_egress, reset_egress, SUPABASE
-
-    reset_egress()
-    # Simulate fixed chatter: 8 claims per tick at 30s = 0.27 calls/sec idle
-    # After Inc5, idle should be <0.02 calls/sec (safety poll 300s) + keepalives
-    # This test pins the ceiling at 0.5 calls/sec to catch a busy-wait regression
-    for _ in range(10):
-        record_egress(SUPABASE, "POST /rest/v1/rpc/claim_due_email_sync", request_bytes=600, response_bytes=40)
-
-    snap = egress_snapshot()
-    # With mocked time, calls_per_second will be high due to tiny uptime, so
-    # we check that the test itself enforces a ceiling via a direct count
-    # rather than a time-based rate. The real budget enforcement is that
-    # adding an unconditional poll would double top_operations length.
-    assert snap["total_calls"] == 10
-    # Bytes per mailbox per day is computed in health route; here we just
-    # ensure meter distinguishes fixed vs payload destinations
-    assert "supabase" in snap["by_destination"]
-
 
 def test_bytes_per_mailbox_per_day_field_exists():
     from selko.services.egress import egress_snapshot

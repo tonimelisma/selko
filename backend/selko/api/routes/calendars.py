@@ -1,14 +1,13 @@
 """Calendar API endpoints.
 
 These endpoints require server-side secrets (Google and Microsoft OAuth).
-For calendar settings, use Supabase client from frontend.
+
 """
 
 import logging
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
-from supabase import Client
 
 from selko.api.deps import (
     CurrentUser,
@@ -17,6 +16,7 @@ from selko.api.deps import (
 )
 from selko.api.schemas.common import ErrorCode, error_detail
 from selko.api.schemas.events import CalendarListResponse
+from selko.db.connection import Database
 from selko.services import calendars
 
 logger = logging.getLogger(__name__)
@@ -26,7 +26,7 @@ router = APIRouter(prefix="/calendars", tags=["calendars"])
 
 @router.get("", response_model=list[CalendarListResponse])
 async def list_calendars(
-    service_client: Annotated[Client, Depends(get_service_role_client)],
+    service_client: Annotated[Database, Depends(get_service_role_client)],
     user: CurrentUser = Depends(get_current_user),
 ) -> list[CalendarListResponse]:
     """List the calendars Selko can write to, across Google and Outlook.

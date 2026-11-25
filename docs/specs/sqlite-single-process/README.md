@@ -65,14 +65,14 @@ SQLite instead:**
 | Step | Work | Gate to finish |
 |---|---|---|
 | S0 | Foundation: `selko.db` connection (one writer), codec, migration runner, `0001_initial.sql`, event bus, Dockerfile | **done 2026-11-25**: `test_sqlite_foundation.py` (23 tests), image builds and starts under the limits |
-| S1 | Fix what the research found broken today (below), each with a regression test | backend lane |
-| S2 | Data layer: port the 73 functions and 26 triggers in [02 §5](02-data-layer.md)'s order, then the 130 `.table(` and 37 asyncpg sites; delete `services/pg.py`'s pool and listener; startup lease reset | the rewritten integration suite on a temp SQLite file; [05 §B.4–B.6](05-verification.md) |
-| S3 | Auth: accounts, bcrypt verification of the carried hashes, access JWT + refresh cookie, rate limits ([03 §B](03-api-auth-web.md)) | [05 §B.8](05-verification.md) |
-| S4 | Client API: 19 data endpoints + attachment download, the ownership matrix test ([03 §A, §E](03-api-auth-web.md)) | [05 §B.1](05-verification.md) passes for every route |
-| S5 | `/live` on the bus; the web app moves off supabase-js ([03 §C–D](03-api-auth-web.md)) | frontend lane; web screenshots |
-| S6 | Import tool and its round-trip test on a seeded Postgres fixture ([04 §A–B](04-data-cutover.md)) | [05 §B.3](05-verification.md) |
-| S7 | Image workflow: build, sign with cosign on `main`, the image job under the VM limits ([05 §B.10](05-verification.md)) | the end-state table |
-| S8 | Remove Supabase, asyncpg, Render, `supabase/`, staging tooling; lanes, hooks, CI, CLAUDE.md and docs ([05 §C–D](05-verification.md)) | every lane green; no `supabase`/`asyncpg` in source, lockfile or image |
+| S1 | Fix what the research found broken today (below), each with a regression test | backend lane — **done 2026-11-25** (fixed within S2–S5; OAuth token encryption stays a follow-up) |
+| S2 | Data layer: port the 73 functions and 26 triggers in [02 §5](02-data-layer.md)'s order, then the 130 `.table(` and 37 asyncpg sites; delete `services/pg.py`'s pool and listener; startup lease reset | the rewritten integration suite on a temp SQLite file; [05 §B.4–B.6](05-verification.md) — **done 2026-11-25**: no module imports a hosted-database client (`test_no_hosted_database.py`) |
+| S3 | Auth: accounts, bcrypt verification of the carried hashes, access JWT + refresh cookie, rate limits ([03 §B](03-api-auth-web.md)) | [05 §B.8](05-verification.md) — **done 2026-11-25** |
+| S4 | Client API: 19 data endpoints + attachment download, the ownership matrix test ([03 §A, §E](03-api-auth-web.md)) | [05 §B.1](05-verification.md) passes for every route — **done 2026-11-25** |
+| S5 | `/live` on the bus; the web app moves off supabase-js ([03 §C–D](03-api-auth-web.md)) | frontend lane; web screenshots — **done 2026-11-25** (24 captures over SQLite) |
+| S6 | Import tool and its round-trip test on a seeded Postgres fixture ([04 §A–B](04-data-cutover.md)) | [05 §B.3](05-verification.md) — **done 2026-11-25** (`selko_import/fixture/`, exit 5 on a refused row) |
+| S7 | Image workflow: build, sign with cosign on `main`, the image job under the VM limits ([05 §B.10](05-verification.md)) | the end-state table — **built 2026-11-25**: `image.yml` + `scripts/image-lane.sh` pass locally; the first green run on `main` completes it |
+| S8 | Remove Supabase, asyncpg, Render, `supabase/`, staging tooling; lanes, hooks, CI, CLAUDE.md and docs ([05 §C–D](05-verification.md)) | every lane green; no `supabase`/`asyncpg` in source, lockfile or image — **done 2026-11-25** (`asyncpg` remains only as the workspace root's dependency for `selko_import`, never in the image) |
 
 ## Decisions recorded here
 
@@ -106,10 +106,9 @@ tested there). None depends on the migration.
 
 ## Owner decisions still open
 
-- **Real-Gmail tests after staging is gone:** nothing will supply a live
-  Gmail test token. Until decided, those tests run only under the recorded
-  degradation flag ([05 §0](05-verification.md)).
-- **Google Photos code (parked):** port or delete; decides the fate of
-  `test_photos.py` and `test_scheduled_tasks.py` ([02 §2.12](02-data-layer.md)).
+- ~~**Real-Gmail tests after staging is gone**~~ — removed with staging and the
+  dev↔staging token copier; Gmail is mocked in the suite.
+- ~~**Google Photos code (parked)**~~ — ported to `selko.db` (parked, not deleted);
+  its unused claim functions were dropped.
 - **Q0 measurements** (production sizes, users, auth settings, plans) are
   needed for the cutover, not for the build ([04 §C.0](04-data-cutover.md)).

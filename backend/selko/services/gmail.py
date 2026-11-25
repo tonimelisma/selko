@@ -16,7 +16,7 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-from supabase import Client
+from selko.db.connection import Database
 
 from selko.config import Config
 from selko.services.egress import GMAIL, record_egress
@@ -135,7 +135,7 @@ def run_oauth_flow(config: Config) -> Credentials:
 
 
 def get_gmail_credentials(
-    client: Client,
+    client: Database,
     config: Config,
     user_id: Optional[str] = None,
 ) -> Optional[Credentials]:
@@ -147,9 +147,9 @@ def get_gmail_credentials(
     for backwards compat with tests that patch the import path.
 
     Args:
-        client: Authenticated Supabase client.
+        client: The process database.
         config: Configuration with Google OAuth credentials.
-        user_id: Optional user ID (required if using service role client).
+        user_id: The integration's owner.
 
     Returns:
         Valid Google Credentials, or None if not found.

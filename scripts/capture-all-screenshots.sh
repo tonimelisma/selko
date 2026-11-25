@@ -5,82 +5,61 @@
 # Usage:
 #   ./scripts/capture-all-screenshots.sh          # the web app
 #   ./scripts/capture-all-screenshots.sh web      # the same
+#
+# Runs Selko the way the image does: the web app built once and served by the
+# API on one origin, over a throwaway SQLite data directory seeded by
+# scripts/seed_screenshot_data.py. Stops the API it starts, pass or fail.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
-
-# --- Prerequisite checks ---
-
-echo "==> Checking prerequisites..."
-
-# Check Supabase is running
-if ! curl -fsS -o /dev/null http://127.0.0.1:54321/auth/v1/health 2>/dev/null; then
-    echo "ERROR: Local Supabase is not running. Start it with: supabase start" >&2
-    exit 1
-fi
-echo "  Supabase: running"
-
-# The app's folder-preference screens use the authenticated backend API. Reuse an
-# existing local server or start one for this capture run and stop only that PID.
-#
-# The probe must identify *Selko's* API, not merely something answering on the
-# port. An unrelated dev server occupying 8000 answered 200 on /health, this
-# script concluded "Backend API: running", and the app then decoded that
-# server's HTML as JSON -- surfacing as "The data couldn't be read because it
-# isn't in the correct format" on the Settings screen, with no hint that the
-# wrong service was being talked to. `resolution` is unique to HealthResponse.
-selko_api_is_up() {
-    curl -fsS --max-time 5 http://127.0.0.1:8000/health 2>/dev/null \
-        | grep -q '"resolution"'
-}
-
-SCREENSHOT_API_PID=""
-if selko_api_is_up; then
-    echo "  Backend API: running"
-elif curl -fsS -o /dev/null --max-time 5 http://127.0.0.1:8000/health 2>/dev/null; then
-    echo "ERROR: Port 8000 is serving something that is not the Selko API." >&2
-    echo "       Stop that process (lsof -nP -iTCP:8000 -sTCP:LISTEN) and retry." >&2
-    exit 1
-else
-    echo "==> Starting local backend API..."
-    uv run uvicorn selko.api.app:app --host 127.0.0.1 --port 8000 \
-        >/tmp/selko-screenshot-api.log 2>&1 &
-    SCREENSHOT_API_PID=$!
-    trap 'if [ -n "$SCREENSHOT_API_PID" ]; then kill "$SCREENSHOT_API_PID" 2>/dev/null || true; fi' EXIT
-    for _ in {1..30}; do
-        if selko_api_is_up; then
-            break
-        fi
-        sleep 1
-    done
-    if ! selko_api_is_up; then
-        echo "ERROR: Local backend API did not start. See /tmp/selko-screenshot-api.log" >&2
-        exit 1
-    fi
-    echo "  Backend API: running"
-fi
-
-# Seed screenshot data (idempotent with --cleanup-first)
-echo "==> Seeding screenshot data..."
-uv run python "$PROJECT_ROOT/scripts/seed_screenshot_data.py" seed --cleanup-first
-
-# --- Platform runners ---
-
-run_web() {
-    echo ""
-    echo "=============================="
-    echo "  Web Screenshots (24)"
-    echo "=============================="
-    "$SCRIPT_DIR/capture-web-screenshots.sh"
-}
-
 PLATFORM="${1:-all}"
-
 case "$PLATFORM" in
-    web | all) run_web ;;
-    *)
-        echo "Usage: $0 [web]" >&2
-        exit 1
-        ;;
+    web | all) ;;
+    *) echo "Usage: $0 [web]" >&2; exit 1 ;;
 esac
+
+PORT="${SELKO_SCREENSHOT_PORT:-8000}"
+BASE="http://127.0.0.1:${PORT}"
+DATA_DIR="$PROJECT_ROOT/.verify/screenshot-data"
+LOG="$PROJECT_ROOT/.verify/screenshot-api.log"
+
+# Something already on the port would answer for us (it has before: an
+# unrelated dev server's HTML decoded as JSON on the Settings screen).
+if curl -fsS -o /dev/null --max-time 3 "$BASE/health" 2>/dev/null; then
+    echo "ERROR: port $PORT is already serving something; stop it (lsof -nP -iTCP:$PORT -sTCP:LISTEN) or set SELKO_SCREENSHOT_PORT." >&2
+    exit 1
+fi
+
+echo "==> Building the web app (same origin, as in the image)..."
+(cd "$PROJECT_ROOT/frontend" && VITE_API_URL="" npm run build >/dev/null)
+
+echo "==> Seeding a fresh SQLite data directory..."
+rm -rf "$DATA_DIR"
+mkdir -p "$DATA_DIR"
+SELKO_DATA_DIR="$DATA_DIR" uv run python "$PROJECT_ROOT/scripts/seed_screenshot_data.py" seed
+
+echo "==> Starting the API on $BASE..."
+SELKO_DATA_DIR="$DATA_DIR" \
+SELKO_WEB_DIR="$PROJECT_ROOT/frontend/build" \
+SELKO_JWT_SECRET="$(python3 -c 'import secrets; print(secrets.token_hex(32))')" \
+ALLOWED_ORIGINS="$BASE" \
+ENVIRONMENT=development \
+ENABLE_BACKGROUND_PROCESSING=false \
+SELKO_SIGNIN_ATTEMPTS_PER_MINUTE=200 \
+SELKO_TOKEN_REQUESTS_PER_MINUTE=500 \
+    uv run uvicorn selko.api.app:app --host 127.0.0.1 --port "$PORT" >"$LOG" 2>&1 &
+API_PID=$!
+trap 'kill "$API_PID" 2>/dev/null || true; wait "$API_PID" 2>/dev/null || true' EXIT
+for _ in $(seq 1 30); do
+    curl -fsS --max-time 3 "$BASE/health" 2>/dev/null | grep -q '"resolution"' && break
+    kill -0 "$API_PID" 2>/dev/null || { echo "ERROR: the API exited; see $LOG" >&2; exit 1; }
+    sleep 1
+done
+curl -fsS --max-time 3 "$BASE/health" | grep -q '"resolution"' || { echo "ERROR: the API did not start; see $LOG" >&2; exit 1; }
+
+echo ""
+echo "=============================="
+echo "  Web Screenshots (24)"
+echo "=============================="
+SELKO_E2E_BASE_URL="$BASE" "$SCRIPT_DIR/capture-web-screenshots.sh"

@@ -1,14 +1,12 @@
 """Integration tests for LLM call logging.
 
 Tests that all LLM calls are logged to the llm_call_log table with
-prompts, responses, metrics, and cost tracking.
+prompts, responses, metrics, and cost tracking, on a real SQLite database.
 """
 
 import pytest
-from datetime import date
 
-# Mark all tests in this module as integration tests (development uses local Supabase)
-pytestmark = [pytest.mark.integration, pytest.mark.development]
+pytestmark = [pytest.mark.integration]
 
 from selko.services.llm_logging import (
     LLMLoggingService,
@@ -47,9 +45,17 @@ class TestLLMLoggingService:
     """Integration tests for LLM logging service."""
 
     @pytest.fixture
-    def logging_service(self, admin_client):
-        """Create LLM logging service with admin client (service role)."""
-        return LLMLoggingService(admin_client)
+    def logging_service(self, db):
+        return LLMLoggingService(db)
+
+    @pytest.fixture
+    def test_user_id(self, factory):
+        return factory.user()
+
+    @staticmethod
+    def _log(service, log_id):
+        row = service.client.query_one("SELECT * FROM llm_call_log WHERE id = ?", (log_id,))
+        return service.client.schema.decode("llm_call_log", row)
 
     def test_log_successful_call(self, logging_service, test_user_id):
         """Test logging a successful LLM call."""
@@ -66,16 +72,7 @@ class TestLLMLoggingService:
 
         assert log_id is not None
 
-        # Verify the log was created
-        result = (
-            logging_service.client.table("llm_call_log")
-            .select("*")
-            .eq("id", log_id)
-            .single()
-            .execute()
-        )
-
-        log = result.data
+        log = self._log(logging_service, log_id)
         assert log["user_id"] == test_user_id
         assert log["operation_type"] == "extract_events"
         assert log["model"] == "gemini-3-flash-preview"
@@ -103,16 +100,7 @@ class TestLLMLoggingService:
 
         assert log_id is not None
 
-        # Verify the log was created
-        result = (
-            logging_service.client.table("llm_call_log")
-            .select("*")
-            .eq("id", log_id)
-            .single()
-            .execute()
-        )
-
-        log = result.data
+        log = self._log(logging_service, log_id)
         assert log["user_id"] == test_user_id
         assert log["operation_type"] == "compare_events"
         assert log["success"] is False
@@ -120,22 +108,9 @@ class TestLLMLoggingService:
         assert log["error_type"] == "rate_limit"
         assert log["response_text"] is None
 
-    def test_log_call_with_email_id(self, logging_service, test_user_id, admin_client):
+    def test_log_call_with_email_id(self, logging_service, test_user_id, factory):
         """Test logging a call with linked email ID."""
-        import uuid
-        # Create a test email first (use unique provider_message_id to avoid conflicts)
-        email_result = (
-            admin_client.table("emails")
-            .insert({
-                "user_id": test_user_id,
-                "provider_message_id": f"test-email-for-logging-{uuid.uuid4()}",
-                "subject": "Test Email",
-                "snippet": "Test snippet",
-                "from_email": "test@example.com",
-            })
-            .execute()
-        )
-        email_id = email_result.data[0]["id"]
+        email_id = factory.email(test_user_id)
 
         log_id = logging_service.log_success(
             user_id=test_user_id,
@@ -147,16 +122,7 @@ class TestLLMLoggingService:
             email_id=email_id,
         )
 
-        # Verify email_id is linked
-        result = (
-            logging_service.client.table("llm_call_log")
-            .select("email_id")
-            .eq("id", log_id)
-            .single()
-            .execute()
-        )
-
-        assert result.data["email_id"] == email_id
+        assert self._log(logging_service, log_id)["email_id"] == email_id
 
     def test_log_all_operation_types(self, logging_service, test_user_id):
         """Test that all operation types can be logged."""
@@ -199,10 +165,11 @@ class TestLLMLoggingService:
         # Get summary
         summary = logging_service.get_user_usage_summary(test_user_id)
 
-        assert summary["total_calls"] >= 4
-        assert summary["successful_calls"] >= 3
-        assert summary["failed_calls"] >= 1
-        assert summary["total_tokens"] >= 450  # 3 * 150
+        assert summary["total_calls"] == 4
+        assert summary["successful_calls"] == 3
+        assert summary["failed_calls"] == 1
+        assert summary["total_tokens"] == 450  # 3 * 150
+        assert summary["calls_by_operation"] == {"extract_events": 3, "compare_events": 1}
 
     def test_logging_handles_errors_gracefully(self, logging_service):
         """Test that logging errors don't crash the application."""
@@ -261,55 +228,25 @@ class TestLLMCallRecord:
         assert record.metrics.latency_ms == 1000
 
 
-class TestLLMLoggingRLS:
-    """Tests for RLS policies on llm_call_log table."""
+class TestLLMLoggingOwnership:
+    """Successor of the RLS tests: a user's log rows are read by user_id, and
+    no client route exposes the log at all (05-verification.md §A.2 row 41)."""
 
-    def test_user_can_view_own_logs(self, authenticated_client, test_user_id, admin_client):
-        """Test that users can view their own LLM call logs."""
-        # Create a log using service role
-        logging_service = LLMLoggingService(admin_client)
-        log_id = logging_service.log_success(
-            user_id=test_user_id,
-            operation_type=LLMOperationType.EXTRACT_EVENTS,
-            model="gemini-3-flash-preview",
-            prompt_text="Test prompt",
-            response_text="Test response",
-            latency_ms=1000,
+    def test_user_reads_own_logs_only(self, db, factory):
+        from selko.db import ops
+
+        alice, bob = factory.user(), factory.user()
+        log_id = LLMLoggingService(db).log_success(
+            user_id=alice, operation_type=LLMOperationType.EXTRACT_EVENTS, model="m",
+            prompt_text="p", response_text="r", latency_ms=1,
         )
+        assert ops.get_llm_call(db, alice, log_id)["id"] == log_id
+        assert ops.get_llm_call(db, bob, log_id) is None
 
-        # User should be able to read their own log
-        result = (
-            authenticated_client.table("llm_call_log")
-            .select("id, user_id")
-            .eq("id", log_id)
-            .execute()
-        )
+    def test_no_client_route_reads_the_llm_log(self):
+        from pathlib import Path
 
-        assert len(result.data) == 1
-        assert result.data[0]["user_id"] == test_user_id
-
-    def test_user_cannot_view_other_user_logs(self, authenticated_client, admin_client, temp_user):
-        """Test that users cannot view other users' LLM call logs."""
-        # temp_user fixture returns (user_id, email, password) tuple
-        other_user_id = temp_user[0]
-
-        # Create a log for the other user
-        logging_service = LLMLoggingService(admin_client)
-        log_id = logging_service.log_success(
-            user_id=other_user_id,
-            operation_type=LLMOperationType.EXTRACT_EVENTS,
-            model="gemini-3-flash-preview",
-            prompt_text="Other user's prompt",
-            response_text="Other user's response",
-            latency_ms=1000,
-        )
-
-        # First user (authenticated_client) should NOT be able to read the other user's log
-        result = (
-            authenticated_client.table("llm_call_log")
-            .select("id")
-            .eq("id", log_id)
-            .execute()
-        )
-
-        assert len(result.data) == 0
+        routes = Path(__file__).resolve().parents[2] / "selko" / "api" / "routes"
+        files = list(routes.glob("*.py"))
+        assert len(files) > 3
+        assert [f.name for f in files if "llm_call_log" in f.read_text() or "get_llm_call" in f.read_text()] == []

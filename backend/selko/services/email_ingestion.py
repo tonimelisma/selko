@@ -10,12 +10,13 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timezone
 from typing import Any, Iterable
 
-from postgrest.exceptions import APIError as PostgrestAPIError
-
 from selko.config import Config
+from selko.db import attachments as db_attachments
+from selko.db import email_sync
+from selko.db import emails as db_emails
+from selko.db.errors import DbBusy
 from selko.services.google_errors import (
     INSUFFICIENT_SCOPE_REASONS,
     RATE_LIMIT_REASONS,
@@ -25,9 +26,8 @@ logger = logging.getLogger(__name__)
 
 MAX_ERROR_DETAIL = 500
 MAX_PAGE_ITEMS = 100
-# Provider message IDs per `in_` filter when testing which are already known.
-# Small enough that the generated PostgREST URL stays well inside the usual 8KB
-# request-line limit, and that each response stays under the default row cap.
+# Provider message IDs per query when testing which are already known; bounds
+# the memory of one query over a full reconcile window.
 KNOWN_ID_QUERY_CHUNK = 200
 
 
@@ -120,12 +120,14 @@ def _graph_reason(exc: BaseException) -> str | None:
 
 
 def _is_transport_exception(exc: BaseException) -> bool:
-    """True for httpx/requests/postgrest transport-level failures.
+    """True for transport-level failures: a locked database or a provider disconnect.
 
     These retry — a disconnect is not a provider auth problem and not a parse
-    problem. Kept structural (type-based), never substring-based.
+    problem. Kept structural (type-based), never substring-based. A database
+    that stayed locked past ``busy_timeout`` is the one transient database
+    failure SQLite has.
     """
-    if isinstance(exc, PostgrestAPIError):
+    if isinstance(exc, DbBusy):
         return True
     # GraphRequestError is created for transport failures with status_code None.
     status = getattr(exc, "status_code", None)
@@ -252,13 +254,7 @@ class SyncClaim:
     lease_expires_at: str | None = None
 
     def __post_init__(self) -> None:
-        """Keep database UUIDs out of JSON-bound service-role payloads.
-
-        asyncpg returns PostgreSQL UUID columns as ``uuid.UUID`` instances,
-        while the worker passes these IDs to PostgREST-backed folder and
-        integration helpers. Normalize at the repository boundary so every
-        downstream caller receives the declared string contract.
-        """
+        """Keep every id a string: callers may pass ``uuid.UUID`` objects."""
         for field in ("integration_id", "user_id", "run_id"):
             value = getattr(self, field)
             if not isinstance(value, str):
@@ -266,75 +262,64 @@ class SyncClaim:
 
 
 class EmailIngestionRepository:
-    """Small service-role repository around the v2 coordination RPCs.
+    """Service-wide repository around the v2 coordination functions.
 
-    Every operation runs over the asyncpg session-pooler pool (port 5432) —
-    there is exactly one implementation per operation, and no PostgREST twin.
-    Cost ~100B vs 1690B per call.
+    Every operation is one `selko.db.email_sync`/`emails`/`attachments`
+    function run off the event loop (``Database.run``): one implementation per
+    operation. ``pg_pool`` keeps its historical name; it is the process
+    `selko.db.connection.Database`.
     """
 
     def __init__(self, config: Config, pg_pool):
         self.config = config
         self.pg_pool = pg_pool
 
-    async def claim_due_sync(self, worker_id: str) -> SyncClaim | None:
+    async def _call(self, what: str, fn, *args: Any) -> Any:
         try:
-            row = await self.pg_pool.fetchrow(
-                "SELECT * FROM public.claim_due_email_sync($1, $2)",
-                worker_id, self.config.email_lease_seconds,
-            )
+            return await self.pg_pool.run(fn, self.pg_pool, *args)
         except Exception as exc:
-            raise EmailIngestionError(f"Failed to claim due email sync: {exc}") from exc
-        return SyncClaim(**dict(row)) if row else None
+            raise EmailIngestionError(f"Failed to {what}: {exc}") from exc
+
+    async def claim_due_sync(self, worker_id: str) -> SyncClaim | None:
+        row = await self._call(
+            "claim due email sync", email_sync.claim_due_email_sync,
+            worker_id, self.config.email_lease_seconds,
+        )
+        return SyncClaim(**row) if row else None
 
     async def claim_due_reconciliation(self, worker_id: str) -> SyncClaim | None:
-        try:
-            row = await self.pg_pool.fetchrow(
-                "SELECT * FROM public.claim_due_email_reconciliation($1, $2)",
-                worker_id, self.config.email_lease_seconds,
-            )
-        except Exception as exc:
-            raise EmailIngestionError(f"Failed to claim due email reconciliation: {exc}") from exc
-        return SyncClaim(**dict(row)) if row else None
+        row = await self._call(
+            "claim due email reconciliation", email_sync.claim_due_email_reconciliation,
+            worker_id, self.config.email_lease_seconds,
+        )
+        return SyncClaim(**row) if row else None
 
     async def heartbeat_sync(self, integration_id: str, worker_id: str, generation: int) -> bool:
-        try:
-            val = await self.pg_pool.fetchval(
-                "SELECT public.heartbeat_email_sync($1, $2, $3, $4)",
-                integration_id, worker_id, generation, self.config.email_lease_seconds,
-            )
-        except Exception as exc:
-            raise EmailIngestionError(f"Failed to heartbeat email sync: {exc}") from exc
-        return bool(val)
+        return bool(await self._call(
+            "heartbeat email sync", email_sync.heartbeat_email_sync,
+            integration_id, worker_id, generation, self.config.email_lease_seconds,
+        ))
 
     async def require_heartbeat(self, integration_id: str, worker_id: str, generation: int) -> None:
         if not await self.heartbeat_sync(integration_id, worker_id, generation):
             raise LeaseLostError("email sync lease is no longer owned")
 
     async def complete_sync(self, claim: SyncClaim, worker_id: str, *, reconciled: bool = False) -> bool:
-        try:
-            val = await self.pg_pool.fetchval(
-                "SELECT public.complete_email_sync($1, $2, $3, $4, $5, $6)",
-                claim.integration_id, claim.run_id, worker_id, claim.lease_generation,
-                self.config.email_poll_interval_seconds, reconciled,
-            )
-        except Exception as exc:
-            raise EmailIngestionError(f"Failed to complete email sync: {exc}") from exc
-        return bool(val)
+        return bool(await self._call(
+            "complete email sync", email_sync.complete_email_sync,
+            claim.integration_id, claim.run_id, worker_id, claim.lease_generation,
+            self.config.email_poll_interval_seconds, reconciled,
+        ))
 
     async def fail_sync(self, claim: SyncClaim, worker_id: str, exc: BaseException) -> bool:
         classification = classify_email_error(exc)
-        try:
-            val = await self.pg_pool.fetchval(
-                "SELECT public.fail_email_sync($1, $2, $3, $4, $5, $6, $7, $8, $9)",
-                claim.integration_id, claim.run_id, worker_id, claim.lease_generation,
-                classification.code, safe_error_detail(exc),
-                self.config.email_retry_base_seconds, self.config.email_retry_max_seconds,
-                classification.auth_failure,
-            )
-        except Exception as e:
-            raise EmailIngestionError(f"Failed to fail email sync: {e}") from e
-        return bool(val)
+        return bool(await self._call(
+            "fail email sync", email_sync.fail_email_sync,
+            claim.integration_id, claim.run_id, worker_id, claim.lease_generation,
+            classification.code, safe_error_detail(exc),
+            self.config.email_retry_base_seconds, self.config.email_retry_max_seconds,
+            classification.auth_failure,
+        ))
 
     async def upsert_discovered(
         self,
@@ -345,18 +330,13 @@ class EmailIngestionRepository:
         folder_id: str | None = None,
     ) -> dict[str, int]:
         """Persist one bounded provider page before exposing its cursor."""
-        import json
-
         page = _normalize_provider_page(items)
         if len(page) > MAX_PAGE_ITEMS:
             raise ValueError(f"provider page exceeds {MAX_PAGE_ITEMS} identities")
-        try:
-            row = await self.pg_pool.fetchrow(
-                "SELECT * FROM public.upsert_discovered_email_items($1, $2, $3::jsonb, $4, $5)",
-                claim.integration_id, claim.run_id, json.dumps(page), cursor, folder_id,
-            )
-        except Exception as exc:
-            raise EmailIngestionError(f"Failed to upsert discovered email items: {exc}") from exc
+        row = await self._call(
+            "upsert discovered email items", email_sync.upsert_discovered_email_items,
+            claim.integration_id, claim.run_id, page, cursor, folder_id,
+        )
         return dict(row) if row else {"inserted_count": 0, "existing_count": 0, "provider_ids_seen": 0}
 
     async def known_provider_message_ids(
@@ -365,55 +345,25 @@ class EmailIngestionRepository:
         """Subset of ``provider_message_ids`` already discovered for this integration.
 
         Queried in chunks so a full reconcile window — tens of thousands of
-        IDs — never materializes in one query plan or one response.
+        IDs — never materializes in one query.
         """
-        known: set[str] = set()
-        ids = [pid for pid in provider_message_ids if pid]
-        try:
-            for start in range(0, len(ids), KNOWN_ID_QUERY_CHUNK):
-                chunk = ids[start : start + KNOWN_ID_QUERY_CHUNK]
-                rows = await self.pg_pool.fetch(
-                    "SELECT provider_message_id FROM public.email_ingestion_items"
-                    " WHERE integration_id = $1 AND provider_message_id = ANY($2::text[])",
-                    integration_id, chunk,
-                )
-                known.update(row["provider_message_id"] for row in rows if row.get("provider_message_id"))
-        except Exception as exc:
-            raise EmailIngestionError(f"Failed to query known provider message ids: {exc}") from exc
-        return known
+        return await self._call(
+            "query known provider message ids", email_sync.known_provider_message_ids,
+            integration_id, list(provider_message_ids), KNOWN_ID_QUERY_CHUNK,
+        )
 
     async def claim_item(self, worker_id: str) -> dict[str, Any] | None:
-        """Claim one durable ingestion item, returning string UUIDs.
-
-        asyncpg returns PG ``uuid`` columns as :class:`uuid.UUID`; callers that
-        build a ``jsonb`` payload (e.g. ``save_email_with_attachment_descriptors``
-        via :meth:`EmailIngestionWorker.acquire_item`) would otherwise fail at
-        ``json.dumps`` with ``TypeError: Object of type UUID is not JSON
-        serializable``. Normalization happens here at the repository boundary
-        so every consumer receives the declared ``str`` contract.
-        """
-        try:
-            row = await self.pg_pool.fetchrow(
-                "SELECT * FROM public.claim_email_ingestion_item($1, $2)",
-                worker_id, self.config.email_lease_seconds,
-            )
-        except Exception as exc:
-            raise EmailIngestionError(f"Failed to claim email ingestion item: {exc}") from exc
-        if row is None:
-            return None
-        from selko.services.pg import _normalize_pg_row
-
-        return _normalize_pg_row(dict(row))
+        """Claim one durable ingestion item (ids are text)."""
+        return await self._call(
+            "claim email ingestion item", email_sync.claim_email_ingestion_item,
+            worker_id, self.config.email_lease_seconds,
+        )
 
     async def complete_item(self, item_id: str, worker_id: str, email_id: str) -> bool:
-        try:
-            val = await self.pg_pool.fetchval(
-                "SELECT public.complete_email_ingestion_item($1, $2, $3)",
-                item_id, worker_id, email_id,
-            )
-        except Exception as exc:
-            raise EmailIngestionError(f"Failed to complete email ingestion item: {exc}") from exc
-        return bool(val)
+        return bool(await self._call(
+            "complete email ingestion item", email_sync.complete_email_ingestion_item,
+            item_id, worker_id, email_id,
+        ))
 
     async def save_email_with_attachment_descriptors(
         self,
@@ -424,22 +374,14 @@ class EmailIngestionRepository:
     ) -> str:
         """Atomically upsert the email row and its attachment descriptors.
 
-        One SQL call commits all writes in a single transaction so the
-        readiness gate never observes an email row whose descriptors have not
-        been written yet.
+        One transaction commits all writes, so the readiness gate never
+        observes an email row whose descriptors have not been written yet.
         """
-        import json
-
-        try:
-            email_id = await self.pg_pool.fetchval(
-                "SELECT public.save_email_with_attachment_descriptors($1::uuid, $2::jsonb, $3::jsonb, $4::jsonb)",
-                user_id,
-                json.dumps(email_payload),
-                json.dumps(list(descriptors)),
-                json.dumps(list(calendar_components)),
-            )
-        except Exception as exc:
-            raise EmailIngestionError(f"Failed to save email with attachment descriptors: {exc}") from exc
+        email_id = await self._call(
+            "save email with attachment descriptors",
+            db_emails.save_email_with_attachment_descriptors,
+            user_id, email_payload, list(descriptors), list(calendar_components),
+        )
         if email_id is None:
             raise EmailIngestionError("email upsert returned no row")
         return str(email_id)
@@ -450,65 +392,36 @@ class EmailIngestionRepository:
         ``terminal`` defaults to the classifier's ``retryable`` flag: only
         genuinely permanent failures (``ProviderPermanentError``) are terminal
         on the first attempt. Every other failure retries until ``max_attempts``
-        is exhausted server-side, so a transient blip — including a 401 that
-        will be resolved by reconnect — never dead-letters mail on attempt #1.
+        is exhausted, so a transient blip — including a 401 that will be
+        resolved by reconnect — never dead-letters mail on attempt #1.
         """
         classification = classify_email_error(exc)
         if terminal is None:
             terminal = not classification.retryable
-        try:
-            val = await self.pg_pool.fetchval(
-                "SELECT public.fail_email_ingestion_item($1, $2, $3, $4, $5, $6)",
-                item_id, worker_id, classification.code,
-                self.config.email_retry_base_seconds, self.config.email_retry_max_seconds,
-                terminal,
-            )
-        except Exception as e:
-            raise EmailIngestionError(f"Failed to fail email ingestion item: {e}") from e
-        return bool(val)
+        return bool(await self._call(
+            "fail email ingestion item", email_sync.fail_email_ingestion_item,
+            item_id, worker_id, classification.code,
+            self.config.email_retry_base_seconds, self.config.email_retry_max_seconds,
+            terminal,
+        ))
 
     async def remove_item(self, item_id: str, worker_id: str) -> bool:
-        try:
-            row = await self.pg_pool.fetchval(
-                "UPDATE public.email_ingestion_items"
-                " SET acquisition_status = 'removed', lease_owner = NULL,"
-                " lease_expires_at = NULL, completed_at = $3, updated_at = $3"
-                " WHERE id = $1 AND lease_owner = $2 RETURNING id",
-                item_id, worker_id, datetime.now(timezone.utc),
-            )
-        except Exception as exc:
-            raise EmailIngestionError(f"Failed to remove email ingestion item: {exc}") from exc
-        return row is not None
+        return bool(await self._call(
+            "remove email ingestion item", email_sync.remove_ingestion_item, item_id, worker_id,
+        ))
 
     async def claim_attachment(self, worker_id: str) -> dict[str, Any] | None:
-        """Claim one pending attachment, returning string UUIDs.
-
-        Same boundary as :meth:`claim_item` — defensive even though the current
-        attachment path does not ``json.dumps`` the row. A future log or payload
-        change must not reintroduce the class.
-        """
-        try:
-            row = await self.pg_pool.fetchrow(
-                "SELECT * FROM public.claim_email_attachment($1, $2)",
-                worker_id, self.config.email_lease_seconds,
-            )
-        except Exception as exc:
-            raise EmailIngestionError(f"Failed to claim email attachment: {exc}") from exc
-        if row is None:
-            return None
-        from selko.services.pg import _normalize_pg_row
-
-        return _normalize_pg_row(dict(row))
+        """Claim one pending attachment (ids are text)."""
+        return await self._call(
+            "claim email attachment", db_attachments.claim_email_attachment,
+            worker_id, self.config.email_lease_seconds,
+        )
 
     async def finish_attachment(self, attachment_id: str, worker_id: str, status: str, error_code: str | None = None) -> bool:
-        try:
-            val = await self.pg_pool.fetchval(
-                "SELECT public.finish_email_attachment($1, $2, $3, $4)",
-                attachment_id, worker_id, status, error_code,
-            )
-        except Exception as exc:
-            raise EmailIngestionError(f"Failed to finish email attachment: {exc}") from exc
-        return bool(val)
+        return bool(await self._call(
+            "finish email attachment", db_attachments.finish_email_attachment,
+            attachment_id, worker_id, status, error_code,
+        ))
 
     async def ensure_attachment_descriptors(
         self,
@@ -517,44 +430,13 @@ class EmailIngestionRepository:
         descriptors: Iterable[dict[str, Any]],
     ) -> int:
         """Create pending attachment work without resetting stored rows."""
-        created = 0
-        try:
-            for descriptor in descriptors:
-                provider_id = descriptor.get("provider_attachment_id") or descriptor.get("attachment_id")
-                if not provider_id:
-                    continue
-                existing = await self.pg_pool.fetchval(
-                    "SELECT id FROM public.attachments"
-                    " WHERE email_id = $1 AND provider_attachment_id = $2",
-                    email_id, provider_id,
-                )
-                if existing:
-                    continue
-                await self.pg_pool.execute(
-                    "INSERT INTO public.attachments"
-                    " (user_id, email_id, provider_attachment_id, filename, mime_type,"
-                    " size_bytes, ingestion_status)"
-                    " VALUES ($1, $2, $3, $4, $5, $6, 'pending')",
-                    user_id, email_id, provider_id,
-                    descriptor.get("filename") or descriptor.get("name") or "unnamed",
-                    descriptor.get("mime_type") or descriptor.get("contentType") or "application/octet-stream",
-                    descriptor.get("size_bytes") or descriptor.get("size") or 0,
-                )
-                created += 1
-        except Exception as exc:
-            raise EmailIngestionError(f"Failed to ensure attachment descriptors: {exc}") from exc
-        return created
+        return await self._call(
+            "ensure attachment descriptors", db_attachments.ensure_descriptors,
+            email_id, user_id, list(descriptors),
+        )
 
     async def attachment_readiness(self, email_id: str) -> bool:
-        """Mirror the SQL readiness gate for diagnostics and repair tooling."""
-        try:
-            rows = await self.pg_pool.fetch(
-                "SELECT ingestion_status FROM public.attachments WHERE email_id = $1",
-                email_id,
-            )
-        except Exception as exc:
-            raise EmailIngestionError(f"Failed to check attachment readiness: {exc}") from exc
-        return all(
-            row.get("ingestion_status") in {"stored", "unsupported", "dead_letter"}
-            for row in rows
+        """Mirror the readiness gate for diagnostics and repair tooling."""
+        return await self._call(
+            "check attachment readiness", db_attachments.readiness, email_id,
         )

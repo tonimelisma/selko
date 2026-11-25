@@ -7,7 +7,6 @@ import pytest
 from selko.services.email_folders import (
     gmail_label_is_permanently_excluded,
     outlook_folder_is_permanently_excluded,
-    set_folder_preference,
     upsert_discovered_folders,
 )
 from selko.services.attachments import AttachmentError
@@ -147,88 +146,81 @@ def test_outlook_conversation_history_is_never_discovered_or_traversed():
     assert all("conversation-history-id" not in request for request in child_requests)
 
 
-def test_upsert_does_not_classify_eligible_system_folders_and_preserves_scan_metadata():
-    client = MagicMock()
-    client.table.return_value.select.return_value.eq.return_value.execute.return_value = MagicMock(data=[])
-    client.table.return_value.upsert.return_value.execute.return_value = MagicMock(data=[])
+def _folder_integration(factory, provider: str = "outlook") -> tuple[str, str]:
+    user = factory.user()
+    return user, factory.integration(user, provider=provider)
+
+
+def _inbox() -> dict:
+    return {
+        "id": "inbox-id",
+        "name": "Boîte de réception",
+        "full_path": "Boîte de réception",
+        "kind": "folder",
+        "is_system": True,
+        "is_scannable": True,
+        "system_kind": "inbox",
+    }
+
+
+def test_upsert_does_not_classify_eligible_system_folders_and_preserves_scan_metadata(db, factory):
+    user, integration_id = _folder_integration(factory)
     gateway = MagicMock()
 
-    upsert_discovered_folders(
-        client,
-        user_id="user-1",
-        integration_id="integration-1",
+    [row] = upsert_discovered_folders(
+        db,
+        user_id=user,
+        integration_id=integration_id,
         provider="outlook",
-        folders=[{
-            "id": "inbox-id",
-            "name": "Boîte de réception",
-            "full_path": "Boîte de réception",
-            "kind": "folder",
-            "is_system": True,
-            "is_scannable": True,
-            "system_kind": "inbox",
-        }],
+        folders=[_inbox()],
         gateway=gateway,
     )
 
-    row = client.table.return_value.upsert.call_args.args[0][0]
     assert row["is_system"] is True
     assert row["is_scannable"] is True
     assert row["is_included"] is True
+    assert row["system_kind"] == "inbox"
+    assert row["user_id"] == user
     gateway.for_user.assert_not_called()
 
 
-def test_upsert_normalizes_stale_system_folder_exclusion():
-    client = MagicMock()
-    stale = {
-        "provider_folder_id": "inbox-id",
-        "name": "Inbox",
-        "full_path": "Inbox",
-        "is_included": False,
-        "user_override": True,
-    }
-    client.table.return_value.select.return_value.eq.return_value.execute.return_value = MagicMock(
-        data=[stale]
-    )
-    client.table.return_value.upsert.return_value.execute.return_value = MagicMock(data=[])
+def test_upsert_normalizes_stale_system_folder_exclusion(db, factory):
+    user, integration_id = _folder_integration(factory)
+    # A row saved before system-folder recognition: excluded by a user override.
+    upsert_discovered_folders(db, user_id=user, integration_id=integration_id, provider="outlook",
+                              folders=[{**_inbox(), "is_system": False}])
+    from selko.db import email_sync
 
-    upsert_discovered_folders(
-        client,
-        user_id="user-1",
-        integration_id="integration-1",
-        provider="outlook",
-        folders=[{
-            "id": "inbox-id",
-            "name": "Inbox",
-            "full_path": "Inbox",
-            "kind": "folder",
-            "is_system": True,
-            "is_scannable": True,
-            "system_kind": "inbox",
-        }],
-    )
+    [stale] = email_sync.folders_for_integration(db, integration_id)
+    with db.write() as tx:
+        tx.execute("UPDATE email_folders SET is_included = 0, user_override = 1 WHERE id = ?", (stale["id"],))
 
-    row = client.table.return_value.upsert.call_args.args[0][0]
+    [row] = upsert_discovered_folders(db, user_id=user, integration_id=integration_id, provider="outlook",
+                                      folders=[_inbox()])
+
+    assert row["id"] == stale["id"]
     assert row["is_included"] is True
     assert row["user_override"] is False
 
 
-def test_folder_preference_uses_restricted_rpc_instead_of_table_update():
-    client = MagicMock()
-    client.rpc.return_value.execute.return_value = MagicMock(data=[{"id": "folder-1", "is_included": False}])
+def test_a_rediscovered_folder_keeps_its_cursor_and_user_override(db, factory):
+    user, integration_id = _folder_integration(factory)
+    label = {"id": "label-1", "name": "School", "full_path": "School", "kind": "folder"}
+    [first] = upsert_discovered_folders(db, user_id=user, integration_id=integration_id,
+                                        provider="outlook", folders=[label])
+    from selko.db.email_sync import set_email_folder_preference
 
-    result = set_folder_preference(
-        client,
-        user_id="user-1",
-        folder_id="folder-1",
-        is_included=False,
-    )
+    set_email_folder_preference(db, user, first["id"], False)
+    with db.write() as tx:
+        tx.execute("UPDATE email_folders SET sync_cursor = 'delta-1' WHERE id = ?", (first["id"],))
 
-    assert result["id"] == "folder-1"
-    client.rpc.assert_called_once_with(
-        "set_email_folder_preference",
-        {"p_folder_id": "folder-1", "p_is_included": False},
-    )
-    client.table.return_value.update.assert_not_called()
+    [again] = upsert_discovered_folders(db, user_id=user, integration_id=integration_id,
+                                        provider="outlook", folders=[label])
+
+    assert again["id"] == first["id"]
+    assert again["is_included"] is False
+    assert again["user_override"] is True
+    assert again["sync_cursor"] == "delta-1"
 
 
 def test_folder_classifier_uses_only_folder_metadata_and_preserves_structured_reason():
@@ -253,15 +245,19 @@ def test_folder_classifier_uses_only_folder_metadata_and_preserves_structured_re
     assert "Email Body" not in prompt
 
 
-def test_successful_completion_clears_stale_processing_error_atomically(fake_pg_pool):
+def test_successful_completion_clears_stale_processing_error_atomically(db, factory):
     import asyncio
 
-    asyncio.run(complete_email_processing(fake_pg_pool, "email-1"))
+    email_id = factory.email(
+        factory.user(), processing_status="processing", processing_error="earlier failure",
+        locked_by="worker-1", locked_until="2999-01-01T00:00:00.000000Z", attempts=1,
+    )
 
-    sql, args = fake_pg_pool.calls[-1]
-    assert "processing_status = 'processed'" in sql
-    assert "processing_error = NULL" in sql
-    assert "locked_by = NULL" in sql
-    assert "locked_until = NULL" in sql
+    asyncio.run(complete_email_processing(db, email_id))
 
-
+    row = factory.row("emails", email_id)
+    assert row["processing_status"] == "processed"
+    assert row["processing_error"] is None
+    assert row["locked_by"] is None
+    assert row["locked_until"] is None
+    assert row["processed_at"] is not None

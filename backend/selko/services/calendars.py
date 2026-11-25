@@ -13,8 +13,13 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-from supabase import Client
 
+from selko.db import calendar_work as db_calendar_work
+from selko.db import events as db_events
+from selko.db import integrations as db_integrations
+from selko.db import recovery as db_recovery
+from selko.db.connection import Database
+from selko.db.errors import NotFound
 from selko.services import calendar_providers as providers
 from selko.services.calendar_providers import (
     CalendarEventNotFound,
@@ -165,7 +170,7 @@ async def requeue_calendar_recovery_batch(
     for the normal calendar worker when the integration is active again.
 
     Args:
-        pool: asyncpg session-pooler pool.
+        pool: The process database.
         recovery_id: The recovery generation, previously claimed via
             `claim_integration_recovery`.
         worker_id: Must match the worker that holds the claim.
@@ -179,9 +184,9 @@ async def requeue_calendar_recovery_batch(
         CalendarsError: If the RPC call fails.
     """
     try:
-        return await pool.fetchval(
-            "SELECT public.requeue_calendar_recovery_batch($1, $2, $3)",
-            recovery_id, worker_id, batch_size,
+        return await pool.run(
+            db_recovery.requeue_calendar_recovery_batch,
+            pool, recovery_id, worker_id, batch_size,
         )
     except Exception as e:
         raise CalendarsError(
@@ -202,8 +207,8 @@ async def refresh_waiting_calendar_recoveries(pool, batch_size: int = 20) -> int
         CalendarsError: If the RPC call fails.
     """
     try:
-        return await pool.fetchval(
-            "SELECT public.refresh_waiting_calendar_recoveries($1)", batch_size
+        return await pool.run(
+            db_recovery.refresh_waiting_calendar_recoveries, pool, batch_size
         ) or 0
     except Exception as e:
         raise CalendarsError(
@@ -231,24 +236,17 @@ class CalendarDivergedError(CalendarsError):
         self.google_event_url = google_event_url
 
 
-def _user_integrations(supabase_client: Client, user_id: str) -> list[dict[str, Any]]:
+def _user_integrations(supabase_client: Database, user_id: str) -> list[dict[str, Any]]:
     """The user's integration rows, for deciding which calendars are writable."""
     try:
-        result = (
-            supabase_client.table("integrations")
-            .select("id,provider,status,scopes")
-            .eq("user_id", user_id)
-            .execute()
-        )
+        return db_integrations.list_integrations(supabase_client, user_id)
     except Exception as exc:
         logger.warning("Could not read integrations for user %s: %s", user_id, exc)
         return []
-    rows = getattr(result, "data", None)
-    return [row for row in rows if isinstance(row, dict)] if isinstance(rows, list) else []
 
 
 def calendar_adapter(
-    supabase_client: Client,
+    supabase_client: Database,
     user_id: str,
     provider: str,
     *,
@@ -296,7 +294,7 @@ def calendar_id_for(provider: str, target_calendar_id: Optional[str]) -> str:
 
 
 def target_provider(
-    supabase_client: Client, user_id: str, settings: dict[str, Any]
+    supabase_client: Database, user_id: str, settings: dict[str, Any]
 ) -> str:
     """Where a new event is written: the target calendar's provider, else a default."""
     target = settings.get("target_calendar_id")
@@ -306,7 +304,7 @@ def target_provider(
 
 
 def fetch_calendar_events_for_date_range(
-    supabase_client: Client,
+    supabase_client: Database,
     user_id: str,
     time_min: str,
     time_max: str,
@@ -319,7 +317,7 @@ def fetch_calendar_events_for_date_range(
     Google's shape with qualified ids, so callers need no provider branch.
 
     Args:
-        supabase_client: Authenticated Supabase client.
+        supabase_client: The process database.
         user_id: UUID of user.
         time_min: ISO datetime string for range start.
         time_max: ISO datetime string for range end.
@@ -352,7 +350,7 @@ def fetch_calendar_events_for_date_range(
 
 
 def list_provider_calendars(
-    supabase_client: Client, user_id: str, provider: str
+    supabase_client: Database, user_id: str, provider: str
 ) -> list[dict[str, Any]]:
     """Every calendar one provider exposes, as {id, summary, primary, can_write}.
 
@@ -373,12 +371,12 @@ def list_provider_calendars(
 
 
 def list_calendars(
-    supabase_client: Client, user_id: str
+    supabase_client: Database, user_id: str
 ) -> list[dict[str, Any]]:
     """List the calendars Selko can write to, across every connected provider.
 
     Args:
-        supabase_client: Authenticated Supabase client.
+        supabase_client: The process database.
         user_id: UUID of user.
 
     Returns:
@@ -442,12 +440,12 @@ _DEFAULT_ALL_DAY_SETTINGS: dict[str, Any] = {
 
 
 def get_calendar_settings(
-    supabase_client: Client, user_id: str, *, include_name: bool = True
+    supabase_client: Database, user_id: str, *, include_name: bool = True
 ) -> dict[str, Any]:
     """Get target calendar and default invitees.
 
     Args:
-        supabase_client: Authenticated Supabase client.
+        supabase_client: The process database.
         user_id: UUID of user.
         include_name: Resolve the target calendar's display name. That lists
             every connected provider's calendars, so provider writes and
@@ -458,11 +456,9 @@ def get_calendar_settings(
         Dict with target_calendar_id, target_calendar_name, default_invitees,
         timezone, and all-day materialization preference fields.
     """
-    result = supabase_client.table("user_calendar_settings").select("*").eq(
-        "user_id", user_id
-    ).execute()
+    settings = db_integrations.get_calendar_settings(supabase_client, user_id)
 
-    if not result.data:
+    if not settings:
         return {
             "target_calendar_id": None,
             "target_calendar_name": None,
@@ -470,8 +466,6 @@ def get_calendar_settings(
             "timezone": "America/New_York",
             **_DEFAULT_ALL_DAY_SETTINGS,
         }
-
-    settings = result.data[0]
 
     # Get calendar name if target is set
     calendar_name = None
@@ -497,7 +491,7 @@ def get_calendar_settings(
 
 
 def get_all_day_policy_and_timezone(
-    supabase_client: Client, user_id: str
+    supabase_client: Database, user_id: str
 ) -> tuple["AllDayPolicy", str]:
     """Lean fetch of timezone + all-day preference (no GCal list call).
 
@@ -506,24 +500,9 @@ def get_all_day_policy_and_timezone(
     """
     from selko.services.calendar_policy import all_day_policy_from_settings
 
+    row: dict[str, Any]
     try:
-        result = (
-            supabase_client.table("user_calendar_settings")
-            .select(
-                "timezone, all_day_display_mode, "
-                "all_day_custom_start, all_day_custom_end"
-            )
-            .eq("user_id", user_id)
-            .execute()
-        )
-        row: dict[str, Any] = {}
-        if (
-            result.data
-            and isinstance(result.data, list)
-            and result.data
-            and isinstance(result.data[0], dict)
-        ):
-            row = result.data[0]
+        row = db_integrations.get_all_day_settings(supabase_client, user_id) or {}
     except Exception as e:
         logger.warning(f"Failed to fetch all-day policy for user {user_id}: {e}")
         row = {}
@@ -534,7 +513,7 @@ def get_all_day_policy_and_timezone(
 
 
 def update_calendar_settings(
-    supabase_client: Client,
+    supabase_client: Database,
     user_id: str,
     target_calendar_id: Optional[str] = None,
     default_invitees: Optional[str] = None,
@@ -547,7 +526,7 @@ def update_calendar_settings(
     """Update calendar settings.
 
     Args:
-        supabase_client: Authenticated Supabase client.
+        supabase_client: The process database.
         user_id: UUID of user.
         target_calendar_id: Google Calendar ID to sync to (None = primary).
         default_invitees: Comma-separated emails to add to all events.
@@ -594,7 +573,7 @@ def update_calendar_settings(
             if all_day_custom_end is not None:
                 payload["all_day_custom_end"] = all_day_custom_end
 
-    supabase_client.table("user_calendar_settings").upsert(payload).execute()
+    db_integrations.upsert_calendar_settings(supabase_client, user_id, payload)
 
     logger.info(f"Updated calendar settings for user {user_id}")
 
@@ -690,7 +669,7 @@ def _build_calendar_event_body(
 
 
 def _log_sync(
-    supabase_client: Client,
+    supabase_client: Database,
     user_id: str,
     event_id: str,
     google_calendar_event_id: str,
@@ -700,7 +679,7 @@ def _log_sync(
     """Log a calendar sync operation.
 
     Args:
-        supabase_client: Authenticated Supabase client.
+        supabase_client: The process database.
         user_id: UUID of user.
         event_id: UUID of Selko event.
         google_calendar_event_id: Google Calendar event ID.
@@ -708,13 +687,9 @@ def _log_sync(
         snapshot: What we sent to Google Calendar.
     """
     try:
-        supabase_client.table("calendar_sync_log").insert({
-            "event_id": event_id,
-            "user_id": user_id,
-            "google_calendar_event_id": google_calendar_event_id,
-            "action": action,
-            "snapshot_synced": snapshot,
-        }).execute()
+        db_calendar_work.log_calendar_sync(
+            supabase_client, user_id, event_id, google_calendar_event_id, action, snapshot
+        )
         logger.debug(f"Logged sync: {action} for event {event_id}")
     except Exception as e:
         # Don't fail the sync if logging fails
@@ -722,13 +697,13 @@ def _log_sync(
 
 
 def _write_provider(
-    supabase_client: Client,
+    supabase_client: Database,
     user_id: str,
     event: dict[str, Any],
     settings: dict[str, Any],
     provider: Optional[str],
 ) -> str:
-    """Which calendar a write goes to (SQL twin: `calendar_write_provider`).
+    """Which calendar a write goes to (the rule of `db.calendar_work.write_provider_for`).
 
     An event already in a calendar stays there; otherwise the worker's
     stamped provider wins, then the target calendar's.
@@ -742,7 +717,7 @@ def _write_provider(
 
 
 def sync_event_to_calendar(
-    supabase_client: Client,
+    supabase_client: Database,
     user_id: str,
     event_id: str,
     *,
@@ -762,7 +737,7 @@ def sync_event_to_calendar(
     All operations are logged to calendar_sync_log for audit trail.
 
     Args:
-        supabase_client: Authenticated Supabase client.
+        supabase_client: The process database.
         user_id: UUID of user.
         event_id: UUID of event to sync.
         provider: The provider the claimed work item was stamped with.
@@ -776,10 +751,9 @@ def sync_event_to_calendar(
     provider_name = providers.GOOGLE
     try:
         # Fetch event
-        event_result = supabase_client.table("events").select("*").eq(
-            "id", event_id
-        ).single().execute()
-        event = event_result.data
+        event = db_events.get(supabase_client, user_id, event_id)
+        if event is None:
+            raise NotFound(f"event {event_id} not found")
 
         settings = get_calendar_settings(supabase_client, user_id, include_name=False)
         provider_name = _write_provider(supabase_client, user_id, event, settings, provider)
@@ -916,7 +890,7 @@ def _update_or_recreate_calendar_event(
 
 
 def cancel_event_to_calendar(
-    supabase_client: Client,
+    supabase_client: Database,
     user_id: str,
     event_id: str,
     *,
@@ -932,10 +906,9 @@ def cancel_event_to_calendar(
     qualified id names.
     """
     try:
-        event_result = supabase_client.table("events").select("*").eq(
-            "id", event_id
-        ).single().execute()
-        event = event_result.data or {}
+        event = db_events.get(supabase_client, user_id, event_id)
+        if event is None:
+            raise NotFound(f"event {event_id} not found")
         provider_event_id = event.get("google_calendar_event_id")
         if not provider_event_id:
             logger.info("Event %s has no remote calendar copy; cancellation is local-only", event_id)
@@ -1089,27 +1062,16 @@ def calendar_event_diverged(
 
 
 def get_latest_sync_snapshot(
-    supabase_client: Client, event_id: str
+    supabase_client: Database, event_id: str, *, user_id: str
 ) -> dict[str, Any] | None:
     """Return the latest created/updated calendar_sync_log snapshot for an event."""
-    result = (
-        supabase_client.table("calendar_sync_log")
-        .select("snapshot_synced, action, synced_at")
-        .eq("event_id", event_id)
-        .in_("action", ["created", "updated"])
-        .order("synced_at", desc=True)
-        .limit(1)
-        .execute()
+    return db_calendar_work.latest_sync_snapshot(
+        supabase_client, user_id, event_id, ("created", "updated")
     )
-    rows = result.data or []
-    if not rows:
-        return None
-    snap = rows[0].get("snapshot_synced")
-    return snap if isinstance(snap, dict) else None
 
 
 def _calendar_service_for_event(
-    supabase_client: Client, user_id: str, provider_event_id: str
+    supabase_client: Database, user_id: str, provider_event_id: str
 ) -> tuple[providers.CalendarAdapter, str]:
     """Adapter and calendar id for the calendar an existing event lives in."""
     provider = providers.provider_of_id(provider_event_id)
@@ -1122,7 +1084,7 @@ def _calendar_service_for_event(
 
 
 def get_calendar_event(
-    supabase_client: Client, user_id: str, google_event_id: str
+    supabase_client: Database, user_id: str, google_event_id: str
 ) -> dict[str, Any] | None:
     """Fetch a live calendar event by its stored id. Returns None if missing (404)."""
     try:
@@ -1139,7 +1101,7 @@ def get_calendar_event(
 
 
 def assert_calendar_not_diverged(
-    supabase_client: Client,
+    supabase_client: Database,
     user_id: str,
     event_id: str,
     google_event_id: str,
@@ -1158,7 +1120,7 @@ def assert_calendar_not_diverged(
     if live is None:
         return
 
-    snapshot = get_latest_sync_snapshot(supabase_client, event_id)
+    snapshot = get_latest_sync_snapshot(supabase_client, event_id, user_id=user_id)
     if snapshot is None:
         raise CalendarDivergedError(
             "This calendar event may have changed since Selko synced it. "

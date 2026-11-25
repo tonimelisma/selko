@@ -166,16 +166,19 @@ class TestFetchMessageChanges:
 
 
 class TestOutlookTokenRefresh:
-    def test_refreshes_expired_token_and_persists_rotation(self, mock_config):
-        client = MagicMock()
-        client.table().select().eq().eq().maybe_single().execute.return_value = MagicMock(
-            data={
-                "status": "active",
-                "access_token": "expired",
-                "refresh_token": "old-refresh",
-                "token_expiry": (datetime.now(timezone.utc) - timedelta(minutes=1)).isoformat(),
-            }
-        )
+    """The integration row is the integrations service's to read; here it is a fixed row."""
+
+    @staticmethod
+    def _expired_row():
+        return {
+            "status": "active",
+            "access_token": "expired",
+            "refresh_token": "old-refresh",
+            "token_expiry": (datetime.now(timezone.utc) - timedelta(minutes=1)).isoformat(),
+        }
+
+    def test_refreshes_expired_token_and_persists_rotation(self, db, mock_config):
+        client = db
         msal_app = MagicMock()
         msal_app.acquire_token_by_refresh_token.return_value = {
             "access_token": "new-access",
@@ -184,6 +187,7 @@ class TestOutlookTokenRefresh:
         }
 
         with (
+            patch("selko.services.outlook.get_provider_integration", return_value=self._expired_row()),
             patch("selko.services.outlook._msal_app", return_value=msal_app),
             patch("selko.services.outlook.update_provider_tokens") as update_tokens,
         ):
@@ -195,16 +199,8 @@ class TestOutlookTokenRefresh:
         )
         assert update_tokens.call_args.kwargs["refresh_token"] == "new-refresh"
 
-    def test_invalid_grant_marks_integration_expired(self, mock_config):
-        client = MagicMock()
-        client.table().select().eq().eq().maybe_single().execute.return_value = MagicMock(
-            data={
-                "status": "active",
-                "access_token": "expired",
-                "refresh_token": "old-refresh",
-                "token_expiry": (datetime.now(timezone.utc) - timedelta(minutes=1)).isoformat(),
-            }
-        )
+    def test_invalid_grant_marks_integration_expired(self, db, mock_config):
+        client = db
         msal_app = MagicMock()
         msal_app.acquire_token_by_refresh_token.return_value = {
             "error": "invalid_grant",
@@ -212,6 +208,7 @@ class TestOutlookTokenRefresh:
         }
 
         with (
+            patch("selko.services.outlook.get_provider_integration", return_value=self._expired_row()),
             patch("selko.services.outlook._msal_app", return_value=msal_app),
             patch("selko.services.outlook.update_integration_status") as update_status,
             pytest.raises(Exception, match="refresh token revoked"),
@@ -219,3 +216,11 @@ class TestOutlookTokenRefresh:
             get_access_token(client, mock_config, "user-1")
 
         update_status.assert_called_once_with(client, "outlook", "expired", user_id="user-1")
+
+
+def test_get_access_token_requires_the_owner(db, mock_config):
+    """No signed-in session exists to guess the owner from: a missing owner is an error."""
+    from selko.services.outlook import OutlookError
+
+    with pytest.raises(OutlookError, match="owner"):
+        get_access_token(db, mock_config)

@@ -1,8 +1,9 @@
 """Event sync endpoints.
 
 These endpoints require server-side secrets (Google Calendar API credentials).
-For direct event queries, use Supabase client from frontend. Review transitions
-go through the service-only RPC so approval always creates worker-owned work.
+Review transitions go through the data layer's named transitions
+(`selko.db.proposals`, `selko.db.calendar_work`) so approval always creates
+worker-owned work. Every read is scoped to the signed-in user.
 """
 
 import logging
@@ -10,7 +11,6 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
-from supabase import Client
 
 from selko.api.deps import (
     CurrentUser,
@@ -19,6 +19,10 @@ from selko.api.deps import (
     get_service_role_client,
 )
 from selko.api.schemas.common import ErrorCode, error_detail
+from selko.db import calendar_work as db_calendar_work
+from selko.db import events as db_events
+from selko.db import proposals as db_proposals
+from selko.db.connection import Database
 from selko.api.schemas.events import (
     CalendarSyncResponse,
     EventChangeResponse,
@@ -47,8 +51,8 @@ router = APIRouter(prefix="/events", tags=["events"])
 @router.post("/{event_id}/sync", response_model=CalendarSyncResponse)
 async def sync_event(
     event_id: UUID,
-    client: Annotated[Client, Depends(get_authenticated_client)],
-    service_client: Annotated[Client, Depends(get_service_role_client)],
+    client: Annotated[Database, Depends(get_authenticated_client)],
+    service_client: Annotated[Database, Depends(get_service_role_client)],
     user: CurrentUser = Depends(get_current_user),
 ) -> CalendarSyncResponse:
     """Queue an approved or previously failed event for calendar sync.
@@ -65,40 +69,19 @@ async def sync_event(
         Current queue/sync state.
 
     Raises:
-        403: Not authorized to sync this event.
-        404: Event not found.
+        404: Event not found (or not the caller's).
         500: Queueing the retry failed.
     """
     try:
-        # Verify ownership and status - use maybe_single for graceful 404
-        response_fields = (
-            "user_id, review_status, synced_at, google_calendar_event_id, "
-            "calendar_work_items(status, action, generation, failure_code), title, "
-            "start_datetime, end_datetime, all_day, location, description, "
-            "importance, source_attribution"
-        )
-        event_result = (
-            client.table("events")
-            .select(response_fields)
-            .eq("id", str(event_id))
-            .maybe_single()
-            .execute()
-        )
-
-        # maybe_single() returns result where .data is None when no rows found
-        if event_result is None or event_result.data is None:
+        event = db_events.get_with_work_items(client, user.id, str(event_id))
+        # Another user's event is indistinguishable from a missing one.
+        if event is None:
             raise HTTPException(
                 status_code=404,
                 detail=error_detail(ErrorCode.EVENT_NOT_FOUND, "Event not found"),
             )
 
-        if event_result.data["user_id"] != user.id:
-            raise HTTPException(
-                status_code=403,
-                detail=error_detail(ErrorCode.FORBIDDEN, "Not authorized"),
-            )
-
-        current_status = derive_delivery_status(event_result.data)
+        current_status = derive_delivery_status(event)
         if current_status not in ("approved", "syncing", "synced", "sync_failed"):
             raise HTTPException(
                 status_code=400,
@@ -113,20 +96,15 @@ async def sync_event(
             # Explicit user retry grants a fresh budget and lets the worker
             # reconcile any ambiguous prior Google insert before creating.
             desired_event = {
-                key: event_result.data.get(key)
+                key: event.get(key)
                 for key in (
                     "title", "start_datetime", "end_datetime", "all_day",
                     "location", "description", "importance", "source_attribution",
                 )
             }
-            service_client.rpc("enqueue_calendar_work", {
-                "p_event_id": str(event_id),
-                "p_user_id": user.id,
-                "p_action": "upsert",
-                "p_desired_event": desired_event,
-                "p_expected_provider_revision": None,
-                "p_force_overwrite": False,
-            }).execute()
+            db_calendar_work.enqueue_calendar_work(
+                service_client, user.id, str(event_id), "upsert", desired_event, None, False
+            )
 
         # Nudge the calendar scheduler immediately — user is waiting for sync.
         # This is the in-process wake for egress inc 5 (arch A). If the pool is
@@ -142,20 +120,12 @@ async def sync_event(
 
         # Re-read so a worker claim that wins immediately is reported as
         # ``syncing`` rather than treated as an approval error.
-        updated_event = (
-            client.table("events")
-            .select(response_fields)
-            .eq("id", str(event_id))
-            .single()
-            .execute()
-        )
+        updated_event = db_events.get_with_work_items(client, user.id, str(event_id)) or event
         return CalendarSyncResponse(
             event_id=str(event_id),
-            google_calendar_event_id=updated_event.data.get(
-                "google_calendar_event_id"
-            ),
-            synced_at=updated_event.data.get("synced_at"),
-            status=derive_delivery_status(updated_event.data),
+            google_calendar_event_id=updated_event.get("google_calendar_event_id"),
+            synced_at=updated_event.get("synced_at"),
+            status=derive_delivery_status(updated_event),
         )
 
     except HTTPException:
@@ -171,8 +141,8 @@ async def sync_event(
 @router.post("/{event_id}/unsync", response_model=EventUnsyncResponse)
 async def unsync_event(
     event_id: UUID,
-    client: Annotated[Client, Depends(get_authenticated_client)],
-    service_client: Annotated[Client, Depends(get_service_role_client)],
+    client: Annotated[Database, Depends(get_authenticated_client)],
+    service_client: Annotated[Database, Depends(get_service_role_client)],
     user: CurrentUser = Depends(get_current_user),
 ) -> EventUnsyncResponse:
     """Queue removal of a synced event from Google Calendar.
@@ -189,33 +159,21 @@ async def unsync_event(
 
     Raises:
         400: Event is not in synced status.
-        403: Not authorized to unsync this event.
         404: Event not found or no calendar integration.
         500: Calendar unsync failed.
     """
     try:
         # Verify ownership and status, and capture the provider identity for
         # the service-only queue RPC.
-        event_result = client.table("events").select(
-            "user_id, review_status, calendar_work_items(status, action, generation, failure_code), google_calendar_event_id"
-        ).eq(
-            "id", str(event_id)
-        ).maybe_single().execute()
-
-        if event_result is None or event_result.data is None:
+        event = db_events.get_with_work_items(client, user.id, str(event_id))
+        if event is None:
             raise HTTPException(
                 status_code=404,
                 detail=error_detail(ErrorCode.EVENT_NOT_FOUND, "Event not found"),
             )
 
-        if event_result.data["user_id"] != user.id:
-            raise HTTPException(
-                status_code=403,
-                detail=error_detail(ErrorCode.FORBIDDEN, "Not authorized"),
-            )
-
         # Validate event is synced
-        current_status = derive_delivery_status(event_result.data)
+        current_status = derive_delivery_status(event)
         if current_status != "synced":
             raise HTTPException(
                 status_code=400,
@@ -226,18 +184,15 @@ async def unsync_event(
             )
 
         live_event = get_calendar_event(
-            service_client, user.id, event_result.data["google_calendar_event_id"]
+            service_client, user.id, event["google_calendar_event_id"]
         )
         expected_provider_revision = (
             live_event.get("etag") or live_event.get("updated")
             if live_event else None
         )
-        service_client.rpc("unsync_event_and_enqueue_calendar_work", {
-            "p_event_id": str(event_id),
-            "p_user_id": user.id,
-            "p_expected_provider_revision": expected_provider_revision,
-            "p_force_overwrite": False,
-        }).execute()
+        db_calendar_work.unsync_event_and_enqueue_calendar_work(
+            service_client, user.id, str(event_id), expected_provider_revision, False
+        )
 
         try:
             from selko.api.app import worker_pool as _pool
@@ -273,53 +228,41 @@ async def unsync_event(
         )
 
 
-def _get_owned_event(client: Client, user_id: str, event_id: UUID) -> dict:
-    event_result = client.table("events").select("user_id, review_status").eq(
-        "id", str(event_id)
-    ).maybe_single().execute()
-    if event_result is None or event_result.data is None:
+def _get_owned_event(client: Database, user_id: str, event_id: UUID) -> dict:
+    event = db_events.get(client, user_id, str(event_id))
+    if event is None:
+        # Another user's event is indistinguishable from a missing one.
         raise HTTPException(
             status_code=404,
             detail=error_detail(ErrorCode.EVENT_NOT_FOUND, "Event not found"),
         )
-    if event_result.data["user_id"] != user_id:
-        raise HTTPException(
-            status_code=403,
-            detail=error_detail(ErrorCode.FORBIDDEN, "Not authorized"),
-        )
-    return event_result.data
+    return event
 
 
-def _get_owned_pending_proposal(client: Client, user_id: str, event_id: UUID) -> dict:
-    result = (
-        client.table("event_change_proposals")
-        .select("id, event_id, user_id, status")
-        .eq("event_id", str(event_id))
-        .eq("user_id", user_id)
-        .eq("status", "pending")
-        .maybe_single()
-        .execute()
-    )
-    if result is None or result.data is None:
+def _get_owned_pending_proposal(client: Database, user_id: str, event_id: UUID) -> dict:
+    proposal = db_proposals.get_pending(client, user_id, str(event_id))
+    if proposal is None:
         raise HTTPException(
             status_code=400,
             detail=error_detail(ErrorCode.INVALID_REQUEST, "Event has no pending change proposal"),
         )
-    return result.data
+    return proposal
 
 
 @router.post("/{event_id}/apply-change", response_model=EventChangeResponse)
 async def apply_change(
     event_id: UUID,
-    client: Annotated[Client, Depends(get_authenticated_client)],
-    service_client: Annotated[Client, Depends(get_service_role_client)],
+    client: Annotated[Database, Depends(get_authenticated_client)],
+    service_client: Annotated[Database, Depends(get_service_role_client)],
     user: CurrentUser = Depends(get_current_user),
 ) -> EventChangeResponse:
     """Apply the event's authoritative pending change proposal."""
     _get_owned_event(client, user.id, event_id)
     proposal = _get_owned_pending_proposal(client, user.id, event_id)
     try:
-        applied = apply_change_proposal(service_client, str(event_id), proposal["id"])
+        applied = apply_change_proposal(
+            service_client, str(event_id), proposal["id"], user_id=user.id
+        )
         # Nudge calendar scheduler for the newly approved event (egress inc 5).
         try:
             from selko.api.app import worker_pool as _pool
@@ -345,15 +288,17 @@ async def apply_change(
 @router.post("/{event_id}/reject-change", response_model=EventChangeResponse)
 async def reject_change(
     event_id: UUID,
-    client: Annotated[Client, Depends(get_authenticated_client)],
-    service_client: Annotated[Client, Depends(get_service_role_client)],
+    client: Annotated[Database, Depends(get_authenticated_client)],
+    service_client: Annotated[Database, Depends(get_service_role_client)],
     user: CurrentUser = Depends(get_current_user),
 ) -> EventChangeResponse:
     """Reject the event's authoritative pending change proposal."""
     _get_owned_event(client, user.id, event_id)
     proposal = _get_owned_pending_proposal(client, user.id, event_id)
     try:
-        status = reject_change_proposal(service_client, str(event_id), proposal["id"])
+        status = reject_change_proposal(
+            service_client, str(event_id), proposal["id"], user_id=user.id
+        )
         return EventChangeResponse(event_id=str(event_id), status=status)
     except EventsError as e:
         raise HTTPException(
@@ -365,8 +310,8 @@ async def reject_change(
 @router.post("/{event_id}/undo", response_model=EventUndoResponse)
 async def undo_event(
     event_id: UUID,
-    client: Annotated[Client, Depends(get_authenticated_client)],
-    service_client: Annotated[Client, Depends(get_service_role_client)],
+    client: Annotated[Database, Depends(get_authenticated_client)],
+    service_client: Annotated[Database, Depends(get_service_role_client)],
     user: CurrentUser = Depends(get_current_user),
     body: EventUndoRequest = EventUndoRequest(),
 ) -> EventUndoResponse:

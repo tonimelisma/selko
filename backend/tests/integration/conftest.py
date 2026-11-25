@@ -1,298 +1,36 @@
-"""Pytest fixtures for integration tests.
+"""Fixtures for the integration tests.
 
-These fixtures connect to real Supabase instances and require proper configuration.
-Development tests use local Supabase (Docker), staging tests use cloud Supabase.
+The database is the SQLite `db` / `factory` pair from tests/sqlite_fixtures.py
+(a fresh migrated file per test); these add the development config and the
+sample payloads and LLM doubles the integration tests share.
 """
 
-import logging
-import os
 from uuid import uuid4
 
 import pytest
-from supabase import create_client
 
-from selko.config import Config, load_config
-from selko.services.auth import get_authenticated_client, get_current_user_id
-from selko.services.users import create_user, delete_user, get_admin_client
-
-logger = logging.getLogger(__name__)
+from selko.config import load_config
 
 
-@pytest.fixture(autouse=True, scope="function")
-def reset_fastapi_config_cache(request):
-    """Clear FastAPI config cache and reset ENVIRONMENT before each test.
-
-    This ensures that FastAPI's get_config() dependency uses the same
-    configuration as the test fixtures, preventing JWT validation failures
-    due to config mismatch between different Supabase instances.
-
-    The problem:
-    1. @lru_cache on get_config() persists across tests
-    2. Test fixtures load different .env files which pollute os.environ
-    3. .env.test sets ENVIRONMENT=staging, polluting os.environ["ENVIRONMENT"]
-    4. get_config() then loads wrong config based on polluted ENVIRONMENT
-
-    The fix:
-    1. Clear the lru_cache
-    2. Reset ENVIRONMENT to match the test's expected environment
-    3. Reload the correct .env file
-    """
+@pytest.fixture(autouse=True)
+def reset_fastapi_config_cache():
+    """FastAPI's get_config() is lru_cached; clear it around every test."""
     from selko.api.deps import get_config
-    from selko.config import load_config, ENV_FILES, PROJECT_ROOT
-    from dotenv import load_dotenv
 
-    # Determine expected environment from test markers
-    env = _get_env_for_markers(request)
-
-    # Clear cache before test
     get_config.cache_clear()
-
-    # Reset ENVIRONMENT variable and reload correct .env file
-    os.environ["ENVIRONMENT"] = env
-    env_file = ENV_FILES.get(env)
-    env_path = PROJECT_ROOT / env_file
-    if env_path.exists():
-        load_dotenv(env_path, override=True)
-
-    logger.debug(f"[CACHE] Reset config cache and ENVIRONMENT={env}")
-
     yield
-
-    # Clear after test
     get_config.cache_clear()
-    logger.debug("[CACHE] Cleared get_config cache after test")
-
-
-def _get_env_for_markers(request) -> str:
-    """Determine environment from test markers.
-
-    The local_real marker uses development environment (local Supabase)
-    but expects real Gmail tokens to be seeded via scripts/seed_test_tokens.py.
-    """
-    if request.node.get_closest_marker("staging"):
-        return "staging"
-    if request.node.get_closest_marker("production"):
-        return "production"
-    # Both "development" and "local_real" use local Supabase
-    # The difference is whether Gmail API is mocked or real
-    return "development"
 
 
 @pytest.fixture(scope="session")
 def development_config():
-    """Load development configuration (local Supabase)."""
     return load_config(env_override="development")
 
 
-@pytest.fixture(scope="session")
-def staging_config():
-    """Load staging configuration (cloud Supabase).
-
-    Always loads staging config - tests marked with @pytest.mark.staging
-    will use this. If .env.test is missing, load_config will fail appropriately.
-    """
-    try:
-        return load_config(env_override="staging")
-    except SystemExit:
-        # .env.test doesn't exist or is invalid
-        return None
-
-
 @pytest.fixture
-async def pg_pool(development_config):
-    """Real asyncpg session-pooler pool against the local Supabase (C2).
-
-    Proves the ``SELECT * FROM public.fn($1, $2)`` invocation form that the
-    worker transport uses end to end. Function-scoped: asyncpg pools are
-    loop-bound, and pytest-asyncio gives each test its own loop.
-    """
-    from selko.services.pg import create_pool
-
-    pool = await create_pool(development_config)
-    yield pool
-    await pool.close()
-
-
-@pytest.fixture
-async def staging_pg_pool(staging_config):
-    """Real asyncpg session-pooler pool against staging Supabase.
-
-    Some properties are only observable on the hosted platform. The default ACL
-    for functions in ``public`` differs between local Supabase and a hosted
-    project, so a grant posture can be correct locally and wide open in staging
-    and production -- which is exactly what happened.
-
-    Fails rather than skips when ``SUPABASE_DB_URL`` is absent.
-    ``scripts/verify-staging.sh`` already requires it, and a skip here would
-    reintroduce the success-by-refusal that V1 deleted.
-    """
-    from selko.services.pg import create_pool
-
-    if not getattr(staging_config, "supabase_db_url", None):
-        raise AssertionError(
-            "SUPABASE_DB_URL is required to verify the staging grant posture; "
-            "see scripts/verify-staging.sh"
-        )
-    pool = await create_pool(staging_config)
-    yield pool
-    await pool.close()
-
-
-@pytest.fixture(scope="function")
-def config(request, development_config, staging_config):
-    """Get config based on test markers.
-
-    Tests marked with @pytest.mark.staging get staging config,
-    otherwise development config is used.
-    """
-    env = _get_env_for_markers(request)
-    if env == "staging":
-        if staging_config is None:
-            pytest.skip("Staging config not available")
-        return staging_config
+def config(development_config):
     return development_config
 
-
-@pytest.fixture(scope="function")
-def authenticated_client(config):
-    """Authenticated Supabase client for integration tests.
-
-    Uses test user credentials from config.
-    Signs out after test completes.
-    """
-    client = get_authenticated_client(config)
-    yield client
-    # Cleanup: sign out
-    try:
-        client.auth.sign_out()
-    except Exception:
-        pass  # Ignore sign out errors during cleanup
-
-
-@pytest.fixture(scope="function")
-def test_user_id(authenticated_client):
-    """Get current user ID from authenticated session."""
-    return get_current_user_id(authenticated_client)
-
-
-@pytest.fixture(scope="function")
-def admin_client(config):
-    """Admin client using service role key (bypasses RLS).
-
-    Use for setup/teardown of test data.
-    """
-    return get_admin_client(config)
-
-
-@pytest.fixture(scope="function")
-def temp_user(config):
-    """Create a temporary user for testing, delete after test.
-
-    Returns tuple of (user_id, email, password).
-    """
-    email = f"test-{uuid4()}@selko.local"
-    password = "testpass123"
-
-    user = create_user(config, email, password, auto_confirm=True)
-    yield user["id"], email, password
-
-    # Cleanup
-    try:
-        delete_user(config, user["id"])
-    except Exception:
-        pass  # Ignore cleanup errors
-
-
-@pytest.fixture(scope="function")
-def isolated_user(temp_user):
-    """A throwaway user for tests that exercise global claim/lease queues.
-
-    Claim RPCs return bounded batches over the whole database. Using the
-    shared development user lets one test's due work consume another test's
-    batch, so queue tests must own their user and all of its rows.
-    """
-    user_id, email, password = temp_user
-    return {"id": user_id, "email": email, "password": password}
-
-
-@pytest.fixture(scope="function")
-def temp_user_client(config, temp_user):
-    """Get authenticated client for temporary user.
-    
-    Returns authenticated Supabase client for the temp user.
-    Temp user is automatically cleaned up after test.
-    """
-    user_id, email, password = temp_user
-    client = create_client(config.supabase_url, config.supabase_key)
-    client.auth.sign_in_with_password({"email": email, "password": password})
-    yield client
-    # Cleanup: sign out
-    try:
-        client.auth.sign_out()
-    except Exception:
-        pass
-
-
-@pytest.fixture(scope="function")
-def cleanup_emails(authenticated_client, test_user_id):
-    """Delete test emails after test completes."""
-    created_provider_message_ids = []
-
-    yield created_provider_message_ids  # Test can append provider_message_ids to this list
-
-    # Cleanup
-    if created_provider_message_ids:
-        try:
-            for provider_message_id in created_provider_message_ids:
-                authenticated_client.table("emails").delete().eq(
-                    "user_id", test_user_id
-                ).eq("provider_message_id", provider_message_id).execute()
-        except Exception:
-            pass
-
-
-@pytest.fixture(scope="function")
-def clean_sender_rules(authenticated_client, test_user_id):
-    """Guarantee the test user starts and ends with no sender rules.
-
-    `sender_rules` has unique constraints on (user_id, sender_email) and
-    (user_id, sender_domain), so a test that inserts a rule and leaves it
-    behind makes itself and its neighbours fail on the next run. Clearing on
-    both sides keeps the suite re-runnable.
-    """
-
-    def _clear():
-        try:
-            authenticated_client.table("sender_rules").delete().eq(
-                "user_id", test_user_id
-            ).execute()
-        except Exception:
-            pass
-
-    _clear()
-    yield
-    _clear()
-
-
-@pytest.fixture(scope="function")
-def cleanup_integrations(authenticated_client, test_user_id):
-    """Delete test integrations after test completes."""
-    created_providers = []
-
-    yield created_providers  # Test can append provider names to this list
-
-    # Cleanup
-    if created_providers:
-        try:
-            for provider in created_providers:
-                authenticated_client.table("integrations").delete().eq(
-                    "user_id", test_user_id
-                ).eq("provider", provider).execute()
-        except Exception:
-            pass
-
-
-# Sample test data fixtures
 
 
 @pytest.fixture

@@ -10,7 +10,7 @@ from selko.services.emails import (
     ExpiredCredentialsError,
     NoGmailIntegrationError,
 )
-from selko.services.quotas import QuotaCheckResult, QuotaService
+from selko.services.quotas import QuotaService
 
 
 class TestEmailExceptionSubclasses:
@@ -45,75 +45,91 @@ class TestEmailExceptionSubclasses:
         with pytest.raises(EmailError):
             raise EmailError("some other error")
 
-    def test_fetch_emails_raises_no_integration(self):
-        """fetch_emails_for_user should raise NoGmailIntegrationError when no creds."""
+    def test_fetch_emails_raises_no_integration(self, db, factory):
+        """fetch_emails_for_user raises NoGmailIntegrationError without an active Gmail."""
         from selko.services.emails import fetch_emails_for_user
 
-        mock_client = MagicMock()
-        mock_config = MagicMock()
+        user = factory.user()
+        factory.integration(user, provider="gmail", status="expired")
 
-        with patch("selko.services.emails.get_credentials", return_value=None):
-            with pytest.raises(NoGmailIntegrationError, match="No Gmail integration"):
-                fetch_emails_for_user(mock_client, mock_config)
+        with pytest.raises(NoGmailIntegrationError, match="No Gmail integration"):
+            fetch_emails_for_user(db, MagicMock(), user_id=user)
 
-    def test_fetch_emails_scopes_the_sync_request_to_its_owner(self):
-        """Service-role manual sync must only ever touch its own integrations.
-
-        Manual sync now asks the ingestion coordinator to poll sooner rather
-        than running its own fetch, but the ownership scoping still matters:
-        a service-role client bypasses RLS.
-        """
+    def test_fetch_emails_scopes_the_sync_request_to_its_owner(self, db, factory):
+        """Manual sync must only ever bring forward its own integrations' polls."""
+        from selko.db import email_sync
         from selko.services.emails import fetch_emails_for_user
 
-        mock_client = MagicMock()
-        mock_config = MagicMock()
-        query = mock_client.table.return_value.select.return_value.eq.return_value
-        query.in_.return_value.eq.return_value.execute.return_value = MagicMock(data=[])
+        owner, other = factory.user(), factory.user()
+        mine = factory.integration(owner, provider="gmail")
+        theirs = factory.integration(other, provider="gmail")
+        later = "2999-01-01T00:00:00.000000Z"
+        with db.write() as tx:
+            tx.execute("UPDATE email_sync_state SET next_poll_at = ?", (later,))
 
-        with pytest.raises(NoGmailIntegrationError):
-            fetch_emails_for_user(mock_client, mock_config, user_id="user-123")
+        assert fetch_emails_for_user(db, MagicMock(), user_id=owner) == {
+            "fetched": 0, "saved": 0, "attachments_downloaded": 0,
+        }
 
-        mock_client.table.return_value.select.return_value.eq.assert_called_once_with(
-            "user_id", "user-123"
-        )
+        assert email_sync.get_sync_state(db, mine)["next_poll_at"] < later
+        assert email_sync.get_sync_state(db, theirs)["next_poll_at"] == later
+
+    def test_fetch_emails_leaves_a_live_lease_alone(self, db, factory):
+        from selko.db import email_sync
+        from selko.services.emails import fetch_emails_for_user
+
+        owner = factory.user()
+        mine = factory.integration(owner, provider="gmail")
+        later = "2999-01-01T00:00:00.000000Z"
+        with db.write() as tx:
+            tx.execute("UPDATE email_sync_state SET next_poll_at = ?, lease_owner = 'w', lease_expires_at = ?",
+                       (later, later))
+
+        fetch_emails_for_user(db, MagicMock(), user_id=owner)
+
+        assert email_sync.get_sync_state(db, mine)["next_poll_at"] == later
+
+    def test_fetch_emails_requires_the_owner(self, db):
+        from selko.services.emails import fetch_emails_for_user
+
+        with pytest.raises(EmailError, match="user_id"):
+            fetch_emails_for_user(db, MagicMock())
 
 
 class TestQuotaAlarmedFailOpen:
-    """Test quota service alarmed fail-open behavior."""
+    """Quota service alarmed fail-open, on a real database that fails."""
 
     @pytest.fixture
-    def mock_client(self):
-        return MagicMock()
+    def quota_service(self, db):
+        return QuotaService(db)
 
     @pytest.fixture
-    def quota_service(self, mock_client):
-        return QuotaService(mock_client)
+    def broken(self, db, factory):
+        """A user, and a database whose quota table is gone."""
+        user = factory.user()
+        with db.write() as tx:
+            tx.execute("DROP TABLE usage_quotas")
+        return user
 
-    def test_error_allows_request(self, quota_service, mock_client):
+    def test_error_allows_request(self, quota_service, broken):
         """On error, should allow request (fail-open)."""
-        mock_client.rpc.side_effect = Exception("Database connection failed")
-
-        result = quota_service.check_and_increment("user-123", "llm_calls")
+        result = quota_service.check_and_increment(broken, "llm_calls")
 
         assert result.allowed is True
 
-    def test_error_logs_structured_fields(self, quota_service, mock_client, caplog):
+    def test_error_logs_structured_fields(self, quota_service, broken, caplog):
         """On error, should log with QUOTA_SERVICE_ERROR code."""
-        mock_client.rpc.side_effect = Exception("Database connection failed")
-
         import logging
         with caplog.at_level(logging.ERROR):
-            quota_service.check_and_increment("user-123", "llm_calls")
+            quota_service.check_and_increment(broken, "llm_calls")
 
         assert "QUOTA_SERVICE_ERROR" in caplog.text
 
-    def test_get_usage_error_logs_structured(self, quota_service, mock_client, caplog):
+    def test_get_usage_error_logs_structured(self, quota_service, broken, caplog):
         """get_usage on error should log QUOTA_SERVICE_ERROR."""
-        mock_client.rpc.side_effect = Exception("Connection timeout")
-
         import logging
         with caplog.at_level(logging.ERROR):
-            usage = quota_service.get_usage("user-123")
+            usage = quota_service.get_usage(broken)
 
         assert "QUOTA_SERVICE_ERROR" in caplog.text
         # Should still return defaults

@@ -9,7 +9,10 @@ from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from typing import Literal, Optional
 
-from supabase import Client
+from selko.db import quotas as db_quotas
+from selko.db.connection import Database
+
+Client = Database
 
 logger = logging.getLogger(__name__)
 
@@ -76,15 +79,15 @@ class UserUsage:
 class QuotaService:
     """Service for tracking and enforcing per-user daily usage quotas.
 
-    Uses Supabase RPC functions for atomic check-and-increment operations
-    to prevent race conditions in concurrent requests.
+    Check-and-increment is one write transaction on the single writer, so
+    concurrent requests cannot both spend the last unit of a quota.
     """
 
     def __init__(self, client: Client):
         """Initialize QuotaService.
 
         Args:
-            client: Supabase client (service role recommended for writes).
+            client: The process database.
         """
         self.client = client
 
@@ -114,27 +117,9 @@ class QuotaService:
                 raise HTTPException(429, "Quota exceeded")
         """
         try:
-            # Call the atomic RPC function
-            result = self.client.rpc(
-                "check_and_increment_quota",
-                {
-                    "p_user_id": user_id,
-                    "p_quota_type": quota_type,
-                    "p_increment": increment,
-                },
-            ).execute()
-
-            if not result.data or len(result.data) == 0:
-                # No data returned, assume allowed with defaults
-                logger.warning(f"No quota data returned for user {user_id}, allowing request")
-                return QuotaCheckResult(
-                    allowed=True,
-                    current_count=increment,
-                    limit=100,
-                    remaining=99,
-                )
-
-            row = result.data[0]
+            row = db_quotas.check_and_increment_quota(
+                self.client, user_id, quota_type, increment
+            )
             return QuotaCheckResult(
                 allowed=row["allowed"],
                 current_count=row["current_count"],
@@ -177,27 +162,7 @@ class QuotaService:
             UserUsage with counts and limits for all quota types.
         """
         try:
-            params = {"p_user_id": user_id}
-            if for_date:
-                params["p_date"] = for_date.isoformat()
-
-            result = self.client.rpc("get_user_quota_usage", params).execute()
-
-            if not result.data or len(result.data) == 0:
-                # No usage data, return defaults
-                return UserUsage(
-                    llm_calls_count=0,
-                    llm_calls_limit=100,
-                    llm_calls_remaining=100,
-                    email_syncs_count=0,
-                    email_syncs_limit=50,
-                    email_syncs_remaining=50,
-                    calendar_syncs_count=0,
-                    calendar_syncs_limit=100,
-                    calendar_syncs_remaining=100,
-                )
-
-            row = result.data[0]
+            row = db_quotas.get_user_quota_usage(self.client, user_id, for_date)
             return UserUsage(
                 llm_calls_count=row["llm_calls_count"],
                 llm_calls_limit=row["llm_calls_limit"],
@@ -263,14 +228,9 @@ class QuotaService:
 
         # Check against global max
         try:
-            max_result = (
-                self.client.table("global_limits")
-                .select("max_allowed")
-                .eq("limit_type", f"{quota_type}_daily")
-                .single()
-                .execute()
-            )
-            max_allowed = max_result.data.get("max_allowed", 1000)
+            max_allowed = db_quotas.max_allowed(self.client, f"{quota_type}_daily")
+            if max_allowed is None:
+                raise LookupError(f"no global max for {quota_type}_daily")
             if new_limit > max_allowed:
                 raise ValueError(
                     f"Limit {new_limit} exceeds maximum allowed {max_allowed}"
@@ -282,17 +242,9 @@ class QuotaService:
             logger.warning(f"Could not verify max limit: {e}")
             # Allow setting if we can't verify
 
-        # Upsert today's quota row with new limit
-        today = date.today().isoformat()
+        # Upsert today's (UTC, the quota day) row with the new limit
         try:
-            self.client.table("usage_quotas").upsert(
-                {
-                    "user_id": user_id,
-                    "date": today,
-                    limit_col: new_limit,
-                },
-                on_conflict="user_id,date",
-            ).execute()
+            db_quotas.set_user_limit(self.client, user_id, quota_type, new_limit)
             logger.info(f"Set {quota_type} limit to {new_limit} for user {user_id}")
         except Exception as e:
             logger.error(f"Failed to set limit: {e}")
@@ -303,7 +255,7 @@ def get_quota_service(client: Client) -> QuotaService:
     """Factory function to create QuotaService.
 
     Args:
-        client: Supabase client.
+        client: The process database.
 
     Returns:
         Configured QuotaService instance.

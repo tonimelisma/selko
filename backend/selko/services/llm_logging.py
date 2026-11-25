@@ -9,9 +9,13 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Callable, Optional, TypeVar
+from typing import Any, Optional, TypeVar
 
-from supabase import Client
+from selko.db import ops as db_ops
+from selko.db import quotas as db_quotas
+from selko.db.connection import Database
+
+Client = Database
 
 logger = logging.getLogger(__name__)
 
@@ -119,7 +123,7 @@ class LLMLoggingService:
         """Initialize LLMLoggingService.
 
         Args:
-            client: Supabase client (service role required for writes).
+            client: The process database.
         """
         self.client = client
 
@@ -142,7 +146,6 @@ class LLMLoggingService:
 
             # Build insert data
             data = {
-                "user_id": record.user_id,
                 "operation_type": record.operation_type.value,
                 "model": record.model,
                 "prompt_text": record.prompt_text,
@@ -165,18 +168,13 @@ class LLMLoggingService:
             if record.provider:
                 data["provider"] = record.provider
 
-            result = self.client.table("llm_call_log").insert(data).execute()
-
-            if result.data:
-                log_id = result.data[0]["id"]
-                logger.debug(
-                    f"Logged LLM call: {record.operation_type.value} "
-                    f"(latency={record.metrics.latency_ms}ms, "
-                    f"tokens={record.metrics.total_tokens})"
-                )
-                return log_id
-
-            return None
+            log_id = db_ops.log_llm_call(self.client, record.user_id, data)
+            logger.debug(
+                f"Logged LLM call: {record.operation_type.value} "
+                f"(latency={record.metrics.latency_ms}ms, "
+                f"tokens={record.metrics.total_tokens})"
+            )
+            return log_id
 
         except Exception as e:
             # Log to console but don't fail the main operation
@@ -298,29 +296,9 @@ class LLMLoggingService:
             Dict with usage statistics.
         """
         try:
-            params: dict[str, Any] = {"p_user_id": user_id}
-            if start_date:
-                params["p_start_date"] = start_date
-            if end_date:
-                params["p_end_date"] = end_date
-
-            result = self.client.rpc("get_llm_usage_summary", params).execute()
-
-            if result.data and len(result.data) > 0:
-                return result.data[0]
-
-            return {
-                "total_calls": 0,
-                "successful_calls": 0,
-                "failed_calls": 0,
-                "total_tokens": 0,
-                "total_prompt_tokens": 0,
-                "total_completion_tokens": 0,
-                "total_latency_ms": 0,
-                "avg_latency_ms": 0,
-                "estimated_cost_usd": 0,
-                "calls_by_operation": {},
-            }
+            return db_quotas.llm_usage_summary(
+                self.client, user_id, start_date or None, end_date or None
+            )
 
         except Exception as e:
             logger.error(f"Failed to get LLM usage summary: {e}")
@@ -331,7 +309,7 @@ def get_llm_logging_service(client: Client) -> LLMLoggingService:
     """Factory function to create LLMLoggingService.
 
     Args:
-        client: Supabase client.
+        client: The process database.
 
     Returns:
         Configured LLMLoggingService instance.

@@ -8,7 +8,9 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
   use: {
-    baseURL: 'http://localhost:5173',
+    // SELKO_E2E_BASE_URL: an API that serves the built app (one origin, as in
+    // production); scripts/capture-all-screenshots.sh starts one.
+    baseURL: process.env.SELKO_E2E_BASE_URL || 'http://localhost:5173',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     // Cloud sessions (scripts/cloud-setup.sh) ship Chrome for Testing at
@@ -51,9 +53,11 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
     },
   ],
-  webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:5173',
-    reuseExistingServer: !process.env.CI,
-  },
+  webServer: process.env.SELKO_E2E_BASE_URL
+    ? undefined
+    : {
+        command: 'npm run dev',
+        url: 'http://localhost:5173',
+        reuseExistingServer: !process.env.CI,
+      },
 });

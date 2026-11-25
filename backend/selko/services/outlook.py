@@ -16,10 +16,8 @@ from typing import Any
 
 import msal
 import requests  # Backwards-compatible patch point for existing tests.
-from supabase import Client
-
 from selko.config import Config
-from selko.services.auth import get_current_user_id
+from selko.db.connection import Database
 from selko.services.emails import mark_parsed_as_calendar_invite
 from selko.services.integrations import (
     get_provider_integration,
@@ -173,7 +171,7 @@ def refresh_scopes(granted: list[str] | None) -> list[str]:
 
 
 def get_access_token(
-    client: Client,
+    client: Database,
     config: Config,
     user_id: str | None = None,
     *,
@@ -181,7 +179,7 @@ def get_access_token(
 ) -> str | None:
     """Load an Outlook token and refresh it when it has expired."""
     if user_id is None:
-        user_id = get_current_user_id(client)
+        raise OutlookError("get_access_token needs the integration's owner")
 
     try:
         row = get_provider_integration(client, "outlook", user_id=user_id)

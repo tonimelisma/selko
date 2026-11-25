@@ -1,361 +1,120 @@
-"""Integration tests for attachment service.
+"""Integration tests for the attachment service: files on disk, rows in SQLite.
 
-Tests attachment storage and retrieval with real Supabase.
+Storage, metadata, de-duplication, deletion and ownership against a real
+temporary database and attachments directory. The staging-only tests (a real
+Storage bucket, a real staging Gmail inbox) are gone with staging; real-Gmail
+coverage waits on the owner's decision about a test token
+(docs/specs/sqlite-single-process/README.md, "Owner decisions still open").
 """
 
-from uuid import uuid4
+from unittest.mock import MagicMock
 
 import pytest
 
+from selko.db.runtime import attachments_dir, use_database
 from selko.services.attachments import (
     calculate_content_hash,
     check_duplicate_attachment,
+    delete_attachment,
+    read_attachment_file,
     save_attachment_metadata,
     upload_to_storage,
-    delete_attachment,
-    process_attachment,
-    AttachmentError,
-)
-from selko.services.emails import parse_gmail_message, save_emails
-from selko.services.gmail import (
-    get_credentials,
-    build_service,
-    fetch_messages,
-    extract_attachments,
 )
 
 
 @pytest.fixture
-def test_email(authenticated_client, test_user_id, cleanup_emails):
-    """Create a test email for attachment tests."""
-    provider_message_id = f"test_att_email_{uuid4().hex[:8]}"
-    cleanup_emails.append(provider_message_id)
-
-    email_data = {
-        "provider_message_id": provider_message_id,
-        "thread_id": f"thread_{uuid4().hex[:8]}",
-        "subject": "Test email with attachments",
-        "from_email": "sender@example.com",
-        "provider_labels": ["INBOX"],
-        "date_sent": "2026-01-22T10:00:00+00:00",
-        "user_id": test_user_id,
-    }
-
-    result = authenticated_client.table("emails").insert(email_data).execute()
-    return result.data[0]
+def store(db):
+    use_database(db)
+    yield db
+    use_database(None)
 
 
 @pytest.fixture
-def cleanup_attachments(authenticated_client, test_user_id, config):
-    """Delete test attachments after test completes."""
-    created_attachment_ids = []
-
-    yield created_attachment_ids
-
-    # Cleanup
-    for att_id in created_attachment_ids:
-        try:
-            delete_attachment(authenticated_client, att_id, config)
-        except Exception:
-            pass
+def config():
+    cfg = MagicMock()
+    cfg.storage_bucket_attachments = "attachments"
+    cfg.max_attachment_size = 10 * 1024 * 1024
+    return cfg
 
 
 @pytest.fixture
-def sample_attachment_data():
-    """Sample attachment bytes for testing."""
-    return b"This is sample attachment content for testing purposes."
+def owned_email(factory):
+    user = factory.user()
+    return user, factory.email(user, subject="Test email with attachments")
+
+
+SAMPLE = b"This is sample attachment content for testing purposes."
+
+
+def _stored(store, user, email_id, data=SAMPLE, filename="test_document.txt"):
+    path = upload_to_storage(store, user, filename, data, "text/plain")
+    return save_attachment_metadata(
+        store, email_id=email_id, provider_attachment_id="gmail-att-1", filename=filename,
+        mime_type="text/plain", size_bytes=len(data), storage_path=path,
+        content_hash=calculate_content_hash(data), user_id=user,
+    )
 
 
 @pytest.mark.integration
-@pytest.mark.development
 class TestAttachmentStorage:
-    """Test attachment storage with real Supabase."""
+    def test_upload_to_storage(self, store, owned_email):
+        user, _ = owned_email
+        path = upload_to_storage(store, user, "test_document.txt", SAMPLE, "text/plain")
 
-    def test_upload_to_storage(
-        self, authenticated_client, test_user_id, sample_attachment_data, config
-    ):
-        """Can upload file to Supabase Storage."""
-        storage_path = upload_to_storage(
-            client=authenticated_client,
-            user_id=test_user_id,
-            filename="test_upload.txt",
-            data=sample_attachment_data,
-            mime_type="text/plain",
-            bucket=config.storage_bucket_attachments,
-        )
+        assert path.startswith(f"{user}/")
+        assert path.endswith("_test_document.txt")
+        assert read_attachment_file(path) == SAMPLE
+        assert (attachments_dir() / path).stat().st_mode & 0o777 == 0o600
 
-        assert storage_path is not None
-        assert test_user_id in storage_path
-        assert "test_upload.txt" in storage_path
+    def test_upload_with_special_filename(self, store, owned_email):
+        """Non-ASCII and unsafe characters become a URL-safe name that stays in the user's directory."""
+        user, _ = owned_email
+        path = upload_to_storage(store, user, "Beslut om klagomål (1049457).pdf", b"%PDF", "application/pdf")
 
-        # Cleanup: delete the uploaded file
-        try:
-            authenticated_client.storage.from_(
-                config.storage_bucket_attachments
-            ).remove([storage_path])
-        except Exception:
-            pass
-
-    def test_upload_with_special_filename(
-        self, authenticated_client, test_user_id, sample_attachment_data, config
-    ):
-        """Upload handles special characters in filename."""
-        storage_path = upload_to_storage(
-            client=authenticated_client,
-            user_id=test_user_id,
-            filename="file with spaces & (special).txt",
-            data=sample_attachment_data,
-            mime_type="text/plain",
-            bucket=config.storage_bucket_attachments,
-        )
-
-        assert storage_path is not None
-
-        # Cleanup
-        try:
-            authenticated_client.storage.from_(
-                config.storage_bucket_attachments
-            ).remove([storage_path])
-        except Exception:
-            pass
+        name = path.split("/", 1)[1]
+        assert name.endswith("_Beslut_om_klagomal_1049457_.pdf")
+        assert read_attachment_file(path) == b"%PDF"
 
 
 @pytest.mark.integration
-@pytest.mark.development
 class TestAttachmentMetadata:
-    """Test attachment metadata storage."""
+    def test_save_attachment_metadata(self, store, owned_email):
+        user, email_id = owned_email
+        row = _stored(store, user, email_id)
 
-    def test_save_attachment_metadata(
-        self, authenticated_client, test_user_id, test_email, cleanup_attachments
-    ):
-        """Can save attachment metadata to database."""
-        content_hash = calculate_content_hash(b"test content")
+        assert row["user_id"] == user
+        assert row["email_id"] == email_id
+        assert row["size_bytes"] == len(SAMPLE)
+        assert row["content_hash"] == calculate_content_hash(SAMPLE)
+        assert row["ingestion_status"] == "pending"
 
-        record = save_attachment_metadata(
-            client=authenticated_client,
-            email_id=test_email["id"],
-            provider_attachment_id="gmail_att_123",
-            filename="test_document.pdf",
-            mime_type="application/pdf",
-            size_bytes=1024,
-            storage_path=f"{test_user_id}/test_doc.pdf",
-            content_hash=content_hash,
-        )
+    def test_check_duplicate_attachment_found(self, store, owned_email):
+        user, email_id = owned_email
+        row = _stored(store, user, email_id)
 
-        cleanup_attachments.append(record["id"])
+        assert check_duplicate_attachment(store, calculate_content_hash(SAMPLE), user)["id"] == row["id"]
 
-        assert record is not None
-        assert record["filename"] == "test_document.pdf"
-        assert record["mime_type"] == "application/pdf"
-        assert record["size_bytes"] == 1024
-        assert record["content_hash"] == content_hash
-        assert record["user_id"] == test_user_id
+    def test_check_duplicate_attachment_not_found(self, store, owned_email):
+        user, _ = owned_email
+        assert check_duplicate_attachment(store, "0" * 64, user) is None
 
-    def test_check_duplicate_attachment_found(
-        self, authenticated_client, test_user_id, test_email, cleanup_attachments
-    ):
-        """Duplicate detection finds existing attachment by hash."""
-        test_content = b"unique content for duplicate test"
-        content_hash = calculate_content_hash(test_content)
+    def test_a_duplicate_is_never_another_users(self, store, owned_email, factory):
+        user, email_id = owned_email
+        _stored(store, user, email_id)
 
-        # Create first attachment
-        record1 = save_attachment_metadata(
-            client=authenticated_client,
-            email_id=test_email["id"],
-            provider_attachment_id="gmail_att_dup1",
-            filename="original.pdf",
-            mime_type="application/pdf",
-            size_bytes=len(test_content),
-            storage_path=f"{test_user_id}/original.pdf",
-            content_hash=content_hash,
-        )
-        cleanup_attachments.append(record1["id"])
-
-        # Check for duplicate
-        existing = check_duplicate_attachment(authenticated_client, content_hash)
-
-        assert existing is not None
-        assert existing["id"] == record1["id"]
-        assert existing["filename"] == "original.pdf"
-
-    def test_check_duplicate_attachment_not_found(self, authenticated_client):
-        """Duplicate detection returns None for new hash."""
-        unique_hash = calculate_content_hash(b"completely unique content " + uuid4().bytes)
-
-        existing = check_duplicate_attachment(authenticated_client, unique_hash)
-
-        assert existing is None
+        assert check_duplicate_attachment(store, calculate_content_hash(SAMPLE), factory.user()) is None
 
 
 @pytest.mark.integration
-@pytest.mark.development
 class TestAttachmentDeletion:
-    """Test attachment deletion."""
+    def test_delete_attachment(self, store, owned_email, config, factory):
+        user, email_id = owned_email
+        row = _stored(store, user, email_id)
 
-    def test_delete_attachment(
-        self, authenticated_client, test_user_id, test_email, config
-    ):
-        """Can delete attachment from database."""
-        # Create attachment metadata (no actual file)
-        content_hash = calculate_content_hash(b"delete test")
-        record = save_attachment_metadata(
-            client=authenticated_client,
-            email_id=test_email["id"],
-            provider_attachment_id="gmail_att_del",
-            filename="to_delete.pdf",
-            mime_type="application/pdf",
-            size_bytes=100,
-            storage_path=None,  # No actual file
-            content_hash=content_hash,
-        )
+        assert delete_attachment(store, row["id"], config, user_id=user) is True
+        assert factory.row("attachments", row["id"]) is None
+        assert not (attachments_dir() / row["storage_path"]).exists()
 
-        # Delete
-        result = delete_attachment(authenticated_client, record["id"], config)
-
-        assert result is True
-
-        # Verify deleted
-        check = (
-            authenticated_client.table("attachments")
-            .select("id")
-            .eq("id", record["id"])
-            .execute()
-        )
-        assert len(check.data) == 0
-
-    def test_delete_nonexistent_attachment(self, authenticated_client, config):
-        """Deleting nonexistent attachment returns False."""
-        fake_id = str(uuid4())
-
-        result = delete_attachment(authenticated_client, fake_id, config)
-
-        assert result is False
-
-
-@pytest.mark.integration
-@pytest.mark.development
-class TestAttachmentRLS:
-    """Test RLS policies for attachments."""
-
-    def test_user_sees_only_own_attachments(
-        self, authenticated_client, test_user_id, test_email, cleanup_attachments
-    ):
-        """RLS ensures user only sees their own attachments."""
-        # Create attachment as current user
-        content_hash = calculate_content_hash(b"rls test content")
-        record = save_attachment_metadata(
-            client=authenticated_client,
-            email_id=test_email["id"],
-            provider_attachment_id="gmail_att_rls",
-            filename="my_file.pdf",
-            mime_type="application/pdf",
-            size_bytes=100,
-            storage_path=f"{test_user_id}/my_file.pdf",
-            content_hash=content_hash,
-        )
-        cleanup_attachments.append(record["id"])
-
-        # Query should return only this user's attachments
-        result = (
-            authenticated_client.table("attachments")
-            .select("*")
-            .eq("id", record["id"])
-            .execute()
-        )
-
-        assert len(result.data) == 1
-        assert result.data[0]["user_id"] == test_user_id
-
-
-@pytest.mark.integration
-@pytest.mark.staging
-class TestAttachmentStorageStaging:
-    """Test attachment storage in staging environment."""
-
-    def test_upload_and_retrieve_staging(
-        self, authenticated_client, test_user_id, sample_attachment_data, config
-    ):
-        """Can upload and retrieve file in staging."""
-        storage_path = upload_to_storage(
-            client=authenticated_client,
-            user_id=test_user_id,
-            filename="staging_test.txt",
-            data=sample_attachment_data,
-            mime_type="text/plain",
-            bucket=config.storage_bucket_attachments,
-        )
-
-        assert storage_path is not None
-
-        # Verify file can be downloaded
-        result = authenticated_client.storage.from_(
-            config.storage_bucket_attachments
-        ).download(storage_path)
-
-        assert result == sample_attachment_data
-
-        # Cleanup
-        authenticated_client.storage.from_(
-            config.storage_bucket_attachments
-        ).remove([storage_path])
-
-
-@pytest.mark.integration
-@pytest.mark.staging
-class TestGmailAttachmentStaging:
-    """Test Gmail attachment download with real Gmail API."""
-
-    @pytest.mark.gmail
-
-    def test_gmail_attachment_full_pipeline(
-        self, authenticated_client, admin_client, test_user_id, config
-    ):
-        """Complete pipeline: Gmail fetch → download → storage → metadata."""
-        # 1. Get Gmail credentials
-        creds = get_credentials(admin_client, config, user_id=test_user_id)
-        if creds is None:
-            pytest.skip("No Gmail credentials - connect Gmail in the web app first")
-
-        # 2. Build service and fetch emails with attachments
-        service = build_service(creds)
-        messages = fetch_messages(service, max_results=20)
-
-        # 3. Find an email with attachments
-        email_with_attachment = None
-        attachment_part = None
-        for msg in messages:
-            attachments = extract_attachments(msg)
-            if attachments:
-                email_with_attachment = msg
-                attachment_part = attachments[0]
-                break
-
-        if not email_with_attachment:
-            pytest.skip("No emails with attachments found in staging Gmail")
-
-        # 4. Save email to DB first (required for attachment FK)
-        parsed = parse_gmail_message(email_with_attachment)
-        saved_emails = save_emails(authenticated_client, [parsed])
-        email_record = saved_emails[0]
-
-        # 5. Process attachment (download → upload → save metadata)
-        result = process_attachment(
-            client=authenticated_client,
-            gmail_service=service,
-            email_id=email_record["id"],
-            message_id=email_with_attachment["id"],
-            attachment_part=attachment_part,
-            config=config,
-        )
-
-        # 6. Verify result
-        assert result is not None
-        assert result["filename"] == attachment_part["filename"]
-        assert result["storage_path"] is not None
-        assert result["content_hash"] is not None
-
-        # 7. Verify file exists in storage
-        downloaded = authenticated_client.storage.from_(
-            config.storage_bucket_attachments
-        ).download(result["storage_path"])
-        assert len(downloaded) > 0
+    def test_delete_nonexistent_attachment(self, store, owned_email, config):
+        user, _ = owned_email
+        assert delete_attachment(store, "00000000-0000-4000-8000-000000000001", config, user_id=user) is False

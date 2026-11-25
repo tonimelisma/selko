@@ -1,7 +1,8 @@
 """Integrations service for Selko.
 
 Handles OAuth token storage and retrieval from the integrations table.
-Uses RLS - all operations are scoped to the authenticated user.
+Every function takes the process database (``client``) and the owning user's
+id explicitly; nothing reads another user's row.
 """
 
 import logging
@@ -14,12 +15,13 @@ from typing import Any, Optional
 
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import Flow
-from postgrest.exceptions import APIError
-from postgrest.types import ReturnMethod
-from supabase import Client, PostgrestAPIError
-
 from selko.config import Config
-from selko.services.auth import get_current_user_id
+from selko.db import integrations as db_integrations
+from selko.db import recovery as db_recovery
+from selko.db.connection import Database
+from selko.db.errors import DbError
+
+Client = Database
 
 logger = logging.getLogger(__name__)
 
@@ -123,6 +125,13 @@ class OAuthStateError(IntegrationError):
     pass
 
 
+def _require_user(user_id: Optional[str]) -> str:
+    """The owning user. There is no signed-in client session to fall back to."""
+    if not user_id:
+        raise IntegrationError("user_id is required")
+    return user_id
+
+
 class OAuthProviderNotAllowed(IntegrationError):
     """Raised before token exchange when a callback rejects a provider."""
 
@@ -140,25 +149,11 @@ def get_provider_integration(
     user_id: Optional[str] = None,
 ) -> dict[str, Any] | None:
     """Load one provider integration row for a user."""
-    if user_id is None:
-        user_id = get_current_user_id(client)
-
+    user_id = _require_user(user_id)
     try:
-        result = (
-            client.table("integrations")
-            .select("*")
-            .eq("user_id", user_id)
-            .eq("provider", provider)
-            .maybe_single()
-            .execute()
-        )
-        return result.data if result and result.data else None
-    except APIError as e:
-        if e.code == "204":
-            return None
-        raise IntegrationError(f"Failed to get {provider} integration: {e.message}") from e
-    except PostgrestAPIError as e:
-        raise IntegrationError(f"Failed to get {provider} integration: {e.message}") from e
+        return db_integrations.get_integration(client, user_id, provider)
+    except DbError as e:
+        raise IntegrationError(f"Failed to get {provider} integration: {e}") from e
 
 
 def complete_integration_reauthorization(
@@ -173,7 +168,7 @@ def complete_integration_reauthorization(
 ) -> str:
     """Atomically upsert credentials and schedule reconnect recovery.
 
-    A single service-role-only RPC so a reconnect can never save new
+    One transaction, so a reconnect can never save new
     credentials without also, for ``google_calendar``, durably superseding
     any in-flight recovery and scheduling a fresh one in the same
     transaction (docs/specs/oauth-reconnect-catch-up.md). Gmail/Outlook need
@@ -182,32 +177,29 @@ def complete_integration_reauthorization(
     the integration active again.
 
     Args:
-        client: Service-role Supabase client. The RPC is not granted to
-            `authenticated` — callers must not pass a user-scoped client.
+        client: The process database.
 
     Returns:
         The integration's id.
 
     Raises:
-        IntegrationError: If the RPC call fails.
+        IntegrationError: If the write fails.
     """
     try:
-        result = client.rpc(
-            "complete_integration_reauthorization",
-            {
-                "p_user_id": user_id,
-                "p_provider": provider,
-                "p_access_token": access_token,
-                "p_refresh_token": refresh_token,
-                "p_token_expiry": token_expiry,
-                "p_scopes": scopes,
-                "p_provider_email": provider_email,
-            },
-        ).execute()
+        integration_id = db_recovery.complete_integration_reauthorization(
+            client,
+            user_id,
+            provider,
+            access_token,
+            refresh_token=refresh_token,
+            token_expiry=db_integrations.timestamp(token_expiry),
+            scopes=scopes,
+            provider_email=provider_email,
+        )
         logger.info(f"Saved {provider} integration for user {user_id}")
-        return result.data
-    except PostgrestAPIError as e:
-        raise IntegrationError(f"Failed to save integration: {e.message}") from e
+        return integration_id
+    except DbError as e:
+        raise IntegrationError(f"Failed to save integration: {e}") from e
 
 
 def save_oauth_credentials(
@@ -220,7 +212,7 @@ def save_oauth_credentials(
     """Save OAuth tokens to integrations table.
 
     Args:
-        client: Service-role Supabase client (required by the underlying RPC).
+        client: The process database.
         user_id: User ID to save credentials for.
         provider: Integration provider ('gmail', 'google_photos', 'google_calendar').
         credentials: Google OAuth credentials object.
@@ -294,32 +286,20 @@ def get_oauth_credentials(
     to enable token refresh.
 
     Args:
-        client: Authenticated Supabase client.
+        client: The process database.
         config: Configuration with Google OAuth client credentials.
         provider: Integration provider name.
-        user_id: Optional user ID (required if using service role client).
+        user_id: The owning user (required).
 
     Returns:
         Google Credentials object, or None if no integration found.
     """
-    if user_id is None:
-        user_id = get_current_user_id(client)
+    user_id = _require_user(user_id)
 
     try:
-        result = (
-            client.table("integrations")
-            .select("*")
-            .eq("user_id", user_id)
-            .eq("provider", provider)
-            .maybe_single()
-            .execute()
-        )
-
-        # maybe_single() returns None when no rows found
-        if result is None or not result.data:
+        row = db_integrations.get_integration(client, user_id, provider)
+        if row is None:
             return None
-
-        row = result.data
 
         # Check if integration is in non-active state
         if row.get("status") in ("expired", "revoked", "error"):
@@ -338,19 +318,14 @@ def get_oauth_credentials(
             token_uri="https://oauth2.googleapis.com/token",
             client_id=config.google_client_id,
             client_secret=config.google_client_secret,
-            scopes=row.get("scopes", []),
+            scopes=row.get("scopes") or [],
             expiry=expiry,
         )
 
         return creds
 
-    except APIError as e:
-        # maybe_single() throws APIError with code 204 when no rows found
-        if e.code == "204":
-            return None
-        raise IntegrationError(f"Failed to get integration: {e.message}") from e
-    except PostgrestAPIError as e:
-        raise IntegrationError(f"Failed to get integration: {e.message}") from e
+    except DbError as e:
+        raise IntegrationError(f"Failed to get integration: {e}") from e
 
 
 def update_integration_status(
@@ -362,21 +337,18 @@ def update_integration_status(
     """Update the status of an integration.
 
     Args:
-        client: Authenticated Supabase client.
+        client: The process database.
         provider: Integration provider name.
         status: New status ('active', 'expired', 'revoked', 'error').
-        user_id: Optional user ID (required if using service role client).
+        user_id: The owning user (required).
     """
-    if user_id is None:
-        user_id = get_current_user_id(client)
+    user_id = _require_user(user_id)
 
     try:
-        client.table("integrations").update(
-            {"status": status, "updated_at": datetime.now(timezone.utc).isoformat()}
-        ).eq("user_id", user_id).eq("provider", provider).execute()
+        db_integrations.set_integration_status(client, user_id, provider, status)
         logger.debug(f"Updated {provider} integration status to {status}")
-    except PostgrestAPIError as e:
-        raise IntegrationError(f"Failed to update integration status: {e.message}") from e
+    except DbError as e:
+        raise IntegrationError(f"Failed to update integration status: {e}") from e
 
 
 async def claim_integration_recovery(
@@ -387,7 +359,7 @@ async def claim_integration_recovery(
     """Atomically claim the next pending integration recovery generation.
 
     Args:
-        pool: asyncpg session-pooler pool.
+        pool: The process database.
         worker_id: Unique identifier for this worker process.
         lock_seconds: How long to hold the claim lock.
 
@@ -395,18 +367,12 @@ async def claim_integration_recovery(
         The claimed recovery row, or None if nothing is pending.
 
     Raises:
-        IntegrationError: If the claim RPC fails.
+        IntegrationError: If the claim fails.
     """
     try:
-        row = await pool.fetchrow(
-            "SELECT * FROM public.claim_integration_recovery($1, $2)",
-            worker_id, lock_seconds,
+        return await pool.run(
+            db_recovery.claim_integration_recovery, pool, worker_id, lock_seconds
         )
-        if row is None:
-            return None
-        from selko.services.pg import _normalize_pg_row
-
-        return _normalize_pg_row(dict(row))
     except Exception as e:
         raise IntegrationError(f"Failed to claim integration recovery: {e}") from e
 
@@ -418,10 +384,10 @@ async def unlock_expired_integration_recoveries(pool) -> int:
         Number of recovery generations unlocked.
 
     Raises:
-        IntegrationError: If the unlock RPC fails.
+        IntegrationError: If the unlock fails.
     """
     try:
-        return await pool.fetchval("SELECT public.unlock_expired_integration_recoveries()") or 0
+        return await pool.run(db_recovery.unlock_expired_integration_recoveries, pool) or 0
     except Exception as e:
         raise IntegrationError(
             f"Failed to unlock expired integration recoveries: {e}"
@@ -437,13 +403,12 @@ def update_oauth_credentials(
     """Update OAuth tokens after refresh.
 
     Args:
-        client: Authenticated Supabase client.
+        client: The process database.
         provider: Integration provider name.
         credentials: Updated Google credentials.
-        user_id: Optional user ID (required if using service role client).
+        user_id: The owning user (required).
     """
-    if user_id is None:
-        user_id = get_current_user_id(client)
+    user_id = _require_user(user_id)
 
     token_expiry = None
     if credentials.expiry:
@@ -454,17 +419,16 @@ def update_oauth_credentials(
         token_expiry = expiry.replace(tzinfo=timezone.utc).isoformat()
 
     try:
-        client.table("integrations").update(
-            {
-                "access_token": credentials.token,
-                "token_expiry": token_expiry,
-                "status": "active",
-                "updated_at": datetime.now(timezone.utc).isoformat(),
-            }
-        ).eq("user_id", user_id).eq("provider", provider).execute()
+        db_integrations.update_integration_tokens(
+            client,
+            user_id,
+            provider,
+            access_token=credentials.token,
+            token_expiry=token_expiry,
+        )
         logger.debug(f"Updated {provider} OAuth tokens")
-    except PostgrestAPIError as e:
-        raise IntegrationError(f"Failed to update tokens: {e.message}") from e
+    except DbError as e:
+        raise IntegrationError(f"Failed to update tokens: {e}") from e
 
 
 def update_provider_tokens(
@@ -477,27 +441,20 @@ def update_provider_tokens(
     user_id: Optional[str] = None,
 ) -> None:
     """Persist refreshed tokens for a provider-agnostic OAuth integration."""
-    if user_id is None:
-        user_id = get_current_user_id(client)
-
-    if isinstance(token_expiry, datetime):
-        token_expiry_value = token_expiry.astimezone(timezone.utc).isoformat()
-    else:
-        token_expiry_value = token_expiry
+    user_id = _require_user(user_id)
 
     try:
-        client.table("integrations").update(
-            {
-                "access_token": access_token,
-                "refresh_token": refresh_token,
-                "token_expiry": token_expiry_value,
-                "status": "active",
-                "updated_at": datetime.now(timezone.utc).isoformat(),
-            }
-        ).eq("user_id", user_id).eq("provider", provider).execute()
+        db_integrations.update_integration_tokens(
+            client,
+            user_id,
+            provider,
+            access_token=access_token,
+            refresh_token=refresh_token,
+            token_expiry=token_expiry,
+        )
         logger.debug("Updated %s provider tokens", provider)
-    except PostgrestAPIError as e:
-        raise IntegrationError(f"Failed to update provider tokens: {e.message}") from e
+    except DbError as e:
+        raise IntegrationError(f"Failed to update provider tokens: {e}") from e
 
 
 def get_credentials(
@@ -511,7 +468,7 @@ def get_credentials(
     refreshes them when expired.
 
     Args:
-        client: Authenticated or service-role Supabase client.
+        client: The process database.
         user_id: User ID that owns the integration.
         provider: Integration provider name.
 
@@ -565,11 +522,7 @@ def get_credentials(
 
 
 def _get_service_client_for_oauth() -> Client:
-    """Get a service role client for OAuth state operations.
-
-    OAuth states table uses service_role RLS policy, so we need a
-    service role client to read/write states.
-    """
+    """The process database, for OAuth state operations (keyed by the state token)."""
     from selko.config import load_config
     from selko.services.auth import get_service_client
     config = load_config()
@@ -593,21 +546,13 @@ def _save_oauth_state(
         code_verifier: PKCE code_verifier to reuse on token exchange.
     """
     client = _get_service_client_for_oauth()
-    now = datetime.now(timezone.utc)
-    expires_at = now + timedelta(minutes=10)
 
     try:
-        client.table("oauth_states").insert({
-            "state": state,
-            "user_id": user_id,
-            "provider": provider,
-            "redirect_uri": redirect_uri,
-            "code_verifier": code_verifier,
-            "created_at": now.isoformat(),
-            "expires_at": expires_at.isoformat(),
-        }).execute()
-    except PostgrestAPIError as e:
-        raise IntegrationError(f"Failed to save OAuth state: {e.message}") from e
+        db_integrations.save_oauth_state(
+            client, user_id, state, provider, redirect_uri, code_verifier
+        )
+    except DbError as e:
+        raise IntegrationError(f"Failed to save OAuth state: {e}") from e
 
 
 def _validate_and_consume_oauth_state(state: str) -> dict:
@@ -625,28 +570,13 @@ def _validate_and_consume_oauth_state(state: str) -> dict:
     client = _get_service_client_for_oauth()
 
     try:
-        result = (
-            client.table("oauth_states")
-            .select("*")
-            .eq("state", state)
-            .maybe_single()
-            .execute()
-        )
-
-        if result is None or not result.data:
+        # Read and delete in one transaction: a state can be used once, even
+        # by two concurrent callbacks. An expired state is deleted too.
+        row = db_integrations.consume_oauth_state(client, state)
+        if row is None:
             raise OAuthStateError("Invalid or expired state parameter")
-
-        row = result.data
-
-        # Check expiry
-        expires_at = datetime.fromisoformat(row["expires_at"])
-        if datetime.now(timezone.utc) > expires_at:
-            # Clean up expired state
-            client.table("oauth_states").delete().eq("state", state).execute()
+        if row["expired"]:
             raise OAuthStateError("State parameter expired")
-
-        # Consume state (one-time use)
-        client.table("oauth_states").delete().eq("state", state).execute()
 
         return {
             "user_id": row["user_id"],
@@ -657,27 +587,17 @@ def _validate_and_consume_oauth_state(state: str) -> dict:
 
     except OAuthStateError:
         raise
-    except APIError as e:
-        if e.code == "204":
-            raise OAuthStateError("Invalid or expired state parameter") from e
-        raise IntegrationError(f"Failed to validate OAuth state: {e.message}") from e
-    except PostgrestAPIError as e:
-        raise IntegrationError(f"Failed to validate OAuth state: {e.message}") from e
+    except DbError as e:
+        raise IntegrationError(f"Failed to validate OAuth state: {e}") from e
 
 
 def _clean_expired_oauth_states() -> None:
     """Clean up expired OAuth states from the database."""
     try:
         client = _get_service_client_for_oauth()
-        now = datetime.now(timezone.utc).isoformat()
-        result = (
-            client.table("oauth_states")
-            .delete()
-            .lt("expires_at", now)
-            .execute()
-        )
-        if result.data:
-            logger.debug(f"Cleaned up {len(result.data)} expired OAuth states")
+        removed = db_integrations.delete_expired_oauth_states(client)
+        if removed:
+            logger.debug(f"Cleaned up {removed} expired OAuth states")
     except Exception as e:
         # Non-critical cleanup — log and continue
         logger.warning(f"Failed to clean up expired OAuth states: {e}")
@@ -890,26 +810,24 @@ def complete_oauth_flow(
 def delete_integration(
     client: Client,
     provider: str,
+    user_id: Optional[str] = None,
 ) -> None:
     """Delete an integration (disconnect).
 
+    Its sync state, mirror and recoveries cascade with it.
+
     Args:
-        client: Authenticated Supabase client.
+        client: The process database.
         provider: Integration provider to disconnect.
+        user_id: The owning user (required).
 
     Raises:
         IntegrationError: If deletion fails.
     """
-    user_id = get_current_user_id(client)
+    user_id = _require_user(user_id)
 
     try:
-        # postgrest-py defaults to Prefer: return=representation, which needs
-        # SELECT on every column. 20260714000004 reduced authenticated to
-        # column-level SELECT, so echoing the deleted row is denied even though
-        # DELETE itself is granted. Request no representation.
-        client.table("integrations").delete(returning=ReturnMethod.minimal).eq(
-            "user_id", user_id
-        ).eq("provider", provider).execute()
+        db_integrations.delete_integration(client, user_id, provider)
         logger.info(f"Deleted {provider} integration for user {user_id}")
-    except PostgrestAPIError as e:
-        raise IntegrationError(f"Failed to delete integration: {e.message}") from e
+    except DbError as e:
+        raise IntegrationError(f"Failed to delete integration: {e}") from e

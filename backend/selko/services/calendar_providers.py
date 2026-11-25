@@ -22,10 +22,12 @@ from __future__ import annotations
 import logging
 import re
 from datetime import date, datetime, timedelta, timezone
-from typing import Any, Optional, Protocol
+from typing import TYPE_CHECKING, Any, Optional, Protocol
 from urllib.parse import quote
 
-from supabase import Client
+if TYPE_CHECKING:
+    from selko.db.connection import Database
+
 
 logger = logging.getLogger(__name__)
 
@@ -555,7 +557,7 @@ class OutlookCalendarAdapter:
         self,
         access_token: str,
         *,
-        client: Client | None = None,
+        client: Database | None = None,
         config: Any = None,
         integration_id: str | None = None,
         time_zone: str = "UTC",

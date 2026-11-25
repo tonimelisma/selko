@@ -1,297 +1,124 @@
-# Server-Side API Workflow
+# API Workflow
 
-This document demonstrates the Python API endpoints for server-side operations that require secrets (OAuth, Gmail API, LLM, Google Calendar API).
-
-**For data queries** (listing emails, viewing events, updating status), see `supabase-frontend-queries.md` - frontends query Supabase directly.
+A walk through the Email → Review → Calendar journey with `curl`, against a
+local API. Every call goes to Selko's own API: sign-in, data and the operations
+that need provider secrets. The route map is `docs/api-client-endpoints.md`.
 
 ## Architecture Overview
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                         DATA ACCESS                                  │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                      │
-│   Frontend (Web)                                                    │
-│         │                                                            │
-│         ├──────────────────────────────────────┐                    │
-│         │                                      │                    │
-│         ▼                                      ▼                    │
-│   ┌──────────────┐                    ┌──────────────────┐          │
-│   │   Supabase   │                    │   Python API     │          │
-│   │   (Direct)   │                    │   (Server-Side)  │          │
-│   └──────────────┘                    └──────────────────┘          │
-│         │                                      │                    │
-│   Data queries:                         Requires secrets:           │
-│   - List emails                         - OAuth flows               │
-│   - View events                         - Gmail sync                │
-│   - Update status                       - LLM processing            │
-│   - Download attachments                - Calendar sync             │
-│   - Read integrations                                               │
-│                                                                      │
-└─────────────────────────────────────────────────────────────────────┘
+Browser / curl ── Bearer token ──→ Selko (one process)
+                                     ├── /auth/*        sign-in, refresh cookie
+                                     ├── data routes    events, emails, settings, …
+                                     ├── provider ops   OAuth, sync, LLM, calendar
+                                     ├── /live          Server-Sent Events
+                                     └── workers        ingestion, extraction,
+                                                        calendar writes
+                                           │
+                                           └── SELKO_DATA_DIR: selko.db + attachments/
 ```
 
-## Prerequisites
+## Ingestion runs inside the API process
 
-### Ingestion runs inside the API process
+When `ENABLE_BACKGROUND_PROCESSING` is on, the FastAPI lifespan opens the
+database (migrating it), releases leases a previous process held
+(`selko.db.startup.reset_leases_at_startup`), and starts the ingestion tasks —
+coordinator, acquisition, attachments, health floor, calendar mirror — beside
+the `WorkerPool` that handles extraction and calendar writes. It stays off
+outside production so local servers and tests never poll providers or spend
+LLM quota.
 
-Email ingestion runs in the same process as the API — the async monolith
-pattern this deployment already uses for the worker pool. No separate Render
-service is required. When `ENABLE_BACKGROUND_PROCESSING` is on, the FastAPI
-lifespan starts the coordinator, acquisition, attachment and health tasks
-alongside the `WorkerPool` that handles downstream email/event processing.
+Ownership is enforced by leases written under the single writer, with a
+generation that fences stale completions; a committed write that creates work
+wakes the worker through `WorkSignals`. Newly connected accounts become
+pollable automatically (the `integrations_ensure_email_sync_state_*` triggers),
+and `request_email_sync_now` brings the next poll forward.
 
-There is no implementation switch: durable polling is the only ingestion path,
-and the legacy `email_fetch` scheduled task and its APScheduler job are gone.
-`ENABLE_BACKGROUND_PROCESSING` answers a different question — whether this
-process does background work at all — and stays off outside production so
-local servers, tests and CI never poll providers or spend LLM quota.
+`backend/selko/worker_app.py` runs the same task set as a standalone process
+over the same data directory. Never run it while the API's own workers are on:
+one process owns the file.
 
-Running in-process is safe because ownership is enforced by database leases,
-not by process topology: `claim_due_email_sync` selects `FOR UPDATE SKIP
-LOCKED` and refuses any integration whose lease is still live, so additional
-instances contend harmlessly rather than double-writing.
-
-Newly connected accounts become pollable automatically: the
-`integrations_ensure_email_sync_state` trigger creates `email_sync_state`
-whenever a Gmail or Outlook integration becomes active, and resets accumulated
-backoff on reconnect without disturbing a live lease. `request_email_sync_now`
-brings the next poll forward — used when a folder is newly included and by the
-manual `POST /emails/sync` endpoint, which now requests a poll rather than
-running its own fetch.
-
-`backend/selko/worker_app.py` runs the identical task set as a standalone
-process, sharing `IngestionRuntime` with the API so the two cannot drift. Use
-it for local staging drills, or to split ingestion onto its own service later:
+## Start a local API
 
 ```bash
-ENVIRONMENT=staging ENABLE_BACKGROUND_PROCESSING=true uv run python -m selko.worker_app
+cp .env.example .env    # set SELKO_JWT_SECRET (openssl rand -hex 32)
+uv run uvicorn selko.api.app:app --port 8000
+API=http://localhost:8000
 ```
 
-Never run it while another writer is active for the same environment.
+`ALLOWED_ORIGINS` must include the origin you send (`-H "Origin: …"`) to the
+cookie endpoints.
+
+## Step 1: Sign up and sign in
 
 ```bash
-# Start local Supabase
-supabase start
+curl -s -X POST "$API/auth/signup" -H "Origin: $API" -H 'Content-Type: application/json' \
+  -d '{"email":"test@example.com","password":"testpass123"}'
 
-# Start API server (in separate terminal)
-uv run python -m selko.api
+TOKEN=$(curl -s -c cookies.txt -X POST "$API/auth/token" -H "Origin: $API" \
+  -H 'Content-Type: application/json' \
+  -d '{"grant_type":"password","email":"test@example.com","password":"testpass123"}' \
+  | jq -r .access_token)
 
-# Get Supabase connection details from supabase start output
-SUPABASE_URL="http://localhost:54321"
-SUPABASE_ANON_KEY="<from output>"
+# Later: a new access token from the refresh cookie (rotates the cookie)
+TOKEN=$(curl -s -b cookies.txt -c cookies.txt -X POST "$API/auth/token" -H "Origin: $API" \
+  -H 'Content-Type: application/json' -d '{"grant_type":"refresh_token"}' | jq -r .access_token)
 ```
 
-## Step 1: Register and Login (via Supabase Auth)
+## Step 2: Connect Google (Gmail + Calendar)
 
 ```bash
-# Register new user and save token
-curl -X POST "$SUPABASE_URL/auth/v1/signup" \
-  -H "apikey: $SUPABASE_ANON_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"email":"test@example.com","password":"testpass123"}' \
-  | jq -r '.access_token' > token.txt
+# One consent screen covers Gmail and Google Calendar
+curl -s -H "Authorization: Bearer $TOKEN" "$API/integrations/google/auth" -o /dev/null -w '%{redirect_url}\n'
+# Open that URL; Google redirects to /integrations/google/callback, which stores
+# the credentials and returns to the web app.
 
-# OR login if user exists
-curl -X POST "$SUPABASE_URL/auth/v1/token?grant_type=password" \
-  -H "apikey: $SUPABASE_ANON_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"email":"test@example.com","password":"testpass123"}' \
-  | jq -r '.access_token' > token.txt
-
-TOKEN=$(cat token.txt)
+curl -s -H "Authorization: Bearer $TOKEN" "$API/integrations" | jq
 ```
 
-## Step 2: Connect Gmail (OAuth via Python API)
+## Step 3: Fetch mail now
 
 ```bash
-# Initiate OAuth flow (redirects to Google consent screen)
-curl -X GET "http://localhost:8000/integrations/google/auth" \
-  -H "Authorization: Bearer $TOKEN" \
-  -L  # Follow redirects
+curl -s -X POST "$API/emails/sync" -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' -d '{"max_results":10,"fetch_attachments":true}'
+# {"fetched": 10, "saved": 10, "attachments_downloaded": 3}
 
-# After you approve, Google redirects back to /integrations/google/callback
-# Callback automatically saves credentials to database
-
-# Verify integration connected (via Supabase direct)
-curl "$SUPABASE_URL/rest/v1/integrations?select=provider,status,provider_email" \
-  -H "apikey: $SUPABASE_ANON_KEY" \
-  -H "Authorization: Bearer $TOKEN"
+curl -s -H "Authorization: Bearer $TOKEN" "$API/emails/history?limit=10" | jq '.items[] | {id, subject}'
 ```
 
-## Step 3: Sync Emails (Python API - requires Gmail API credentials)
+## Step 4: Extract events
 
 ```bash
-# Manually fetch emails from Gmail
-curl -X POST "http://localhost:8000/emails/sync" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"max_results":10,"fetch_attachments":true}'
-
-# Response:
-# {
-#   "fetched": 10,
-#   "saved": 10,
-#   "attachments_downloaded": 3
-# }
+EMAIL_ID=<id from above>
+curl -s -X POST "$API/emails/$EMAIL_ID/process" -H "Authorization: Bearer $TOKEN"
+# {"num_events": 2, "num_new": 2, "num_updated": 0, "event_ids": [...]}
+# An exhausted daily LLM quota answers 429 and leaves the email as it was.
 ```
 
-## Step 4: List Synced Emails (via Supabase direct)
+## Step 5: Review
 
 ```bash
-# List emails (direct Supabase query)
-curl "$SUPABASE_URL/rest/v1/emails?select=id,subject,from_email,date_sent&order=date_sent.desc&limit=10" \
-  -H "apikey: $SUPABASE_ANON_KEY" \
-  -H "Authorization: Bearer $TOKEN"
-
-# Get specific email
-EMAIL_ID="<uuid from above>"
-curl "$SUPABASE_URL/rest/v1/emails?id=eq.$EMAIL_ID" \
-  -H "apikey: $SUPABASE_ANON_KEY" \
-  -H "Authorization: Bearer $TOKEN"
+curl -s -H "Authorization: Bearer $TOKEN" "$API/events/review" | jq
+EVENT_ID=<id from the New lane>
+curl -s -X POST "$API/events/$EVENT_ID/accept" -H "Authorization: Bearer $TOKEN"
+# Changes lane: POST /events/{id}/apply-change or /reject-change
 ```
 
-## Step 5: Process Email with LLM (Python API - requires Gemini API key)
+Accepting queues a calendar work item; a worker writes it to Google Calendar or
+Outlook. `POST /events/{id}/sync` observes or re-queues that worker-owned work;
+it never writes to the calendar inline.
+
+## Step 6: Watch it happen
 
 ```bash
-# Extract events from specific email
-curl -X POST "http://localhost:8000/emails/$EMAIL_ID/process" \
-  -H "Authorization: Bearer $TOKEN"
-
-# Response:
-# {
-#   "num_events": 2,
-#   "num_new": 2,
-#   "num_updated": 0,
-#   "event_ids": ["uuid1", "uuid2"]
-# }
-
-# OR process multiple recent emails
-curl -X POST "http://localhost:8000/emails/batch-process" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"max_emails":5}'
+curl -sN -H "Authorization: Bearer $TOKEN" "$API/live"
+# event: ready ... then event: invalidate {"resource": "events", ...} as rows change
 ```
 
-## Step 6: Review and Approve Events (via Supabase direct)
+## Health (no auth)
 
 ```bash
-# List pending events (direct Supabase query)
-curl "$SUPABASE_URL/rest/v1/events?status=eq.pending_review&select=*" \
-  -H "apikey: $SUPABASE_ANON_KEY" \
-  -H "Authorization: Bearer $TOKEN"
-
-# Get event with sources
-EVENT_ID="<uuid from above>"
-curl "$SUPABASE_URL/rest/v1/events?id=eq.$EVENT_ID&select=*,event_sources(*,emails(id,subject,from_email))" \
-  -H "apikey: $SUPABASE_ANON_KEY" \
-  -H "Authorization: Bearer $TOKEN"
-
-# Approve event (direct Supabase update)
-curl -X PATCH "$SUPABASE_URL/rest/v1/events?id=eq.$EVENT_ID" \
-  -H "apikey: $SUPABASE_ANON_KEY" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"status":"approved"}'
+curl -s "$API/health" | jq            # status, build_sha, request outcomes
+curl -s "$API/health/ingestion" | jq  # tasks, listener, queues
+./scripts/check-production-health.sh "$API"
 ```
-
-## Step 7: Sync to Google Calendar (Python API - requires Calendar API credentials)
-
-```bash
-# List available calendars
-curl -X GET "http://localhost:8000/calendars" \
-  -H "Authorization: Bearer $TOKEN"
-
-# Response:
-# [{"id": "primary", "name": "My Calendar", "is_primary": true}]
-
-# Sync approved event to Google Calendar
-curl -X POST "http://localhost:8000/events/$EVENT_ID/sync" \
-  -H "Authorization: Bearer $TOKEN"
-
-# Response:
-# {
-#   "event_id": "uuid",
-#   "google_calendar_event_id": "google_event_id",
-#   "synced_at": "2026-01-26T12:00:00Z",
-#   "status": "synced"
-# }
-```
-
-## Complete Journey Summary
-
-| Step | Action | Endpoint |
-|------|--------|----------|
-| 1 | Register/Login | Supabase Auth (direct) |
-| 2 | Connect Google (Gmail + Calendar) | Python API: `GET /integrations/google/auth` |
-| 3 | Sync emails | Python API: `POST /emails/sync` |
-| 4 | List emails | Supabase (direct) |
-| 5 | Process with LLM | Python API: `POST /emails/{id}/process` |
-| 6 | Review/approve | Supabase (direct) |
-| 7 | Sync to calendar | Python API: `POST /events/{id}/sync` |
-
-## Python API Endpoints Reference
-
-### Health Endpoints (no auth)
-
-```
-GET /health
-Response: {"status": "ok"}
-
-GET /health/db
-Response: {"status": "ok", "database": "connected"}
-```
-
-### OAuth Endpoints
-
-```
-GET /integrations/google/auth
-  Requires: Bearer token
-  Returns: Redirect to one Google consent screen covering Gmail and Calendar.
-  The callback saves the same token to both integrations rows (only those
-  whose scopes were granted), so they expire and reconnect together.
-
-GET /integrations/google/auth     # one consent: Gmail + Google Calendar (clients use this)
-GET /integrations/google/callback?code={code}&state={state}
-  Unified callback for all Google OAuth flows
-  Public endpoint (no auth required)
-  Returns: {"status": "success", "provider_email": "user@gmail.com"}
-```
-
-### Email Sync/Process Endpoints
-
-```
-POST /emails/sync
-  Requires: Bearer token, Gmail integration
-  Body: {"max_results": 50, "fetch_attachments": true}
-  Returns: {"fetched": 10, "saved": 8, "attachments_downloaded": 3}
-
-POST /emails/{email_id}/process
-  Requires: Bearer token
-  Returns: {"num_events": 1, "num_new": 1, "num_updated": 0, "event_ids": ["uuid"]}
-
-POST /emails/batch-process
-  Requires: Bearer token
-  Body: {"max_emails": 10}
-  Returns: {"num_events": 5, "num_new": 3, "num_updated": 2, "event_ids": [...]}
-```
-
-### Calendar Endpoints
-
-```
-GET /calendars
-  Requires: Bearer token, Google Calendar integration
-  Returns: [{"id": "primary", "name": "My Calendar", "is_primary": true}]
-
-POST /events/{event_id}/sync
-  Requires: Bearer token
-  Returns: {"event_id": "uuid", "google_calendar_event_id": "gcal-id", "synced_at": "..."}
-```
-
-## Data Queries (Direct Supabase)
-
-For all data operations (listing, filtering, updating), query Supabase directly using the native SDK for your platform:
-
-- **Web (JavaScript)**: `@supabase/supabase-js` (the only maintained client; the native apps in `legacy/` are unmaintained)
-
-See `supabase-frontend-queries.md` for canonical query patterns.

@@ -1,7 +1,7 @@
 <script>
 	import { goto } from '$app/navigation';
 	import { _ } from 'svelte-i18n';
-	import { supabase } from '$lib/supabase.js';
+	import { signIn } from '$lib/auth.js';
 	import ErrorAlert from '$lib/components/ErrorAlert.svelte';
 	import LogoMark from '$lib/components/LogoMark.svelte';
 	import { safeNextPath } from '$lib/safe-redirect.js';
@@ -17,10 +17,7 @@
 		error = '';
 		isLoading = true;
 
-		const { error: authError } = await supabase.auth.signInWithPassword({
-			email,
-			password
-		});
+		const { error: authError } = await signIn(email, password);
 
 		if (authError) {
 			error = authError.message;

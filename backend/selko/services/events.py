@@ -7,10 +7,16 @@ from typing import Any, Callable, Optional
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
-from supabase import Client
+from selko.db import calendar_work as db_calendar_work
+from selko.db import events as db_events
+from selko.db import integrations as db_integrations
+from selko.db import proposals as db_proposals
+from selko.db import sender_rules as db_sender_rules
+from selko.db.connection import Database
 
 from selko.api.schemas.calendar import CalendarEvent, CalendarEventExtraction
 from selko.config import Config
+from selko.services.quotas import QuotaExceededError
 from selko.services import calendars, event_identity, event_processing, ics_parser
 from selko.services.event_diff import (
     EventChangeSet,
@@ -137,27 +143,17 @@ class EventMatch:
 
 
 def _commit_email_extraction(
-    supabase_client: Client,
+    supabase_client: Database,
     email_id: str,
     locked_by: str,
     lock_generation: int,
     decisions: list[dict[str, Any]],
     terminal: str = "processed",
 ) -> dict[str, Any]:
-    """Commit one extraction envelope through the lease-fenced RPC."""
-    response = supabase_client.rpc(
-        "commit_email_extraction",
-        {
-            "p_email_id": email_id,
-            "p_worker_id": locked_by,
-            "p_generation": lock_generation,
-            "p_decisions": decisions,
-            "p_terminal": terminal,
-        },
-    ).execute()
-    result = response.data
-    if isinstance(result, list):
-        result = result[0] if result else {}
+    """Commit one extraction envelope through the lease-fenced commit."""
+    result = db_events.commit_email_extraction(
+        supabase_client, email_id, locked_by, lock_generation, decisions, terminal
+    )
     if not isinstance(result, dict):
         raise EventsError("commit_email_extraction returned an invalid result")
     if result.get("fenced"):
@@ -186,7 +182,7 @@ def _window_fields(window: Optional[CandidateWindow]) -> dict[str, Any]:
 
 
 def mark_email_status(
-    supabase_client: Client,
+    supabase_client: Database,
     email_id: str,
     status: str,
     error: Optional[str] = None,
@@ -198,14 +194,14 @@ def mark_email_status(
     """Update email processing status.
 
     Args:
-        supabase_client: Authenticated Supabase client.
+        supabase_client: The Selko database.
         email_id: UUID of email to update.
         status: New processing status (processing, processed, skipped, failed).
         error: Optional error message (only used for failed status).
     """
     update_data: dict[str, Any] = {"processing_status": status}
     if status == "processing":
-        update_data["processed_at"] = datetime.now(timezone.utc).isoformat()
+        update_data["processed_at"] = True  # the write transaction's time
         update_data["processing_error"] = None
         update_data["processing_outcome"] = None
         update_data["processing_explanation"] = None
@@ -220,16 +216,16 @@ def mark_email_status(
         update_data["processing_explanation"] = explanation
     if result is not None:
         update_data["processing_result"] = result
-    supabase_client.table("emails").update(update_data).eq("id", email_id).execute()
+    db_events.mark_email_status(supabase_client, email_id, update_data)
 
 
 def should_skip_email(
-    supabase_client: Client, user_id: str, sender_email: str
+    supabase_client: Database, user_id: str, sender_email: str
 ) -> bool:
     """Check if sender is ignored and email should be skipped.
 
     Args:
-        supabase_client: Authenticated Supabase client.
+        supabase_client: The Selko database.
         user_id: UUID of user.
         sender_email: Email address of sender.
 
@@ -240,11 +236,11 @@ def should_skip_email(
     return bool(sender_rule and sender_rule.get("action") == "ignore")
 
 
-def get_user_timezone(supabase_client: Client, user_id: str) -> str:
+def get_user_timezone(supabase_client: Database, user_id: str) -> str:
     """Get user's IANA timezone from calendar settings.
 
     Args:
-        supabase_client: Authenticated Supabase client.
+        supabase_client: The Selko database.
         user_id: UUID of user.
 
     Returns:
@@ -252,12 +248,9 @@ def get_user_timezone(supabase_client: Client, user_id: str) -> str:
         "America/New_York" if not set.
     """
     try:
-        result = supabase_client.table("user_calendar_settings").select(
-            "timezone"
-        ).eq("user_id", user_id).execute()
-
-        if result.data:
-            return result.data[0].get("timezone") or "America/New_York"
+        settings = db_integrations.get_calendar_settings(supabase_client, user_id)
+        if settings:
+            return settings.get("timezone") or "America/New_York"
     except Exception as e:
         logger.warning(f"Failed to fetch user timezone: {e}")
 
@@ -388,31 +381,22 @@ def keep_timed_update_within_a_day(
 
 
 def _fetch_baseline_info_date(
-    supabase_client: Client, event_id: str
+    supabase_client: Database, event_id: str
 ) -> Optional[str]:
     """Newest ``emails.date_sent`` across a local event's non-undone sources.
 
     Used as the "current information" recency baseline for propose_event_update.
     """
     try:
-        result = (
-            supabase_client.table("event_sources")
-            .select("emails(date_sent)")
-            .eq("event_id", event_id)
-            .execute()
-        )
+        dates = db_events.source_email_dates(supabase_client, event_id)
     except Exception as e:
         logger.debug("Could not fetch baseline info date for %s: %s", event_id, e)
         return None
-    dates = [
-        (row.get("emails") or {}).get("date_sent")
-        for row in (result.data or [])
-    ]
     dates = [d for d in dates if d]
     return max(dates) if dates else None
 
 
-def _is_from_users_calendar(supabase_client: Client, event_id: str) -> bool:
+def _is_from_users_calendar(supabase_client: Database, event_id: str) -> bool:
     """Whether a local event was adopted from the user's own calendar.
 
     Selko-created events carry email provenance only; an event the user made
@@ -421,57 +405,37 @@ def _is_from_users_calendar(supabase_client: Client, event_id: str) -> bool:
     review instead of rewriting a calendar entry the user may own.
     """
     try:
-        result = (
-            supabase_client.table("event_sources")
-            .select("id")
-            .eq("event_id", event_id)
-            .eq("source_origin", "google_calendar")
-            .limit(1)
-            .execute()
-        )
+        return db_events.has_source_origin(supabase_client, event_id, "google_calendar")
     except Exception as e:
         logger.warning("Could not read provenance of event %s: %s", event_id, e)
         return True
-    return bool(result.data)
 
 
 def _load_identity_context(
-    supabase_client: Client,
+    supabase_client: Database,
     email_id: str,
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     """Load only metadata needed to derive content-free identity hints."""
     email: dict[str, Any] = {}
     components: list[dict[str, Any]] = []
     try:
-        # No body_html: the column was dropped from emails (its contents moved
-        # to emails_body_html_backup). PostgREST rejects the whole select for an
-        # unknown column, the failure was swallowed by the debug-level handler
-        # below, and `email` came back empty -- so provider and thread_id were
-        # empty for every email and no provider_thread hint has ever been
-        # written. Production shows 14 identity hints across 364 events, all
-        # join_url, which are derived from event_data rather than from here.
-        result = supabase_client.table("emails").select(
-            "email_provider,thread_id,subject,body_text"
-        ).eq("id", email_id).limit(1).execute()
-        if isinstance(result.data, list) and result.data:
-            email = result.data[0] or {}
-        elif isinstance(result.data, dict):
-            email = result.data
+        # Only these four columns. A select naming a dropped column (body_html)
+        # once failed silently here, so no provider_thread hint was written.
+        email = db_events.email_identity_context(supabase_client, email_id)
     except Exception as exc:
         logger.debug("Could not load email identity metadata (%s)", type(exc).__name__)
     try:
-        result = supabase_client.table("email_calendar_components").select(
-            "component_index,uid_hash,recurrence_id,sequence,dtstamp"
-        ).eq("email_id", email_id).order("component_index").execute()
-        if isinstance(result.data, list):
-            components = [row for row in result.data if isinstance(row, dict)]
+        components = [
+            {key: row[key] for key in ("component_index", "uid_hash", "recurrence_id", "sequence", "dtstamp")}
+            for row in db_events.email_calendar_components(supabase_client, email_id)
+        ]
     except Exception as exc:
         logger.debug("Could not load calendar identity components (%s)", type(exc).__name__)
     return email, components
 
 
 def _invite_is_already_on_calendar(
-    supabase_client: Client, user_id: str, email_id: str
+    supabase_client: Database, user_id: str, email_id: str
 ) -> bool:
     """True when this invitation's UID is already on the user's calendar.
 
@@ -486,14 +450,7 @@ def _invite_is_already_on_calendar(
     one they do not have is a commitment they never learn about.
     """
     try:
-        components = (
-            supabase_client.table("email_calendar_components")
-            .select("uid_hash")
-            .eq("email_id", email_id)
-            .execute()
-            .data
-            or []
-        )
+        components = db_events.email_calendar_components(supabase_client, email_id)
     except Exception:
         logger.debug("Could not read calendar components for invite check")
         return False
@@ -506,22 +463,10 @@ def _invite_is_already_on_calendar(
         return False
 
     try:
-        matches = (
-            supabase_client.table("event_identity_hints")
-            .select("calendar_entry_id")
-            .eq("user_id", user_id)
-            .eq("kind", "ical_uid")
-            .in_("value_hash", uid_hashes)
-            .not_.is_("calendar_entry_id", "null")
-            .limit(1)
-            .execute()
-            .data
-            or []
-        )
+        return db_events.calendar_entry_hint_exists(supabase_client, user_id, "ical_uid", uid_hashes)
     except Exception:
         logger.debug("Could not check the calendar mirror for invite UID")
         return False
-    return bool(matches)
 
 
 def _identity_hints_for_event(
@@ -545,7 +490,7 @@ def _identity_hints_for_event(
 
 
 def save_extracted_events(
-    supabase_client: Client,
+    supabase_client: Database,
     gateway: LLMGateway,
     user_id: str,
     email_id: str,
@@ -589,7 +534,7 @@ def save_extracted_events(
       change (``intent="review"``), or the change is applied immediately when
       ``initial_status == "approved"`` (sender auto_approve).
     Args:
-        supabase_client: Authenticated Supabase client.
+        supabase_client: The Selko database.
         gateway: LLMGateway instance for LLM operations.
         user_id: UUID of user.
         email_id: UUID of source email.
@@ -1072,7 +1017,7 @@ def save_extracted_events(
 
 
 def process_email_for_events(
-    supabase_client: Client,
+    supabase_client: Database,
     gateway: LLMGateway,
     email_id: str,
     user_id: str,
@@ -1087,7 +1032,7 @@ def process_email_for_events(
     Orchestrates sender checking, LLM extraction, dedup, and persistence.
 
     Args:
-        supabase_client: Authenticated Supabase client.
+        supabase_client: The Selko database.
         gateway: LLMGateway instance for LLM operations.
         email_id: UUID of email to process.
         user_id: UUID of user who owns the email.
@@ -1144,11 +1089,8 @@ def process_email_for_events(
         structured_cancellation = invite_method == "CANCEL"
         if not structured_cancellation and email_metadata.get("is_calendar_invite"):
             try:
-                component_result = supabase_client.table("email_calendar_components").select(
-                    "method"
-                ).eq("email_id", email_id).eq("method", "CANCEL").limit(1).execute()
-                structured_cancellation = isinstance(component_result.data, list) and bool(
-                    component_result.data
+                structured_cancellation = db_events.email_has_component_method(
+                    supabase_client, email_id, "CANCEL"
                 )
             except Exception:
                 logger.debug("Could not inspect structured cancellation components for %s", email_id)
@@ -1268,10 +1210,8 @@ def process_email_for_events(
             "num_updated": num_updated,
         }
         try:
-            source_result = supabase_client.table("event_sources").select(
-                "source_type"
-            ).eq("email_id", email_id).execute()
-            if any(row.get("source_type") == "cancellation" for row in (source_result.data or [])):
+            source_types = db_events.source_types_for_email(supabase_client, email_id)
+            if "cancellation" in source_types:
                 outcome = "event_cancelled"
         except Exception:
             logger.debug("Could not determine cancellation outcome for %s", email_id)
@@ -1289,6 +1229,10 @@ def process_email_for_events(
 
         return result
 
+    except QuotaExceededError:
+        # Not a failure of this email: the user is out of calls today. The
+        # route answers 429 and the email stays as it was.
+        raise
     except Exception as e:
         mark_email_status(supabase_client, email_id, "failed", error=str(e))
         raise EventsError(f"Failed to process email for events: {e}") from e
@@ -1313,7 +1257,7 @@ def _event_baseline(row: dict[str, Any]) -> dict[str, Any]:
 
 
 def _load_identity_candidates(
-    supabase_client: Client,
+    supabase_client: Database,
     user_id: str,
     hints: list[IdentityHint],
 ) -> tuple[dict[str, list[dict[str, Any]]], dict[str, dict[str, Any]], str, tuple[str, ...]]:
@@ -1324,13 +1268,10 @@ def _load_identity_candidates(
     for hint in hints:
         key = _identity_key(hint)
         try:
-            result = supabase_client.table("event_identity_hints").select(
-                "event_id,calendar_entry_id,kind,value_hash,recurrence_id,strength,sequence,dtstamp"
-            ).eq("user_id", user_id).eq("kind", hint.kind).eq(
-                "value_hash", hint.value_hash
-            ).eq("recurrence_id", hint.recurrence_id).execute()
-            rows = result.data if isinstance(result.data, list) else []
-            rows_by_key[key] = [row for row in rows if isinstance(row, dict)]
+            found = db_events.hints_matching(
+                supabase_client, user_id, [(hint.kind, hint.value_hash, hint.recurrence_id)]
+            )
+            rows_by_key[key] = found.get(key, [])
         except Exception as exc:
             logger.debug("Could not load identity candidates (%s)", type(exc).__name__)
             rows_by_key[key] = []
@@ -1346,13 +1287,8 @@ def _load_identity_candidates(
     })
     if entry_ids:
         try:
-            entries = supabase_client.table("calendar_entries").select(
-                "id,title,start_at,end_at,location,ical_uid,provider_event_id"
-            ).eq("user_id", user_id).in_("id", entry_ids).is_(
-                "deleted_at", "null"
-            ).execute()
-            for entry in (entries.data or []):
-                if not isinstance(entry, dict) or not entry.get("provider_event_id"):
+            for entry in db_events.mirror_entries_by_ids(supabase_client, user_id, entry_ids):
+                if not entry.get("provider_event_id"):
                     continue
                 identity_events[f"gcal:{entry['provider_event_id']}"] = {
                     "id": f"gcal:{entry['provider_event_id']}",
@@ -1369,13 +1305,9 @@ def _load_identity_candidates(
     events_by_id: dict[str, dict[str, Any]] = {}
     if event_ids:
         try:
-            result = supabase_client.table("events").select("*").eq(
-                "user_id", user_id
-            ).in_("id", event_ids).execute()
             events_by_id = {
                 str(row["id"]): row
-                for row in (result.data or [])
-                if isinstance(row, dict) and row.get("id")
+                for row in db_events.get_many(supabase_client, user_id, event_ids)
             }
         except Exception as exc:
             logger.debug("Could not load identity event candidates (%s)", type(exc).__name__)
@@ -1383,12 +1315,17 @@ def _load_identity_candidates(
     # so downstream code treats them exactly like the live-read candidates it
     # already understands.
     events_by_id.update(identity_events)
-    fingerprint = candidate_fingerprint(list(events_by_id.values()))
+    # The fence value the commit re-checks, computed by the same function over
+    # the same rows: the events *and* calendar entries the hints name, each with
+    # its updated_at. Fingerprinting the candidate map above instead dropped the
+    # mirrored entries (they carry no updated_at there), so any hint naming a
+    # calendar entry conflicted on every attempt.
+    fingerprint = db_events.hint_fingerprint(supabase_client, user_id, keys) if keys else ""
     return rows_by_key, events_by_id, fingerprint, keys
 
 
 def _mirror_candidates_in_window(
-    supabase_client: Client, user_id: str, time_min: str, time_max: str
+    supabase_client: Database, user_id: str, time_min: str, time_max: str
 ) -> list[dict[str, Any]]:
     """Mirrored calendar entries in the same band as the events read.
 
@@ -1406,11 +1343,7 @@ def _mirror_candidates_in_window(
     assumption is introduced.
     """
     try:
-        entries = supabase_client.table("calendar_entries").select(
-            "title,start_at,end_at,location,provider_event_id"
-        ).eq("user_id", user_id).gte("start_at", time_min).lt(
-            "start_at", time_max
-        ).is_("deleted_at", "null").execute()
+        entries = db_events.mirror_entries_in_window(supabase_client, user_id, time_min, time_max)
     except Exception as exc:
         # Fail toward the previous behaviour rather than losing the extraction.
         # A missed match shows a duplicate the user can reject; raising here
@@ -1419,8 +1352,8 @@ def _mirror_candidates_in_window(
         return []
 
     shaped: list[dict[str, Any]] = []
-    for entry in (entries.data or []):
-        if not isinstance(entry, dict) or not entry.get("provider_event_id"):
+    for entry in entries:
+        if not entry.get("provider_event_id"):
             continue
         shaped.append({
             "id": f"gcal:{entry['provider_event_id']}",
@@ -1630,7 +1563,7 @@ def _strong_identity_candidates(
 
 
 def find_matching_event(
-    supabase_client: Client,
+    supabase_client: Database,
     gateway: LLMGateway,
     user_id: str,
     event_data: dict[str, Any],
@@ -1668,15 +1601,9 @@ def find_matching_event(
     else:
         return (None, None) if with_window else None
 
-    result = supabase_client.table("events").select("*").eq(
-        "user_id", user_id
-    ).gte(
-        "start_datetime", time_min
-    ).lt(
-        "start_datetime", time_max
-    ).execute()
-
-    candidates: list[dict[str, Any]] = list(result.data) if result.data else []
+    candidates: list[dict[str, Any]] = db_events.in_window(
+        supabase_client, user_id, time_min, time_max
+    )
     # The user's own calendar belongs in the candidate set, not behind a
     # structured-hint gate that most real emails cannot pass.
     candidates.extend(
@@ -1840,13 +1767,8 @@ def find_matching_event(
         # the caller down the adopt-a-new-row path and produced a duplicate of
         # something they had already said no to; the declined row is the correct
         # match, and routes to record_only.
-        existing = supabase_client.table("events").select("*").eq(
-            "user_id", user_id
-        ).eq("google_calendar_event_id", gcal_id).order(
-            "created_at"
-        ).limit(1).execute()
-        if existing.data:
-            row = existing.data[0]
+        row = db_events.by_provider_event_id(supabase_client, user_id, gcal_id)
+        if row is not None:
             return resolved(EventMatch(
                 match_id=row["id"],
                 baseline={
@@ -1919,7 +1841,7 @@ def _instant(value: Any) -> Optional[datetime]:
 
 
 def retire_pending_already_on_calendar(
-    supabase_client: Client,
+    supabase_client: Database,
     user_id: str,
     arrived: list[dict[str, Any]],
     gateway_factory: Callable[[], LLMGateway],
@@ -1958,16 +1880,8 @@ def retire_pending_already_on_calendar(
         return 0
 
     try:
-        pending = (
-            supabase_client.table("events")
-            .select("id,title,start_datetime,end_datetime,location,description")
-            .eq("user_id", user_id)
-            .eq("review_status", "pending_review")
-            .gte("start_datetime", min(by_start).isoformat())
-            .lte("start_datetime", max(by_start).isoformat())
-            .execute()
-            .data
-            or []
+        pending = db_events.pending_in_window(
+            supabase_client, user_id, min(by_start), max(by_start)
         )
     except Exception:
         logger.exception("Could not load pending events to check against the calendar")
@@ -2007,18 +1921,7 @@ def retire_pending_already_on_calendar(
         if matched is None:
             continue
 
-        result = (
-            supabase_client.table("events")
-            .update({
-                "review_status": "rejected",
-                "updated_at": datetime.now(timezone.utc).isoformat(),
-            })
-            .eq("id", event["id"])
-            .eq("user_id", user_id)
-            .eq("review_status", "pending_review")
-            .execute()
-        )
-        if not result.data:
+        if not db_events.retire_pending(supabase_client, user_id, event["id"]):
             continue
         retired += 1
         logger.info("Event %s is already on the calendar; removed from New", event["id"])
@@ -2026,71 +1929,57 @@ def retire_pending_already_on_calendar(
     return retired
 
 
-def _explain_late_match(supabase_client: Client, event_id: str, entry_title: str) -> None:
+def _explain_late_match(supabase_client: Database, event_id: str, entry_title: str) -> None:
     """Say in History why an email's event left New without the user acting.
 
     Only an email whose sole event this was is relabelled; an email that also
     produced other events still created those, and "matched" would hide them.
     """
     try:
-        sources = (
-            supabase_client.table("event_sources")
-            .select("email_id")
-            .eq("event_id", event_id)
-            .not_.is_("email_id", "null")
-            .execute()
-            .data
-            or []
-        )
-        for source in sources:
-            email = (
-                supabase_client.table("emails")
-                .select("id,processing_outcome,processing_result")
-                .eq("id", source["email_id"])
-                .maybe_single()
-                .execute()
-            )
-            row = getattr(email, "data", None) or {}
+        for email_id in db_events.source_email_ids(supabase_client, event_id):
+            row = db_events.email_outcome(supabase_client, email_id) or {}
             result = row.get("processing_result") or {}
             if row.get("processing_outcome") != "event_created" or result.get("num_events") != 1:
                 continue
-            supabase_client.table("emails").update({
+            db_events.mark_email_status(supabase_client, row["id"], {
                 "processing_outcome": "event_matched",
                 "processing_explanation": f"Already on your calendar as “{entry_title}”.",
-            }).eq("id", row["id"]).execute()
+            })
     except Exception:
         # The retirement stands; only the History wording is lost.
         logger.exception("Could not record why event %s left New", event_id)
 
 
-def _latest_pending_change_proposal(
-    supabase_client: Client, event_id: str
-) -> Optional[dict[str, Any]]:
-    """Return the authoritative pending proposal for an event."""
-    result = supabase_client.table("event_change_proposals").select("*").eq(
-        "event_id", event_id
-    ).eq("status", "pending").maybe_single().execute()
-    return result.data if result is not None and isinstance(result.data, dict) else None
+def _owned_event_and_proposal(
+    supabase_client: Database, event_id: str, proposal_id: str | None, user_id: str | None
+) -> tuple[dict[str, Any], Optional[dict[str, Any]]]:
+    """The event (scoped to its owner) and the named or pending proposal."""
+    owner = user_id or db_events.event_owner(supabase_client, event_id)
+    event = db_events.get(supabase_client, owner, event_id) if owner else None
+    if event is None:
+        raise EventsError(f"Event {event_id} not found")
+    proposal = (
+        db_proposals.get(supabase_client, event["user_id"], event_id, proposal_id)
+        if proposal_id
+        else db_proposals.get_pending(supabase_client, event["user_id"], event_id)
+    )
+    return event, proposal
 
 
 def apply_change_proposal(
-    supabase_client: Client, event_id: str, proposal_id: str | None = None
+    supabase_client: Database,
+    event_id: str,
+    proposal_id: str | None = None,
+    *,
+    user_id: str | None = None,
 ) -> dict[str, Any]:
     """Apply an authoritative change proposal without provider I/O.
 
     Prefers ``change_set`` after-values so source-truth ``extracted_data``
     (which may still say ``all_day=true``) cannot undo all-day materialization.
+    ``user_id``, when given, scopes every read to that user's rows.
     """
-    event_result = supabase_client.table("events").select("*").eq(
-        "id", event_id
-    ).single().execute()
-    event = event_result.data
-
-    proposal = (
-        supabase_client.table("event_change_proposals").select("*")
-        .eq("id", proposal_id).eq("event_id", event_id).maybe_single().execute().data
-        if proposal_id else _latest_pending_change_proposal(supabase_client, event_id)
-    )
+    event, proposal = _owned_event_and_proposal(supabase_client, event_id, proposal_id, user_id)
     if not proposal:
         raise EventsError(f"No pending change proposal for event {event_id}")
 
@@ -2126,27 +2015,32 @@ def apply_change_proposal(
         "review_status": review_status,
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }
-    supabase_client.rpc("apply_event_change_proposal", {
-        "p_event_id": event_id,
-        "p_user_id": event["user_id"],
-        "p_proposal_id": proposal["id"],
-        "p_expected_hash": None,
-        "p_title": update_fields["title"],
-        "p_start_datetime": update_fields["start_datetime"],
-        "p_end_datetime": update_fields["end_datetime"],
-        "p_all_day": update_fields["all_day"],
-        "p_location": update_fields["location"],
-        "p_description": update_fields["description"],
-        "p_importance": update_fields["importance"],
-        "p_review_status": review_status,
-        "p_calendar_sync_action": next_action,
-    }).execute()
+    db_proposals.apply_event_change_proposal(
+        supabase_client,
+        event["user_id"],
+        event_id,
+        proposal["id"],
+        None,
+        update_fields["title"],
+        update_fields["start_datetime"],
+        update_fields["end_datetime"],
+        update_fields["all_day"],
+        update_fields["location"],
+        update_fields["description"],
+        update_fields["importance"],
+        review_status,
+        next_action,
+    )
     logger.info("Applied event change proposal %s on event %s", proposal["id"], event_id)
     return update_fields
 
 
 def reject_change_proposal(
-    supabase_client: Client, event_id: str, proposal_id: str | None = None
+    supabase_client: Database,
+    event_id: str,
+    proposal_id: str | None = None,
+    *,
+    user_id: str | None = None,
 ) -> str:
     """Reject an authoritative change proposal.
 
@@ -2154,16 +2048,7 @@ def reject_change_proposal(
     proposal requires an active event -- or ``"deleted"`` when the Selko row is
     a provider-only adopt with no original invitation and is removed.
     """
-    event_result = supabase_client.table("events").select("*").eq(
-        "id", event_id
-    ).single().execute()
-    event = event_result.data
-
-    proposal = (
-        supabase_client.table("event_change_proposals").select("*")
-        .eq("id", proposal_id).eq("event_id", event_id).maybe_single().execute().data
-        if proposal_id else _latest_pending_change_proposal(supabase_client, event_id)
-    )
+    event, proposal = _owned_event_and_proposal(supabase_client, event_id, proposal_id, user_id)
     if not proposal:
         raise EventsError(f"No pending change proposal for event {event_id}")
     snapshot = proposal.get("event_snapshot_before")
@@ -2179,10 +2064,8 @@ def reject_change_proposal(
     # before -- the arm's behaviour depended on when the row happened to be
     # created. The provider-id-plus-sources test below is what it was reaching
     # for and does not depend on a vanished column.
-    sources = supabase_client.table("event_sources").select(
-        "id, source_type, source_origin"
-    ).eq("event_id", event_id).execute()
-    source_types = {s.get("source_type") for s in (sources.data or [])}
+    sources = db_events.sources(supabase_client, event_id)
+    source_types = {s.get("source_type") for s in sources}
     gcal_only_proposal = (
         proposal.get("status") == "pending"
         and event.get("google_calendar_event_id")
@@ -2191,21 +2074,22 @@ def reject_change_proposal(
     )
 
     if gcal_only_proposal:
-        supabase_client.rpc("reject_event_change_proposal", {
-            "p_event_id": event_id,
-            "p_user_id": event["user_id"],
-            "p_proposal_id": proposal["id"],
-            "p_expected_hash": None,
-            "p_resolution_reason": "user_rejected",
-            "p_delete_event": True,
-            "p_title": event.get("title"),
-            "p_start_datetime": event.get("start_datetime"),
-            "p_end_datetime": event.get("end_datetime"),
-            "p_all_day": event.get("all_day", False),
-            "p_location": event.get("location"),
-            "p_description": event.get("description"),
-            "p_importance": event.get("importance", "action_required"),
-        }).execute()
+        db_proposals.reject_event_change_proposal(
+            supabase_client,
+            event["user_id"],
+            event_id,
+            proposal["id"],
+            None,
+            True,
+            event.get("title"),
+            event.get("start_datetime"),
+            event.get("end_datetime"),
+            event.get("all_day", False),
+            event.get("location"),
+            event.get("description"),
+            event.get("importance", "action_required"),
+            "user_rejected",
+        )
         logger.info("Deleted GCal proposal event %s on reject", event_id)
         return "deleted"
 
@@ -2230,27 +2114,28 @@ def reject_change_proposal(
             if key in snapshot:
                 restored_event[key] = snapshot[key]
 
-    supabase_client.rpc("reject_event_change_proposal", {
-        "p_event_id": event_id,
-        "p_user_id": event["user_id"],
-        "p_proposal_id": proposal["id"],
-        "p_expected_hash": None,
-        "p_resolution_reason": "user_rejected",
-        "p_delete_event": False,
-        "p_title": restored_event["title"],
-        "p_start_datetime": restored_event["start_datetime"],
-        "p_end_datetime": restored_event["end_datetime"],
-        "p_all_day": restored_event["all_day"],
-        "p_location": restored_event["location"],
-        "p_description": restored_event["description"],
-        "p_importance": restored_event["importance"],
-    }).execute()
+    db_proposals.reject_event_change_proposal(
+        supabase_client,
+        event["user_id"],
+        event_id,
+        proposal["id"],
+        None,
+        False,
+        restored_event["title"],
+        restored_event["start_datetime"],
+        restored_event["end_datetime"],
+        restored_event["all_day"],
+        restored_event["location"],
+        restored_event["description"],
+        restored_event["importance"],
+        "user_rejected",
+    )
     logger.info("Rejected event change proposal on event %s", event_id)
     return "active"
 
 
 def undo_history_event(
-    supabase_client: Client,
+    supabase_client: Database,
     event_id: str,
     user_id: str | None = None,
     *,
@@ -2270,7 +2155,7 @@ def undo_history_event(
     compensation.
 
     Args:
-        supabase_client: Authenticated Supabase client.
+        supabase_client: The Selko database.
         event_id: Event UUID.
         user_id: Owner user id (required when the event is calendar-synced).
         force: When True, overwrite diverged GCal edits with the pre-Selko state.
@@ -2278,22 +2163,12 @@ def undo_history_event(
     Returns:
         The new review lane (``pending_review`` or ``active``).
     """
-    event_result = supabase_client.table("events").select("*").eq(
-        "id", event_id
-    ).single().execute()
-    event = event_result.data
-    owner_id = user_id or event.get("user_id")
+    owner_id = user_id or db_events.event_owner(supabase_client, event_id)
+    event = db_events.get(supabase_client, owner_id, event_id) if owner_id else None
+    if event is None:
+        raise EventsError(f"Event {event_id} not found")
 
-    proposal_result = supabase_client.table("event_change_proposals").select(
-        "*"
-    ).eq("event_id", event_id).eq("status", "applied").order(
-        "resolved_at", desc=True
-    ).limit(1).maybe_single().execute()
-    change_proposal = (
-        proposal_result.data
-        if proposal_result is not None and isinstance(proposal_result.data, dict)
-        else None
-    )
+    change_proposal = db_proposals.latest_applied(supabase_client, owner_id, event_id)
 
     google_event_id = event.get("google_calendar_event_id")
     provider_exists = bool(google_event_id)
@@ -2331,139 +2206,76 @@ def undo_history_event(
             restore_fields["synced_at"] = None
 
         desired_event = dict(restore_fields)
-        result = supabase_client.rpc("reopen_event_change_proposal", {
-            "p_event_id": event_id,
-            "p_user_id": owner_id,
-            "p_proposal_id": change_proposal["id"],
-            "p_expected_hash": None,
-            "p_action": "upsert" if provider_exists else None,
-            "p_desired_event": desired_event if provider_exists else None,
-            "p_expected_provider_revision": expected_provider_revision,
-            "p_force_overwrite": force,
-        }).execute()
-        if not result.data:
+        result = db_proposals.reopen_event_change_proposal(
+            supabase_client,
+            owner_id,
+            event_id,
+            change_proposal["id"],
+            None,
+            "upsert" if provider_exists else None,
+            desired_event if provider_exists else None,
+            expected_provider_revision,
+            force,
+        )
+        if not result:
             raise EventsError(f"Undo enqueue returned no result for event {event_id}")
         logger.info("Undid applied change on event %s -> active proposal", event_id)
         return "active"
 
     # New approval / rejection undo
-    result = supabase_client.rpc("undo_event_and_enqueue_calendar_work", {
-        "p_event_id": event_id,
-        "p_user_id": owner_id,
-        "p_action": "cancel" if provider_exists else None,
-        "p_desired_event": None,
-        "p_expected_provider_revision": expected_provider_revision,
-        "p_force_overwrite": force,
-    }).execute()
-    if not result.data:
+    result = db_calendar_work.undo_event_and_enqueue_calendar_work(
+        supabase_client,
+        owner_id,
+        event_id,
+        "cancel" if provider_exists else None,
+        None,
+        expected_provider_revision,
+        force,
+    )
+    if not result:
         raise EventsError(f"Undo enqueue returned no result for event {event_id}")
     logger.info(f"Undid history event {event_id} → pending_review")
     return "pending_review"
 
 
-def get_events_new(supabase_client: Client, user_id: str) -> list[dict[str, Any]]:
-    """Get New-lane events pending approval, grouped by sender."""
-    result = supabase_client.table("events").select(
-        "*, event_sources(*, emails(*))"
-    ).eq("user_id", user_id).eq("review_status", "pending_review").order(
-        "start_datetime"
-    ).execute()
 
-    return result.data
-
-
-def get_events_approved(supabase_client: Client, user_id: str) -> list[dict[str, Any]]:
-    """Get approved/synced events."""
-    result = supabase_client.table("events").select("*").eq(
-        "user_id", user_id
-    ).eq("review_status", "active").order("start_datetime").execute()
-    
-    return result.data
-
-
-def get_events_updates(supabase_client: Client, user_id: str) -> list[dict[str, Any]]:
-    """Get change log (updates, cancellations, rejections)."""
-    result = supabase_client.table("event_sources").select(
-        "*, events(*), emails(*)"
-    ).in_(
-        "source_type", ["update", "cancellation"]
-    ).order("created_at", desc=True).execute()
-    
-    # Filter by user_id
-    updates = [
-        source for source in result.data
-        if source.get("events", {}).get("user_id") == user_id
-    ]
-    
-    return updates
-
-
-def get_event_with_sources(
-    supabase_client: Client, event_id: str
-) -> dict[str, Any]:
-    """Fetch event with all source emails."""
-    result = supabase_client.table("events").select(
-        "*, event_sources(*, emails(*))"
-    ).eq("id", event_id).single().execute()
-    
-    return result.data
+# get_events_new / get_events_approved / get_events_updates / get_event_with_sources
+# were removed: nothing in backend/selko called them (the web app read PostgREST
+# directly), and get_events_updates read every user's sources (02 §3.9).
 
 
 def check_sender_rules(
-    supabase_client: Client, user_id: str, sender_email: str
+    supabase_client: Database, user_id: str, sender_email: str
 ) -> Optional[dict[str, Any]]:
     """Check if auto-approve/ignore applies to sender.
-    
+
     Args:
-        supabase_client: Authenticated Supabase client.
+        supabase_client: The Selko database.
         user_id: UUID of user.
         sender_email: Email address of sender.
-        
+
     Returns:
-        Sender rule dict if found, None otherwise.
+        Sender rule dict if found (exact address first, then domain), None otherwise.
     """
-    # Check exact email match first
-    result = supabase_client.table("sender_rules").select("*").eq(
-        "user_id", user_id
-    ).eq("sender_email", sender_email).execute()
-    
-    if result.data:
-        return result.data[0]
-    
-    # Check domain match
-    domain = sender_email.split("@")[-1] if "@" in sender_email else ""
-    if domain:
-        result = supabase_client.table("sender_rules").select("*").eq(
-            "user_id", user_id
-        ).eq("sender_domain", domain).execute()
-        
-        if result.data:
-            return result.data[0]
-    
-    return None
+    return db_sender_rules.matching(supabase_client, user_id, sender_email or "")
 
 
 def generate_source_attribution(
-    supabase_client: Client, event_id: str
+    supabase_client: Database, event_id: str
 ) -> str:
     """Generate natural English attribution for event.
-    
+
     Args:
-        supabase_client: Authenticated Supabase client.
+        supabase_client: The Selko database.
         event_id: UUID of event.
-        
+
     Returns:
         Natural English attribution string.
     """
-    # Fetch all non-undone sources
-    result = supabase_client.table("event_sources").select(
-        "*, emails(*)"
-    ).eq("event_id", event_id).order("created_at").execute()
-    
-    sources = result.data
+    sources = db_events.sources_with_emails(supabase_client, event_id)
     if not sources:
         return ""
-    
+
     # Build attribution using helper function
     sources_with_email_data = []
     for source in sources:
@@ -2491,11 +2303,14 @@ def generate_source_attribution(
     return event_processing.generate_source_attribution(sources_with_email_data)
 
 
-# --- Status-based worker claiming functions for calendar sync ---
+# --- Calendar work items: the worker's claim and fenced transitions ---
+#
+# ``pool`` is the process Database (the parameter keeps its name so the worker
+# pool's call sites are unchanged); each call runs off the event loop.
 
 
 async def claim_approved_event_for_sync(
-    pool,
+    pool: Database,
     worker_id: str,
     lock_duration_seconds: int = 300,
     providers: list[str] | None = None,
@@ -2507,148 +2322,117 @@ async def claim_approved_event_for_sync(
             whose circuit is closed). None claims for every provider.
     """
     try:
-        item_row = await pool.fetchrow(
-            "SELECT * FROM public.claim_calendar_work_item($1, $2, $3)",
+        claimed = await pool.run(
+            db_calendar_work.claim_calendar_work_item,
+            pool,
             worker_id,
             lock_duration_seconds,
             providers,
         )
-        if item_row:
-            from selko.services.pg import _normalize_pg_row
-
-            item = _normalize_pg_row(dict(item_row))
-            event_row = await pool.fetchrow(
-                "SELECT * FROM public.events WHERE id = $1", item["event_id"]
-            )
-            if event_row is None:
-                raise EventsError(f"Calendar work item {item['id']} has no event")
-            event = _normalize_pg_row(dict(event_row))
-            event["calendar_work_item_id"] = str(item["id"])
-            event["calendar_work_item_action"] = item["action"]
-            # Stamped by the claim: the calendar this item writes to.
-            event["calendar_work_item_provider"] = item.get("provider")
-            # Delivery state lives on the work item now that events.status is
-            # gone. Callers that used to read event["status"] read this.
-            event["calendar_work_item_status"] = item["status"]
-            event["calendar_work_item_generation"] = int(item["generation"])
-            event["calendar_work_lease"] = WorkItemLease(
-                item_id=str(item["id"]),
-                worker_id=worker_id,
-                generation=int(item["generation"]),
-            )
-            event["calendar_work_item_attempts"] = item["attempts"]
-            event["calendar_work_item_max_attempts"] = item["max_attempts"]
-            event["expected_provider_revision"] = item.get("expected_provider_revision")
-            event["force_overwrite"] = bool(item.get("force_overwrite"))
-            desired_event = item.get("desired_event")
-            if isinstance(desired_event, str):
-                import json
-
-                try:
-                    desired_event = json.loads(desired_event)
-                except json.JSONDecodeError:
-                    pass
-            event["calendar_work_desired_event"] = desired_event
-            title = event.get("title", "(no title)")[:50]
-            logger.info(
-                "Worker %s claimed event %s: %s (attempt %s/%s)",
-                worker_id,
-                event["id"],
-                title,
-                event.get("calendar_work_item_attempts", 0),
-                event.get("calendar_work_item_max_attempts", 0),
-            )
-            return event
-        return None
+        if claimed is None:
+            return None
+        item, event = claimed
+        if event is None:
+            raise EventsError(f"Calendar work item {item['id']} has no event")
+        event["calendar_work_item_id"] = str(item["id"])
+        event["calendar_work_item_action"] = item["action"]
+        # Stamped by the claim: the calendar this item writes to.
+        event["calendar_work_item_provider"] = item.get("provider")
+        # Delivery state lives on the work item now that events.status is
+        # gone. Callers that used to read event["status"] read this.
+        event["calendar_work_item_status"] = item["status"]
+        event["calendar_work_item_generation"] = int(item["generation"])
+        event["calendar_work_lease"] = WorkItemLease(
+            item_id=str(item["id"]),
+            worker_id=worker_id,
+            generation=int(item["generation"]),
+        )
+        event["calendar_work_item_attempts"] = item["attempts"]
+        event["calendar_work_item_max_attempts"] = item["max_attempts"]
+        event["expected_provider_revision"] = item.get("expected_provider_revision")
+        event["force_overwrite"] = bool(item.get("force_overwrite"))
+        event["calendar_work_desired_event"] = item.get("desired_event")
+        title = (event.get("title") or "(no title)")[:50]
+        logger.info(
+            "Worker %s claimed event %s: %s (attempt %s/%s)",
+            worker_id,
+            event["id"],
+            title,
+            event.get("calendar_work_item_attempts", 0),
+            event.get("calendar_work_item_max_attempts", 0),
+        )
+        return event
+    except EventsError:
+        raise
     except Exception as e:
         raise EventsError(f"Failed to claim approved event: {e}") from e
 
 
 async def _resolve_calendar_work_item(
-    pool,
+    pool: Database,
     lease: WorkItemLease,
 ) -> dict[str, Any] | None:
     """Resolve only the exact leased row; there is no unfenced fallback."""
-    row = await pool.fetchrow(
-        "SELECT * FROM public.calendar_work_items "
-        "WHERE id = $1 AND status = 'processing' "
-        "AND locked_by = $2 AND generation = $3",
-        lease.item_id,
-        lease.worker_id,
-        lease.generation,
+    return await pool.run(
+        db_calendar_work.get_leased_item, pool, lease.item_id, lease.worker_id, lease.generation
     )
-    return dict(row) if row else None
 
 
 async def complete_event_sync(
-    pool,
+    pool: Database,
     lease: WorkItemLease,
     google_event_id: str,
 ) -> bool:
-    """Complete an upsert through the calendar work-item RPC."""
+    """Complete an upsert through the fenced calendar work-item transition."""
     try:
         item = await _resolve_calendar_work_item(pool, lease)
         if item is None:
             logger.warning("Ignoring stale upsert completion for item %s", lease.item_id)
             return False
-        result = await pool.fetchval(
-            "SELECT public.complete_calendar_work($1, $2, $3, $4, $5)",
-            item["id"],
-            lease.worker_id,
-            lease.generation,
-            google_event_id,
-            None,
-        )
-        return bool(result)
-
+        return bool(await pool.run(
+            db_calendar_work.complete_calendar_work,
+            pool, item["id"], lease.worker_id, lease.generation, google_event_id, None,
+        ))
     except Exception as e:
         raise EventsError(f"Failed to complete event sync: {e}") from e
 
 
 async def complete_event_cancellation(
-    pool,
+    pool: Database,
     lease: WorkItemLease,
 ) -> bool:
-    """Complete a cancellation through the calendar work-item RPC."""
+    """Complete a cancellation through the fenced calendar work-item transition."""
     try:
         item = await _resolve_calendar_work_item(pool, lease)
         if item is None:
             logger.warning("Ignoring stale cancellation completion for item %s", lease.item_id)
             return False
-        result = await pool.fetchval(
-            "SELECT public.complete_calendar_work($1, $2, $3, $4, $5)",
-            item["id"],
-            lease.worker_id,
-            lease.generation,
-            item.get("provider_event_id"),
-            None,
-        )
-        return bool(result)
+        return bool(await pool.run(
+            db_calendar_work.complete_calendar_work,
+            pool, item["id"], lease.worker_id, lease.generation, item.get("provider_event_id"), None,
+        ))
     except Exception as e:
         raise EventsError(f"Failed to complete event cancellation: {e}") from e
 
 
 async def defer_event_sync_for_quota(
-    pool,
+    pool: Database,
     lease: WorkItemLease,
     next_retry_at: str,
 ) -> None:
     """Release a claimed calendar work item until the daily quota resets.
 
     Quota checks happen after the worker's atomic claim. A quota deferral is
-    not a Google sync attempt, so the work-item RPC releases the lease without
+    not a Google sync attempt, so the transition releases the lease without
     consuming its retry budget.
     """
     try:
         item = await _resolve_calendar_work_item(pool, lease)
         if item is None:
             return
-        await pool.fetchval(
-            "SELECT public.defer_calendar_work($1, $2, $3, $4, $5)",
-            item["id"],
-            lease.worker_id,
-            lease.generation,
-            next_retry_at,
+        await pool.run(
+            db_calendar_work.defer_calendar_work,
+            pool, item["id"], lease.worker_id, lease.generation, next_retry_at,
             "Daily calendar sync quota exceeded",
         )
         logger.warning(
@@ -2661,7 +2445,7 @@ async def defer_event_sync_for_quota(
 
 
 async def park_event_for_oauth_reauth(
-    pool,
+    pool: Database,
     lease: WorkItemLease,
     sync_failure_code: str,
     user_message: str,
@@ -2676,14 +2460,10 @@ async def park_event_for_oauth_reauth(
         item = await _resolve_calendar_work_item(pool, lease)
         if item is None:
             return
-        await pool.fetchval(
-            "SELECT public.fail_calendar_work($1, $2, $3, $4, $5, $6)",
-            item["id"],
-            lease.worker_id,
-            lease.generation,
-            sync_failure_code,
-            user_message,
-            False,
+        await pool.run(
+            db_calendar_work.fail_calendar_work,
+            pool, item["id"], lease.worker_id, lease.generation,
+            sync_failure_code, user_message, False,
         )
         logger.warning(
             "Parked calendar item %s for %s reauthorization", lease.item_id, sync_failure_code
@@ -2693,17 +2473,17 @@ async def park_event_for_oauth_reauth(
 
 
 async def fail_event_sync(
-    pool,
+    pool: Database,
     lease: WorkItemLease,
     error: str,
 ) -> None:
-    """Mark calendar work as failed through its fenced work-item RPC.
+    """Mark calendar work as failed through its fenced work-item transition.
 
-    The RPC decides whether the item is retryable or terminal based on its
-    own attempt budget.
+    The transition decides whether the item is retryable or terminal based on
+    its own attempt budget.
 
     Args:
-        pool: asyncpg session-pooler pool.
+        pool: The Selko database.
         lease: Exact worker lease for the item that failed syncing.
         error: Error message to store.
 
@@ -2715,14 +2495,10 @@ async def fail_event_sync(
         if item is None:
             logger.warning("Ignoring stale calendar failure for item %s", lease.item_id)
             return
-        result = await pool.fetchval(
-            "SELECT public.fail_calendar_work($1, $2, $3, $4, $5, $6)",
-            item["id"],
-            lease.worker_id,
-            lease.generation,
-            "calendar_sync_failed",
-            error,
-            True,
+        result = await pool.run(
+            db_calendar_work.fail_calendar_work,
+            pool, item["id"], lease.worker_id, lease.generation,
+            "calendar_sync_failed", error, True,
         )
         logger.warning("Calendar work failure for %s: %s", lease.item_id, result)
 
@@ -2732,32 +2508,25 @@ async def fail_event_sync(
         raise EventsError(f"Failed to mark event sync as failed: {e}") from e
 
 
-async def unlock_expired_event_locks(pool) -> int:
-    """Reset expired event sync locks back to approved.
+async def unlock_expired_event_locks(pool: Database) -> int:
+    """Count calendar work items whose lease expired.
 
-    Handles the case where a worker crashes mid-sync and the lock expires.
+    Claim-time recovery owns mutation: the next ``claim_calendar_work_item``
+    reclaims expired work atomically, without a periodic sweeper.
 
     Args:
-        pool: asyncpg session-pooler pool.
+        pool: The Selko database.
 
     Returns:
-        Number of events unlocked.
+        Number of expired leases.
 
     Raises:
-        EventsError: If unlock fails.
+        EventsError: If the count fails.
     """
     try:
-        # Claim-time recovery owns mutation. The next claim_calendar_work_item
-        # call reclaims expired work atomically without a periodic sweeper.
-        count = await pool.fetchval(
-            "SELECT count(*) FROM public.calendar_work_items "
-            "WHERE status = 'processing' AND locked_until < now()"
-        )
-
+        count = await pool.run(db_calendar_work.count_expired_leases, pool)
         if count:
             logger.warning(f"Unlocked {count} expired event sync locks")
-
         return count or 0
-
     except Exception as e:
         raise EventsError(f"Failed to unlock expired event locks: {e}") from e

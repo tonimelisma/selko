@@ -10,12 +10,13 @@ because they're saved with processing_status='pending'.
 
 import asyncio
 import logging
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Any
 
-from supabase import Client
-
 from selko.config import Config
+from selko.db import integrations as db_integrations
+from selko.db import parked as db_parked
+from selko.db.connection import Database
 from selko.services.google_photos import (
     PhotosError,
     fetch_recent_photos,
@@ -23,6 +24,8 @@ from selko.services.google_photos import (
 )
 from selko.services.photos import save_photo_metadata
 from selko.services.scheduled_tasks import enqueue_scheduled_task
+
+Client = Database
 
 logger = logging.getLogger(__name__)
 
@@ -44,12 +47,10 @@ def _process_photo_fetch_sync(
     # Determine since_date from last sync
     since_date = None
     try:
-        integration_result = client.table("integrations").select(
-            "last_photo_sync_at"
-        ).eq("user_id", user_id).eq("provider", "google_photos").maybe_single().execute()
+        integration = db_integrations.get_integration(client, user_id, "google_photos")
 
-        if integration_result and integration_result.data:
-            last_sync = integration_result.data.get("last_photo_sync_at")
+        if integration:
+            last_sync = integration.get("last_photo_sync_at")
             if last_sync:
                 since_date = datetime.fromisoformat(
                     last_sync.replace("Z", "+00:00")
@@ -94,9 +95,7 @@ def _process_photo_fetch_sync(
 
     # Update last_photo_sync_at
     try:
-        client.table("integrations").update({
-            "last_photo_sync_at": datetime.now(timezone.utc).isoformat(),
-        }).eq("user_id", user_id).eq("provider", "google_photos").execute()
+        db_integrations.set_last_photo_sync_at(client, user_id, "google_photos")
     except Exception as e:
         logger.warning(f"Failed to update last_photo_sync_at: {e}")
 
@@ -109,7 +108,7 @@ async def process_photo_fetch_task(
     """Process a photo_fetch scheduled task.
 
     Args:
-        client: Supabase client (with service role).
+        client: The process database.
         config: Application configuration.
         payload: Task payload with {user_id: str, max_photos: int}.
 
@@ -134,26 +133,14 @@ async def schedule_photo_fetches() -> None:
 
     try:
         # Get all users with active Google Photos integrations
-        result = client.table("integrations").select(
-            "user_id"
-        ).eq("provider", "google_photos").eq("status", "active").execute()
-
-        users = {row["user_id"] for row in result.data}
+        users = db_integrations.active_integration_user_ids(client, "google_photos")
 
         if not users:
             logger.debug("No users with active Google Photos integrations")
             return
 
         # Find users who already have a pending or processing photo_fetch task
-        existing_result = client.table("scheduled_tasks").select(
-            "user_id"
-        ).eq(
-            "task_type", "photo_fetch"
-        ).in_(
-            "status", ["pending", "processing"]
-        ).execute()
-
-        users_with_existing_task = {row["user_id"] for row in existing_result.data}
+        users_with_existing_task = db_parked.users_with_open_tasks(client, "photo_fetch")
 
         # Create photo_fetch scheduled task only for users without an existing one
         tasks_created = 0

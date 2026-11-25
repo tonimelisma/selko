@@ -9,9 +9,9 @@ from dataclasses import dataclass
 from typing import Any, Callable
 
 import requests
-from supabase import Client
-
 from selko.config import Config
+from selko.db import ops
+from selko.db.connection import Database
 from selko.services.egress import GRAPH, record_egress
 
 _TOKEN_QUERY_RE = re.compile(r"([?&](?:token|%24skiptoken|deltatoken)=[^&]+)", re.I)
@@ -31,7 +31,7 @@ class GraphRequestError(Exception):
 class GraphCallContext:
     """Durable ownership context for a Graph request and its failure ledger."""
 
-    client: Client
+    client: Database
     config: Config
     integration_id: str
     run_id: str | None = None
@@ -70,7 +70,7 @@ def _retry_after(response: requests.Response) -> int | None:
 
 
 def record_graph_failure(
-    client: Client | None,
+    client: Database | None,
     config: Config | None,
     *,
     integration_id: str | None,
@@ -105,7 +105,7 @@ def record_graph_failure(
         "will_retry": will_retry,
     }
     try:
-        client.table("graph_api_failures").insert(payload).execute()
+        ops.record_graph_failure(client, payload)
     except Exception:
         # Ledger writes must never block provider ingestion.
         return
@@ -120,7 +120,7 @@ def request_json(
     timeout: float = 30.0,
     max_attempts: int = 3,
     sleep: Callable[[float], None] = time.sleep,
-    client: Client | None = None,
+    client: Database | None = None,
     config: Config | None = None,
     integration_id: str | None = None,
     run_id: str | None = None,
