@@ -53,6 +53,6 @@ chmod 0777 "$WORK/import"   # the importer's uid 10001 writes here
 docker run --rm --network "$NET" --read-only --tmpfs /tmp --cap-drop ALL --security-opt no-new-privileges \
   -v "$WORK/secrets:/secrets:ro" -v "$WORK/import:/out" "$IMPORTER" \
   database --source-url-file /secrets/source.url --target /out/selko.db
-chmod 0644 "$WORK/import/selko.db"   # image-check's copy step runs as uid 10001
+# selko.db is owned by the importer's uid 10001, the uid image-check copies it as.
 
 ./scripts/image-check.sh "$IMAGE" "$WORK/import/selko.db" fixture@example.test fixture-password
