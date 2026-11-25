@@ -14,9 +14,11 @@ from selko.config import Config
 from selko.services import calendars, event_identity, event_processing, ics_parser
 from selko.services.event_diff import (
     EventChangeSet,
+    FieldChange,
     apply_asserted_fields,
     baseline_from_gcal_event,
     compute_change_set,
+    derive_kind,
     gate_stale_email_material_changes,
     proposed_fields_from_change_set,
     resolve_description_append,
@@ -318,6 +320,71 @@ def ensure_min_duration(start_iso: str, end_iso: Optional[str]) -> str:
         if end_dt > start_dt:
             return end_iso
     return (start_dt + timedelta(hours=1)).isoformat()
+
+
+MAX_TIMED_UPDATE_SPAN = timedelta(hours=24)
+
+
+def keep_timed_update_within_a_day(
+    baseline: dict[str, Any],
+    change_set: EventChangeSet,
+    event_data: dict[str, Any],
+) -> EventChangeSet:
+    """Stop an update from making a timed event that runs for days.
+
+    A change set names only the fields that changed. When it moves the start
+    of an event whose stored end is far away, the stored end survives, so the
+    result can be a timed block weeks long that no email ever stated. In
+    production, "Walnut Creek on Ice opens Nov 20, runs through Jan 18" was
+    stored as a two-month span; a later "The rink opens this Friday" email
+    moved the start to 16:00 Nov 20, kept the Jan 18 end, and applied that to
+    the calendar as one 16:00 Nov 20 -> 09:00 Jan 18 event.
+
+    If the updated event would be timed and longer than a day while the email
+    itself describes a timed event of a day or less, the end follows the
+    email: the new start plus the email's own duration. An email that itself
+    states a multi-day timed event is left alone.
+    """
+    if change_set.kind in ("noop", "cancellation"):
+        return change_set
+    after = {c.field: c.after for c in change_set.changes}
+    if not ({"start_datetime", "end_datetime", "all_day"} & after.keys()):
+        return change_set
+    merged = {**baseline, **after}
+    if merged.get("all_day") or event_data.get("all_day"):
+        return change_set
+    try:
+        start = datetime.fromisoformat(str(merged["start_datetime"]))
+        end = datetime.fromisoformat(str(merged["end_datetime"]))
+        email_start = datetime.fromisoformat(str(event_data["start_datetime"]))
+        email_end = datetime.fromisoformat(str(event_data["end_datetime"]))
+    except (KeyError, TypeError, ValueError):
+        return change_set
+    if end - start <= MAX_TIMED_UPDATE_SPAN:
+        return change_set
+    email_span = email_end - email_start
+    if email_span > MAX_TIMED_UPDATE_SPAN or email_span <= timedelta(0):
+        return change_set
+
+    new_end = (start + email_span).isoformat()
+    reason = "keeps the event to the email's own length instead of the stored multi-day end"
+    changes = [c for c in change_set.changes if c.field != "end_datetime"]
+    changes.append(FieldChange(
+        field="end_datetime",
+        before=baseline.get("end_datetime"),
+        after=new_end,
+        reason=reason,
+    ))
+    logger.info(
+        "Update would leave a timed event spanning %s; ending it at %s instead",
+        end - start,
+        new_end,
+    )
+    return EventChangeSet(
+        kind=derive_kind(changes),
+        changes=changes,
+        reasoning=change_set.reasoning,
+    )
 
 
 def _fetch_baseline_info_date(
@@ -830,6 +897,9 @@ def save_extracted_events(
                 change.after = to_storage_iso(
                     change.after, user_timezone, treat_as_civil=True
                 )
+        change_set = keep_timed_update_within_a_day(
+            match.baseline, change_set, event_data
+        )
 
         proposed_fields = proposed_fields_from_change_set(match.baseline, change_set)
         if (

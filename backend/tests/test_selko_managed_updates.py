@@ -132,3 +132,88 @@ def test_a_failed_provenance_lookup_keeps_the_change_for_review():
     client.table.side_effect = RuntimeError("network down")
 
     assert _is_from_users_calendar(client, "event-1") is True
+
+
+# Production, Nov 18: "Walnut Creek on Ice" was stored as a span from Nov 20
+# to Jan 18. A later "The rink opens this Friday" email moved only the start
+# to 16:00, the stored Jan 18 end survived, and the auto-applied update put a
+# timed two-month event on the user's calendar.
+_YEAR = datetime.now().year + 1
+SEASON_BASELINE = {
+    "title": "Walnut Creek on Ice Opens",
+    "start_datetime": f"{_YEAR}-11-20T08:00:00+00:00",
+    "end_datetime": f"{_YEAR + 1}-01-18T17:00:00+00:00",
+    "all_day": False,
+    "location": "Civic Park",
+    "description": "Season runs through January 18.",
+    "importance": "fyi",
+    "review_status": "active",
+}
+
+
+def _season_route(email_start, email_end, change_start):
+    captured: list[dict] = []
+
+    def fake_commit(client, email_id, locked_by, lock_generation, decisions, terminal="processed"):
+        captured.extend(decisions)
+        return {"fenced": False, "applied": len(decisions), "event_ids": []}
+
+    extraction = CalendarEventExtraction(
+        email_message_id="msg-opening",
+        sender_email="info@example.com",
+        events_found=True,
+        events=[CalendarEvent(
+            title="Walnut Creek on Ice Opens",
+            start_datetime=email_start,
+            end_datetime=email_end,
+            location="Civic Park",
+            description="Season runs through January 18.",
+        )],
+    )
+    change_set = EventChangeSet(
+        kind="material_update",
+        changes=[FieldChange(
+            field="start_datetime",
+            before=SEASON_BASELINE["start_datetime"],
+            after=change_start,
+            reason="opening time stated",
+        )],
+    )
+    match = EventMatch(match_id="event-ice", baseline=dict(SEASON_BASELINE))
+    with patch("selko.services.events.find_matching_event", return_value=match), \
+         patch("selko.services.events._commit_email_extraction", side_effect=fake_commit), \
+         patch("selko.services.events._fetch_baseline_info_date", return_value=None), \
+         patch("selko.services.events.event_processing.propose_event_update",
+               return_value=change_set), \
+         patch("selko.services.events._is_from_users_calendar", return_value=False):
+        save_extracted_events(MagicMock(), MagicMock(), "user-1", "email-ice", extraction)
+    return captured[0]
+
+
+def test_moving_the_start_of_a_season_span_does_not_apply_a_two_month_timed_event():
+    opening = datetime(_YEAR, 11, 20, 16, 0)
+    decision = _season_route(
+        email_start=opening,
+        email_end=opening + timedelta(hours=5),
+        change_start=opening.isoformat(),
+    )
+
+    fields = decision["fields"]
+    start = datetime.fromisoformat(fields["start_datetime"])
+    end = datetime.fromisoformat(fields["end_datetime"])
+    assert fields["all_day"] is False
+    assert end - start == timedelta(hours=5), "the end follows the email, not the stored Jan 18"
+    changed = {c["field"] for c in decision["source"]["change_set"]["changes"]}
+    assert "end_datetime" in changed, "History and undo see the end change too"
+
+
+def test_an_email_that_itself_states_a_multi_day_timed_event_is_left_alone():
+    start = datetime(_YEAR, 11, 20, 9, 0)
+    decision = _season_route(
+        email_start=start,
+        email_end=start + timedelta(days=2, hours=8),
+        change_start=start.isoformat(),
+    )
+
+    changed = {c["field"] for c in decision["source"]["change_set"]["changes"]}
+    assert changed == {"start_datetime"}
