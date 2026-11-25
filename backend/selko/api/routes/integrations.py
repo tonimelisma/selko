@@ -402,11 +402,6 @@ async def google_oauth_callback(
         )
 
     except OAuthProviderNotAllowed as e:
-        if e.provider == "google_photos":
-            raise HTTPException(
-                status_code=status.HTTP_410_GONE,
-                detail="Google Photos ingestion is currently parked",
-            ) from e
         logger.warning(f"OAuth provider rejected: {e}")
         return _frontend_oauth_redirect(
             config,

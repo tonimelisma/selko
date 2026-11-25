@@ -15,7 +15,6 @@ from selko.api.routes import (
     events_router,
     health_router,
     integrations_router,
-    photos_router,
 )
 from selko.api.routes.auth import router as auth_router
 from selko.api.routes.client import router as client_router
@@ -26,7 +25,6 @@ from selko.services.emails import EmailError
 from selko.services.events import EventsError
 from selko.services.request_metrics import request_metrics
 from selko.services.integrations import IntegrationError, OAuthStateError
-from selko.services.photos import PhotosError
 from selko.services.quotas import QuotaExceededError
 from selko.config import load_config
 from selko.services.memory_monitor import start_memory_monitor
@@ -227,7 +225,6 @@ def create_app() -> FastAPI:
     app.include_router(integrations_router)
     app.include_router(events_router)
     app.include_router(calendars_router)
-    app.include_router(photos_router)
     app.include_router(auth_router)
     app.include_router(client_router)
     app.include_router(live_router)
@@ -279,14 +276,6 @@ def create_app() -> FastAPI:
         return JSONResponse(
             status_code=500,
             content={"error": "calendars_error", "detail": "Calendar operation failed"},
-        )
-
-    @app.exception_handler(PhotosError)
-    async def photos_error_handler(request: Request, exc: PhotosError):
-        logger.error(f"Photos service error: {exc}")
-        return JSONResponse(
-            status_code=500,
-            content={"error": "photos_error", "detail": "Photos operation failed"},
         )
 
     @app.exception_handler(Exception)

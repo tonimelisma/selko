@@ -222,3 +222,46 @@ def test_a_row_the_target_refuses_is_exit_5_and_leaves_nothing(importer, fixture
         importer.import_sync(fixture_source, target, progress=lambda _: None)
     assert exc.value.exit_code == 5 and "events" in str(exc.value)
     assert list(tmp_path.iterdir()) == []
+
+
+# --- the removed Google Photos ingestion: its data is refused, never dropped ---
+
+FIXTURE_USER = "11111111-1111-4111-8111-111111111111"
+FIXTURE_INTEGRATION = "33333333-3333-4333-8333-333333333333"
+
+
+@pytest.mark.parametrize(
+    ("what", "sql"),
+    [
+        ("photos rows", f"INSERT INTO public.photos (user_id, google_photo_id) VALUES ('{FIXTURE_USER}', 'g-1')"),
+        ("scheduled_tasks rows",
+         f"INSERT INTO public.scheduled_tasks (user_id, task_type) VALUES ('{FIXTURE_USER}', 'photo_fetch')"),
+        ("google_photos integrations",
+         f"INSERT INTO public.integrations (user_id, provider, access_token) VALUES ('{FIXTURE_USER}', 'google_photos', 't')"),
+        ("integrations with last_photo_sync_at",
+         f"UPDATE public.integrations SET last_photo_sync_at = now() WHERE id = '{FIXTURE_INTEGRATION}'"),
+        ("google_photos event sources",
+         "UPDATE public.event_sources SET source_origin = 'google_photos' "
+         "WHERE id = '77777777-7777-4777-8777-777777777771'"),
+    ],
+)
+def test_data_of_the_removed_photo_ingestion_is_refused_not_dropped(importer, fixture_source, tmp_path, what, sql):
+    _run(fixture_source, sql)
+    target = tmp_path / "selko.db"
+    with pytest.raises(importer.ImportError_) as exc:
+        importer.import_sync(fixture_source, target, progress=lambda _: None)
+    assert exc.value.exit_code == 3
+    assert what in str(exc.value)
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_the_removed_photo_tables_and_column_are_not_carried(importer, fixture_source, tmp_path):
+    target = tmp_path / "selko.db"
+    report = importer.import_sync(fixture_source, target, progress=lambda _: None)
+    assert report.ok
+    conn = sqlite3.connect(target)
+    tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
+    assert not {"photos", "scheduled_tasks"} & tables
+    columns = {r[1] for r in conn.execute("PRAGMA table_info(integrations)")}
+    assert "last_photo_sync_at" not in columns
+    assert conn.execute("SELECT count(*) FROM integrations").fetchone()[0] == 1

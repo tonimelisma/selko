@@ -353,49 +353,10 @@ import StatusBadge from '$lib/components/StatusBadge.svelte';
 					</div>
 				</div>
 			</div>
-		{:else if sourceOrigin === 'google_photos'}
-			<div class="lg:col-span-2 order-1 lg:order-1">
-				<!-- Desktop: always visible -->
-				<div class="hidden lg:block">
-					<div class="warm-card">
-						<div class="card-body">
-							<h3 class="card-title text-sm">{$_('eventSource.sourcePhoto')}</h3>
-							<div class="space-y-2 text-sm">
-								<p class="text-base-content/70">{$_('eventSource.sourcePhotoDescription')}</p>
-								{#if event.source_attribution}
-									<div class="mt-3 rounded-[14px] border border-base-300 bg-base-100 p-3 text-sm text-base-content/70">
-										{event.source_attribution}
-									</div>
-								{/if}
-							</div>
-						</div>
-					</div>
-				</div>
-
-				<!-- Mobile/Tablet: collapsible -->
-				<div class="lg:hidden">
-					<div class="collapse collapse-arrow warm-card">
-						<input type="checkbox" bind:checked={sourceExpanded} />
-						<div class="collapse-title font-medium">
-							{$_('eventSource.viewSourcePhoto')}
-						</div>
-						<div class="collapse-content">
-							<div class="space-y-2 text-sm">
-								<p class="text-base-content/70">{$_('eventSource.sourcePhotoDescription')}</p>
-								{#if event.source_attribution}
-									<div class="mt-3 rounded-[14px] border border-base-300 bg-base-100 p-3 text-sm text-base-content/70">
-										{event.source_attribution}
-									</div>
-								{/if}
-							</div>
-						</div>
-					</div>
-				</div>
-			</div>
 		{/if}
 
 		<!-- Event form -->
-		<div class="{sourceEmail || sourceOrigin === 'google_photos' ? 'lg:col-span-3' : 'lg:col-span-5'} order-2 lg:order-2">
+		<div class="{sourceEmail ? 'lg:col-span-3' : 'lg:col-span-5'} order-2 lg:order-2">
 			<form onsubmit={(e) => { e.preventDefault(); handleSave(); }} class="space-y-4 pb-24 lg:pb-0">
 				<div class="form-control">
 					<label class="label" for="event-title">

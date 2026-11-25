@@ -26,7 +26,7 @@ POSTGRES_TABLES = {
     "emails", "event_change_proposals", "event_identity_hints", "event_repair_audit",
     "event_sources", "events", "global_limits", "graph_api_failures",
     "integration_recoveries", "integrations", "llm_call_log", "oauth_states",
-    "operational_incidents", "photos", "scheduled_tasks", "sender_rules",
+    "operational_incidents", "sender_rules",
     "usage_quotas", "user_calendar_settings", "users",
 }
 

@@ -90,7 +90,6 @@
 	function senderForEvent(event) {
 		return resolveEventSender(event, {
 			unknownSender: $_('common.unknownSender'),
-			googlePhotos: $_('eventSource.googlePhotos'),
 			googleCalendar: $_('integrations.googleCalendar')
 		});
 	}
@@ -723,7 +722,6 @@
 								sender={senderGroup.senderName}
 								senderEmail={senderKey}
 								eventCount={senderGroup.events.length}
-								isPhotoSource={senderKey === 'google_photos'}
 								canApprove={calendarConnected}
 								error={senderErrors.get(senderKey) || ''}
 								onapproveAll={() => handleApproveAllNew(senderGroup.events)}
@@ -767,7 +765,6 @@
 								sender={senderGroup.senderName}
 								senderEmail={senderKey}
 								eventCount={senderGroup.events.length}
-								isPhotoSource={senderKey === 'google_photos'}
 								canApprove={calendarConnected}
 								error={senderErrors.get(senderKey) || ''}
 								onapproveAll={() => {

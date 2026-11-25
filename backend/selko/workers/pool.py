@@ -6,7 +6,7 @@ One scheduler task drains the queue in priority order:
 2. Pending emails → LLM event extraction (semaphore-bounded executor tasks)
 3. Calendar OAuth recovery bookkeeping (claim/tag/refresh)
 
-Photo ingestion is parked (egress inc 1). Email ingestion *discovery* is
+Email ingestion *discovery* is
 owned solely by IngestionRuntime; the LLM extraction of already-saved emails
 runs here. Work arrives by an in-process wake-up (``selko.db.bus.WorkSignals``,
 set after the writing transaction commits); the safety-net poll is a floor,
@@ -297,8 +297,6 @@ class WorkerPool:
         1. Approved events (need calendar sync)
         2. LLM email extraction (8-wide, single claim loop + semaphore)
         3. Calendar OAuth reconnect recovery (tagging/progress bookkeeping)
-
-        Photo polling removed in inc 1.
 
         Args:
             worker_id: Unique identifier for this worker.

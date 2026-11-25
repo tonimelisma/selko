@@ -40,17 +40,9 @@ describe('SenderHeader', () => {
 		expect(screen.getByRole('button', { name: /actions for/i })).toBeInTheDocument();
 	});
 
-	it('hides the menu expander for photo source with single event', () => {
+	it('shows the menu expander for a single event: the sender rules apply to every sender', () => {
 		render(SenderHeader, {
-			props: { sender: 'Google Photos', senderEmail: '', eventCount: 1, isPhotoSource: true }
-		});
-
-		expect(screen.queryByRole('button', { name: /actions for/i })).not.toBeInTheDocument();
-	});
-
-	it('shows the menu expander for photo source with multiple events', () => {
-		render(SenderHeader, {
-			props: { sender: 'Google Photos', senderEmail: '', eventCount: 3, isPhotoSource: true }
+			props: { sender: 'John Doe', senderEmail: 'john@example.com', eventCount: 1 }
 		});
 
 		expect(screen.getByRole('button', { name: /actions for/i })).toBeInTheDocument();

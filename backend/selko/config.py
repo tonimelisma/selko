@@ -102,7 +102,6 @@ class Config:
 
     # Processing timeouts (seconds)
     email_processing_timeout: int = 120
-    photo_processing_timeout: int = 120
     event_sync_timeout: int = 60
 
     # Whether this process performs background work at all. Off outside
@@ -516,7 +515,6 @@ def load_config(env_override: Optional[str] = None) -> Config:
         egress_log_interval_seconds=float(getenv("EGRESS_LOG_INTERVAL_SECONDS", "300")),
         worker_error_backoff_seconds=float(getenv("WORKER_ERROR_BACKOFF_SECONDS", "5.0")),
         email_processing_timeout=int(getenv("EMAIL_PROCESSING_TIMEOUT", "120")),
-        photo_processing_timeout=int(getenv("PHOTO_PROCESSING_TIMEOUT", "120")),
         event_sync_timeout=int(getenv("EVENT_SYNC_TIMEOUT", "60")),
         enable_background_processing=enable_background_processing,
         email_poll_interval_seconds=int(getenv("EMAIL_POLL_INTERVAL_SECONDS", "300")),

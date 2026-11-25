@@ -87,8 +87,6 @@ SERVICE_WIDE: dict[str, str] = {
     "health.health_work_state": "health roll-up counts every user's work",
     "health.pending_email_metrics": "/health gauges: a count and an age",
     "integrations.count_active_mailboxes": "/health/egress divisor: a count",
-    "integrations.active_integration_user_ids": "photo scheduler fan-out: user ids only",
-    "parked.users_with_open_tasks": "photo scheduler de-duplication: user ids only",
     # operational incidents and ledgers are operator records, not user data
     "ops.raise_incident": "operator incident ledger",
     "ops.record_graph_failure": "Graph failure ledger, keyed by integration",
@@ -236,7 +234,7 @@ def test_the_scan_can_fail(db):
     assert not _service_wide("integrations", "leaky")
 
 
-@pytest.mark.parametrize("module", ["integrations", "recovery", "health", "quotas", "ops", "parked"])
+@pytest.mark.parametrize("module", ["integrations", "recovery", "health", "quotas", "ops"])
 def test_owned_modules_are_scanned(module):
     assert module in _module_names()
     assert _public_functions(module), f"selko.db.{module} has no public functions"

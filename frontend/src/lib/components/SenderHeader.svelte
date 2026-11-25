@@ -8,7 +8,6 @@
 		senderEmail = '',
 		eventCount = 0,
 		error = '',
-		isPhotoSource = false,
 		canApprove = true,
 		onapproveAll,
 		onrejectAll,
@@ -16,7 +15,6 @@
 		onautoApproveSender
 	} = $props();
 
-	let hasDropdownItems = $derived(eventCount > 1 || !isPhotoSource);
 	let tone = $derived(senderAvatarTone(senderEmail || sender));
 	let avatarInitials = $derived(initialsFromEmail(senderEmail || sender));
 	let menuOpen = $state(false);
@@ -45,14 +43,12 @@
 			</p>
 		</div>
 	</div>
-	{#if hasDropdownItems}
-		<button class="btn btn-square bg-base-200 text-base-content" aria-label={$_('senderActions.actionsFor', { values: { sender } })} aria-expanded={menuOpen} onclick={() => (menuOpen = !menuOpen)}>
-			<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transition-transform {menuOpen ? 'rotate-180' : ''}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6" /></svg>
-		</button>
-	{/if}
+	<button class="btn btn-square bg-base-200 text-base-content" aria-label={$_('senderActions.actionsFor', { values: { sender } })} aria-expanded={menuOpen} onclick={() => (menuOpen = !menuOpen)}>
+		<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transition-transform {menuOpen ? 'rotate-180' : ''}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6" /></svg>
+	</button>
 </div>
 
-{#if hasDropdownItems && menuOpen}
+{#if menuOpen}
 	<div class="mx-4 mb-4 rounded-[15px] border border-secondary/20 bg-base-100 p-2 shadow-popover">
 		{#if eventCount > 1}
 			<div class="flex items-center justify-between gap-3 px-2 py-2">
@@ -64,11 +60,9 @@
 			</div>
 			<div class="my-1 border-t border-base-300"></div>
 		{/if}
-		{#if !isPhotoSource}
-			<button class="w-full rounded-lg px-2 py-2 text-left text-sm font-semibold hover:bg-base-200 disabled:cursor-not-allowed disabled:opacity-50" disabled={!canApprove} onclick={() => runAndClose(onautoApproveSender)}>{$_('senderActions.autoApproveSender')}</button>
-			<div class="my-1 border-t border-base-300"></div>
-			<button class="w-full rounded-lg px-2 py-2 text-left text-sm font-semibold text-error hover:bg-base-200" onclick={() => runAndClose(onignoreSender)}>{$_('senderActions.ignoreSender')}</button>
-		{/if}
+		<button class="w-full rounded-lg px-2 py-2 text-left text-sm font-semibold hover:bg-base-200 disabled:cursor-not-allowed disabled:opacity-50" disabled={!canApprove} onclick={() => runAndClose(onautoApproveSender)}>{$_('senderActions.autoApproveSender')}</button>
+		<div class="my-1 border-t border-base-300"></div>
+		<button class="w-full rounded-lg px-2 py-2 text-left text-sm font-semibold text-error hover:bg-base-200" onclick={() => runAndClose(onignoreSender)}>{$_('senderActions.ignoreSender')}</button>
 	</div>
 {/if}
 

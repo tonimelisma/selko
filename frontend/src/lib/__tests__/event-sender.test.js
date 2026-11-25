@@ -22,17 +22,6 @@ describe('resolveEventSender', () => {
 		const resolved = resolveEventSender(event);
 		expect(resolved.senderKey).toBe('Cara@streetsmarts.cc');
 		expect(resolved.senderName).toBe('Cara De Jong');
-		expect(resolved.isPhotoSource).toBe(false);
-	});
-
-	it('uses google photos label when only photo source', () => {
-		const event = {
-			event_sources: [{ source_origin: 'google_photos' }]
-		};
-		const resolved = resolveEventSender(event, { googlePhotos: 'Google Photos' });
-		expect(resolved.senderKey).toBe('google_photos');
-		expect(resolved.senderName).toBe('Google Photos');
-		expect(resolved.isPhotoSource).toBe(true);
 	});
 
 	it('uses google calendar label when only calendar source', () => {

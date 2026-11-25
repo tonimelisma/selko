@@ -14,8 +14,7 @@ describe('ConnectionRecovery', () => {
 	it('shows nothing when every connection works', () => {
 		renderBanner([
 			{ id: '1', provider: 'gmail', status: 'active' },
-			{ id: '2', provider: 'google_calendar', status: 'active' },
-			{ id: '3', provider: 'google_photos', status: 'expired' }
+			{ id: '2', provider: 'google_calendar', status: 'active' }
 		]);
 
 		expect(screen.queryByRole('heading')).not.toBeInTheDocument();

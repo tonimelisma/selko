@@ -10,6 +10,10 @@ this copies the bytes those rows point at (04-data-cutover.md §B.7):
   against the object's size and, where the row has one, its SHA-256.
 - Restartable: a file already present with the right size and hash is
   skipped, so the copy can run early and again for the delta at the freeze.
+- Not copied: files of the removed Google Photos ingestion, which used the same
+  bucket under ``{user_id}/photos/...``. An object there that no attachments row
+  names is counted, not copied (an attachment's own path is always
+  ``{user_id}/{uuid12}_{filename}``, so the two never collide).
 - Output is counts only: no names, paths, ids or keys.
 
 Exit codes: 0 every object copied and verified; 6 some objects were missing at
@@ -27,7 +31,7 @@ from pathlib import Path
 from urllib.parse import quote
 
 OBJECTS_SQL = (
-    "SELECT o.name, (o.metadata->>'size')::bigint AS size, a.content_hash"
+    "SELECT o.name, (o.metadata->>'size')::bigint AS size, a.content_hash, a.id IS NOT NULL AS has_row"
     " FROM storage.objects o"
     " LEFT JOIN public.attachments a ON a.storage_path = o.name"
     " WHERE o.bucket_id = 'attachments'"
@@ -51,6 +55,7 @@ class CopyReport:
     mismatched: int = 0
     bytes_copied: int = 0
     orphans: int = 0  # objects with no attachments row; copied all the same
+    photo_objects: int = 0  # removed photo ingestion's files; not copied
     rows_without_file: int = 0  # attachments rows whose object the source lacks
     problems: list[str] = field(default_factory=list)
 
@@ -83,7 +88,13 @@ def _matches(path: Path, size: int | None, content_hash: str | None) -> bool:
     return True
 
 
-async def _objects(source_url: str) -> tuple[list[tuple[str, int | None, str | None]], int]:
+def is_photo_object(name: str, has_row: bool) -> bool:
+    """A file of the removed photo ingestion: ``{user_id}/photos/...`` with no attachments row."""
+    parts = name.split("/")
+    return not has_row and len(parts) >= 3 and parts[1] == "photos"
+
+
+async def _objects(source_url: str) -> tuple[list[tuple[str, int | None, str | None, bool]], int]:
     import asyncpg  # only the importer needs a Postgres driver
 
     conn = await asyncpg.connect(source_url, statement_cache_size=0)
@@ -95,7 +106,7 @@ async def _objects(source_url: str) -> tuple[list[tuple[str, int | None, str | N
         )
     finally:
         await conn.close()
-    return [(r["name"], r["size"], r["content_hash"]) for r in rows], int(without or 0)
+    return [(r["name"], r["size"], r["content_hash"], r["has_row"]) for r in rows], int(without or 0)
 
 
 def _download(client, base_url: str, key: str, name: str, temp: Path) -> int | None:
@@ -154,8 +165,11 @@ def copy_attachments(
     report = CopyReport(objects=len(objects), rows_without_file=rows_without_file)
     attachments_dir.mkdir(parents=True, exist_ok=True)
     with httpx.Client(timeout=httpx.Timeout(10.0, read=60.0), follow_redirects=False) as client:
-        for index, (name, size, content_hash) in enumerate(objects, 1):
-            if content_hash is None:
+        for index, (name, size, content_hash, has_row) in enumerate(objects, 1):
+            if is_photo_object(name, has_row):
+                report.photo_objects += 1
+                continue
+            if not has_row:
                 report.orphans += 1
             target = _target(attachments_dir, name)
             if _matches(target, size, content_hash):
@@ -182,6 +196,7 @@ def copy_attachments(
     progress(
         f"attachments: {report.objects} objects, {report.copied} copied ({report.bytes_copied} bytes),"
         f" {report.skipped} already in place, {report.missing} missing at source, {report.mismatched} not matching,"
-        f" {report.orphans} without a row, {report.rows_without_file} rows whose object the source lacks"
+        f" {report.orphans} without a row, {report.rows_without_file} rows whose object the source lacks,"
+        f" {report.photo_objects} photo files not copied"
     )
     return report

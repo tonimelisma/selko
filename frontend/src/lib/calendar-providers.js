@@ -82,7 +82,7 @@ function lostAccess(mail, calendar) {
  * @returns {RecoveryPlan | null} null when nothing needs the user
  */
 export function recoveryPlan(integrations) {
-	const rows = (integrations ?? []).filter((row) => row?.provider !== 'google_photos');
+	const rows = integrations ?? [];
 	const gmail = rows.find((row) => row.provider === 'gmail');
 	const googleCalendar = rows.find((row) => row.provider === 'google_calendar');
 	const outlook = rows.find((row) => row.provider === 'outlook');

@@ -57,7 +57,7 @@ after sign-out. At most 5 streams per user.
 | `POST /emails/{id}/process` · `/reprocess` · `POST /emails/batch-process` · `POST /emails/sync` | Run or re-run extraction; ask for a prompt poll. An exhausted LLM quota answers 429 |
 | `GET /attachments/{id}/content` | Download a stored attachment (owner only) |
 | `GET /integrations` · `POST /integrations/disconnect` · `GET /integrations/recovery` | Connected accounts; disconnect; reconnect catch-up progress |
-| `GET /integrations/{google,outlook,photos}/auth` and the callbacks | OAuth sign-in to providers |
+| `GET /integrations/{google,outlook}/auth` and the callbacks | OAuth sign-in to providers |
 | `GET /integrations/{provider}/folders` · `PATCH …/folders/{id}` | Mail folders and their Included/Excluded preference |
 | `GET /calendars` | The user's writable calendars |
 | `GET /settings/calendar` · `PATCH /settings/calendar` | Target calendar, invitees, all-day display, timezone |

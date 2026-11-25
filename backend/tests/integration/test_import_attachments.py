@@ -156,6 +156,26 @@ def test_an_object_name_outside_the_directory_is_refused(importer, source, stora
     assert not (tmp_path / "escape.txt").exists()
 
 
+def test_files_of_the_removed_photo_ingestion_are_counted_not_copied(importer, source, storage, tmp_path):
+    photo = f"{USER}/photos/abc123_beach.jpg"
+    storage["objects"][photo] = b"jpeg bytes"
+    _sql(source, f"INSERT INTO storage.objects VALUES ('attachments', '{photo}', '{{\"size\": 10}}')")
+    before = storage["state"]["requests"]
+    report = _copy(source, storage, tmp_path)
+    assert report.ok and (report.objects, report.copied, report.photo_objects, report.orphans) == (3, 2, 1, 1)
+    assert storage["state"]["requests"] - before == 2  # the photo was never downloaded
+    assert not (tmp_path / "attachments" / photo).exists()
+
+
+def test_an_attachment_row_is_copied_whatever_its_path_says(importer):
+    from selko_import.attachments import is_photo_object
+
+    assert is_photo_object("u/photos/x.jpg", has_row=False)
+    assert not is_photo_object("u/photos/x.jpg", has_row=True)  # a row names it: an attachment
+    assert not is_photo_object("u/abc_photos.jpg", has_row=False)
+    assert not is_photo_object("photos/x.jpg", has_row=False)
+
+
 def test_the_command_line_reads_secrets_from_files_and_reports_counts_only(importer, source, storage, tmp_path, capsys):
     from selko_import.__main__ import main
 

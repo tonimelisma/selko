@@ -76,7 +76,7 @@ OAuth tokens for external providers.
 |--------|------|-------------|
 | `id` | uuid, PK | Integration ID |
 | `user_id` | uuid, FK | References `users.id` |
-| `provider` | text | `gmail`, `outlook`, `google_photos`, `google_calendar` |
+| `provider` | text | `gmail`, `outlook`, `google_calendar` |
 | `status` | text | `active`, `expired`, `revoked`, `error` |
 | `access_token` | text | OAuth access token |
 | `refresh_token` | text | OAuth refresh token |
@@ -84,7 +84,6 @@ OAuth tokens for external providers.
 | `scopes` | text[] | OAuth scopes granted |
 | `provider_email` | text | Email associated with integration |
 | `sync_cursor` | text | Provider sync cursor (Gmail history ID or Outlook delta link) |
-| `last_photo_sync_at` | timestamptz | Last Google Photos sync time |
 | `created_at` | timestamptz | Auto-set |
 | `updated_at` | timestamptz | Auto-updated |
 
@@ -278,31 +277,6 @@ recovery record). Never stores credentials.
 
 **Indexes:** partial unique on `(integration_id) WHERE status IN ('pending','processing','waiting')`; claim index on `(requested_at) WHERE status = 'pending'`.
 
-### `scheduled_tasks`
-
-Scheduled/periodic background tasks (currently only `photo_fetch`).
-Email discovery does not use this table — it is owned by `email_sync_state`
-leases, because a timer row stuck in `processing` could otherwise suppress a
-provider indefinitely.
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | uuid, PK | Task ID |
-| `user_id` | uuid, FK | References `users.id` |
-| `task_type` | text | Currently only `photo_fetch` |
-| `payload` | jsonb | Task-specific data |
-| `status` | text | `pending`, `processing`, `completed`, `failed` |
-| `scheduled_at` | timestamptz | When to process task |
-| `locked_until` | timestamptz | Worker lock expiration |
-| `locked_by` | text | Worker ID that claimed this task |
-| `started_at` | timestamptz | When processing started |
-| `completed_at` | timestamptz | When processing completed |
-| `last_error` | text | Error message if failed |
-| `created_at` | timestamptz | Auto-set |
-
-
-See `docs/job-queue.md` for full status-based worker details.
-
 ### `event_sources`
 
 Links events to their origin sources (emails, Google Calendar matches, etc.).
@@ -312,14 +286,14 @@ Links events to their origin sources (emails, Google Calendar matches, etc.).
 | `id` | uuid, PK | Event source ID |
 | `event_id` | uuid, FK | References `events.id` |
 | `email_id` | uuid, FK, nullable | References `emails.id` (required for email sources) |
-| `source_origin` | text | `email`, `google_calendar`, or `google_photos` |
+| `source_origin` | text | `email` or `google_calendar` |
 | `source_type` | text | What this source contributed: `new_invitation`, `update`, `cancellation`, `reminder`, or `unknown` |
 | `google_calendar_source_event_id` | text, nullable | Google Calendar event ID (required for calendar sources) |
 | `extracted_data` | jsonb | Raw extraction data from source |
 | `created_at` | timestamptz | Auto-set |
 
 **Constraints:**
-- `source_origin` must be one of: `email`, `google_calendar`, `google_photos`
+- `source_origin` must be one of: `email`, `google_calendar`
 - `source_type` must be one of: `new_invitation`, `update`, `cancellation`, `reminder`, `unknown`
 - Email sources require `email_id`; calendar sources require `google_calendar_source_event_id`
 - Partial unique indexes: `(event_id, email_id)` for email sources, `(event_id, google_calendar_source_event_id)` for calendar sources
@@ -455,45 +429,6 @@ Audit log of all LLM API calls with prompts, responses, token usage, latency, an
 - `(operation_type)` — filter by operation type
 - `(success) WHERE success = false` — quickly find failed calls
 
-### `photos`
-
-Synced Google Photos with status-based worker claiming for LLM processing. Photo-library ingestion is dormant while the feature is parked; this table is retained for historical rows and restoration.
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | uuid, PK | Photo ID |
-| `user_id` | uuid, FK | References `users.id` |
-| `google_photo_id` | text | Google Photos media item ID |
-| `filename` | text | Original filename |
-| `description` | text | Photo description from Google Photos |
-| `mime_type` | text | MIME type (image/jpeg, image/png, etc.) |
-| `date_taken` | timestamptz | When the photo was taken |
-| `width` | integer | Photo width in pixels |
-| `height` | integer | Photo height in pixels |
-| `location_latitude` | numeric | GPS latitude |
-| `location_longitude` | numeric | GPS longitude |
-| `location_display_name` | text | Human-readable location name |
-| `storage_path` | text | Path under `<SELKO_DATA_DIR>/attachments/` |
-| `content_hash` | text | SHA-256 for deduplication |
-| `processing_status` | text | `pending`, `processing`, `processed`, `failed`, `skipped` |
-| `processing_error` | text | Last processing error message |
-| `processed_at` | timestamptz | When processing completed |
-| `locked_until` | timestamptz | Worker lock expiration |
-| `locked_by` | text | Worker ID that claimed this photo |
-| `attempts` | integer | Number of processing attempts (default: 0) |
-| `max_attempts` | integer | Maximum attempts before permanent failure (default: 3) |
-| `next_retry_at` | timestamptz, nullable | Exponential backoff: earliest time to retry (60s * 2^attempts, max 1h) |
-| `dead_letter_reason` | text, nullable | Reason for permanent failure (set when max_attempts exceeded) |
-| `dead_letter_at` | timestamptz, nullable | When the photo was moved to dead letter |
-| `created_at` | timestamptz | Auto-set |
-
-
-**Indexes:**
-- `(processing_status, created_at) WHERE processing_status = 'pending'` for efficient claiming
-- `(user_id, created_at DESC)` for user photo listing
-
-**Unique Constraint:** `(user_id, google_photo_id)` prevents duplicate photo records.
-
 ## Data-layer functions
 
 These were Postgres RPCs; each is now a Python function of the same name and
@@ -508,7 +443,6 @@ prefixes; owner-facing functions take `user_id` explicitly.
 |----------|-------------|
 | `claim_unprocessed_email(worker_id, lock_duration)` | First opportunistically reclaims one expired `processing` lease elsewhere in the table (retries it if attempts remain, otherwise terminates it as `failed`/`lease_expired_at_limit`), then atomically claims next pending email, oldest `date_sent` first (`NULLS LAST`, then `created_at`) — bulk scans ingest newest-first, so claiming oldest-sent-first avoids an older email "updating" an event already created from a newer one. A `pending` row is invariant-guaranteed claimable: `attempts < max_attempts`, no owner, no unexpired lock (`emails_pending_is_claimable_check`) |
 | `fail_email_processing(email_id, worker_id, generation, error_code, error_detail, retry_base_seconds, retry_max_seconds)` | Fenced retry-or-terminate transition for a claimed email; a stale `(worker_id, generation)` is a no-op (`fenced: true`) so a replacement worker's claim is never overwritten |
-| `claim_pending_photo(worker_id, lock_duration)` | Atomically claim next pending photo |
 | `claim_calendar_work_item(worker_id, lease_seconds)` | Atomically claim the next calendar work item with an active provider integration and fence its lease |
 | `claim_next_scheduled_task(task_types, worker_id, lock_duration)` | Atomically claim next scheduled task |
 | `claim_integration_recovery(worker_id, lock_seconds)` | Atomically claim the next `pending` recovery generation, also reclaiming `processing` rows whose lock expired (crashed-worker self-heal) |
@@ -545,9 +479,7 @@ returns `conflict: true` and applies nothing.
 | Function | Description |
 |----------|-------------|
 | `unlock_expired_email_locks()` | Startup-only recovery sweep (not a periodic sweeper): resets expired email locks to pending when attempts remain, terminates exhausted ones as `failed`/`lease_expired_at_limit` — CHECK-safe by construction |
-| `unlock_expired_photo_locks()` | Reset expired photo locks to pending |
 | `unlock_expired_event_locks()` | Reset expired event locks to `cancel_queued` for cancellation work or `approved` for upserts |
-| `unlock_expired_scheduled_tasks()` | Reset expired scheduled task locks |
 | `unlock_expired_integration_recoveries()` | Return crashed-worker recovery claims to `pending` |
 
 ### Recovery Functions
@@ -607,7 +539,7 @@ Provider identity is carried by ids: Google ids are bare, Outlook ids are
 | Setting | Value |
 |---------|-------|
 | Location | `<SELKO_DATA_DIR>/attachments/` |
-| Path format | `{user_id}/{unique_id}_{filename}` (emails) or `{user_id}/photos/{unique_id}_{filename}` (photos) |
+| Path format | `{user_id}/{unique_id}_{filename}` |
 | Writes | temp file, fsync, rename, mode 0600; absolute paths, `..` and anything outside the directory are refused |
 | Reads | `GET /attachments/{id}/content`, owner only (another user's id answers 404) |
 

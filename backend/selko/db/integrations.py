@@ -60,7 +60,7 @@ from selko.db.connection import Database
 
 # Columns stored as timestamps (timestamptz in Postgres).
 _TIMESTAMPS = {
-    "integrations": {"token_expiry", "last_sync_at", "created_at", "updated_at", "last_photo_sync_at"},
+    "integrations": {"token_expiry", "last_sync_at", "created_at", "updated_at"},
     "oauth_states": {"created_at", "expires_at"},
     "user_calendar_settings": {"updated_at"},
 }
@@ -130,28 +130,6 @@ def list_integrations(db: Database, user_id: str) -> list[dict[str, Any]]:
         (codec.to_id(user_id),),
     )
     return [_decode(db, "integrations", row) for row in rows]  # type: ignore[misc]
-
-
-def active_integration_user_ids(db: Database, provider: str) -> set[str]:
-    """Users with an active integration for ``provider`` (a scheduler's fan-out).
-
-    Service-wide by design: user ids only, no integration row leaves here.
-    """
-    rows = db.query(
-        "SELECT DISTINCT user_id FROM integrations WHERE provider = ? AND status = 'active'",
-        (provider,),
-    )
-    return {r[0] for r in rows}
-
-
-def set_last_photo_sync_at(db: Database, user_id: str, provider: str = "google_photos") -> int:
-    """Stamp the user's photo integration as synced now. Returns rows changed."""
-    with db.write() as tx:
-        return tx.execute(
-            "UPDATE integrations SET last_photo_sync_at = ?, updated_at = ? "
-            "WHERE user_id = ? AND provider = ?",
-            (tx.now_text, tx.now_text, codec.to_id(user_id), provider),
-        ).rowcount
 
 
 def count_active_mailboxes(db: Database) -> int:
@@ -321,7 +299,6 @@ def upsert_calendar_settings(db: Database, user_id: str, fields: dict[str, Any])
 
 __all__ = [
     "OAUTH_STATE_TTL_SECONDS",
-    "active_integration_user_ids",
     "consume_oauth_state",
     "count_active_mailboxes",
     "delete_expired_oauth_states",
@@ -332,7 +309,6 @@ __all__ = [
     "list_integrations",
     "save_oauth_state",
     "set_integration_status",
-    "set_last_photo_sync_at",
     "timestamp",
     "update_integration_tokens",
     "upsert_calendar_settings",

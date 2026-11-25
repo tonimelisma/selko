@@ -439,14 +439,10 @@
 
 	/** @param {any} event */
 	function getSourceInfo(event) {
-		const { senderKey, senderName, isPhotoSource } = resolveEventSender(event, {
+		const { senderKey, senderName } = resolveEventSender(event, {
 			unknownSender: $_('history.unknownSender'),
-			googlePhotos: $_('eventSource.googlePhotos'),
 			googleCalendar: $_('integrations.googleCalendar')
 		});
-		if (isPhotoSource) {
-			return $_('history.fromPhoto');
-		}
 		if (senderKey === 'google_calendar') {
 			return $_('history.from', { values: { name: senderName } });
 		}

@@ -5,23 +5,11 @@ and timeout handling.
 """
 
 from datetime import datetime, timezone
-from unittest.mock import patch
 
 
 from selko.services.circuit_breaker import CircuitBreaker, CircuitState
 
 FROZEN_NOW = datetime(2026, 4, 9, 12, 0, tzinfo=timezone.utc)
-
-
-class FrozenRetryDateTime(datetime):
-    """Controllable datetime shim for retry delay tests."""
-
-    frozen_now = FROZEN_NOW
-
-    @classmethod
-    def now(cls, tz=None):
-        now = cls.frozen_now
-        return now if tz is None else now.astimezone(tz)
 
 
 class FakeClock:
@@ -35,11 +23,6 @@ class FakeClock:
 
     def advance(self, seconds: float) -> None:
         self.value += seconds
-
-
-def freeze_retry_clock(now: datetime = FROZEN_NOW):
-    FrozenRetryDateTime.frozen_now = now
-    return patch("selko.services.retry_utils.datetime", FrozenRetryDateTime)
 
 
 # ===========================================================================

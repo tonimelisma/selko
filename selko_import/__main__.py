@@ -8,7 +8,8 @@ Secrets are read from files, never from the command line: the source URL
 carries the database password, the storage key reads every user's files.
 
 database:    0 imported and verified; 3 the source schema differs from the
-             pinned map; 5 verification failed (nothing written); 2 usage.
+             pinned map, or it holds data of the removed Google Photos
+             ingestion; 5 verification failed (nothing written); 2 usage.
 attachments: 0 every object copied and verified (re-runnable: files already in
              place are skipped); 6 some objects missing at the source or not
              matching their size/hash; 7 the Storage API refused the request.

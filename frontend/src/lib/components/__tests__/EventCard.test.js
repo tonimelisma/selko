@@ -224,16 +224,6 @@ describe('EventCard', () => {
 		expect(emailIcon).toBeInTheDocument();
 	});
 
-	it('shows photo icon for google_photos source', () => {
-		const photoEvent = {
-			...mockEvent,
-			event_sources: [{ source_origin: 'google_photos' }]
-		};
-		render(EventCard, { props: { event: photoEvent } });
-		const photoIcon = document.querySelector('svg[aria-label="From photo"]');
-		expect(photoIcon).toBeInTheDocument();
-	});
-
 	it('shows spinner inside action buttons while processing', () => {
 		render(EventCard, { props: { event: mockEvent, isProcessing: true } });
 		expect(document.querySelector('.loading.loading-spinner')).toBeTruthy();

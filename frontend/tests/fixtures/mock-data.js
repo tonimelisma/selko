@@ -169,16 +169,5 @@ export const mockIntegrations = [
 		last_sync_at: '2024-01-15T12:00:00Z',
 		created_at: '2024-01-01T00:00:00Z',
 		updated_at: '2024-01-15T12:00:00Z'
-	},
-	{
-		id: '550e8400-e29b-41d4-a716-446655440012',
-		user_id: '550e8400-e29b-41d4-a716-446655440000',
-		provider: 'google_photos',
-		status: 'expired',
-		provider_email: 'user@gmail.com',
-		scopes: ['https://www.googleapis.com/auth/photoslibrary.readonly'],
-		last_sync_at: '2024-01-10T08:00:00Z',
-		created_at: '2024-01-01T00:00:00Z',
-		updated_at: '2024-01-10T08:00:00Z'
 	}
 ];

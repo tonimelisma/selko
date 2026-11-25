@@ -51,14 +51,6 @@ def reset_leases_at_startup(db: Database) -> dict[str, int]:
                 "UPDATE email_sync_runs SET status = 'abandoned', completed_at = ? WHERE status = 'running'",
                 (now,),
             ).rowcount,
-            "photos": tx.execute(
-                "UPDATE photos SET processing_status = 'pending', locked_by = NULL,"
-                " locked_until = NULL WHERE processing_status = 'processing'",
-            ).rowcount,
-            "scheduled_tasks": tx.execute(
-                "UPDATE scheduled_tasks SET status = 'pending', locked_by = NULL,"
-                " locked_until = NULL WHERE status = 'processing'",
-            ).rowcount,
         }
     return counts
 

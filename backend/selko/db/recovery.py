@@ -24,7 +24,7 @@ from selko.db.connection import Database
 from selko.services import calendar_providers
 
 # integration_provider enum (a CHECK in 0001_initial.sql).
-INTEGRATION_PROVIDERS = frozenset({"gmail", "google_photos", "google_calendar", "outlook"})
+INTEGRATION_PROVIDERS = frozenset({"gmail", "google_calendar", "outlook"})
 
 # Calendar work failures that a reconnect can heal.
 OAUTH_FAILURE_CODES = ("oauth_required", "oauth_scope_required")

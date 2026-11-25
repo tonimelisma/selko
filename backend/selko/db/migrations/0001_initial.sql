@@ -497,9 +497,9 @@ CREATE TABLE event_sources (
     google_calendar_source_event_id TEXT,
     CONSTRAINT event_sources_email_id_fkey FOREIGN KEY (email_id) REFERENCES emails(id) ON DELETE CASCADE,
     CONSTRAINT event_sources_event_id_fkey FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
-    CONSTRAINT event_sources_origin_check CHECK ((((source_origin = 'email') AND (email_id IS NOT NULL)) OR ((source_origin = 'google_calendar') AND (google_calendar_source_event_id IS NOT NULL)) OR (source_origin = 'google_photos'))),
+    CONSTRAINT event_sources_origin_check CHECK ((((source_origin = 'email') AND (email_id IS NOT NULL)) OR ((source_origin = 'google_calendar') AND (google_calendar_source_event_id IS NOT NULL)))),
     CONSTRAINT event_sources_pkey PRIMARY KEY (id),
-    CONSTRAINT event_sources_source_origin_check CHECK ((source_origin IN ('email', 'google_calendar', 'google_photos'))),
+    CONSTRAINT event_sources_source_origin_check CHECK ((source_origin IN ('email', 'google_calendar'))),
     CONSTRAINT event_sources_source_type_check CHECK ((source_type IN ('new_invitation', 'update', 'cancellation', 'reminder', 'unknown')))
 ) STRICT;
 CREATE UNIQUE INDEX event_sources_event_email_unique ON event_sources (event_id, email_id) WHERE (source_origin = 'email');
@@ -580,7 +580,7 @@ CREATE TABLE integration_recoveries (
     id TEXT NOT NULL,
     integration_id TEXT NOT NULL,
     user_id TEXT NOT NULL,
-    provider TEXT NOT NULL CHECK (provider IN ('gmail', 'google_photos', 'google_calendar', 'outlook')),
+    provider TEXT NOT NULL CHECK (provider IN ('gmail', 'google_calendar', 'outlook')),
     reason TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'pending',
     attempts INTEGER NOT NULL DEFAULT 0,
@@ -613,7 +613,7 @@ CREATE UNIQUE INDEX integration_recoveries_one_active_idx ON integration_recover
 CREATE TABLE integrations (
     id TEXT NOT NULL,
     user_id TEXT NOT NULL,
-    provider TEXT NOT NULL CHECK (provider IN ('gmail', 'google_photos', 'google_calendar', 'outlook')),
+    provider TEXT NOT NULL CHECK (provider IN ('gmail', 'google_calendar', 'outlook')),
     status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'expired', 'revoked', 'error')),
     access_token TEXT NOT NULL,
     refresh_token TEXT,
@@ -624,7 +624,6 @@ CREATE TABLE integrations (
     last_sync_at TEXT,
     created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f','now') || '000Z'),
     updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f','now') || '000Z'),
-    last_photo_sync_at TEXT,
     CONSTRAINT integrations_pkey PRIMARY KEY (id),
     CONSTRAINT integrations_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     CONSTRAINT integrations_user_id_provider_key UNIQUE (user_id, provider)
@@ -694,61 +693,6 @@ CREATE TABLE operational_incidents (
     CONSTRAINT operational_incidents_status_check CHECK ((status IN ('open', 'resolved'))),
     CONSTRAINT operational_incidents_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) STRICT;
-
-CREATE TABLE photos (
-    id TEXT NOT NULL,
-    user_id TEXT NOT NULL,
-    google_photo_id TEXT NOT NULL,
-    filename TEXT,
-    description TEXT,
-    mime_type TEXT,
-    date_taken TEXT,
-    width INTEGER,
-    height INTEGER,
-    location_latitude REAL,
-    location_longitude REAL,
-    location_display_name TEXT,
-    storage_path TEXT,
-    content_hash TEXT,
-    processing_status TEXT NOT NULL DEFAULT 'pending',
-    processing_error TEXT,
-    processed_at TEXT,
-    locked_until TEXT,
-    locked_by TEXT,
-    attempts INTEGER NOT NULL DEFAULT 0,
-    max_attempts INTEGER NOT NULL DEFAULT 3,
-    next_retry_at TEXT,
-    dead_letter_reason TEXT,
-    dead_letter_at TEXT,
-    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f','now') || '000Z'),
-    CONSTRAINT photos_pkey PRIMARY KEY (id),
-    CONSTRAINT photos_processing_status_check CHECK ((processing_status IN ('pending', 'processing', 'processed', 'failed', 'skipped'))),
-    CONSTRAINT photos_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    CONSTRAINT photos_user_id_google_photo_id_key UNIQUE (user_id, google_photo_id)
-) STRICT;
-CREATE INDEX photos_pending_idx ON photos (processing_status, created_at) WHERE (processing_status = 'pending');
-CREATE INDEX photos_user_idx ON photos (user_id, created_at DESC);
-
-CREATE TABLE scheduled_tasks (
-    id TEXT NOT NULL,
-    user_id TEXT NOT NULL,
-    task_type TEXT NOT NULL,
-    payload TEXT NOT NULL DEFAULT '[]' CHECK (payload IS NULL OR json_valid(payload)),
-    status TEXT NOT NULL DEFAULT 'pending',
-    scheduled_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f','now') || '000Z'),
-    locked_until TEXT,
-    locked_by TEXT,
-    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f','now') || '000Z'),
-    started_at TEXT,
-    completed_at TEXT,
-    last_error TEXT,
-    CONSTRAINT scheduled_tasks_pkey PRIMARY KEY (id),
-    CONSTRAINT scheduled_tasks_status_check CHECK ((status IN ('pending', 'processing', 'completed', 'failed'))),
-    CONSTRAINT scheduled_tasks_task_type_check CHECK ((task_type IN ('photo_fetch', 'email_fetch'))),
-    CONSTRAINT scheduled_tasks_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-) STRICT;
-CREATE INDEX idx_scheduled_tasks_pending ON scheduled_tasks (status, scheduled_at) WHERE (status = 'pending');
-CREATE INDEX idx_scheduled_tasks_user ON scheduled_tasks (user_id);
 
 CREATE TABLE sender_rules (
     id TEXT NOT NULL,

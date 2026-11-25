@@ -15,7 +15,7 @@
  */
 
 /**
- * @typedef {'gmail' | 'outlook' | 'google_photos' | 'google_calendar'} IntegrationProvider
+ * @typedef {'gmail' | 'outlook' | 'google_calendar'} IntegrationProvider
  */
 
 /**
@@ -217,7 +217,7 @@
  */
 
 /**
- * @typedef {'email' | 'google_calendar' | 'google_photos'} SourceOrigin
+ * @typedef {'email' | 'google_calendar'} SourceOrigin
  */
 
 /**
@@ -225,7 +225,7 @@
  * @property {string} id - UUID
  * @property {string} event_id - UUID
  * @property {string} [email_id] - UUID (required for email sources)
- * @property {SourceOrigin} source_origin - Source type: email, google_calendar, or google_photos
+ * @property {SourceOrigin} source_origin - Source type: email or google_calendar
  * @property {SourceType} source_type
  * @property {ExtractedData} [extracted_data]
  * @property {string} created_at

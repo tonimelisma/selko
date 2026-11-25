@@ -34,8 +34,6 @@ CALENDAR_SCOPES = [
     "https://www.googleapis.com/auth/calendar.events",
 ]
 
-# Google Photos scopes
-PHOTOS_SCOPES = ["https://www.googleapis.com/auth/photoslibrary.readonly"]
 
 # One Google consent covers both integrations. Connected separately, the two
 # rows held two refresh tokens that expired independently, so a user could
@@ -214,7 +212,7 @@ def save_oauth_credentials(
     Args:
         client: The process database.
         user_id: User ID to save credentials for.
-        provider: Integration provider ('gmail', 'google_photos', 'google_calendar').
+        provider: Integration provider ('gmail', 'google_calendar').
         credentials: Google OAuth credentials object.
         provider_email: Optional email associated with the provider account.
 
@@ -652,8 +650,6 @@ def initiate_oauth_flow(
         scopes = GMAIL_SCOPES
     elif provider == "google_calendar":
         scopes = CALENDAR_SCOPES
-    elif provider == "google_photos":
-        scopes = PHOTOS_SCOPES
     else:
         raise IntegrationError(f"Unsupported provider: {provider}")
 
@@ -761,8 +757,6 @@ def complete_oauth_flow(
         scopes = GMAIL_SCOPES
     elif provider == "google_calendar":
         scopes = CALENDAR_SCOPES
-    elif provider == "google_photos":
-        scopes = PHOTOS_SCOPES
     else:
         raise IntegrationError(f"Unsupported provider: {provider}")
 

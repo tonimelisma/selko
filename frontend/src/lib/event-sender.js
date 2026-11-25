@@ -1,16 +1,15 @@
 /**
  * Resolve the human-facing sender for an event from its event_sources.
  *
- * Prefer an email source (the person who wrote), then photos, then calendar.
+ * Prefer an email source (the person who wrote), then calendar.
  * Never use sources[0] alone — GCal-adopted changes insert a calendar row first.
  *
  * @param {any} event
- * @param {{ unknownSender?: string, googlePhotos?: string, googleCalendar?: string }} [labels]
- * @returns {{ senderKey: string, senderName: string, isPhotoSource: boolean }}
+ * @param {{ unknownSender?: string, googleCalendar?: string }} [labels]
+ * @returns {{ senderKey: string, senderName: string }}
  */
 export function resolveEventSender(event, labels = {}) {
 	const unknownSender = labels.unknownSender || 'Unknown Sender';
-	const googlePhotos = labels.googlePhotos || 'Google Photos';
 	const googleCalendar = labels.googleCalendar || 'Google Calendar';
 
 	/** @type {any[]} */
@@ -27,19 +26,7 @@ export function resolveEventSender(event, labels = {}) {
 		const email = emailSource.emails;
 		return {
 			senderKey: email.from_email || unknownSender,
-			senderName: email.from_name || email.from_email || unknownSender,
-			isPhotoSource: false
-		};
-	}
-
-	const photoSource = sources.find(
-		/** @param {any} s */ (s) => s?.source_origin === 'google_photos'
-	);
-	if (photoSource) {
-		return {
-			senderKey: 'google_photos',
-			senderName: googlePhotos,
-			isPhotoSource: true
+			senderName: email.from_name || email.from_email || unknownSender
 		};
 	}
 
@@ -49,14 +36,12 @@ export function resolveEventSender(event, labels = {}) {
 	if (calendarSource) {
 		return {
 			senderKey: 'google_calendar',
-			senderName: googleCalendar,
-			isPhotoSource: false
+			senderName: googleCalendar
 		};
 	}
 
 	return {
 		senderKey: unknownSender,
-		senderName: unknownSender,
-		isPhotoSource: false
+		senderName: unknownSender
 	};
 }

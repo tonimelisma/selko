@@ -2,21 +2,15 @@
 
 Future enhancements for Selko, documented for prioritization.
 
-## Photo Library Ingestion (Parked — do not re-propose without new information)
+## Photo Library Ingestion (Removed 2026-11-25)
 
 Parked 2026-07-13 on cost/value, after Google Photos library-wide read access was
-revoked. **Do not re-propose until the cost/value picture changes.**
-
-What is still true in the codebase:
-
-- The `photos` schema and the `google_photos` integration-provider enum value are
-  deliberately retained. Do not drop them.
-- Connect surfaces were removed in #201; photo-*source* rendering was kept, so an
-  existing photo-sourced event still displays correctly.
-
-The full OneDrive ingestion design and the #201 surface-removal/restoration
-procedure were retired from `docs/specs/` once parked, because a parked design is
-not an unfinished plan. Both are recoverable from git:
+revoked, and removed 2026-11-25: the routes, services, worker, the `photos` and
+`scheduled_tasks` tables, the `google_photos` provider and source values, and the
+photo-source rendering in the web app. The importer refuses a source database that
+still holds any photo data rather than drop it (`selko_import`, exit 3).
+**Do not re-propose until the cost/value picture changes.** The OneDrive ingestion
+design and the earlier surface-removal procedure are recoverable from git:
 
 ```bash
 git show 837f830e:docs/specs/onedrive-photo-ingestion.md

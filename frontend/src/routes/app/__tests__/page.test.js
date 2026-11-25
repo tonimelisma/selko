@@ -712,42 +712,6 @@ describe('Review Queue (App Page)', () => {
 		});
 	});
 
-	it('hides sender rule buttons for photo source groups', async () => {
-		mockFetchIntegrations.mockResolvedValue({
-			data: [
-				{ id: '1', provider: 'gmail', status: 'active' },
-				{ id: '2', provider: 'google_calendar', status: 'active' }
-			],
-			error: null
-		});
-		mockFetchPendingEventsWithSources.mockResolvedValue({
-			data: [
-				{
-					id: 'evt-photo-1',
-					title: 'Birthday Party',
-					start_datetime: '2024-01-20T14:00:00Z',
-					status: 'pending_review',
-					event_sources: [
-						{
-							source_origin: 'google_photos'
-						}
-					]
-				}
-			],
-			error: null
-		});
-
-		render(AppPage);
-
-		await waitFor(() => {
-			expect(screen.getByText('Birthday Party')).toBeInTheDocument();
-		});
-
-		// Sender rule buttons should not be present for photo sources
-		expect(screen.queryByText('Ignore sender')).not.toBeInTheDocument();
-		expect(screen.queryByText('Auto-approve sender')).not.toBeInTheDocument();
-	});
-
 	it('optimistically removes event from queue while approve is in flight', async () => {
 		const user = userEvent.setup();
 

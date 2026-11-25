@@ -332,10 +332,10 @@ class TestAuthValidation:
         resp = client.get("/integrations/outlook/auth")
         assert resp.status_code == 401
 
-    def test_photos_auth_is_gone(self, test_client):
-        """Parked Google Photos cannot start a new OAuth connection."""
-        resp = test_client.get("/integrations/photos/auth")
-        assert resp.status_code == 410
+    def test_photos_routes_are_gone(self, test_client):
+        """Google Photos ingestion was removed: no route answers for it."""
+        assert test_client.get("/integrations/photos/auth").status_code == 404
+        assert test_client.get("/photos").status_code == 404
 
 
 # ===========================================================================
@@ -728,23 +728,6 @@ class TestOAuthCallback:
         assert "oauth=success" in resp.headers["location"]
         row = self._rows(callback_db, user)["outlook"]
         assert (row["access_token"], row["provider_email"]) == ("ms-access", "me@outlook.com")
-
-    def test_callback_rejects_parked_google_photos(self, test_client):
-        """Historical or stale Google Photos OAuth states cannot create integrations."""
-        from selko.services.integrations import OAuthProviderNotAllowed
-
-        with patch(
-            "selko.api.routes.integrations.complete_oauth_flow",
-            side_effect=OAuthProviderNotAllowed(
-                "google_photos", {"gmail", "google_calendar"}
-            ),
-        ):
-            resp = test_client.get(
-                "/integrations/google/callback",
-                params={"code": "valid-code", "state": "valid-state"},
-                follow_redirects=False,
-            )
-        assert resp.status_code == 410
 
     def test_callback_no_auth_required(self, test_client):
         """Callback endpoint is public — no JWT needed. Verify it doesn't 401."""

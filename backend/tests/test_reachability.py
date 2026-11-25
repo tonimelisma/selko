@@ -24,10 +24,6 @@ DELIBERATELY_UNREACHABLE: dict[str, str] = {
         "owner=photo-ingestion; parked with it. Its only runtime caller was the "
         "startup unlock, which selko.db.startup.reset_leases_at_startup now does"
     ),
-    "selko.services.retry_utils": (
-        "owner=photo-ingestion; only the parked backoff (db/parked.py) still "
-        "matches it. Delete it with the parked photo/scheduled-task code"
-    ),
 }
 
 

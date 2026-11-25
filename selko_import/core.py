@@ -37,7 +37,26 @@ REAL_KINDS = {"M", "R"}
 TIMESTAMP = re.compile(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{6}Z")
 BATCH = 500
 # Not carried: short-lived OAuth CSRF/PKCE state (04 §A.3).
-SKIPPED = {"oauth_states"}
+SKIPPED = {"oauth_states", "photos", "scheduled_tasks"}
+# Source columns Selko no longer has (Google Photos ingestion, removed
+# 2026-11-25). The drift check still pins them: they are the source's.
+DROPPED_COLUMNS: dict[str, set[str]] = {"integrations": {"last_photo_sync_at"}}
+# Data the removed feature could have left. The import refuses rather than
+# silently discard any of it (exit 3, before anything is written).
+REMOVED_FEATURE_DATA = {
+    "photos rows": 'SELECT count(*) FROM public."photos"',
+    "scheduled_tasks rows": 'SELECT count(*) FROM public."scheduled_tasks"',
+    "google_photos integrations": "SELECT count(*) FROM public.integrations WHERE provider::text = 'google_photos'",
+    "integrations with last_photo_sync_at": "SELECT count(*) FROM public.integrations WHERE last_photo_sync_at IS NOT NULL",
+    "google_photos integration recoveries": "SELECT count(*) FROM public.integration_recoveries WHERE provider = 'google_photos'",
+    "google_photos event sources": "SELECT count(*) FROM public.event_sources WHERE source_origin = 'google_photos'",
+}
+
+
+def carried_columns(table: str) -> list[list[str]]:
+    """The pinned source columns of ``table`` that the target keeps."""
+    dropped = DROPPED_COLUMNS.get(table, set())
+    return [c for c in COLUMNS[table] if c[0] not in dropped]
 ACCOUNT_SOURCE = (
     "SELECT id::text, lower(email), encrypted_password,"
     " to_char(email_confirmed_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"'),"
@@ -212,6 +231,16 @@ async def _load(source_url: str, lite: sqlite3.Connection, report: Report, progr
         if live_map != pinned:
             drift = sorted(set(live_map) ^ set(pinned)) or sorted(t for t in pinned if live_map.get(t) != pinned[t])
             raise ImportError_(f"source schema differs from the pinned map in: {drift}", 3)
+        left = []
+        for what, sql in REMOVED_FEATURE_DATA.items():
+            n = int(await conn.fetchval(sql))
+            if n:
+                left.append(f"{n} {what}")
+        if left:
+            raise ImportError_(
+                "the source holds data of the removed Google Photos ingestion, which the target"
+                " cannot keep: " + ", ".join(left) + ". Remove it at the source (or keep the"
+                " old deployment) before importing.", 3)
 
         # Accounts first: users.id references them.
         rows = await conn.fetch(ACCOUNT_SOURCE)
@@ -228,7 +257,7 @@ async def _load(source_url: str, lite: sqlite3.Connection, report: Report, progr
             if table in SKIPPED:
                 progress(f"{table}: skipped")
                 continue
-            columns = COLUMNS[table]
+            columns = carried_columns(table)
             kinds = [k for _, k in columns]
             marks = ", ".join("?" * len(columns))
             names = ", ".join(f'"{n}"' for n, _ in columns)
@@ -265,7 +294,10 @@ def _structural_checks(lite: sqlite3.Connection, report: Report) -> None:
     fk = lite.execute("PRAGMA foreign_key_check").fetchall()
     if fk:
         report.problems.append(f"{len(fk)} foreign key violations (first table: {fk[0][0]})")
-    for table, columns in COLUMNS.items():
+    for table in COLUMNS:
+        if table in SKIPPED:
+            continue
+        columns = carried_columns(table)
         for name, kind in columns:
             if kind != "T":
                 continue
