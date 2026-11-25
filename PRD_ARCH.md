@@ -79,7 +79,7 @@ The system automatically ingests unstructured data from emails to create structu
 
 | ID | Feature | Description | Priority | Status |
 | :---- | :---- | :---- | :---- | :---- |
-| **FR-C.1** | **Review Interface** | Side-by-side view (Source Asset vs. Extracted Data) allowing users to edit, approve, or reject. | **P0** | ✅ **DONE** (Web + iOS + Android) |
+| **FR-C.1** | **Review Interface** | Side-by-side view (Source Asset vs. Extracted Data) allowing users to edit, approve, or reject. | **P0** | ✅ **DONE** (Web; the native iOS and Android apps are legacy, unmaintained) |
 | **FR-C.2** | **Undo/Redo** | **Compensating Transactions:** Ability to revert any action (Create/Update/Delete) and restore original state. | **P0** | ❌ Not Started |
 | **FR-C.3** | **Authentication** | Passwordless or Social Login. Granular scope management for integrations. | **P0** | ✅ **DONE** (Supabase Auth) |
 
@@ -103,14 +103,14 @@ The system automatically ingests unstructured data from emails to create structu
 | :---- | :---- | :---- | :---- | :---- |
 | 1 | User receives email with "Invite.pdf". | System detects email, ingests PDF, performs OCR. | FR-A.2, FR-B.1 | ✅ DONE |
 | 2 | N/A | **AI Analysis:** Identifies Date (Oct 5), Time (2 PM), Title (Party). Classifies as "Invitation". | FR-B.2, FR-B.3 | ✅ DONE |
-| 3 | User logs into Dashboard. | **Notification:** Badge on "Review" tab. | FR-C.1 | ✅ DONE (Web + iOS + Android) |
+| 3 | User logs into Dashboard. | **Notification:** Badge on "Review" tab. | FR-C.1 | ✅ DONE (Web) |
 | 4 | User opens Review Tab. | Displays source email alongside proposed Event details. | FR-C.1 | ✅ DONE |
 | 5 | User corrects time and clicks "Approve". | System updates payload, writes to Calendar. | FR-C.1, FR-D.1 | ✅ DONE |
 | 6 | N/A | System logs action in Activity History. | FR-C.2 | 🟡 Partial (history view exists, no full undo) |
 
 **Current Implementation:**
 - ✅ Automatic email fetch and LLM processing via background workers
-- ✅ Review interface on Web (SvelteKit), iOS (SwiftUI), Android (Jetpack Compose)
+- ✅ Review interface on Web (SvelteKit); the iOS and Android apps are legacy, unmaintained
 - ✅ Edit, approve, reject events with Google Calendar sync
 - ✅ Sender rules for auto-approve/ignore automation
 - ✅ History view with event status tracking
@@ -286,7 +286,7 @@ The `calendar_sync_log.snapshot_synced` field stores what we sent to Google Cale
 - ✅ Extract calendar events from emails using Gemini LLM
 - ✅ Process multimodal content (email body + image attachments)
 - ✅ Write events to Google Calendar (full CRUD + idempotent sync)
-- ✅ Review interface on Web, iOS, and Android
+- ✅ Review interface on Web
 - ✅ Sender rules for automation (ignore + auto-approve)
 - ✅ History view with undo actions
 - ❌ No full undo/redo with compensating transactions
@@ -378,12 +378,12 @@ Selko is an AI-powered assistant that automates personal organization by analyzi
 #### **Phase 1: MVP (Web-First Cloud Processing)**
 - **Status:** ✅ MOSTLY COMPLETE (started 2026-01-25)
 - **Goal:** Complete end-to-end journey: Email → LLM → Calendar
-- **Components:** FastAPI, Gemini LLM, Google Calendar API, SvelteKit, SwiftUI, Jetpack Compose
+- **Components:** FastAPI, Gemini LLM, Google Calendar API, SvelteKit
 - **Implementation progress:**
   1. ✅ **LLM integration (Gemini 3 Flash)** - DONE (2026-01-26)
   2. ✅ **Email → LLM analysis pipeline** - DONE (2026-01-26)
   3. ✅ **Calendar sync (write events)** - DONE (full CRUD + idempotent sync)
-  4. ✅ **Review interface (web + iOS + Android)** - DONE
+  4. ✅ **Review interface (web)** - DONE
   5. ❌ Undo/Redo functionality - NOT STARTED
   6. ✅ **Automation rules (sender rules)** - DONE (ignore + auto-approve)
 
@@ -408,7 +408,7 @@ Selko is an AI-powered assistant that automates personal organization by analyzi
 #### **3.1 Direct Supabase Access (No Proxy Layers)**
 **CRITICAL:** Frontends query Supabase directly. No superfluous API layers.
 
-All frontends (Web, Android, iOS) must:
+The web frontend (Selko's only maintained client; the native iOS and Android apps in `legacy/` are unmaintained) must:
 1. **Query Supabase directly** for all data operations (emails, events, integrations, etc.)
 2. **Use RLS (Row Level Security)** for access control - enforced at database level
 3. **Only call Python API** for operations requiring server-side secrets:

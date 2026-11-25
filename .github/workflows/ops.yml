@@ -2,7 +2,7 @@ name: Ops
 
 # Operations that need a credential or a network path a Claude Code cloud
 # session does not have: Postgres over TCP, the production database password,
-# the Render deploy hooks, an Android emulator (KVM). Each is started by a
+# the Render deploy hooks. Each is started by a
 # repository_dispatch whose payload is typed by scripts/ops.py, which is also
 # the client:
 #
@@ -28,7 +28,6 @@ on:
       - rehearse-cutover
       - repair-review-queue
       - staging-tier2
-      - android-emulator
   # The same operations from the Actions tab, for the owner. The payload is the
   # same JSON object a dispatch carries.
   workflow_dispatch:
@@ -43,7 +42,6 @@ on:
           - rehearse-cutover
           - repair-review-queue
           - staging-tier2
-          - android-emulator
       payload:
         description: JSON payload, e.g. {"target":"production","when":"pre-deploy"}
         required: false
@@ -77,8 +75,6 @@ jobs:
       faithful: ${{ steps.validate.outputs.faithful }}
       apply: ${{ steps.validate.outputs.apply }}
       require_workers: ${{ steps.validate.outputs.require_workers }}
-      ref: ${{ steps.validate.outputs.ref }}
-      screenshots: ${{ steps.validate.outputs.screenshots }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       # Reads the payload from $GITHUB_EVENT_PATH, never from step env: every
@@ -343,78 +339,3 @@ jobs:
           TEST_USER_PASSWORD: ${{ secrets.STAGING_TEST_USER_PASSWORD }}
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
-
-  android-emulator:
-    name: Android emulator UI tests and screenshots (${{ needs.request.outputs.ref }})
-    needs: request
-    if: needs.request.outputs.operation == 'android-emulator'
-    runs-on: ubuntu-latest
-    timeout-minutes: 75
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          ref: ${{ needs.request.outputs.ref }}
-      - name: Enable KVM
-        run: |
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
-      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
-        with:
-          java-version: "21"
-          distribution: temurin
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: gradle-${{ runner.os }}-${{ hashFiles('android/**/*.gradle*', 'android/gradle/libs.versions.toml', 'android/gradle/wrapper/gradle-wrapper.properties') }}
-          restore-keys: gradle-${{ runner.os }}-
-      - uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
-      - run: uv python install 3.14
-      - run: uv sync --frozen
-      - uses: supabase/setup-cli@689adcfb80d947100a1eab127289b97d1fb07b13 # v3
-        with:
-          version: ${{ env.SUPABASE_CLI_VERSION }}
-      - name: Local Supabase (the emulator reaches it at 10.0.2.2)
-        env:
-          SELKO_CLOUD_SETUP_FORCE: "1"
-        run: ./scripts/cloud-setup.sh --db
-      - name: ImageMagick (screenshot resize; sips is macOS-only)
-        run: sudo apt-get install -y -qq imagemagick
-      - name: UI tests, then screenshots, on an emulator
-        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
-        env:
-          SCREENSHOTS: ${{ needs.request.outputs.screenshots }}
-        with:
-          api-level: 35
-          target: google_apis
-          arch: x86_64
-          profile: pixel_7
-          disable-animations: true
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -memory 4096 -cores 4
-          # One line per command; the action stops at the first that fails.
-          # ScreenshotCaptureTest needs the seeded backend, so it runs from the
-          # screenshot script (which starts the API and seeds) and not here.
-          # hide_error_dialogs: a system ANR dialog ("Pixel Launcher isn't
-          # responding") once covered the login form mid-test on this runner.
-          script: |
-            adb shell settings put global hide_error_dialogs 1
-            ./android/gradlew -p android connectedDebugAndroidTest --console=plain -Pandroid.testInstrumentationRunnerArguments.notClass=net.melisma.selko.ScreenshotCaptureTest
-            if [ "$SCREENSHOTS" = "true" ]; then ./scripts/capture-all-screenshots.sh android; fi
-      - name: Keep the screenshots
-        if: needs.request.outputs.screenshots == 'true'
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
-        with:
-          name: android-screenshots
-          path: docs/screenshots/android-*.png
-          if-no-files-found: error
-          retention-days: 7
-      - name: Keep the test reports
-        if: failure()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
-        with:
-          name: android-test-reports
-          path: android/app/build/reports/
-          if-no-files-found: ignore
-          retention-days: 7

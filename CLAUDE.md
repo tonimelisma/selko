@@ -46,7 +46,7 @@ This is the whole loop. Do not invent a different one per task.
 
 1. **Run the lanes. Never hand-roll verification.**
    `./scripts/verify-lanes.py --gate prod` before any production deploy.
-   `--gate mobile` for iOS/Android. Lanes cache on input content, so a re-run
+   Lanes cache on input content, so a re-run
    after a fix executes only what changed.
 2. **Read the printed table, not your memory of what you ran.** It states each
    lane's status, duration, and whether it executed or was reused.
@@ -100,11 +100,11 @@ left running for 1h47m, two `xcodebuild` runs driving the same simulator
 simultaneously, and an exit code read from `echo` instead of the command.
 
 - **A background task is finished when the harness reports it exited** — not
-  when its output looks complete. `xcodebuild` prints test results and then
-  stays alive for up to 600s collecting simulator diagnostics.
-- **Never start a command that shares a resource** (the simulator, port 8000,
-  the local database) **while another holds it.** Check with
-  `ps -eo pid,etime,command | grep xcodebuild`. `verify-lanes.py` enforces this
+  when its output looks complete. Some tools print their results and then stay
+  alive for minutes.
+- **Never start a command that shares a resource** (port 8000, the local
+  database) **while another holds it.** Check with
+  `ps -eo pid,etime,command`. `verify-lanes.py` enforces this
   with a per-lane lock and reports `BUSY` rather than running anyway.
 - **Stop every process you start**, in the same session, as soon as its
   consumer finishes. Never kill a process you did not start — it may be the
@@ -155,7 +155,7 @@ files, claiming review comments, or making other implementation writes.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│  Source code (backend/, frontend/src/, ios/, android/, cli/)           │
+│  Source code (backend/, frontend/src/, cli/)                           │
 │    → MUST use a feature branch + PR                                    │
 │      cloud session: in its own clone (no worktree)                     │
 │      Mac: in a worktree                                                │
@@ -198,8 +198,8 @@ BLOCKED: Cannot edit source code in the main repository.
 ## Cloud sessions (claude.ai/code)
 
 A cloud session (`CLAUDE_CODE_REMOTE=true`) runs in an Ubuntu 24.04 x86_64 VM
-with a throwaway clone of this repo. **This is the default way to work**: the
-Mac is used only for what needs macOS/Xcode. Everything above still applies,
+with a throwaway clone of this repo. **This is the default way to work**: nothing
+in Selko needs the Mac. Everything above still applies,
 with these differences.
 
 **Setup is automatic.** The SessionStart hook `scripts/cloud-setup.sh` (a no-op
@@ -211,7 +211,7 @@ frontend's npm deps, points Playwright at the preinstalled Chrome
 test-user password and labelled non-functional placeholders for the OAuth
 client IDs and for any LLM key the environment does not provide (routes build
 the gateway and sign-in URL before deciding anything; no test reaches a
-provider with them). It also starts the Android SDK install in the background. Image pulls run
+provider with them). Image pulls run
 detached, so the stack may still be coming up when the session starts:
 `scripts/cloud-setup.sh --status` says what is ready, `scripts/cloud-setup.sh
 --db` finishes it in the foreground. Full log: `.verify/cloud-setup.log`.
@@ -249,8 +249,6 @@ through `scripts/ops.py redact` (UUIDs, emails).
 | frontend | VM | `./scripts/verify.sh frontend`. Needs Node ≥ 22.12 (older Node silently skips rolldown's native binding: `Cannot find module '@rolldown/binding-linux-x64-gnu'`); setup installs 22.12 into `~/.local/node` when needed |
 | migration-order | VM | `./scripts/check-migration-order.sh` |
 | web screenshots | VM | `./scripts/capture-all-screenshots.sh web` (Chrome for Testing via `$CHROME_PATH`) |
-| android (unit, JVM) | VM | `./android/gradlew -p android testDebugUnitTest`. JDK 21 is preinstalled; the hook installs the SDK into `~/android-sdk` in the background (`scripts/cloud-setup.sh --android`, ~10 s). First run ≈ 2.5 min (Gradle + deps), measured 2026-11-22 |
-| Android emulator UI tests + screenshots | Actions (KVM) | `./scripts/ops.py dispatch android-emulator ref=<pushed branch> --download <dir>` — `connectedDebugAndroidTest`, then `capture-all-screenshots.sh android` against a local Supabase on the runner; the 12 PNGs come back as the `android-screenshots` artifact |
 | schema-compat (prod gate) | Actions | `./scripts/ops.py dispatch schema-compat` (what the lane runs): `supabase db push --dry-run` against production must succeed and lists what a deploy would apply. `when=post-deploy` runs R5 (`assert-schema-code-compat.sh --linked`) |
 | production deploy | Actions | `./scripts/ops.py dispatch deploy-production sha=<main's tip> confirm="deploy <sha>"` — only after the owner's explicit yes for that SHA (see "Ship it") |
 | cutover rehearsal | Actions | `./scripts/ops.py dispatch rehearse-cutover` (`faithful=false` for the status-shape-only variant). Scratch database on the runner's local Supabase; reads production with the read-only URL |
@@ -261,7 +259,6 @@ through `scripts/ops.py redact` (UUIDs, emails).
 | Render API | VM | `curl https://api.render.com/v1/services` with the network secret below (deploys stay in `deploy-production`) |
 | Sentry synthetic | VM | `SMOKE_SENTRY_DSN` env var, then `uv run python scripts/smoke-ingestion.py --base-url https://api.selkoapp.com --check-sentry` |
 | LLM evals / real-model tests | VM, "selko" environment | `uv run python -m backend.tests.eval.run_eval --fixture <category/name>` (or `--all --all-operations`, per `docs/evals-process.md`); `uv run pytest backend/tests/<file> --run-llm`. Needs the provider keys as environment variables (Owner setup) |
-| iOS | Mac (Xcode) | below |
 
 **LLM keys are the one credential kept as environment variables** (owner
 decision), in the dedicated personal "selko" cloud environment. setup never
@@ -274,51 +271,6 @@ key is stored as `SELKO_ANTHROPIC_API_KEY` and mapped back by reference in
 `CLAUDE_ENV_FILE`. Every other credential is a **network secret** (the proxy
 adds the header to requests for its host) or a GitHub Actions secret — never an
 environment variable, never committed.
-
-**iOS (no Xcode in the VM) — through the Latchkey connector on Toni's Mac.**
-Commit and push the branch, then:
-
-```text
-shell_run (Toni's Mac), keep_minutes: 30:
-  set -o pipefail; cd "$LATCHKEY_SCRATCH" &&
-  git clone -q --depth 1 -b <branch> https://github.com/tonimelisma/selko.git &&
-  cd selko && xcodebuild test -project ios/iOS.xcodeproj -scheme iOS \
-    -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
-    -derivedDataPath "$LATCHKEY_SCRATCH/dd" \
-    -resultBundlePath "$LATCHKEY_SCRATCH/TestResults.xcresult" -only-testing:iOSTests \
-    2>&1 | grep -E "Executed|error:|\*\* TEST" | tail -15;
-  rc=$?; rm -rf "$LATCHKEY_SCRATCH"/{dd,selko,TestResults.xcresult}; exit $rc
-```
-
-A session without the Latchkey connector pushes the branch and hands this
-command to the coordinating session (or Toni), which runs it and reports back.
-
-- Each `shell_run` has its own scratch folder, moved to the Trash when the
-  command ends — clone and test in **one** command (or pass `keep_minutes`).
-- `set -o pipefail` before `| tail`: without it the job reports exit 0 for a
-  failed build.
-- Test targets are `iOSTests` / `iOSUITests` (product names `SelkoTests` /
-  `SelkoUITests` are not valid `-only-testing` values).
-- Check `ps -eo pid,etime,command | grep xcodebuild` first: other sessions
-  drive the same simulators.
-- The full lane (`verify-lanes.py`'s `ios`, UI tests) also needs the local API
-  and Supabase on the Mac; run it in the main repo there.
-- Verified 2026-11-21: `-only-testing:iOSTests` passes this way in ~4.5 min
-  (clone, SwiftPM resolve, build, test), with the simulator booted headless:
-  no `uses: ["open"]` and no unlocked screen needed. The derived data is
-  ~700 MB, and Latchkey moves scratch to the Trash rather than deleting it, so
-  end the command with `rm -rf "$LATCHKEY_SCRATCH"/{dd,selko,TestResults.xcresult}`.
-  The Mac's disk has filled up before.
-- Screenshots, headless (works while the Mac is locked): `xcrun simctl boot
-  <udid>; xcrun simctl bootstatus <udid> -b; xcrun simctl io <udid> screenshot
-  "$LATCHKEY_SCRATCH/s.png"; xcrun simctl shutdown <udid>`, then read the PNG
-  with `files_read`. `simctl io … screenshot` on a *shut-down* device hangs,
-  so boot first. `scripts/capture-ios-screenshots.sh` additionally needs
-  local Supabase and the API running on the Mac. `computer_look` (the real
-  screen, e.g. the Simulator app) works only while the Mac is unlocked;
-  `machines` reports locked/unlocked.
-- The pre-commit hook does not demand iOS evidence in a cloud session (there
-  is no Xcode to produce it); the Mac run above is the gate, before merge.
 
 **GitHub from the VM.** `gh api` REST works (pulls, merges, check-runs,
 issues, `repos/<this repo>/dispatches`); GraphQL is refused, so `gh pr
@@ -345,16 +297,13 @@ Values are never handled by an agent. Each item names where it goes.
   API key>`.
 - *Allowed hosts*, if the environment is ever switched from unrestricted to
   limited: `api.selkoapp.com`, `api.supabase.com`, `api.render.com`, Sentry's
-  ingest host from the DSN, the Android/Gradle hosts `dl.google.com`,
-  `maven.google.com`, `services.gradle.org` (redirects to `github.com`),
-  `repo.maven.apache.org`, `plugins.gradle.org`; the LLM hosts
+  ingest host from the DSN; the LLM hosts
   `generativelanguage.googleapis.com`, `api.openai.com`, `api.x.ai`,
   `api.meta.ai`, `api.moonshot.ai`, `api.z.ai`, `api.deepseek.com`,
   `dashscope-intl.aliyuncs.com`, `api.minimax.io`,
   `tinker.thinkingmachines.dev`; and setup's `nodejs.org`, `public.ecr.aws`,
   `ghcr.io`, `registry-1.docker.io`, `github.com` /
-  `release-assets.githubusercontent.com` (Supabase CLI, Python builds, the
-  Gradle distribution).
+  `release-assets.githubusercontent.com` (Supabase CLI, Python builds).
 
 **GitHub Actions secrets** (repository → Settings → Secrets and variables →
 Actions). Already used by the old jobs and expected to exist:
@@ -379,7 +328,7 @@ New, for the operations that replace Mac-only steps:
 
 ## Definition of Done
 
-**The DoD scales to what you changed. Run only what your change actually touches — nothing more.** A backend-only change never runs web, iOS, or Android tests or screenshots.
+**The DoD scales to what you changed. Run only what your change actually touches — nothing more.** A backend-only change never runs web tests or screenshots.
 
 ### 0. Check for unaddressed PR review comments (source code increments only)
 
@@ -441,11 +390,10 @@ not authorize unrelated production-data mutations.
 | `backend/**`, `cli/**` | `./scripts/verify.sh backend` — unit **+** integration against local Supabase | `./scripts/ops.py dispatch staging-tier2` |
 | `supabase/**` (schema/migrations) | `./scripts/verify.sh backend` — the integration run is what proves the migration executes | `./scripts/ops.py dispatch staging-tier2` — **required**, migrations must reach staging before prod (paused: disclose the gap) |
 | `frontend/src/**` | Frontend unit tests + `npm run check` + **web** screenshots |
-| `ios/**` | iOS tests + **iOS** screenshots |
-| `android/**` | Android tests + **Android** screenshots |
+| `legacy/**` (the unmaintained iOS and Android apps) | Nothing: don't change them (`legacy/README.md`) |
 | `docs/`, `*.md`, `.env*`, `scripts/`, `.claude/`, config only | Nothing to test — commit & push |
 
-- **Only the platform you edited counts.** Editing `backend/` requires no web/iOS/Android tests or screenshots. Editing one frontend requires nothing from the others.
+- **Only what you edited counts.** Editing `backend/` requires no web tests or screenshots.
 - **Bug fixes MUST include a regression test** in the module you fixed.
 - **Production LLM failures MUST also become anonymized regression eval fixtures**
   under `backend/tests/eval/fixtures/`, with hand-written expected output. Run the
@@ -533,7 +481,6 @@ one-line `.env` edit.** Scope verification to that reality.
 
 ```bash
 ./scripts/verify-lanes.py --gate prod     # blocks a production deploy
-./scripts/verify-lanes.py --gate mobile   # ships via app stores; never blocks prod
 ./scripts/verify-lanes.py --gate observe  # measures running production; blocks nothing
 ./scripts/verify-report.py                # what each lane costs and has caught
 ```
@@ -561,9 +508,9 @@ its dispatch cannot be sent, its run never appears, or the run lacks the
 production credentials, because a local-only check proves nothing. Silence is
 not success.
 
-**`prod` and `mobile` are separate gates.** Production is backend + supabase +
-frontend. iOS and Android ship through app stores. A red iOS suite has never been
-a reason to hold a backend deploy, and treating it as one has cost hours.
+**Production is backend + supabase + frontend**, and those are the only lanes.
+The native iOS and Android apps are unmaintained (`legacy/README.md`): no lane,
+CI job, hook or setup step builds or tests them.
 
 ### 2. Ship it
 
@@ -639,10 +586,6 @@ hooks, then the served-SHA and health checks. It depends on no other job.
 | `uv run pytest backend/tests/ -v` | Backend tests |
 | `npm run test:unit -- --reporter=json --outputFile=test-results.json` | Frontend tests (from `frontend/`) |
 | `uv run python -m selko.api` | Start FastAPI server |
-| `./gradlew testDebugUnitTest` | Android tests (from `android/`) |
-| `xcodebuild test -project ios/iOS.xcodeproj -scheme iOS -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -resultBundlePath ios/TestResults.xcresult` | iOS tests |
-
-> **iOS gotcha:** Scheme is `iOS` (not "Selko"). Remove old `ios/TestResults.xcresult` before re-running.
 
 See `docs/testing-guide.md` for the full test guide and `docs/manual-email-to-calendar-walkthrough.md` for CLI tools and end-to-end walkthrough.
 
@@ -650,30 +593,16 @@ See `docs/testing-guide.md` for the full test guide and `docs/manual-email-to-ca
 
 ## Platform Preferences
 
-### iOS — Pure SwiftUI
-- **Never import UIKit** unless absolutely unavoidable (e.g., `UIApplication` for opening URLs)
-- For adaptive light/dark colors: use **asset catalog color sets**, not `UIColor { traits in ... }`
-- Brand font is bundled Figtree (declared in `Info.plist` under `UIAppFonts`); use `Font.custom(_:size:relativeTo:)` so Dynamic Type scaling keeps working
-- Project is `ios/iOS.xcodeproj`, scheme is `iOS` (not "Selko" — common mistake)
-- Uses `PBXFileSystemSynchronizedRootGroup` — Swift files in `Selko/` are auto-discovered, no `project.pbxproj` edits needed for new files
-- `ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES` — color sets (e.g., `SelkoSuccess.colorset`) auto-generate `Color.selkoSuccess` extensions. Do NOT create manual Color extensions that duplicate asset catalog names (causes "invalid redeclaration")
-- Available simulators: iPhone 17 Pro, iPhone 17, iPhone Air (no iPhone 16)
-- Must `rm -rf ios/TestResults.xcresult` before re-running tests
-
-### Android — Pure Jetpack Compose
-- **No legacy View system** — no XML layouts, no `android.widget` imports
-- Material3 (`androidx.compose.material3`) exclusively
-- Koin for dependency injection (`koinViewModel()`)
-- `dynamicColor = false` — brand colors always override Material You
-- Font resources must be **lowercase with underscores** (e.g., `inter_regular.ttf` in `res/font/`)
-- For icons beyond basics, add `material-icons-extended` dependency
+**The web app is Selko's only client.** The native apps in `legacy/ios/` and
+`legacy/android/` are unmaintained (owner decision, 2026-11-25): never edit,
+build or test them, and don't read them as a description of how Selko works.
 
 ### Web — SvelteKit + DaisyUI
 - SvelteKit 2 with Svelte 5 (runes syntax)
 - DaisyUI semantic colors only — never use raw Tailwind colors (`text-blue-500` etc.)
 - Custom themes `selko-light` and `selko-dark` in `frontend/src/app.css` (Tailwind v4 `@plugin "daisyui/theme"`; there is no `tailwind.config.js`)
 - `svelte-check` CI is strict about types — use JSDoc annotations where needed
-- `design/tokens.json` is the canonical cross-platform control contract. Use
+- `design/tokens.json` is the canonical control contract. Use
   semantic control primitives; static statuses are plain icon/text, NEW is
   neutral, Included/Excluded is a labeled switch, and all targets are ≥44.
 
@@ -681,9 +610,9 @@ See `docs/testing-guide.md` for the full test guide and `docs/manual-email-to-ca
 
 ## UI Testing & Visual Verification
 
-**Standard workflow:** Use `./scripts/capture-all-screenshots.sh <platform>` to capture screenshots, then review them for visual correctness. The script handles seeding, building, and capturing automatically.
+**Standard workflow:** Use `./scripts/capture-all-screenshots.sh web` to capture screenshots, then review them for visual correctness. The script handles seeding, building, and capturing automatically.
 
-**MCP tools** (Playwright, XcodeBuildMCP, mobile-mcp) are for **manual debugging only** — e.g., clicking a new button, testing a specific interaction, or investigating a visual bug that screenshots alone can't diagnose. Do NOT use MCP tools or `/verify-*` slash commands as a standard verification step.
+**MCP tools** (Playwright) are for **manual debugging only** — e.g., clicking a new button, testing a specific interaction, or investigating a visual bug that screenshots alone can't diagnose. Do NOT use MCP tools or `/verify-*` slash commands as a standard verification step.
 
 **Key warnings:** Screenshots must be **≤ 2000 px** in both dimensions (resize with `sips --resampleHeight 1920`). Never use `fullPage: true` in Playwright.
 
@@ -700,22 +629,9 @@ See `docs/testing-guide.md` for the full test guide and `docs/manual-email-to-ca
 | Changed files | Command |
 |---------------|---------|
 | `frontend/src/` | `./scripts/capture-all-screenshots.sh web` |
-| `ios/` | `./scripts/capture-all-screenshots.sh ios` |
-| `android/` | `./scripts/capture-all-screenshots.sh android` |
-| Shared code (Supabase schema, seed data) affecting all UIs | `./scripts/capture-all-screenshots.sh` |
+| Shared code (Supabase schema, seed data) affecting the UI | `./scripts/capture-all-screenshots.sh web` |
 
-The unified script handles seeding, booting, building, testing, pulling, and resizing. See `docs/screenshot-guide.md` for details.
-
-**Pre-warming:** Boot the simulator/emulator early so startup overlaps with coding time:
-
-```bash
-# iOS
-xcrun simctl boot "iPhone 17 Pro" 2>/dev/null || true
-# Android (if no emulator running)
-adb devices | grep -q emulator || (emulator -avd Pixel_8 -no-audio &)
-```
-
-**Keep running:** Do NOT close or terminate simulators/emulators between testing and screenshots — they're reused for both.
+The script handles seeding, starting the API, capturing and resizing. See `docs/screenshot-guide.md` for details.
 
 ---
 
@@ -759,7 +675,7 @@ adb devices | grep -q emulator || (emulator -avd Pixel_8 -no-audio &)
   so an expired OAuth token did the same for 18 days. Before adding a health
   signal, ask what makes it go back to green, and whether that is something the
   system does on its own.
-- **Reconnect recovery:** Google Calendar reauthorization atomically creates a durable `integration_recoveries` generation (via `complete_integration_reauthorization`) that requeues OAuth-blocked calendar work items; email resumes from provider cursors via the `integrations_ensure_email_sync_state` trigger with no recovery record. Auth failures are classified on `calendar_work_items.failure_code` (`oauth_required`/`oauth_scope_required`) and never trip the global provider circuit breaker. The ConnectionRecovery card on web/iOS/Android shows catch-up progress (`integration_recoveries` is RLS-readable by the owner).
+- **Reconnect recovery:** Google Calendar reauthorization atomically creates a durable `integration_recoveries` generation (via `complete_integration_reauthorization`) that requeues OAuth-blocked calendar work items; email resumes from provider cursors via the `integrations_ensure_email_sync_state` trigger with no recovery record. Auth failures are classified on `calendar_work_items.failure_code` (`oauth_required`/`oauth_scope_required`) and never trip the global provider circuit breaker. The ConnectionRecovery card on the web shows catch-up progress (`integration_recoveries` is RLS-readable by the owner).
 - **Outbound traffic is metered:** `selko.services.egress` attributes every outbound byte to a destination (`supabase`/`gmail`/`graph`) and a bounded operation template, exposed at `/health/egress` and logged every `EGRESS_LOG_INTERVAL_SECONDS`. Supabase traffic is captured by an httpx response hook on the single shared service client in `get_service_client`, so it cannot be bypassed by a new call site — do not construct a second service client without that hook. This exists because a platform bandwidth alert reports a total with no attribution, which cannot tell constant polling apart from real provider downloads. Idle loops must not exist. Work arrives by notification; the safety-net poll is a floor, not a schedule. Any new unconditional periodic database call must be justified in the PR body against the two rules above: work arrives by notification, and the safety-net poll is a floor rather than a schedule.
 - **Fenced-resolution health:** `/health` exposes content-free, process-local resolution conflicts-per-hour, retry histogram, fenced-write count, conflict-exhaustion count, and pending-email age gauges. Event extraction writes are committed only through `commit_email_extraction`; direct event inserts in services/workers are guarded by AST tests. Google Photos ingestion remains parked.
 - **MCP endpoint for Claude:** `/mcp` (streamable HTTP, stateless) is mounted into the API by `create_app()`; code in `selko/api/mcp/`. **Supabase Auth's OAuth 2.1 server is the authorization server** — Selko only hosts the consent page (`/oauth/consent`) and checks tokens. Dynamic client registration is **on**, as every MCP client expects (users add the URL, nothing else; never make them paste a client ID). The consent page is the gate. Supabase ignores RFC 8707 `resource` and sets `aud=authenticated` on every token, so the verifier requires the `client_id` claim (minted only by the OAuth flow): a web-app session token is refused at `/mcp`. Consent API calls must come from the exact `site_url` origin (prod `https://selkoapp.com`). Reads go through PostgREST with the caller's token (RLS); writes reuse the apps' RPCs/service functions — never a second implementation. `list_review_queue` carries an MCP Apps widget (`ui://selko/review-queue.html`, vendored `ext-apps` runtime inlined because the iframe CSP blocks CDNs). Every tool needs `title` + `readOnlyHint` + `destructiveHint` (pinned by `test_mcp_server.py`). Connection health (`connections.py`) rides on every tool result as `connection_alert`; `reconnect_account` hands out a provider sign-in link and `/app/settings?reconnect=google|outlook` is the non-expiring one. Setup, scheduled runs and design notes: `docs/mcp.md`.
@@ -843,7 +759,7 @@ refresh tokens; a lower-trust environment is a lower-trust environment.
 | **UI patterns & components** | `docs/ui/03-patterns-and-components.md` | Before building any UI component, to follow conventions |
 | **Brand guide** | `docs/brand-guide.md` | When implementing any UI, choosing colors, fonts, or terminology |
 | **UI testing** | `docs/ui-testing-guide.md` | When writing E2E tests or using MCP visual verification |
-| **Screenshot capture** | `docs/screenshot-guide.md` | When capturing product screenshots across web, iOS, and Android |
+| **Screenshot capture** | `docs/screenshot-guide.md` | When capturing web screenshots |
 | **LLM eval system** | `backend/tests/eval/README.md` | When working with LLM evaluation or benchmarking |
 | **Evals process** | `docs/evals-process.md` | When running evals, interpreting results, or iterating on prompts |
 | **Implementation specs** | `docs/specs/` | When planning or implementing a new feature (detailed build plans; see `docs/specs/README.md`) |

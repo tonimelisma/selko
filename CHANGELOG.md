@@ -4,6 +4,23 @@ All notable changes to this project are documented in this file.
 
 ## Unreleased
 
+### Change: iOS and Android apps ring-fenced as unmaintained legacy code
+
+**Decision (owner, 2026-11-25):** the web app is Selko's only client. The
+native apps are kept for reference only and are no longer built, tested or
+updated.
+
+- `ios/` → `legacy/ios/`, `android/` → `legacy/android/`, with `legacy/README.md`
+- Removed: the `ios` and `android` lanes and the `mobile` gate (`scripts/lanes.toml`,
+  `scripts/verify-lanes.py`); the Android CI job (`test.yml`); the
+  `android-emulator` operation (`ops.yml`, `scripts/ops.py`); the Android SDK
+  install (`scripts/cloud-setup.sh`); iOS/Android checks in the pre-commit and
+  edit-guard hooks; `capture-ios-screenshots.sh`, `capture-android-screenshots.sh`,
+  the iOS/Android screenshots, `/verify-ios`, `/verify-android`, and the iOS
+  accessibility lint test
+- CLAUDE.md, the README and the testing, screenshot, UI-testing, CI/CD and
+  agent docs now describe the web app only
+
 ### Fix: Android review queue icon-only buttons to prevent text truncation
 
 **Problem:** The three action buttons ("Approve", "Edit", "Reject") on review queue event cards didn't fit side-by-side on phone screens, causing "Reject" to wrap across two lines.

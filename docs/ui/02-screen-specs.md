@@ -531,12 +531,11 @@ Google  user@gmail.com  ⚠ Google Calendar not connected
 Google  user@gmail.com  ⚠ Expired  [Disconnect] [Reconnect Google]
 ```
 
-Gmail and Google Calendar are **one card** on web, iOS and Android. One
+Gmail and Google Calendar are **one card** in the web app. One
 Google consent (`GET /integrations/google/auth`) grants both scopes and the
 callback stores the shared token in both `integrations` rows (`gmail`,
 `google_calendar`), so the rows connect, expire and reconnect together. The
-card derives its state from both rows (`deriveGoogleConnection` on web,
-`GoogleConnection` on iOS/Android): Connected only when both are active;
+card derives its state from both rows (`deriveGoogleConnection`): Connected only when both are active;
 "<product> not connected" when one row is missing; "Reconnect Google" when
 either row is inactive. **Disconnect removes both rows** in one request,
 behind a confirmation that says so — leaving one half connected would keep a

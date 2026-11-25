@@ -11,7 +11,7 @@ This document demonstrates the Python API endpoints for server-side operations t
 │                         DATA ACCESS                                  │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                      │
-│   Frontend (Web/Android/iOS)                                        │
+│   Frontend (Web)                                                    │
 │         │                                                            │
 │         ├──────────────────────────────────────┐                    │
 │         │                                      │                    │
@@ -303,8 +303,6 @@ POST /events/{event_id}/sync
 
 For all data operations (listing, filtering, updating), query Supabase directly using the native SDK for your platform:
 
-- **Web (JavaScript)**: `@supabase/supabase-js`
-- **Android (Kotlin)**: `io.github.jan-tennert.supabase`
-- **iOS (Swift)**: `supabase-swift`
+- **Web (JavaScript)**: `@supabase/supabase-js` (the only maintained client; the native apps in `legacy/` are unmaintained)
 
 See `supabase-frontend-queries.md` for canonical query patterns.

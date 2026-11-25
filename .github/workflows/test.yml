@@ -7,11 +7,9 @@ name: Tests
 # - Backend/Supabase changes on main: staging deploy + Tier 2 (only while the
 #   staging project is running -- it is paused by owner decision, and the job
 #   says so instead of failing every push)
-# - Android changes: Android tests only
 #
 # Production deploys, schema checks against hosted projects, the cutover
-# rehearsal, the review-queue repair, an explicit Tier 2 run and the Android
-# emulator are operations of ops.yml, started by repository_dispatch through
+# rehearsal, the review-queue repair, and an explicit Tier 2 run are operations of ops.yml, started by repository_dispatch through
 # scripts/ops.py.
 
 on:
@@ -30,7 +28,6 @@ jobs:
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
       supabase: ${{ steps.filter.outputs.supabase }}
-      android: ${{ steps.filter.outputs.android }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4
@@ -45,8 +42,6 @@ jobs:
               - '.github/workflows/test.yml'
             supabase:
               - 'supabase/**'
-            android:
-              - 'android/**'
 
   unit-tests:
     name: Unit Tests
@@ -81,41 +76,6 @@ jobs:
       - name: Run unit tests
         run: uv run pytest backend/tests/ -m "not integration" -v --tb=short -n auto
 
-  android-unit-tests:
-    name: Android Unit Tests
-    needs: changes
-    if: needs.changes.outputs.android == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-
-      - name: Set up JDK
-        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
-        with:
-          java-version: '21'
-          distribution: 'temurin'
-
-      - name: Cache Gradle packages
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-          restore-keys: |
-            gradle-${{ runner.os }}-
-
-      - name: Run unit tests
-        working-directory: android
-        run: ./gradlew test
-
-      - name: Upload test results
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
-        if: failure()
-        with:
-          name: android-unit-test-results
-          path: android/app/build/reports/tests/
-
   deploy-staging:
     name: Deploy to Staging
     runs-on: ubuntu-latest
@@ -126,9 +86,8 @@ jobs:
       always() &&
       github.event_name == 'push' && github.ref == 'refs/heads/main' &&
       (needs.changes.outputs.backend == 'true' || needs.changes.outputs.supabase == 'true') &&
-      (needs.unit-tests.result == 'success' || needs.unit-tests.result == 'skipped') &&
-      (needs.android-unit-tests.result == 'success' || needs.android-unit-tests.result == 'skipped')
-    needs: [changes, unit-tests, android-unit-tests]
+      (needs.unit-tests.result == 'success' || needs.unit-tests.result == 'skipped')
+    needs: [changes, unit-tests]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 

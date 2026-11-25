@@ -27,20 +27,8 @@ uv run pytest backend/tests/integration/ -m "development" --run-llm -v
 cd frontend && npm run test:unit -- --reporter=json --outputFile=test-results.json
 ```
 
-### iOS (XCTest)
-
-```bash
-# Run tests with result bundle (required for pre-commit hook)
-xcodebuild test -project ios/iOS.xcodeproj -scheme iOS \
-  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
-  -resultBundlePath ios/TestResults.xcresult
-```
-
-### Android (Gradle)
-
-```bash
-cd android && ./gradlew test
-```
+The native iOS and Android apps are unmaintained and have no tests to run
+(`legacy/README.md`).
 
 ## Test Markers
 
@@ -168,8 +156,6 @@ The hook checks per-module using native test caches:
 |--------|----------------|
 | backend | `backend/.pytest_cache/v/cache/lastfailed` |
 | frontend | `frontend/test-results.json` |
-| ios | `ios/TestResults.xcresult` |
-| android | `android/app/build/test-results/` |
 
 For each module with staged changes, the hook verifies:
 1. Test results exist and show all tests passed
@@ -193,12 +179,10 @@ For full details, see `docs/ui-testing-guide.md`.
 | Platform | Command | What It Tests |
 |----------|---------|---------------|
 | Web E2E | `cd frontend && npm run test:e2e -- --project=chromium` | Full user journeys in browser |
-| iOS XCUITest | `xcodebuild test -project ios/iOS.xcodeproj -scheme iOS -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -resultBundlePath ios/TestResults.xcresult` | UI flows on iOS Simulator |
-| Android UI | `cd android && ./gradlew connectedAndroidTest` | Compose UI tests on emulator |
 
 ### MCP Tools (Manual Debugging Only)
 
-MCP servers (Playwright, XcodeBuildMCP, mobile-mcp) are available for **manual debugging only** — e.g., clicking a new button, testing a specific interaction, or investigating a visual bug. Do NOT use them as a standard verification step. Use `./scripts/capture-all-screenshots.sh <platform>` for standard visual verification.
+The Playwright MCP server is available for **manual debugging only** — e.g., clicking a new button, testing a specific interaction, or investigating a visual bug. Do NOT use them as a standard verification step. Use `./scripts/capture-all-screenshots.sh web` for standard visual verification.
 
 ## Continuous Integration
 

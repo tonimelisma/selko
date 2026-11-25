@@ -7,11 +7,11 @@
 # that lane executes.
 #
 # `gate` decides what a lane blocks:
-#   prod   -> ships to a server; blocks a production deploy
-#   mobile -> ships through an app store; does NOT block a production deploy
+#   prod    -> ships to a server; blocks a production deploy
+#   observe -> measures running production; blocks nothing
 #
-# Conflating these is why a flaky iOS UI test once held up a backend deploy it
-# had no bearing on.
+# The native iOS and Android apps are unmaintained (legacy/README.md) and have
+# no lanes.
 
 [lanes.backend]
 gate = "prod"
@@ -105,37 +105,3 @@ inputs = [
     "frontend/vitest.setup.js",
     "scripts/verify.sh",
 ]
-
-[lanes.ios]
-gate = "mobile"
-description = "iOS unit + UI tests on iPhone 17 Pro"
-# with-api.sh owns the backend's lifetime: it starts the API only if it is not
-# already up and stops only what it started. Process lifetime is not something
-# anyone should have to remember -- the "stop what you start" rule was written
-# down and broken within the hour, twice.
-command = "rm -rf ios/TestResults.xcresult && ./scripts/with-api.sh xcodebuild test -project ios/iOS.xcodeproj -scheme iOS -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -resultBundlePath ios/TestResults.xcresult"
-# The API surface is an input too: with a real backend in the loop, an API
-# response-shape change alters this lane's result. Without it here, a cached
-# green iOS pass survives a backend change that would break the app.
-inputs = [
-    "ios/Selko/**",
-    "ios/SelkoTests/**",
-    "ios/SelkoUITests/**",
-    "backend/selko/api/**",
-]
-
-
-[lanes.android]
-gate = "mobile"
-description = "Android unit tests (JVM; runs in a cloud session)"
-command = "./android/gradlew -p android testDebugUnitTest"
-inputs = ["android/**/*.kt", "android/**/*.kts"]
-
-[[lanes.android.requires]]
-name = "android-sdk"
-check = "grep -q '^sdk.dir=' android/local.properties 2>/dev/null || test -n \"${ANDROID_HOME:-}\""
-remedy = "no Android SDK: in a cloud session run scripts/cloud-setup.sh --android (the SessionStart hook starts it in the background); on the Mac install it from Android Studio"
-
-# Emulator UI tests and screenshots need KVM, which a cloud VM lacks. They run
-# in ops.yml's android-emulator operation on a GitHub-hosted runner:
-#   ./scripts/ops.py dispatch android-emulator ref=<branch> --download <dir>

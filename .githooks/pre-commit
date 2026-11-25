@@ -20,8 +20,6 @@ fi
 # Determine which modules have changes
 BACKEND_CHANGED=false
 FRONTEND_CHANGED=false
-IOS_CHANGED=false
-ANDROID_CHANGED=false
 
 # Keep tracked evaluation artifacts bounded. The current retained baseline is
 # above the original 2,000-file suggestion because the content-addressed
@@ -42,12 +40,6 @@ for file in $STAGED_FILES; do
             ;;
         frontend/src/*.js|frontend/src/*.svelte|frontend/src/**/*.js|frontend/src/**/*.svelte)
             FRONTEND_CHANGED=true
-            ;;
-        ios/*.swift)
-            IOS_CHANGED=true
-            ;;
-        android/*.kt)
-            ANDROID_CHANGED=true
             ;;
     esac
 done
@@ -131,72 +123,6 @@ check_frontend() {
     return 0
 }
 
-# Check iOS using xcresult bundle
-check_ios() {
-    local result_bundle="$PROJECT_ROOT/ios/TestResults.xcresult"
-
-    # Check result bundle exists
-    if [ ! -d "$result_bundle" ]; then
-        return 1
-    fi
-
-    # Check no source files newer than result bundle
-    if [ -n "$(find "$PROJECT_ROOT/ios" -name '*.swift' -newer "$result_bundle" 2>/dev/null | head -1)" ]; then
-        return 1
-    fi
-
-    # Verify it's a valid xcresult and tests passed
-    # xcresulttool exits non-zero if bundle is invalid
-    # Note: --legacy flag required for Xcode 26+ which deprecated the old format
-    local test_summary
-    if ! test_summary=$(xcrun xcresulttool get object --legacy --path "$result_bundle" --format json 2>/dev/null); then
-        return 1
-    fi
-
-    # Check for test failures in the summary
-    if echo "$test_summary" | grep -q '"testsFailedCount" *: *[1-9]'; then
-        return 1
-    fi
-
-    return 0
-}
-
-# Check Android using gradle test results
-check_android() {
-    local results_dir="$PROJECT_ROOT/android/app/build/test-results/testDebugUnitTest"
-
-    # Check results directory exists with XML files
-    if [ ! -d "$results_dir" ]; then
-        return 1
-    fi
-
-    local xml_files=$(find "$results_dir" -name "*.xml" -type f 2>/dev/null)
-    if [ -z "$xml_files" ]; then
-        return 1
-    fi
-
-    # Get the newest result file for timestamp comparison
-    local newest_result=$(ls -t "$results_dir"/*.xml 2>/dev/null | head -1)
-    if [ -z "$newest_result" ]; then
-        return 1
-    fi
-
-    # Check no source files newer than results
-    if [ -n "$(find "$PROJECT_ROOT/android" -name '*.kt' -newer "$newest_result" 2>/dev/null | head -1)" ]; then
-        return 1
-    fi
-
-    # Parse XML results for failures (failures="N" or errors="N" where N > 0)
-    if grep -q 'failures="[1-9]' "$results_dir"/*.xml 2>/dev/null; then
-        return 1
-    fi
-    if grep -q 'errors="[1-9]' "$results_dir"/*.xml 2>/dev/null; then
-        return 1
-    fi
-
-    return 0
-}
-
 # Check each module that has changes
 if [ "$BACKEND_CHANGED" = true ]; then
     echo "  Checking backend..."
@@ -215,37 +141,6 @@ if [ "$FRONTEND_CHANGED" = true ]; then
     else
         BLOCKED=true
         MODULES_NEEDING_TESTS="$MODULES_NEEDING_TESTS frontend"
-    fi
-fi
-
-if [ "$IOS_CHANGED" = true ] && [ "${CLAUDE_CODE_REMOTE:-}" = "true" ]; then
-    # A cloud VM has no Xcode, and the iOS lane runs on Toni's Mac from a clone
-    # of the *pushed* branch (CLAUDE.md "Cloud sessions"), so requiring the
-    # evidence here would make it impossible to commit the code that the test
-    # needs. The gate moves, it does not disappear: the PR is not merged until
-    # that Mac run passes.
-    echo "  ios: cloud session -- run the iOS lane on the Mac through Latchkey after pushing; do not merge before it passes"
-elif [ "$IOS_CHANGED" = true ]; then
-    echo "  Checking ios..."
-    if check_ios; then
-        echo "    iOS tests verified (xcresult)"
-    else
-        BLOCKED=true
-        MODULES_NEEDING_TESTS="$MODULES_NEEDING_TESTS ios"
-    fi
-fi
-
-if [ "$ANDROID_CHANGED" = true ] && [ "${CLAUDE_CODE_REMOTE:-}" = "true" ]; then
-    # Same reasoning as iOS: the cloud VM has no Android SDK, the lane runs on
-    # the Mac from the pushed branch, and that run gates the merge.
-    echo "  android: cloud session -- run the Android lane on the Mac through Latchkey after pushing; do not merge before it passes"
-elif [ "$ANDROID_CHANGED" = true ]; then
-    echo "  Checking android..."
-    if check_android; then
-        echo "    Android tests verified (gradle results)"
-    else
-        BLOCKED=true
-        MODULES_NEEDING_TESTS="$MODULES_NEEDING_TESTS android"
     fi
 fi
 
@@ -270,19 +165,6 @@ if [ "$BLOCKED" = true ]; then
             frontend)
                 echo "  frontend:"
                 echo "    cd frontend && npm run test:unit -- --reporter=json --outputFile=test-results.json"
-                ;;
-            ios)
-                echo "  ios:"
-                echo "    xcodebuild test -project ios/iOS.xcodeproj -scheme iOS \\"
-                # iPhone 16 does not exist on this machine (CLAUDE.md lists
-                # iPhone 17 Pro / 17 / Air). Telling an operator to run a
-                # command that cannot work is worse than saying nothing.
-                echo "      -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \\"
-                echo "      -resultBundlePath ios/TestResults.xcresult"
-                ;;
-            android)
-                echo "  android:"
-                echo "    cd android && ./gradlew test"
                 ;;
         esac
         echo ""

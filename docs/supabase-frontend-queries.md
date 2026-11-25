@@ -2,7 +2,7 @@
 
 **This is the canonical reference for all frontend data access.**
 
-All frontends (Web/JS, Android/Kotlin, iOS/Swift) **MUST** use these patterns when accessing data. There is no alternative API for data queries.
+The web frontend (Selko's only maintained client) **MUST** use these patterns when accessing data. There is no alternative API for data queries.
 
 ## Architecture Overview
 
@@ -521,7 +521,7 @@ GET /integrations/google/auth?redirect_uri={uri}
 GET /integrations/gmail/auth?redirect_uri={uri}
 GET /integrations/calendar/auth?redirect_uri={uri}
   -> Same combined consent; kept for shipped mobile builds that call them.
-     Current web, iOS and Android clients call /integrations/google/auth.
+     The web client calls /integrations/google/auth.
 
 GET /integrations/google/callback?code={code}&state={state}
   -> Unified callback for all Google OAuth flows (public endpoint)

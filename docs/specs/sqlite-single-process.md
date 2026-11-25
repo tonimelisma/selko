@@ -59,10 +59,12 @@ check), `auth.admin.*` in `services/users.py`. Storage: 3 calls.
 | Client | Supabase code | Uses |
 |---|---|---|
 | Web | 20 files, 3,122 lines mention Supabase | 9 tables, 2 RPCs, password sign-in/up, 5 `oauth.*` consent calls, 1 Broadcast channel, 1 Storage download |
-| iOS | 9 files, 1,432 lines; package `supabase-swift` | 6 tables, password sign-in/up, 1 channel |
-| Android | 9 files, 977 lines; `supabase-kt` auth, postgrest, realtime | 6 tables, 1 RPC, password sign-in/up, 1 channel |
 
-Client operations to serve from the API (union of all three): `emails`
+The web app is the only client. The native iOS and Android apps are
+unmaintained (`legacy/README.md`, owner decision 2026-11-25): this plan does not
+change them, and they stop working at cutover.
+
+Client operations to serve from the API: `emails`
 list/get/update; `events` list/get/update; `event_sources` list;
 `attachments` list + download; `email_folders` list; `integrations`
 list/delete; `integration_recoveries` list; `sender_rules`
@@ -182,8 +184,7 @@ recording file names and hashes.
 the same `{resource, operation, entity_id, occurred_at}` invalidation hints
 from the event bus, filtered to the caller. The browser's `EventSource`
 cannot send an `Authorization` header, so the web client uses a streaming
-`fetch`; iOS and Android use their HTTP clients' streaming reads. Clients
-keep catching up from the API on (re)connect, as they already do.
+`fetch`. The client keeps catching up from the API on (re)connect, as they already do.
 
 ### 4.6 Deploy
 
@@ -224,7 +225,7 @@ keep catching up from the API on (re)connect, as they already do.
   substitute.
 - Up to 24 hours of data loss on a disk-snapshot restore; no point-in-time
   recovery.
-- Old iOS/Android builds stop working at cutover; web users and MCP
+- The legacy iOS/Android apps stop working at cutover; web users and MCP
   connectors sign in again (passwords still work).
 
 ## 5. Increments
@@ -236,11 +237,11 @@ touches only the backend's data layer.
 | # | Increment | Done when |
 |---|---|---|
 | Q0 | Measure production: database size per table, attachment count and bytes, user count, whether sign-up requires email confirmation (if yes, signup sends mail through Resend, which the API already uses) | numbers recorded in this spec |
-| Q1 | **Client data through the API.** ~20 endpoints (§2) on today's database; web, iOS, Android switch to them; PostgREST no longer called by any client | `test_frontend_select_columns_exist_in_the_live_schema` has nothing left to check and is deleted; a test proves no client source calls `.from(` |
-| Q2 | **Live updates through the API.** `/live` fed by today's `pg_notify`; clients switch; `realtime.send` triggers removed | Realtime unused in production for 7 days |
+| Q1 | **Client data through the API.** ~20 endpoints (§2) on today's database; the web app switches to them; PostgREST no longer called by any client | `test_frontend_select_columns_exist_in_the_live_schema` has nothing left to check and is deleted; a test proves no client source calls `.from(` |
+| Q2 | **Live updates through the API.** `/live` fed by today's `pg_notify`; the web app switches; `realtime.send` triggers removed | Realtime unused in production for 7 days |
 | Q3 | **Ownership without RLS.** Every client endpoint scoped by the token's user; a generated test calls every endpoint as user B with user A's ids and requires 404 | the cross-user test covers every route (it fails when a route is added without it) |
 | Q4 | **Image, signing, startup migrations, production-image lane** (§4.6) | lane boots the image and runs the smoke + MCP OAuth tests |
-| Q5 | **Own auth on today's database.** `accounts` filled from `auth.users` (bcrypt hashes copied), `/auth/*`, MCP authorization server on `mcp.server.auth`; clients switch; GoTrue unused | sign-in with an existing password works on all three clients; MCP connector added from scratch |
+| Q5 | **Own auth on today's database.** `accounts` filled from `auth.users` (bcrypt hashes copied), `/auth/*`, MCP authorization server on `mcp.server.auth`; the web app switches; GoTrue unused | sign-in with an existing password works in the web app; MCP connector added from scratch |
 | Q6 | **The SQLite data layer** (the big one): `selko/db/` with the 73 functions and 22 asyncpg operations as Python, `0001_initial.sql`, attachments on disk; supabase-py and asyncpg removed; the 368 integration tests and the 44 stubbing unit-test files moved to a temp SQLite file | full backend suite green on SQLite; `test_no_worker_module_retains_a_postgrest_fallback` replaced by a test that `supabase` and `asyncpg` are not importable from `selko` |
 | Q7 | **Cutover** (owner's explicit yes): stop writes on Render; a one-shot `selko import-from-postgres` inside the signed image, run on the server, reads production through the read-only URL and writes `selko.db`, copies attachment objects to `attachments/`, and compares row counts and per-table checksums; start; switch DNS for `selkoapp.com` and `api.selkoapp.com`; deploy log T+0/T+15m/T+24h | health invariants green; counts match |
 | Q8 | **Retire** Render services and the Supabase project after 14 days untouched (the way back); remove `supabase/`, the Supabase CLI from setup and CI, and the PostgREST/asyncpg rules from CLAUDE.md | — |

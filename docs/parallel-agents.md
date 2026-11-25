@@ -69,12 +69,6 @@ cd ../selko-<type>-<task>
 # 7. Install dependencies (if needed)
 uv sync                         # Python deps
 cd frontend && npm ci && cd ..  # JS deps (if changing frontend)
-
-# 8. Pre-warm simulators/emulators (if UI task on these platforms)
-#    iOS:
-xcrun simctl boot "iPhone 17 Pro" 2>/dev/null || true
-#    Android (if no emulator running):
-adb devices | grep -q emulator || (emulator -avd Pixel_8 -no-audio &)
 ```
 
 > **CRITICAL: You are now in the worktree directory.**
@@ -140,7 +134,7 @@ git push --force-with-lease
 
 ## Definition of Done (DOD)
 
-The DoD scales to what you changed — run only the scoped tests for the code you touched (see the scope table in `CLAUDE.md`). A backend-only change runs backend tests only: no web/iOS/Android tests or screenshots.
+The DoD scales to what you changed — run only the scoped tests for the code you touched (see the scope table in `CLAUDE.md`). A backend-only change runs backend tests only: no web tests or screenshots.
 
 - [ ] Scoped tests pass locally — **this is the gate, not CI**
 - [ ] Bug fixes include a regression test
@@ -199,9 +193,8 @@ The Claude Code hook **blocks source code** but **allows config/docs**:
 |---------|---------|
 | `backend/` | `docs/` |
 | `frontend/src/` | `.env*` |
-| `ios/*.swift` | `CLAUDE.md` |
-| `android/*.kt` | `.claude/*` |
-| `cli/` | `scripts/`, `supabase/` |
+| `cli/` | `CLAUDE.md`, `.claude/*` |
+| | `scripts/`, `supabase/` |
 
 ## Troubleshooting
 

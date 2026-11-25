@@ -102,8 +102,6 @@ ink.
 
 ## Navigation and screens
 
-- iOS and Android use a surface bottom tab bar with Review, History, and
-  Settings. Each screen starts with a title, subtitle, and account avatar.
 - Mobile web uses a sticky logo/avatar header and pill tabs below it. There is
   no bottom bar.
 - Desktop web uses a fixed 236px sidebar with the logo, navigation, and a footer

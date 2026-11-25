@@ -15,7 +15,6 @@ schema never reaches a step that holds a secret.
     scripts/ops.py dispatch rehearse-cutover
     scripts/ops.py dispatch repair-review-queue --payload-file manifest-request.json
     scripts/ops.py dispatch staging-tier2                      # staging is paused today
-    scripts/ops.py dispatch android-emulator ref=<branch> --download docs/screenshots
 
 `dispatch` waits for the run, prints each job's conclusion and the tail of any
 failed job's log, and exits 0 only when the run concluded `success`. The run's
@@ -45,7 +44,6 @@ from typing import Any, Callable
 SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 UUID_RE = re.compile(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")
 EMAIL_RE = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
-REF_RE = re.compile(r"^[A-Za-z0-9._/-]{1,200}$")
 REQUEST_ID_RE = re.compile(r"^[0-9a-f]{32}$")
 
 
@@ -124,10 +122,6 @@ SCHEMAS: dict[str, dict[str, tuple[Callable[[Any], Any], Any]]] = {
     },
     "staging-tier2": {
         "require_workers": (_bool, True),
-    },
-    "android-emulator": {
-        "ref": (_pattern(REF_RE, "a branch name"), "main"),
-        "screenshots": (_bool, True),
     },
 }
 

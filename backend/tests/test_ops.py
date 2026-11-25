@@ -130,7 +130,7 @@ def test_defaults_fill_in_and_request_id_passes_through():
             "confirm",
         ),
         ("repair-review-queue", {"manifest": MANIFEST, "confirm_user": USER}, "only meaningful"),
-        ("android-emulator", {"ref": "main; rm -rf /"}, "ref"),
+        ("android-emulator", {}, "unknown operation"),  # removed with the native apps (legacy/)
         ("schema-compat", {"request_id": "not-hex"}, "request_id"),
         ("unknown-op", {}, "unknown operation"),
     ],

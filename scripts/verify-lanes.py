@@ -177,7 +177,7 @@ def check_requirements(lane: dict) -> str | None:
     A lane that silently depends on something the environment happens to provide
     is not reproducible: it passes for whoever hand-started that dependency and
     fails for everyone else, and no gate can explain the difference. Undeclared
-    preconditions have cost real hours here -- the iOS lane needs Selko's API on
+    preconditions have cost real hours here -- the old iOS lane needed Selko's API on
     port 8000, which was satisfied by a manually started server rather than by
     anything the lane knew about.
     """
@@ -279,9 +279,9 @@ def main() -> int:
     parser.add_argument(
         "--gate",
         default="prod",
-        choices=["prod", "mobile", "observe", "all"],
+        choices=["prod", "observe", "all"],
         help=(
-            "prod blocks a production deploy; mobile ships through an app store; "
+            "prod blocks a production deploy; "
             "observe measures a running deployment and never blocks anything"
         ),
     )

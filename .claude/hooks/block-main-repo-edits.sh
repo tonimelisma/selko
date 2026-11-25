@@ -53,12 +53,6 @@ case "$relative_path" in
   frontend/src/*)
     is_source_code=true
     ;;
-  ios/*.swift|ios/**/*.swift)
-    is_source_code=true
-    ;;
-  android/*.kt|android/**/*.kt)
-    is_source_code=true
-    ;;
   cli/*.py|cli/**/*.py)
     is_source_code=true
     ;;
@@ -78,7 +72,7 @@ BLOCKED: Cannot edit source code while this cloud clone is on '${branch:-a detac
 
 You attempted to edit: $file_path
 
-Source code (backend/, frontend/src/, ios/, android/, cli/) is changed on a
+Source code (backend/, frontend/src/, cli/) is changed on a
 feature branch and shipped by PR. In a cloud session the clone is already
 isolated, so no worktree is needed -- just create the branch here:
 
@@ -98,7 +92,7 @@ BLOCKED: Cannot edit source code in the main repository.
 
 You attempted to edit: $file_path
 
-Source code files (backend/, frontend/src/, ios/, android/, cli/) require
+Source code files (backend/, frontend/src/, cli/) require
 a git worktree. Config files, docs, and .env files ARE allowed in main.
 
 To fix this, create a worktree (see Pre-Work Checklist in CLAUDE.md):

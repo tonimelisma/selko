@@ -8,7 +8,8 @@ reads that information, understands the details, and turns it into clear
 calendar suggestions—without asking you to copy dates, decipher PDFs, or hunt
 through your inbox again.
 
-**Selko is live in production on web, iOS, and Android.**
+**Selko is live in production on the web.** (The native iOS and Android apps
+are unmaintained; see [`legacy/`](legacy/README.md).)
 
 ## From email overload to a calm review queue
 
@@ -30,16 +31,16 @@ before-and-after details.
       <br><sub>Web review queue</sub>
     </td>
     <td width="21%" align="center">
-      <a href="docs/screenshots/ios-event-detail-light.png">
-        <img src="docs/screenshots/ios-event-detail-light.png" alt="Editing a Selko event suggestion on iOS">
+      <a href="docs/screenshots/web-event-detail-mobile-light.png">
+        <img src="docs/screenshots/web-event-detail-mobile-light.png" alt="Editing a Selko event suggestion on a phone">
       </a>
-      <br><sub>iOS event review</sub>
+      <br><sub>Event review on a phone</sub>
     </td>
     <td width="21%" align="center">
-      <a href="docs/screenshots/android-history-dark.png">
-        <img src="docs/screenshots/android-history-dark.png" alt="Selko activity history on Android">
+      <a href="docs/screenshots/web-history-mobile-dark.png">
+        <img src="docs/screenshots/web-history-mobile-dark.png" alt="Selko activity history on a phone">
       </a>
-      <br><sub>Android activity history</sub>
+      <br><sub>Activity history on a phone</sub>
     </td>
   </tr>
 </table>
@@ -60,8 +61,7 @@ before-and-after details.
   syncs, supports retry, and lets you undo changes.
 - **Learns your explicit preferences** — ignore noisy senders or opt trusted
   senders into automatic approval.
-- **Works wherever you are** — responsive web app plus native SwiftUI and
-  Jetpack Compose clients.
+- **Works wherever you are** — a responsive web app for desktop and phone.
 
 ## Designed around control
 
@@ -98,8 +98,7 @@ registry also supports Anthropic and OpenAI models.
 The end-to-end Email → Review → Google Calendar journey is in production.
 Current work is focused on recovery and immediacy: automatically catching up
 after an OAuth reconnection and delivering live cross-client updates without a
-manual refresh. Realtime Broadcast invalidation is shipped on web, iOS and
-Android; the remaining OAuth reconnect work is tracked in
+manual refresh. Realtime Broadcast invalidation is shipped on the web; the remaining OAuth reconnect work is tracked in
 [OAuth reconnect catch-up](docs/specs/oauth-reconnect-catch-up.md).
 
 ## Architecture
@@ -110,7 +109,7 @@ processing, and Google Calendar writes. PostgreSQL rows are also the durable
 work queues; workers claim them with locks and bounded retries.
 
 ```text
-Web / iOS / Android
+Web app
         │
         ├── RLS-protected data ──────────────→ Supabase
         │                                      PostgreSQL + Auth + Storage
@@ -124,12 +123,10 @@ Web / iOS / Android
 ### Stack
 
 - **Web:** SvelteKit 2, Svelte 5, DaisyUI
-- **iOS:** SwiftUI
-- **Android:** Kotlin, Jetpack Compose, Koin
 - **Backend:** Python, FastAPI, Pydantic
 - **Data:** Supabase PostgreSQL, Auth, Storage, RLS
 - **AI:** multimodal, multi-provider LLM gateway with validated fallback
-- **Tooling:** `uv`, npm, Gradle, Xcode
+- **Tooling:** `uv`, npm
 
 See [PRD_ARCH.md](PRD_ARCH.md) for product requirements and architecture.
 
@@ -142,7 +139,6 @@ See [PRD_ARCH.md](PRD_ARCH.md) for product requirements and architecture.
 - [Supabase CLI](https://supabase.com/docs/guides/cli)
 - Docker Desktop
 - Node.js for the web client
-- Xcode or Android Studio for native clients
 
 ### Setup
 

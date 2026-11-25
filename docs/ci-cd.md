@@ -25,7 +25,6 @@ Render deploy hooks, KVM). CI is never a merge gate — the lanes are
 PR opened/updated
     |
     +-- Unit Tests (backend, path-filtered)
-    +-- Android Unit Tests (Gradle, path-filtered)
     +-- Frontend Unit Tests + build + svelte-check (frontend-tests.yml)
     |
 No deployment
@@ -36,7 +35,7 @@ No deployment
 ```
 Merged with merge-and-cleanup.sh (squash, REST; never waits on CI)
     |
-    +-- Same unit/Android/frontend jobs
+    +-- Same unit/frontend jobs
     +-- deploy-staging (backend/supabase changes):
           staging paused  -> warning "Tier 2 NOT run", nothing verified, job green
           staging running -> migrations, deploy hook, served revision, staging suite
@@ -77,7 +76,6 @@ application. If any migration step fails, the deploy hooks never fire.
 | Job | Runs On | Path Filter | Purpose |
 |-----|---------|-------------|---------|
 | `unit-tests` | Every push/PR | `backend/**`, `cli/**`, `pyproject.toml`, `uv.lock` | Backend unit tests, no external services |
-| `android-unit-tests` | Every push/PR | `android/**` | Android unit tests via Gradle |
 | `unit-tests` / `build` (frontend-tests.yml) | Every push/PR | `frontend/**` | Frontend unit + build + svelte-check |
 | `deploy-staging` | Main push only | `backend/**` or `supabase/**` | Deploy + verify staging while it runs; reports "paused" otherwise |
 
@@ -90,7 +88,6 @@ application. If any migration step fails, the deploy hooks never fire.
 | `rehearse-cutover` | `rehearse_cutover.py --production-url … [--faithful]` on the runner's local Supabase | nothing in production |
 | `repair-review-queue` | `repair_review_queue_integrity.py` dry run; `apply=true` needs `confirm_user` and `confirm="apply <uuid>"` plus the owner's yes | production only with apply |
 | `staging-tier2` | `verify-staging.sh` with the worker drill (`require_workers`) | staging |
-| `android-emulator` | `connectedDebugAndroidTest` + `capture-all-screenshots.sh android` on a KVM emulator; screenshots as an artifact | nothing |
 
 The `request` job validates the payload (`scripts/ops.py validate`) before any
 job that holds a secret starts; production jobs share the `production`
@@ -172,7 +169,7 @@ The script:
 2. Cloud session: **moves the clone** onto the merged `main` and deletes the local branch
 3. Mac: **fast-forwards** `main`, **removes the worktree** (never `--force`), deletes the local branch, prunes
 
-Required PR checks (informational): `unit-tests`, `android-unit-tests`, `frontend-unit-tests`.
+Required PR checks (informational): `unit-tests`, `frontend-unit-tests`. The native iOS and Android apps are unmaintained and have no CI (`legacy/README.md`).
 
 ### Troubleshooting
 
