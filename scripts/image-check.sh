@@ -98,6 +98,11 @@ docker exec "$CURRENT" sh -c 'touch /app/x' 2>/dev/null && fail "the root filesy
 docker exec "$CURRENT" sh -c 'touch /data/.probe && rm /data/.probe' || fail "/data is not writable"
 pass "non-root, read-only root, /data writable"
 
+for module in asyncpg psycopg psycopg2 supabase postgrest; do
+  docker exec "$CURRENT" python -c "import $module" >/dev/null 2>&1 && fail "the image carries a hosted-database client ($module)"
+done
+pass "no Postgres or Supabase client in the image"
+
 EMAIL="check-$$@example.test"
 code="$(curl -sS -o /dev/null -w '%{http_code}' -H "Origin: $BASE" -H 'Content-Type: application/json' \
   -d "{\"email\":\"$EMAIL\",\"password\":\"check-password\"}" "$BASE/auth/signup")"

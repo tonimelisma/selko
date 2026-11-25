@@ -41,7 +41,35 @@ RUN --mount=type=secret,id=ca,required=false \
     if [ -f /run/secrets/ca ]; then export SSL_CERT_FILE=/run/secrets/ca; fi; \
     uv sync --frozen --no-dev --package selko --no-editable
 
-# --- runtime ---------------------------------------------------------------
+# --- the one-time importer (docker build --target importer) ------------------
+# Copies the old hosted database and its attachment files into a data
+# directory, once, at cutover. A separate image so the app image never carries
+# a Postgres driver: it is the selko package plus selko_import and asyncpg.
+FROM public.ecr.aws/docker/library/python:3.14-slim-bookworm AS importer-deps
+COPY --from=ghcr.io/astral-sh/uv:0.11.32 /uv /usr/local/bin/uv
+ENV UV_LINK_MODE=copy UV_COMPILE_BYTECODE=1 UV_PYTHON_DOWNLOADS=never
+WORKDIR /app
+COPY pyproject.toml uv.lock ./
+COPY backend/pyproject.toml backend/README.md backend/
+COPY backend/selko backend/selko
+RUN --mount=type=secret,id=ca,required=false \
+    if [ -f /run/secrets/ca ]; then export SSL_CERT_FILE=/run/secrets/ca; fi; \
+    uv sync --frozen --no-dev --no-editable --no-install-project
+
+FROM public.ecr.aws/docker/library/python:3.14-slim-bookworm AS importer
+ARG GIT_COMMIT_SHA=""
+LABEL org.opencontainers.image.source="https://github.com/tonimelisma/selko" \
+      org.opencontainers.image.revision="${GIT_COMMIT_SHA}" \
+      org.opencontainers.image.description="Selko one-time importer: hosted Postgres and Storage into a data directory"
+RUN groupadd --gid 10001 selko && useradd --uid 10001 --gid 10001 --no-create-home --shell /usr/sbin/nologin selko
+COPY --from=importer-deps /app/.venv /app/.venv
+COPY selko_import /app/selko_import
+ENV PATH="/app/.venv/bin:$PATH" PYTHONPATH=/app PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+USER 10001:10001
+WORKDIR /app
+ENTRYPOINT ["python", "-m", "selko_import"]
+
+# --- runtime (the default target) ---------------------------------------------
 FROM public.ecr.aws/docker/library/python:3.14-slim-bookworm
 ARG GIT_COMMIT_SHA=""
 LABEL org.opencontainers.image.source="https://github.com/tonimelisma/selko" \

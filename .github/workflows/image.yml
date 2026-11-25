@@ -34,23 +34,24 @@ jobs:
       id-token: write   # cosign keyless signing (main only)
     env:
       IMAGE: ghcr.io/tonimelisma/selko:${{ github.sha }}
+      # The one-time cutover importer: a separate image, so the app image never
+      # carries a Postgres driver.
+      IMPORTER: ghcr.io/tonimelisma/selko-import:${{ github.sha }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
 
-      - name: Build the image
+      - name: Build the images
         run: |
           docker build --build-arg "GIT_COMMIT_SHA=${GITHUB_SHA}" -t "$IMAGE" .
-          docker image inspect "$IMAGE" --format 'size {{.Size}} bytes'
+          docker build --build-arg "GIT_COMMIT_SHA=${GITHUB_SHA}" --target importer -t "$IMPORTER" .
+          docker image inspect "$IMAGE" "$IMPORTER" --format '{{index .RepoTags 0}} {{.Size}} bytes'
 
       # The same script as the session's image lane: a throwaway Postgres holding
-      # selko_import/fixture, imported with selko_import, then image-check.sh.
+      # selko_import/fixture, imported with the importer image, then image-check.sh.
       - name: Check the image (read-only root, no capabilities, 400 MB, /data only)
         env:
           SELKO_FIXTURE_POSTGRES_IMAGE: postgres:17
-        run: |
-          uv sync --frozen --package selko
-          ./scripts/image-lane.sh "$IMAGE"
+        run: ./scripts/image-lane.sh "$IMAGE" "$IMPORTER"
 
       - name: Push and sign
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -58,10 +59,13 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "$GH_TOKEN" | docker login ghcr.io -u "${GITHUB_ACTOR}" --password-stdin
-          docker push "$IMAGE"
+          docker push -q "$IMAGE"
+          docker push -q "$IMPORTER"
           digest="$(docker image inspect "$IMAGE" --format '{{index .RepoDigests 0}}')"
-          echo "pushed $digest"
+          importer_digest="$(docker image inspect "$IMPORTER" --format '{{index .RepoDigests 0}}')"
+          echo "pushed $digest and $importer_digest"
           echo "digest=$digest" >> "$GITHUB_OUTPUT"
+          echo "importer_digest=$importer_digest" >> "$GITHUB_OUTPUT"
         id: push
 
       - name: Install cosign
@@ -71,8 +75,10 @@ jobs:
       - name: Sign the pushed digest
         if: steps.push.outputs.digest != ''
         run: |
-          cosign sign --yes "${{ steps.push.outputs.digest }}"
-          cosign verify "${{ steps.push.outputs.digest }}" \
-            --certificate-identity "https://github.com/${GITHUB_REPOSITORY}/.github/workflows/image.yml@refs/heads/main" \
-            --certificate-oidc-issuer https://token.actions.githubusercontent.com >/dev/null
-          echo "signed and verified ${{ steps.push.outputs.digest }}"
+          for ref in "${{ steps.push.outputs.digest }}" "${{ steps.push.outputs.importer_digest }}"; do
+            cosign sign --yes "$ref"
+            cosign verify "$ref" \
+              --certificate-identity "https://github.com/${GITHUB_REPOSITORY}/.github/workflows/image.yml@refs/heads/main" \
+              --certificate-oidc-issuer https://token.actions.githubusercontent.com >/dev/null
+            echo "signed and verified $ref"
+          done

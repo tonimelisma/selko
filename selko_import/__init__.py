@@ -1,8 +1,11 @@
-"""Import Selko's Postgres (Supabase) database into a new SQLite file.
+"""Import Selko's Postgres (Supabase) database and its attachment files.
 
-Run once at cutover (docs/specs/sqlite-single-process/04-data-cutover.md §A-B):
+Run once at cutover, on the server, from the importer image
+``ghcr.io/tonimelisma/selko-import:<sha>`` (docs/specs/sqlite-single-process/
+04-data-cutover.md §A-B; ``python -m selko_import --help``):
 
-    uv run python -m selko_import --source-url-file <file> --target <data dir>/selko.db
+    database     --source-url-file F --target <data dir>/selko.db
+    attachments  --source-url-file F --storage-url URL --storage-key-file F --data-dir <data dir>
 
 It lives outside ``selko`` because it needs a Postgres driver, which ``selko``
 must never import; it is deleted after the cutover.
