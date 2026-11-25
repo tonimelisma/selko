@@ -118,9 +118,6 @@ class Tx:
         if event_id is not None:
             self.touched_events.add(event_id)
 
-    def after_commit(self, callback: Callable[[], None]) -> None:
-        self._after_commit.append(callback)
-
     def _check_invariants(self) -> None:
         for event_id in sorted(self.touched_events):
             if self.conn.execute(_INVARIANT_OWNERSHIP, (event_id,)).fetchone():
@@ -131,6 +128,9 @@ class Tx:
                 raise errors.InvariantViolation(
                     f"pending proposal event {event_id} must have active review status"
                 )
+
+    def after_commit(self, callback: Callable[[], None]) -> None:
+        self._after_commit.append(callback)
 
 
 class Database:
@@ -164,10 +164,6 @@ class Database:
         )
         conn.create_function("selko_emit_work", 1, lambda w: self._tx().emit_work(w))
         conn.create_function("selko_touch_event", 1, lambda e: self._tx().touch_event(e))
-
-    def reload_schema(self) -> None:
-        """Re-read column kinds after a migration changed the tables."""
-        self.schema = Schema(self._writer)
 
     # -- writing -------------------------------------------------------------
 

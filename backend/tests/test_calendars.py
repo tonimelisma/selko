@@ -14,7 +14,6 @@ import pytest
 from selko.services.calendars import (
     CalendarAuthRequiredError,
     CalendarsError,
-    SELKO_FOOTER,
     _build_calendar_event_body,
     classify_calendar_error,
     fetch_calendar_events_for_date_range,
@@ -23,7 +22,6 @@ from selko.services.calendars import (
     refresh_waiting_calendar_recoveries,
     requeue_calendar_recovery_batch,
     sync_event_to_calendar,
-    update_calendar_settings,
     cancel_event_to_calendar,
 )
 
@@ -252,45 +250,6 @@ class TestGetCalendarSettings:
         assert settings["timezone"] == "America/New_York"
 
 
-class TestUpdateCalendarSettings:
-    """Tests for updating calendar settings."""
-
-    def test_upserts_settings(self, db, user):
-        """Test that settings are upserted."""
-        update_calendar_settings(
-            db,
-            user,
-            target_calendar_id="calendar-789",
-            default_invitees="spouse@example.com"
-        )
-
-        stored = get_calendar_settings(db, user, include_name=False)
-        assert stored["target_calendar_id"] == "calendar-789"
-        assert stored["default_invitees"] == "spouse@example.com"
-
-        update_calendar_settings(db, user, target_calendar_id="calendar-2")
-        stored = get_calendar_settings(db, user, include_name=False)
-        assert stored["target_calendar_id"] == "calendar-2"
-        # The payload always carries default_invitees, so omitting it clears it.
-        assert stored["default_invitees"] is None
-
-    def test_custom_all_day_window_round_trips(self, db, user):
-        update_calendar_settings(
-            db, user,
-            all_day_display_mode="custom",
-            all_day_custom_start="08:15",
-            all_day_custom_end="16:45",
-        )
-        stored = get_calendar_settings(db, user, include_name=False)
-        assert stored["all_day_display_mode"] == "custom"
-        assert stored["all_day_custom_start"].startswith("08:15")
-        assert stored["all_day_custom_end"].startswith("16:45")
-
-        # Switching to a preset keeps the saved custom times.
-        update_calendar_settings(db, user, all_day_display_mode="day_9_to_5")
-        stored = get_calendar_settings(db, user, include_name=False)
-        assert stored["all_day_display_mode"] == "day_9_to_5"
-        assert stored["all_day_custom_start"].startswith("08:15")
 
 
 class TestGetAllDayPolicyAndTimezone:

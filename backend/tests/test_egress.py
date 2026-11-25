@@ -18,7 +18,6 @@ from selko.services.egress import (
     MAX_TRACKED_OPERATIONS,
     GRAPH,
     egress_snapshot,
-    operation_from_url,
     record_egress,
     reset_egress,
 )
@@ -80,27 +79,8 @@ def test_graph_request_requires_bounded_operation_at_construction():
         assert operation_kw.value.value != "unknown"
 
 
-def test_operation_names_drop_query_strings_and_ids():
-    """Message and attachment ids must never reach a counter key.
-
-    They are both a privacy leak and an unbounded-cardinality bug: one counter
-    per message would dwarf the traffic it is meant to describe.
-    """
-    operation = operation_from_url(
-        "GET", "https://gmail.googleapis.com/gmail/v1/users/me/messages/18c9f2ab3d4e5f6a?format=full"
-    )
-
-    assert "?" not in operation
-    assert "18c9f2ab3d4e5f6a" not in operation
-    assert operation == "GET /gmail/v1/users/me/messages/{id}"
 
 
-def test_operation_names_collapse_uuid_segments():
-    operation = operation_from_url(
-        "PATCH", "https://example.supabase.co/rest/v1/emails/3f8a1c2e-9b4d-4a7f-8e1c-2d3f4a5b6c7d"
-    )
-
-    assert operation == "PATCH /rest/v1/emails/{id}"
 
 
 def test_counter_cardinality_is_bounded():

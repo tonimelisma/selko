@@ -2,9 +2,7 @@
 
 from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
-from zoneinfo import ZoneInfo
 
-import pytest
 
 
 class TestGetUserTimezone:

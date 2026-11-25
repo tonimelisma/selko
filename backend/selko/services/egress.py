@@ -29,7 +29,6 @@ import logging
 import threading
 import time
 from dataclasses import dataclass, field
-from urllib.parse import urlsplit
 
 logger = logging.getLogger(__name__)
 
@@ -176,36 +175,6 @@ def egress_snapshot(*, top_n: int = 15) -> dict:
 def reset_egress() -> None:
     """Reset counters. Used by tests; not wired to any request surface."""
     _METER.reset()
-
-
-def operation_from_url(method: str, url: str) -> str:
-    """Reduce a URL to a bounded, non-identifying operation name.
-
-    The query string is dropped deliberately: Gmail and Graph both carry message
-    and attachment ids there, and PostgREST carries row filters. Path segments
-    that look like ids are collapsed so one operation does not fan out into
-    thousands of counter keys.
-    """
-    path = urlsplit(url).path or "/"
-    segments = []
-    for segment in path.split("/"):
-        if not segment:
-            continue
-        segments.append("{id}" if _looks_like_identifier(segment) else segment)
-    return f"{method.upper()} /{'/'.join(segments)}"
-
-
-def _looks_like_identifier(segment: str) -> bool:
-    """True for segments that are values rather than route names.
-
-    Deliberately conservative — a false negative only costs one extra counter
-    key, while a false positive would hide a real route behind ``{id}``.
-    """
-    if len(segment) >= 32 and "-" in segment:
-        return True  # uuid-ish
-    if len(segment) >= 16 and segment.isalnum() and any(ch.isdigit() for ch in segment):
-        return True  # provider message ids
-    return segment.isdigit()
 
 
 def log_egress_summary(*, top_n: int = 5) -> None:

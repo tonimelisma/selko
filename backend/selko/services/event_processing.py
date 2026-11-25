@@ -19,6 +19,7 @@ from selko.db import emails as db_emails
 from selko.db.connection import Database
 from selko.services.quotas import QuotaExceededError
 from selko.db.runtime import ATTACHMENTS_DIR
+from selko.services.attachments import read_attachment_file
 
 from selko.api.schemas.calendar import CalendarEventExtraction, EventExtractionResponse
 from selko.config import Config
@@ -47,18 +48,6 @@ class CompareEventsResponse(BaseModel):
 
     matched_event_id: Optional[str] = None
     reasoning: str = ""
-
-
-class MergedEventData(BaseModel):
-    """Structured merge-events response."""
-
-    title: str
-    start_datetime: str
-    end_datetime: Optional[str] = None
-    all_day: bool
-    location: Optional[str] = None
-    description: Optional[str] = None
-    importance: str = "action_required"
 
 
 def looks_like_json_schema(parsed: Any) -> bool:
@@ -446,7 +435,7 @@ def fetch_email_with_attachments(
             storage_path = att_record.get("storage_path")
             if storage_path:
                 try:
-                    data = _read_attachment(supabase_client, storage_path)
+                    data = read_attachment_file(storage_path, supabase_client.path.parent / ATTACHMENTS_DIR)
                     attachments.append(
                         {
                             "data": data,
@@ -468,19 +457,6 @@ def fetch_email_with_attachments(
         raise
     except Exception as e:
         raise LLMGatewayError(f"Failed to fetch email data: {e}") from e
-
-
-def _read_attachment(db: Database, storage_path: str) -> bytes:
-    """An attachment's bytes from ``<data dir>/attachments/<storage_path>``.
-
-    ``storage_path`` is relative to the attachments directory (02 §3.2); a
-    path that resolves outside it is refused.
-    """
-    root = (db.path.parent / ATTACHMENTS_DIR).resolve()
-    path = (root / storage_path).resolve()
-    if not path.is_relative_to(root):
-        raise ValueError("attachment path escapes the attachments directory")
-    return path.read_bytes()
 
 
 def compare_events(

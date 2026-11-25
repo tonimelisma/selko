@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from functools import lru_cache
 from typing import Annotated
 
-from fastapi import Depends, Header, HTTPException, Request, status
+from fastapi import Depends, Header, HTTPException, status
 from selko.api.schemas.common import ErrorCode, error_detail
 from selko.config import Config, load_config
 from selko.db.connection import Database

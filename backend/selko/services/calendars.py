@@ -7,10 +7,9 @@ Google Calendar's event shape, so everything below is written once.
 import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
@@ -33,6 +32,9 @@ from selko.services.google_errors import (
     google_error_reason,
 )
 from selko.services.integrations import get_credentials, update_integration_status
+
+if TYPE_CHECKING:
+    from selko.services.calendar_policy import AllDayPolicy
 
 logger = logging.getLogger(__name__)
 
@@ -510,72 +512,6 @@ def get_all_day_policy_and_timezone(
     timezone_name = row.get("timezone") or "America/New_York"
     policy = all_day_policy_from_settings(row)
     return policy, timezone_name
-
-
-def update_calendar_settings(
-    supabase_client: Database,
-    user_id: str,
-    target_calendar_id: Optional[str] = None,
-    default_invitees: Optional[str] = None,
-    *,
-    all_day_display_mode: Optional[str] = None,
-    all_day_custom_start: Optional[str] = None,
-    all_day_custom_end: Optional[str] = None,
-    update_all_day_policy: bool = False,
-) -> None:
-    """Update calendar settings.
-
-    Args:
-        supabase_client: The process database.
-        user_id: UUID of user.
-        target_calendar_id: Google Calendar ID to sync to (None = primary).
-        default_invitees: Comma-separated emails to add to all events.
-        all_day_display_mode: How to materialize date-only extractions events.
-        all_day_custom_start: Custom window start (HH:MM[:SS]) when mode=custom.
-        all_day_custom_end: Custom window end (HH:MM[:SS]) when mode=custom.
-        update_all_day_policy: When True, write the all-day preference fields.
-            Custom times are only cleared when switching modes if explicitly
-            passed as None while mode is not custom — callers should omit
-            custom times when switching presets so saved custom values remain.
-    """
-    payload: dict[str, Any] = {
-        "user_id": user_id,
-        "target_calendar_id": target_calendar_id,
-        "default_invitees": default_invitees,
-    }
-
-    if update_all_day_policy or all_day_display_mode is not None:
-        from selko.services.calendar_policy import validate_all_day_policy
-
-        mode = all_day_display_mode or "all_day"
-        policy = validate_all_day_policy(
-            mode,
-            custom_start=all_day_custom_start,
-            custom_end=all_day_custom_end,
-        )
-        payload["all_day_display_mode"] = policy.mode.value
-        # Preserve previously saved custom times when switching to a preset:
-        # only write custom columns when provided or when mode is custom.
-        if policy.mode.value == "custom":
-            payload["all_day_custom_start"] = (
-                policy.custom_start.isoformat(timespec="minutes")
-                if policy.custom_start
-                else None
-            )
-            payload["all_day_custom_end"] = (
-                policy.custom_end.isoformat(timespec="minutes")
-                if policy.custom_end
-                else None
-            )
-        elif all_day_custom_start is not None or all_day_custom_end is not None:
-            if all_day_custom_start is not None:
-                payload["all_day_custom_start"] = all_day_custom_start
-            if all_day_custom_end is not None:
-                payload["all_day_custom_end"] = all_day_custom_end
-
-    db_integrations.upsert_calendar_settings(supabase_client, user_id, payload)
-
-    logger.info(f"Updated calendar settings for user {user_id}")
 
 
 def _build_calendar_event_body(

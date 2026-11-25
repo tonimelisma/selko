@@ -66,12 +66,6 @@ class TestQuotaDatabaseIntegration:
         assert rows["email_syncs_daily"] > 0
         assert rows["calendar_syncs_daily"] > 0
 
-    def test_usage_quotas_only_own_data(self, db, factory):
-        """Successor of the RLS test: every quota read is by user."""
-        alice, bob = factory.user(), factory.user()
-        db_quotas.check_and_increment_quota(db, alice, "llm_calls", 7)
-        assert db_quotas.get_user_quota_usage(db, alice)["llm_calls_count"] == 7
-        assert db_quotas.get_user_quota_usage(db, bob)["llm_calls_count"] == 0
 
     def test_quota_check_and_increment(self, db, factory):
         user = factory.user()
@@ -81,10 +75,6 @@ class TestQuotaDatabaseIntegration:
         assert result["quota_limit"] > 0
         assert result["remaining"] == result["quota_limit"] - 1
 
-    def test_quota_get_user_usage(self, db, factory):
-        usage = db_quotas.get_user_quota_usage(db, factory.user())
-        for kind in ("llm_calls", "email_syncs", "calendar_syncs"):
-            assert {f"{kind}_count", f"{kind}_limit", f"{kind}_remaining"} <= usage.keys()
 
     def test_no_client_route_mutates_quotas(self):
         """Successor of the "quota RPCs are denied to a signed-in user" test:
@@ -110,10 +100,6 @@ class TestQuotaServiceIntegration:
         assert result.allowed is True
         assert result.current_count >= 1
 
-    def test_quota_service_get_usage(self, db, factory):
-        usage = QuotaService(db).get_usage(factory.user())
-        assert usage.llm_calls_limit > 0
-        assert usage.email_syncs_limit > 0
 
 
 class TestQuotaExceeded:

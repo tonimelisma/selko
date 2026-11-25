@@ -81,12 +81,6 @@ def log_llm_call(db: Database, user_id: str, row: dict[str, Any]) -> str:
     return created["id"]
 
 
-def get_llm_call(db: Database, user_id: str, log_id: str) -> dict[str, Any] | None:
-    """One of the user's LLM call records, or None (another user's is None too)."""
-    row = db.query_one("SELECT * FROM llm_call_log WHERE id = ? AND user_id = ?", (log_id, user_id))
-    return db.schema.decode("llm_call_log", row)
-
-
 # ---------------------------------------------------------------------------
 # graph_api_failures (services/msgraph.py:108)
 # ---------------------------------------------------------------------------
@@ -110,14 +104,6 @@ def record_graph_failure(db: Database, row: dict[str, Any]) -> str:
     return created["id"]
 
 
-def graph_failures_for_run(db: Database, run_id: str) -> list[dict[str, Any]]:
-    """The ledger rows of one sync run, oldest first."""
-    rows = db.query(
-        "SELECT * FROM graph_api_failures WHERE run_id = ? ORDER BY occurred_at, rowid", (run_id,)
-    )
-    return [db.schema.decode("graph_api_failures", r) for r in rows]  # type: ignore[misc]
-
-
 # ---------------------------------------------------------------------------
 # operational_incidents (services/email_sync_health.py:270-325)
 # ---------------------------------------------------------------------------
@@ -135,20 +121,6 @@ _INCIDENT_TIMESTAMPS = frozenset({
     "first_seen_at", "last_seen_at", "resolved_at",
     "opened_notification_sent_at", "resolved_notification_sent_at",
 })
-
-
-def get_incident(db: Database, incident_key: str) -> dict[str, Any] | None:
-    row = db.query_one("SELECT * FROM operational_incidents WHERE incident_key = ?", (incident_key,))
-    return db.schema.decode("operational_incidents", row)
-
-
-def open_incident(db: Database, row: dict[str, Any]) -> dict[str, Any]:
-    """Insert an incident (the evaluator's insert); a duplicate key raises UniqueViolation."""
-    with db.write() as tx:
-        return _insert(
-            tx, "operational_incidents", INCIDENT_INSERT_COLUMNS, _INCIDENT_TIMESTAMPS, row,
-            {"id": new_id(), "first_seen_at": tx.now_text, "last_seen_at": tx.now_text},
-        )
 
 
 def raise_incident(
@@ -237,12 +209,40 @@ def open_incidents(db: Database, key_prefix: str) -> list[dict[str, Any]]:
     return [db.schema.decode("operational_incidents", r) for r in rows]  # type: ignore[misc]
 
 
+def get_llm_call(db: Database, user_id: str, log_id: str) -> dict[str, Any] | None:
+    """One of the user's LLM call records, or None (another user's is None too)."""
+    row = db.query_one("SELECT * FROM llm_call_log WHERE id = ? AND user_id = ?", (log_id, user_id))
+    return db.schema.decode("llm_call_log", row)
+
+
+def get_incident(db: Database, incident_key: str) -> dict[str, Any] | None:
+    row = db.query_one("SELECT * FROM operational_incidents WHERE incident_key = ?", (incident_key,))
+    return db.schema.decode("operational_incidents", row)
+
+
+def open_incident(db: Database, row: dict[str, Any]) -> dict[str, Any]:
+    """Insert an incident (the evaluator's insert); a duplicate key raises UniqueViolation."""
+    with db.write() as tx:
+        return _insert(
+            tx, "operational_incidents", INCIDENT_INSERT_COLUMNS, _INCIDENT_TIMESTAMPS, row,
+            {"id": new_id(), "first_seen_at": tx.now_text, "last_seen_at": tx.now_text},
+        )
+
+
+def graph_failures_for_run(db: Database, run_id: str) -> list[dict[str, Any]]:
+    """The ledger rows of one sync run, oldest first."""
+    rows = db.query(
+        "SELECT * FROM graph_api_failures WHERE run_id = ? ORDER BY occurred_at, rowid", (run_id,)
+    )
+    return [db.schema.decode("graph_api_failures", r) for r in rows]  # type: ignore[misc]
+
+
 __all__ = [
+    "graph_failures_for_run",
+    "open_incident",
     "get_incident",
     "get_llm_call",
-    "graph_failures_for_run",
     "log_llm_call",
-    "open_incident",
     "open_incidents",
     "raise_incident",
     "record_graph_failure",

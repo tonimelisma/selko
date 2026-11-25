@@ -13,11 +13,7 @@ from typing import Any, Optional
 from selko.config import Config
 from selko.db import emails as db_emails
 from selko.db.connection import Database
-from selko.db.errors import DbError
-from selko.services.attachments import AttachmentError, process_attachment, store_image_content
 from selko.services.email_body import select_body_text
-from selko.services.email_images import extract_data_uri_images, extract_linked_images
-from selko.services.gmail import extract_attachments, extract_inline_images
 from selko.services.ics_parser import INVITE_METHODS
 
 logger = logging.getLogger(__name__)
@@ -239,173 +235,6 @@ def parse_gmail_message(email: dict[str, Any]) -> dict[str, Any]:
     return result
 
 
-def _log_email_subject(parsed: dict[str, Any], action: str) -> None:
-    """Log email subject for debugging."""
-    subject = parsed.get("subject") or "(no subject)"
-    if len(subject) > 50:
-        subject = subject[:50] + "..."
-    logger.debug(f"{action}: {subject}")
-
-
-def save_emails(
-    client: Database,
-    emails: list[dict[str, Any]],
-    user_id: Optional[str] = None,
-) -> list[dict[str, Any]]:
-    """Upsert parsed emails for ``user_id`` and return the stored rows.
-
-    Goes through the same atomic save the ingestion worker uses
-    (`selko.db.emails.save_email_with_attachment_descriptors`), so only the
-    columns that save accepts are written, plus the skip fields of an
-    ingest-detected invite (`mark_parsed_as_calendar_invite`). ``user_id`` is required: rows are
-    owned explicitly, there is no signed-in session to read it from.
-
-    Raises:
-        EmailError: If ``user_id`` is missing or the save fails.
-    """
-    if user_id is None:
-        raise EmailError("save_emails needs the owning user_id")
-    saved_records = []
-
-    for parsed in emails:
-        parsed["user_id"] = user_id
-        # The column default, stated: the upsert key needs it.
-        parsed.setdefault("email_provider", "gmail")
-        try:
-            email_id = db_emails.save_email_with_attachment_descriptors(
-                client, user_id, parsed, []
-            )
-        except DbError as e:
-            raise EmailError(f"Failed to save email: {e}") from e
-        if parsed.get("processing_status") == "skipped":
-            # An ingest-detected invite is saved pre-skipped, never claimable.
-            db_emails.skip_email(
-                client,
-                email_id,
-                user_id=user_id,
-                outcome=parsed.get("processing_outcome"),
-                explanation=parsed.get("processing_explanation"),
-            )
-        record = db_emails.get_email(client, user_id, email_id)
-        if record:
-            saved_records.append(record)
-        _log_email_subject(parsed, "Saved")
-
-    logger.info(f"Saved {len(saved_records)} emails")
-    return saved_records
-
-
-def store_gmail_message_attachments(
-    client: Database,
-    config: Config,
-    service: Any,
-    message: dict[str, Any],
-    email_record: dict[str, Any],
-    parsed_email: dict[str, Any] | None = None,
-    *,
-    raise_on_error: bool = False,
-) -> int:
-    """Download attachments/images for an already-eligible Gmail message.
-
-    Callers must invoke this only after the message's provider labels have been
-    checked. Keeping the download helper separate makes it impossible for a
-    rejected message to reach attachment storage in the reliable sync path.
-
-    The attachment owner is taken from email_record["user_id"]: rows are owned
-    explicitly.
-    """
-
-    message_id = message["id"]
-    email_id = email_record["id"]
-    owner_id = email_record.get("user_id")
-    images_stored = 0
-
-    for attachment_part in extract_attachments(message):
-        try:
-            if process_attachment(
-                client=client,
-                gmail_service=service,
-                email_id=email_id,
-                message_id=message_id,
-                attachment_part=attachment_part,
-                config=config,
-                user_id=owner_id,
-            ):
-                images_stored += 1
-        except AttachmentError as exc:
-            if raise_on_error:
-                raise
-            logger.warning("Failed to process Gmail attachment for %s: %s", message_id, exc)
-
-    for inline_part in extract_inline_images(message):
-        try:
-            if process_attachment(
-                client=client,
-                gmail_service=service,
-                email_id=email_id,
-                message_id=message_id,
-                attachment_part=inline_part,
-                config=config,
-                user_id=owner_id,
-            ):
-                images_stored += 1
-        except AttachmentError as exc:
-            if raise_on_error:
-                raise
-            logger.warning("Failed to process Gmail inline image for %s: %s", message_id, exc)
-
-    body_html = (parsed_email or {}).get("body_html")
-    if body_html:
-        try:
-            linked_images = extract_linked_images(body_html)
-        except Exception as exc:
-            logger.warning("Failed to extract linked Gmail images for %s: %s", message_id, exc)
-            linked_images = []
-        for idx, image in enumerate(linked_images):
-            try:
-                if store_image_content(
-                    client=client,
-                    email_id=email_id,
-                    image_data=image.data,
-                    mime_type=image.mime_type,
-                    filename=f"linked_{idx}.{image.mime_type.split('/')[-1]}",
-                    config=config,
-                    user_id=owner_id,
-                ):
-                    images_stored += 1
-            except AttachmentError as exc:
-                if raise_on_error:
-                    raise
-                logger.warning("Failed to store linked Gmail image for %s: %s", message_id, exc)
-
-        try:
-            data_uri_images = extract_data_uri_images(body_html)
-        except Exception as exc:
-            logger.warning("Failed to extract data URI Gmail images for %s: %s", message_id, exc)
-            data_uri_images = []
-        for idx, image in enumerate(data_uri_images):
-            try:
-                if store_image_content(
-                    client=client,
-                    email_id=email_id,
-                    image_data=image.data,
-                    mime_type=image.mime_type,
-                    filename=f"data_uri_{idx}.{image.mime_type.split('/')[-1]}",
-                    config=config,
-                    user_id=owner_id,
-                ):
-                    images_stored += 1
-            except AttachmentError as exc:
-                if raise_on_error:
-                    raise
-                logger.warning("Failed to store data URI Gmail image for %s: %s", message_id, exc)
-
-    if images_stored and not email_record.get("has_attachments"):
-        db_emails.mark_has_attachments(client, owner_id, email_id)
-    return images_stored
-
-
-
 def fetch_emails_for_user(
     client: Database,
     config: Config,
@@ -582,26 +411,6 @@ async def fail_email_processing(
 
     except Exception as e:
         raise EmailError(f"Failed to mark email as failed: {e}") from e
-
-
-def skip_email_processing(client: Database, email_id: str) -> None:
-    """Mark email as skipped (e.g., sender ignored).
-
-    Args:
-        client: The process database.
-        email_id: UUID of email to skip.
-
-    Raises:
-        EmailError: If update fails.
-    """
-    try:
-        db_emails.skip_email(client, email_id)
-
-        logger.info(f"Skipped email {email_id}")
-
-    except Exception as e:
-        raise EmailError(f"Failed to skip email: {e}") from e
-
 
 
 async def unlock_expired_email_locks(pool) -> int:

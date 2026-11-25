@@ -201,15 +201,6 @@ def _hint_rows(execute, user_id: str, keys: Sequence[str]) -> list[dict[str, Any
     return [dict(r) for r in execute(_HINT_ROWS_SQL, {"user_id": user_id, "keys": json.dumps(list(keys))})]
 
 
-def band_fingerprint(db: Database, user_id: str, window_start: Any, window_end: Any) -> str:
-    """The fingerprint the commit re-checks for a decision's local-day band."""
-    rows = _band_rows(
-        lambda sql, p: db.query(sql, p), codec.to_id(user_id),  # type: ignore[arg-type]
-        pg_timestamp(window_start), pg_timestamp(window_end),
-    )
-    return candidate_fingerprint(rows)
-
-
 def hint_fingerprint(db: Database, user_id: str, hint_keys: Iterable[str]) -> str:
     """The fingerprint the commit re-checks over every row the hint keys name.
 
@@ -851,11 +842,20 @@ def event_owner(db: Database, event_id: str) -> str | None:
     return row["user_id"] if row is not None else None
 
 
+def band_fingerprint(db: Database, user_id: str, window_start: Any, window_end: Any) -> str:
+    """The fingerprint the commit re-checks for a decision's local-day band."""
+    rows = _band_rows(
+        lambda sql, p: db.query(sql, p), codec.to_id(user_id),  # type: ignore[arg-type]
+        pg_timestamp(window_start), pg_timestamp(window_end),
+    )
+    return candidate_fingerprint(rows)
+
+
 __all__ = [
+    "band_fingerprint",
     "calendar_entry_hint_exists", "email_calendar_components", "email_has_component_method",
     "email_identity_context", "email_outcome", "event_owner", "mark_email_status",
-    "mirror_entries_by_ids", "mirror_entries_in_window",
-    "band_fingerprint", "by_provider_event_id", "commit_email_extraction", "event_ids_for_email",
+    "mirror_entries_by_ids", "mirror_entries_in_window", "by_provider_event_id", "commit_email_extraction", "event_ids_for_email",
     "get", "get_many", "get_with_work_items", "has_source_origin", "hint_fingerprint",
     "hints_matching", "in_window", "pending_in_window", "retire_pending", "set_event_review_status",
     "source_email_dates", "source_email_ids", "source_types_for_email", "sources",

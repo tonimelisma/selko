@@ -1,6 +1,5 @@
 """Unit tests for Microsoft Graph Outlook ingestion."""
 
-import base64
 from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 
@@ -8,7 +7,6 @@ import pytest
 
 from selko.services.outlook import (
     RESYNC_REQUIRED,
-    GraphHttpError,
     get_access_token,
     fetch_message_changes,
     parse_outlook_message,
@@ -133,7 +131,7 @@ class TestOutlookLabels:
 
 
 class TestFetchMessageChanges:
-    @patch("selko.services.outlook.requests.get")
+    @patch("selko.services.msgraph.requests.get")
     def test_follows_next_link_and_returns_delta_link(self, mock_get):
         mock_get.side_effect = [
             _response({
@@ -155,7 +153,7 @@ class TestFetchMessageChanges:
         assert cursor == "https://graph.example/delta?$deltatoken=2"
         assert mock_get.call_args_list[0].kwargs["headers"]["Prefer"] == "odata.maxpagesize=50"
 
-    @patch("selko.services.outlook.requests.get")
+    @patch("selko.services.msgraph.requests.get")
     def test_410_returns_resync_sentinel(self, mock_get):
         mock_get.return_value = _response({}, status_code=410)
 

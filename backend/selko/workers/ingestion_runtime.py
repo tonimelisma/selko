@@ -22,7 +22,6 @@ import asyncio
 import logging
 import os
 import time
-from datetime import datetime, timezone
 from typing import Any
 
 from selko.config import Config
@@ -457,11 +456,3 @@ def _exception_code(exc: BaseException | None) -> str | None:
     except Exception:
         return "unclassified"
 
-
-def _parse_ts(value: str | None) -> datetime | None:
-    if not value:
-        return None
-    try:
-        return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(timezone.utc)
-    except (TypeError, ValueError):
-        return None

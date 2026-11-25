@@ -135,54 +135,8 @@ def test_two_threads_never_claim_the_same_attachment(db, factory, user, email_id
     assert sorted(claimed) == sorted(ids)
 
 
-def test_ensure_descriptors_and_readiness(db, user):
-    email = emails.save_email_with_attachment_descriptors(
-        db, user, {"email_provider": "gmail", "provider_message_id": "c2-atomic", "subject": "probe"},
-        [{"provider_attachment_id": "att-1", "filename": "probe.pdf", "mime_type": "application/pdf", "size_bytes": 10}],
-    )
-    assert attachments.readiness(db, email) is False
-    created = attachments.ensure_descriptors(db, email, user, [
-        {"provider_attachment_id": "att-2", "filename": "second.pdf", "mime_type": "application/pdf"},
-        {"attachment_id": "att-3"},
-        {"provider_attachment_id": "att-1", "filename": "again"},
-        {"provider_attachment_id": "att-2"},
-        {"filename": "no id"},
-    ])
-    assert created == 2
-    rows = {r["provider_attachment_id"]: dict(r) for r in db.query(
-        "SELECT provider_attachment_id, filename, mime_type, size_bytes FROM attachments WHERE email_id = ?", (email,))}
-    assert rows["att-1"]["filename"] == "probe.pdf"
-    assert rows["att-3"] == {"provider_attachment_id": "att-3", "filename": "unnamed",
-                             "mime_type": "application/octet-stream", "size_bytes": 0}
-    with db.write() as tx:
-        tx.execute("UPDATE attachments SET ingestion_status = 'stored' WHERE email_id = ?", (email,))
-    assert attachments.readiness(db, email) is True
-    with db.write() as tx:
-        tx.execute("UPDATE attachments SET ingestion_status = 'dead_letter' WHERE provider_attachment_id = 'att-3'")
-        tx.execute("UPDATE attachments SET ingestion_status = 'unsupported' WHERE provider_attachment_id = 'att-2'")
-    assert attachments.readiness(db, email) is True
-    assert attachments.readiness(db, codec.new_id()) is True
 
 
-def test_insert_get_delete_and_hash_lookup_are_user_scoped(db, factory, user, email_id):
-    db.signals = Recorder()
-    row = attachments.insert(db, user, {
-        "email_id": email_id, "provider_attachment_id": "p", "filename": "a.png", "mime_type": "image/png",
-        "size_bytes": 5, "storage_path": f"{user}/abc_a.png", "content_hash": "h1"})
-    assert row["ingestion_status"] == "pending" and row["user_id"] == user
-    assert db.signals.sent == ["attachment_pending"]
-    other = factory.user()
-
-    assert attachments.find_by_content_hash(db, user, "h1")["id"] == row["id"]
-    assert attachments.find_by_content_hash(db, other, "h1") is None
-    assert attachments.find_by_content_hash(db, user, "h2") is None
-    assert attachments.get(db, user, row["id"])["storage_path"] == f"{user}/abc_a.png"
-    assert attachments.get(db, other, row["id"]) is None
-    assert [a["id"] for a in attachments.for_email(db, email_id)] == [row["id"]]
-
-    assert attachments.delete(db, other, row["id"]) is False
-    assert attachments.delete(db, user, row["id"]) is True
-    assert attachments.get(db, user, row["id"]) is None
 
 
 def test_insert_refuses_unknown_columns(db, user, email_id):
@@ -200,3 +154,21 @@ def test_store_result_is_fenced_on_the_lock_holder(db, factory, user):
                                     content_hash="h", size_bytes=3) is True
     row = factory.row("attachments", claimed["id"])
     assert (row["storage_path"], row["content_hash"], row["size_bytes"]) == (f"{user}/x_a.png", "h", 3)
+
+
+def test_insert_get_delete_are_user_scoped(db, factory, user, email_id):
+    db.signals = Recorder()
+    row = attachments.insert(db, user, {
+        "email_id": email_id, "provider_attachment_id": "p", "filename": "a.png", "mime_type": "image/png",
+        "size_bytes": 5, "storage_path": f"{user}/abc_a.png", "content_hash": "h1"})
+    assert row["ingestion_status"] == "pending" and row["user_id"] == user
+    assert db.signals.sent == ["attachment_pending"]
+    other = factory.user()
+
+    assert attachments.get(db, user, row["id"])["storage_path"] == f"{user}/abc_a.png"
+    assert attachments.get(db, other, row["id"]) is None
+    assert [a["id"] for a in attachments.for_email(db, email_id)] == [row["id"]]
+
+    assert attachments.delete(db, other, row["id"]) is False
+    assert attachments.delete(db, user, row["id"]) is True
+    assert attachments.get(db, user, row["id"]) is None

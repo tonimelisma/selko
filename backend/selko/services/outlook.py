@@ -15,7 +15,6 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import msal
-import requests  # Backwards-compatible patch point for existing tests.
 from selko.config import Config
 from selko.db.connection import Database
 from selko.services.emails import mark_parsed_as_calendar_invite

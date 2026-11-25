@@ -207,8 +207,6 @@ def test_dead_letters_degrade_and_recover(db, factory, user, quiet_integration):
     assert result["attachments_dead_letter"] == 1
     assert result["items_pending"] == 0
     assert result["status"] == "degraded"
-    assert health.dead_letter_integration_ids(db) == {
-        "email_ingestion_items": {quiet_integration}, "attachments": {quiet_integration}}
 
     _set(db, "email_ingestion_items", "id", item, acquisition_status="completed")
     assert _h(db)["status"] == "degraded"  # the attachment still needs repair
@@ -217,7 +215,6 @@ def test_dead_letters_degrade_and_recover(db, factory, user, quiet_integration):
     assert result["items_dead_letter"] == 0
     assert result["attachments_dead_letter"] == 0
     assert result["status"] == "ok"
-    assert health.dead_letter_integration_ids(db) == {"email_ingestion_items": set(), "attachments": set()}
 
 
 def test_counts_1500_dead_letters_without_truncation(db, factory, user, quiet_integration):

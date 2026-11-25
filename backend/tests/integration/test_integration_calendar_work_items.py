@@ -12,7 +12,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from selko.db import calendar_work
-from selko.db.codec import new_id, to_timestamp
+from selko.db.codec import to_timestamp
 from selko.workers import calendar_sync
 
 
@@ -133,37 +133,3 @@ async def test_expired_processing_item_is_reclaimable(db, factory, user_id):
     ) is False
 
 
-async def test_unsync_is_worker_owned_and_clears_remote_identity_on_completion(db, factory, user_id):
-    event_id = factory.event(
-        user_id, title="Unsync me", review_status="active",
-        google_calendar_event_id="google-delete-me",
-    )
-    factory._insert("calendar_work_items", {
-        "id": new_id(), "event_id": event_id, "user_id": user_id, "action": "upsert",
-        "generation": 1, "status": "succeeded", "provider_event_id": "google-delete-me",
-    })
-
-    queued = calendar_work.unsync_event_and_enqueue_calendar_work(db, user_id, event_id)
-    assert queued["status"] == "pending_review"
-
-    claimed = calendar_work.claim_calendar_work_item(db, "unsync-worker")
-    assert claimed is not None
-    item, event = claimed
-    assert item["action"] == "cancel"
-    assert item["desired_event"] == {"delete_remote": True}
-
-    with patch("selko.services.calendars.get_credentials", return_value=MagicMock()), \
-            patch("selko.services.calendars.build") as build:
-        service = build.return_value
-        service.events.return_value.get.return_value.execute.return_value = {"id": "google-delete-me"}
-        await calendar_sync.cancel_event(db, MagicMock(), _claimed_event(item, event))
-    service.events.return_value.delete.assert_called_once()
-    service.events.return_value.update.assert_not_called()
-
-    assert calendar_work.complete_calendar_work(
-        db, item["id"], "unsync-worker", item["generation"], None
-    ) is True
-    final = factory.row("events", event_id)
-    assert final["review_status"] == "pending_review"
-    assert final["google_calendar_event_id"] is None
-    assert final["synced_at"] is None

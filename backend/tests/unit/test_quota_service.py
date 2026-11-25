@@ -4,13 +4,7 @@ from datetime import date, datetime, timedelta, timezone
 
 import pytest
 
-from selko.services.quotas import (
-    QuotaCheckResult,
-    QuotaExceededError,
-    QuotaService,
-    UserUsage,
-    get_quota_service,
-)
+from selko.services.quotas import QuotaCheckResult, QuotaExceededError, QuotaService, get_quota_service
 
 
 class TestQuotaCheckResult:
@@ -95,27 +89,6 @@ class TestQuotaExceededError:
         assert str(error) == "Custom error message"
 
 
-class TestUserUsage:
-    """Tests for UserUsage dataclass."""
-
-    def test_user_usage_creation(self):
-        """Test creating user usage object."""
-        usage = UserUsage(
-            llm_calls_count=10,
-            llm_calls_limit=100,
-            llm_calls_remaining=90,
-            email_syncs_count=5,
-            email_syncs_limit=50,
-            email_syncs_remaining=45,
-            calendar_syncs_count=2,
-            calendar_syncs_limit=100,
-            calendar_syncs_remaining=98,
-        )
-        assert usage.llm_calls_count == 10
-        assert usage.llm_calls_limit == 100
-        assert usage.llm_calls_remaining == 90
-        assert usage.email_syncs_count == 5
-        assert usage.calendar_syncs_remaining == 98
 
 
 def _break_quota_tables(db):
@@ -162,29 +135,8 @@ class TestQuotaService:
         assert result.allowed is True
         assert result.current_count == 0
 
-    def test_get_usage_success(self, quota_service, factory):
-        user = factory.user()
-        quota_service.check_and_increment(user, "llm_calls", 3)
-        usage = quota_service.get_usage(user)
-        assert usage == UserUsage(
-            llm_calls_count=3, llm_calls_limit=100, llm_calls_remaining=97,
-            email_syncs_count=0, email_syncs_limit=50, email_syncs_remaining=50,
-            calendar_syncs_count=0, calendar_syncs_limit=100, calendar_syncs_remaining=100,
-        )
 
-    def test_get_usage_with_date_reads_that_day(self, quota_service, factory):
-        user = factory.user()
-        quota_service.check_and_increment(user, "llm_calls", 3)
-        usage = quota_service.get_usage(user, for_date=date(2020, 1, 1))
-        assert usage.llm_calls_count == 0
-        assert usage.llm_calls_limit == 100
 
-    def test_get_usage_error_returns_defaults(self, quota_service, factory, db):
-        user = factory.user()
-        _break_quota_tables(db)
-        usage = quota_service.get_usage(user)
-        assert usage.llm_calls_count == 0
-        assert usage.llm_calls_limit == 100
 
     def test_set_user_limit_success(self, quota_service, factory, db):
         user = factory.user()

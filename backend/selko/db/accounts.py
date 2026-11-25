@@ -12,7 +12,7 @@ from typing import Any
 
 from selko.db.codec import new_id
 from selko.db.connection import Database
-from selko.db.errors import NotFound, UniqueViolation
+from selko.db.errors import UniqueViolation
 
 SESSION_IDLE_DAYS = 30
 REUSE_WINDOW_SECONDS = 10
@@ -73,30 +73,11 @@ def get_account_by_email(db: Database, email: str) -> dict[str, Any] | None:
     )
 
 
-def list_accounts(db: Database) -> list[dict[str, Any]]:
-    return [dict(r) for r in db.query("SELECT * FROM accounts ORDER BY created_at, id")]
-
-
 def delete_account(db: Database, account_id: str) -> bool:
     """Delete the account; cascades to the profile, every owned row, and sessions."""
     with db.write() as tx:
         cur = tx.execute("DELETE FROM accounts WHERE id = ?", (account_id,))
         return cur.rowcount == 1
-
-
-def set_password_hash(db: Database, account_id: str, password_hash: str) -> None:
-    with db.write() as tx:
-        cur = tx.execute(
-            "UPDATE accounts SET password_hash = ?, updated_at = ? WHERE id = ?",
-            (password_hash, tx.now_text, account_id),
-        )
-        if cur.rowcount != 1:
-            raise NotFound(f"account {account_id} not found")
-        tx.execute(
-            "UPDATE auth_sessions SET revoked_at = ?, revoked_reason = 'password_changed'"
-            " WHERE user_id = ? AND revoked_at IS NULL",
-            (tx.now_text, account_id),
-        )
 
 
 # --- sessions ---------------------------------------------------------------

@@ -1,10 +1,6 @@
 """Unit tests for eval helper functions."""
 
-import json
-import tempfile
-from pathlib import Path
 
-import pytest
 
 
 class TestFixtureHash:

@@ -164,36 +164,6 @@ def test_another_users_event_is_not_found(api, db, factory, owner, stranger):
 # --- unsync --------------------------------------------------------------------
 
 
-def test_event_unsync_not_found(api, owner):
-    _, headers = owner
-    assert api.post(f"/events/{new_id()}/unsync", headers=headers).status_code == 404
-
-
-def test_event_unsync_queues_worker_deletion(api, db, factory, owner):
-    """Unsync enqueues the provider deletion instead of calling Google directly."""
-    user, headers = owner
-    event = _event(factory, user, google_calendar_event_id="google-event-1",
-                   synced_at="2029-12-01T00:00:00.000000Z")
-    _item(factory, user, event, "succeeded")
-
-    with patch("selko.api.routes.events.get_calendar_event", return_value={"etag": '"etag-1"'}):
-        response = api.post(f"/events/{event}/unsync", headers=headers)
-
-    assert response.status_code == 200
-    assert response.json() == {"event_id": event, "status": "pending_review"}
-    cancel = _work(db, event)[-1]
-    assert (cancel["action"], cancel["status"]) == ("cancel", "pending")
-    assert cancel["expected_provider_revision"] == '"etag-1"'
-    assert factory.row("events", event)["review_status"] == "pending_review"
-
-
-def test_event_unsync_refuses_an_event_that_is_not_synced(api, db, factory, owner):
-    user, headers = owner
-    event = _event(factory, user)
-
-    assert api.post(f"/events/{event}/unsync", headers=headers).status_code == 400
-
-
 # --- apply / reject change -------------------------------------------------------
 
 

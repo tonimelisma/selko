@@ -176,13 +176,6 @@ class EmailIngestionWorker:
             self._claim_nudge = asyncio.Event()
         return self._claim_nudge
 
-    def nudge_claim(self) -> None:
-        try:
-            if self._claim_nudge is not None and not self._claim_nudge.is_set():
-                self._claim_nudge.set()
-        except Exception:
-            pass
-
     def stop(self) -> None:
         self.stop_event.set()
         # Wake coordinator and claim loops if they are sleeping on nudge events

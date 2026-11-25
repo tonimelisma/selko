@@ -1,7 +1,7 @@
 """Tests for security fixes: rate limiting, exception subclasses, alarmed fail-open."""
 
 import time
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -125,16 +125,6 @@ class TestQuotaAlarmedFailOpen:
 
         assert "QUOTA_SERVICE_ERROR" in caplog.text
 
-    def test_get_usage_error_logs_structured(self, quota_service, broken, caplog):
-        """get_usage on error should log QUOTA_SERVICE_ERROR."""
-        import logging
-        with caplog.at_level(logging.ERROR):
-            usage = quota_service.get_usage(broken)
-
-        assert "QUOTA_SERVICE_ERROR" in caplog.text
-        # Should still return defaults
-        assert usage.llm_calls_count == 0
-        assert usage.llm_calls_limit == 100
 
 
 class TestOAuthCallbackRateLimiting:

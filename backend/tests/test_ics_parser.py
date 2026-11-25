@@ -2,7 +2,6 @@
 
 from datetime import datetime, timezone
 
-import pytest
 
 from selko.services.ics_parser import detect_invite_method, parse_ics_attachments
 

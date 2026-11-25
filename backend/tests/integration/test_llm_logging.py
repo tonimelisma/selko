@@ -137,39 +137,6 @@ class TestLLMLoggingService:
             )
             assert log_id is not None
 
-    def test_get_user_usage_summary(self, logging_service, test_user_id):
-        """Test getting usage summary for a user."""
-        # Create a few test logs
-        for i in range(3):
-            logging_service.log_success(
-                user_id=test_user_id,
-                operation_type=LLMOperationType.EXTRACT_EVENTS,
-                model="gemini-3-flash-preview",
-                prompt_text=f"Test prompt {i}",
-                response_text=f"Test response {i}",
-                latency_ms=1000 + i * 100,
-                prompt_tokens=100,
-                completion_tokens=50,
-            )
-
-        # Add one failed call
-        logging_service.log_failure(
-            user_id=test_user_id,
-            operation_type=LLMOperationType.COMPARE_EVENTS,
-            model="gemini-3-flash-preview",
-            prompt_text="Failed test",
-            error_message="Test error",
-            latency_ms=200,
-        )
-
-        # Get summary
-        summary = logging_service.get_user_usage_summary(test_user_id)
-
-        assert summary["total_calls"] == 4
-        assert summary["successful_calls"] == 3
-        assert summary["failed_calls"] == 1
-        assert summary["total_tokens"] == 450  # 3 * 150
-        assert summary["calls_by_operation"] == {"extract_events": 3, "compare_events": 1}
 
     def test_logging_handles_errors_gracefully(self, logging_service):
         """Test that logging errors don't crash the application."""

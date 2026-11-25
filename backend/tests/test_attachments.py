@@ -5,7 +5,7 @@ only the Gmail API is mocked.
 """
 
 import base64
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -13,11 +13,8 @@ from selko.db.runtime import attachments_dir, use_database
 from selko.services.attachments import (
     AttachmentError,
     calculate_content_hash,
-    delete_attachment,
     download_gmail_attachment,
-    process_attachment,
     read_attachment_file,
-    store_image_content,
     upload_to_storage,
     write_attachment_file,
 )
@@ -422,113 +419,9 @@ def _config(max_size: int = 10 * 1024 * 1024):
     return config
 
 
-class TestStoreImageContent:
-    """Storing raw image bytes writes a file and an attachment row."""
-
-    def test_stores_new_image(self, store, factory):
-        user = factory.user()
-        email = factory.email(user)
-
-        result = store_image_content(
-            client=store,
-            email_id=email,
-            image_data=b"x" * 1000,
-            mime_type="image/jpeg",
-            filename="linked_0.jpg",
-            config=_config(),
-            user_id=user,
-        )
-
-        assert result is not None
-        assert result["filename"] == "linked_0.jpg"
-        assert result["user_id"] == user
-        assert result["storage_path"].startswith(f"{user}/")
-        assert result["storage_path"].endswith("_linked_0.jpg")
-        assert read_attachment_file(result["storage_path"]) == b"x" * 1000
-        assert factory.row("attachments", result["id"])["content_hash"] == calculate_content_hash(b"x" * 1000)
-
-    def test_skips_duplicate_image(self, store, factory):
-        """The same bytes for the same user reuse the stored row and write no second file."""
-        user = factory.user()
-        email = factory.email(user)
-        first = store_image_content(store, email, b"same", "image/png", "a.png", _config(), user_id=user)
-        second = store_image_content(store, email, b"same", "image/png", "b.png", _config(), user_id=user)
-
-        assert second["id"] == first["id"]
-        assert len(list((attachments_dir() / user).iterdir())) == 1
-
-    def test_duplicates_are_per_user(self, store, factory):
-        """Another user's identical file is not a duplicate: rows are owned."""
-        alice, bob = factory.user(), factory.user()
-        a = store_image_content(store, factory.email(alice), b"same", "image/png", "a.png", _config(), user_id=alice)
-        b = store_image_content(store, factory.email(bob), b"same", "image/png", "b.png", _config(), user_id=bob)
-        assert a["id"] != b["id"]
-        assert b["user_id"] == bob
-
-    def test_skips_empty_data(self, store):
-        result = store_image_content(
-            client=store, email_id="email-123", image_data=b"", mime_type="image/jpeg",
-            filename="empty.jpg", config=_config(), user_id="user-1",
-        )
-        assert result is None
-
-    def test_skips_oversized_image(self, store):
-        result = store_image_content(
-            client=store, email_id="email-123", image_data=b"x" * 2000, mime_type="image/jpeg",
-            filename="huge.jpg", config=_config(max_size=1000), user_id="user-1",
-        )
-        assert result is None
 
 
-class TestAttachmentOwnerThreading:
-    """Regression tests for the worker 'No user signed in' failure.
 
-    Background workers once fell back to a session lookup for the owner, and
-    every Gmail fetch with attachments failed in production. Ownership is now
-    always explicit: the owner passed is the owner stored, and a missing
-    owner is refused rather than guessed.
-    """
-
-    def test_store_image_content_stores_the_given_owner(self, store, factory):
-        user = factory.user()
-        result = store_image_content(
-            client=store, email_id=factory.email(user), image_data=b"x" * 10,
-            mime_type="image/jpeg", filename="linked_0.jpg", config=_config(), user_id=user,
-        )
-        assert result["user_id"] == user
-        assert result["storage_path"].split("/")[0] == user
-
-    @patch("selko.services.attachments.download_gmail_attachment")
-    def test_process_attachment_stores_the_given_owner(self, mock_download, store, factory):
-        user = factory.user()
-        mock_download.return_value = b"pdf-bytes"
-
-        result = process_attachment(
-            client=store,
-            gmail_service=MagicMock(),
-            email_id=factory.email(user),
-            message_id="msg-1",
-            attachment_part={
-                "attachment_id": "gmail-att-1",
-                "filename": "report.pdf",
-                "mime_type": "application/pdf",
-                "size_bytes": 9,
-            },
-            config=_config(),
-            user_id=user,
-        )
-
-        assert result["user_id"] == user
-        assert result["provider_attachment_id"] == "gmail-att-1"
-        assert read_attachment_file(result["storage_path"]) == b"pdf-bytes"
-
-    def test_a_missing_owner_is_refused(self, store, factory):
-        with pytest.raises(AttachmentError, match="user_id"):
-            store_image_content(
-                client=store, email_id=factory.email(factory.user()), image_data=b"x",
-                mime_type="image/png", filename="x.png", config=_config(),
-            )
-        assert not any(p.is_file() for p in attachments_dir().rglob("*"))
 
 
 class TestFileStore:
@@ -566,19 +459,7 @@ class TestFileStore:
         assert ".." not in path.split("/")
         assert (attachments_dir() / path).resolve().is_relative_to(attachments_dir().resolve())
 
-    def test_delete_removes_the_row_then_the_file(self, store, factory):
-        user = factory.user()
-        row = store_image_content(store, factory.email(user), b"img", "image/png", "i.png", _config(), user_id=user)
-        assert delete_attachment(store, row["id"], _config(), user_id=user) is True
-        assert factory.row("attachments", row["id"]) is None
-        assert not (attachments_dir() / row["storage_path"]).exists()
 
-    def test_delete_refuses_another_users_attachment(self, store, factory):
-        owner, other = factory.user(), factory.user()
-        row = store_image_content(store, factory.email(owner), b"img", "image/png", "i.png", _config(), user_id=owner)
-        assert delete_attachment(store, row["id"], _config(), user_id=other) is False
-        assert factory.row("attachments", row["id"]) is not None
-        assert read_attachment_file(row["storage_path"]) == b"img"
 
 
 class TestAttachmentError:

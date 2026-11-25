@@ -422,21 +422,3 @@ class EmailIngestionRepository:
             "finish email attachment", db_attachments.finish_email_attachment,
             attachment_id, worker_id, status, error_code,
         ))
-
-    async def ensure_attachment_descriptors(
-        self,
-        email_id: str,
-        user_id: str,
-        descriptors: Iterable[dict[str, Any]],
-    ) -> int:
-        """Create pending attachment work without resetting stored rows."""
-        return await self._call(
-            "ensure attachment descriptors", db_attachments.ensure_descriptors,
-            email_id, user_id, list(descriptors),
-        )
-
-    async def attachment_readiness(self, email_id: str) -> bool:
-        """Mirror the readiness gate for diagnostics and repair tooling."""
-        return await self._call(
-            "check attachment readiness", db_attachments.readiness, email_id,
-        )

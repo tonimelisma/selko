@@ -584,21 +584,6 @@ class TestEmailProcessWorker:
         assert args[0] is db
         assert args[2] == "e1"  # email_id is 3rd positional arg
 
-    @pytest.mark.asyncio
-    async def test_process_email_job_reads_the_email_from_the_database(self, db, factory, mock_config):
-        from selko.services.events import EventsError
-        from selko.workers.email_process import process_email_process_job
-
-        user = factory.user()
-        email_id = factory.email(user, subject="From the store")
-
-        with patch("selko.workers.email_process.process_email", new_callable=AsyncMock) as proc:
-            await process_email_process_job(db, mock_config, "job-1", {"email_id": email_id})
-            stored = proc.await_args.args[2]
-            assert (stored["id"], stored["user_id"], stored["subject"]) == (email_id, user, "From the store")
-
-            with pytest.raises(EventsError, match="not found"):
-                await process_email_process_job(db, mock_config, "job-2", {"email_id": "00000000-0000-4000-8000-00000000dead"})
 
     @pytest.mark.asyncio
     async def test_pool_email_processing_uses_wait_for(self, db, factory, mock_config):
@@ -626,26 +611,6 @@ class TestEmailProcessWorker:
         mock_proc.assert_called_once()
         mock_cb.record_success.assert_called_with("llm")
 
-    @pytest.mark.asyncio
-    async def test_pool_does_not_overwrite_skipped_email(self, db, factory, mock_config):
-        """Regression: a sender-ignored/calendar-invite email must stay
-        'skipped', not get flipped back to 'processed' by the pool."""
-        from selko.db import emails as db_emails
-
-        pool = self._pool(db, mock_config)
-        email = self._claimed_email(db, factory)
-
-        async def extraction_skips(_client, _config, claimed):
-            db_emails.skip_email(db, claimed["id"])
-            return {"num_events": 0, "num_new": 0, "num_updated": 0, "skipped": True}
-
-        with (
-            patch("selko.workers.email_process.process_email", new=AsyncMock(side_effect=extraction_skips)),
-            patch("selko.workers.pool.circuit_breaker"),
-        ):
-            await pool._process_email(db, "worker-1", email)
-
-        assert factory.row("emails", email["id"])["processing_status"] == "skipped"
 
     @pytest.mark.asyncio
     async def test_a_failed_extraction_returns_the_email_for_retry(self, db, factory, mock_config):
@@ -680,6 +645,27 @@ class TestEmailProcessWorker:
 
         row = factory.row("emails", email["id"])
         assert (row["processing_status"], row["locked_by"]) == ("processing", "worker-1")
+
+    @pytest.mark.asyncio
+    async def test_pool_does_not_overwrite_skipped_email(self, db, factory, mock_config):
+        """Regression: a sender-ignored/calendar-invite email must stay
+        'skipped', not get flipped back to 'processed' by the pool."""
+        from selko.services.events import mark_email_status
+
+        pool = self._pool(db, mock_config)
+        email = self._claimed_email(db, factory)
+
+        async def extraction_skips(_client, _config, claimed):
+            mark_email_status(db, claimed["id"], "skipped")
+            return {"num_events": 0, "num_new": 0, "num_updated": 0, "skipped": True}
+
+        with (
+            patch("selko.workers.email_process.process_email", new=AsyncMock(side_effect=extraction_skips)),
+            patch("selko.workers.pool.circuit_breaker"),
+        ):
+            await pool._process_email(db, "worker-1", email)
+
+        assert factory.row("emails", email["id"])["processing_status"] == "skipped"
 
 
 # ===========================================================================

@@ -12,7 +12,6 @@ that topic.
 
 from __future__ import annotations
 
-import asyncio
 import json
 import time
 from collections.abc import AsyncIterator
@@ -110,13 +109,3 @@ async def live(request: Request, identity: Identity = Depends(require_identity))
         headers={"Cache-Control": "no-cache, no-transform", "X-Accel-Buffering": "no", "Connection": "keep-alive"},
     )
 
-
-def open_streams() -> int:
-    return sum(_open.values())
-
-
-async def wait_closed(timeout: float = 5.0) -> None:
-    """For shutdown: give open streams a moment to end."""
-    deadline = time.monotonic() + timeout
-    while open_streams() and time.monotonic() < deadline:
-        await asyncio.sleep(0.05)

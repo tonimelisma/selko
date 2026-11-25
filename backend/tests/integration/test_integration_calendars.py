@@ -13,7 +13,6 @@ from selko.services.calendars import (
     CalendarsError,
     get_calendar_settings,
     sync_event_to_calendar,
-    update_calendar_settings,
     cancel_event_to_calendar,
 )
 
@@ -48,38 +47,7 @@ class TestCalendarSettings:
         assert settings["target_calendar_name"] is None
         assert settings["default_invitees"] is None
 
-    def test_update_and_get_settings(self, db, user_id):
-        """Test updating and retrieving calendar settings."""
-        update_calendar_settings(
-            db,
-            user_id,
-            target_calendar_id="test-calendar-123",
-            default_invitees="spouse@example.com, partner@example.com",
-        )
 
-        with patch("selko.services.calendars.list_calendars") as mock_list:
-            mock_list.return_value = [
-                {"id": "test-calendar-123", "name": "Family Calendar", "is_primary": False}
-            ]
-            settings = get_calendar_settings(db, user_id)
-
-        assert settings["target_calendar_id"] == "test-calendar-123"
-        assert settings["target_calendar_name"] == "Family Calendar"
-        assert settings["default_invitees"] == "spouse@example.com, partner@example.com"
-
-    def test_update_settings_idempotent(self, db, user_id):
-        """Test that updating settings multiple times is idempotent."""
-        update_calendar_settings(
-            db, user_id, target_calendar_id="calendar-1", default_invitees="first@example.com",
-        )
-        update_calendar_settings(
-            db, user_id, target_calendar_id="calendar-2", default_invitees="second@example.com",
-        )
-
-        rows = db.query("SELECT * FROM user_calendar_settings WHERE user_id = ?", (user_id,))
-        assert len(rows) == 1
-        assert rows[0]["target_calendar_id"] == "calendar-2"
-        assert rows[0]["default_invitees"] == "second@example.com"
 
 
 @pytest.mark.integration

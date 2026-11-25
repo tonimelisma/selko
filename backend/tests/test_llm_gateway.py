@@ -1,15 +1,12 @@
 """Tests for LLM Gateway."""
 
-import time
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from selko.config import Config
 from selko.services.llm_gateway import (
     LLMAPIError,
     LLMGateway,
-    LLMGatewayError,
     LLMRateLimitError,
 )
 from selko.services.llm_logging import LLMLoggingService, LLMOperationType

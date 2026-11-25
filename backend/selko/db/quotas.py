@@ -11,12 +11,11 @@ needed: writers are serialized.
 
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta, timezone
-from decimal import ROUND_HALF_UP, Decimal
+from datetime import date, datetime, timezone
 from typing import Any
 
 from selko.db import errors
-from selko.db.codec import new_id, to_date, to_timestamp, utc_now
+from selko.db.codec import new_id, to_date
 from selko.db.connection import Database
 
 # quota type -> (count column, limit column). A fixed whitelist: the column
@@ -104,83 +103,9 @@ def check_and_increment_quota(
 # ---------------------------------------------------------------------------
 
 
-def get_user_quota_usage(db: Database, user_id: str, for_date: date | str | None = None) -> dict[str, int]:
-    """Counts, limits and remaining for all three quotas on ``for_date`` (default: today, UTC)."""
-    day = to_date(for_date) if for_date is not None else _today(utc_now())
-    row = db.query_one(
-        """
-        SELECT
-            COALESCE(q.llm_calls_count, 0) AS llm_calls_count,
-            COALESCE(q.llm_calls_limit, gl_llm.default_limit, 100) AS llm_calls_limit,
-            COALESCE(q.email_syncs_count, 0) AS email_syncs_count,
-            COALESCE(q.email_syncs_limit, gl_email.default_limit, 50) AS email_syncs_limit,
-            COALESCE(q.calendar_syncs_count, 0) AS calendar_syncs_count,
-            COALESCE(q.calendar_syncs_limit, gl_cal.default_limit, 100) AS calendar_syncs_limit
-        FROM (SELECT 1) AS dummy
-        LEFT JOIN usage_quotas q ON q.user_id = ? AND q.date = ?
-        LEFT JOIN global_limits gl_llm ON gl_llm.limit_type = 'llm_calls_daily'
-        LEFT JOIN global_limits gl_email ON gl_email.limit_type = 'email_syncs_daily'
-        LEFT JOIN global_limits gl_cal ON gl_cal.limit_type = 'calendar_syncs_daily'
-        """,
-        (user_id, day),
-    )
-    out: dict[str, int] = {}
-    for kind in ("llm_calls", "email_syncs", "calendar_syncs"):
-        count, limit = row[f"{kind}_count"], row[f"{kind}_limit"]
-        out[f"{kind}_count"] = count
-        out[f"{kind}_limit"] = limit
-        out[f"{kind}_remaining"] = max(0, limit - count)
-    return out
-
-
 # ---------------------------------------------------------------------------
 # 57 get_llm_usage_summary (no production caller; kept for LLMLoggingService)
 # ---------------------------------------------------------------------------
-
-
-def _pg_round_int(value: Decimal) -> int:
-    return int(value.quantize(Decimal(1), rounding=ROUND_HALF_UP))
-
-
-def llm_usage_summary(
-    db: Database,
-    user_id: str,
-    start_date: date | str | None = None,
-    end_date: date | str | None = None,
-) -> dict[str, Any]:
-    """Totals of the user's LLM calls started in ``[start_date, end_date + 1 day)`` (UTC dates)."""
-    today = utc_now().date()
-    start = date.fromisoformat(to_date(start_date)) if start_date is not None else today  # type: ignore[arg-type]
-    end = date.fromisoformat(to_date(end_date)) if end_date is not None else today  # type: ignore[arg-type]
-    lower = to_timestamp(datetime(start.year, start.month, start.day, tzinfo=timezone.utc))
-    upper_day = end + timedelta(days=1)
-    upper = to_timestamp(datetime(upper_day.year, upper_day.month, upper_day.day, tzinfo=timezone.utc))
-    rows = db.query(
-        """
-        SELECT success, total_tokens, prompt_tokens, completion_tokens, latency_ms,
-               estimated_cost_usd, operation_type
-        FROM llm_call_log
-        WHERE user_id = ? AND started_at >= ? AND started_at < ?
-        """,
-        (user_id, lower, upper),
-    )
-    latencies = [r["latency_ms"] for r in rows if r["latency_ms"] is not None]
-    by_operation: dict[str, int] = {}
-    for r in rows:
-        by_operation[r["operation_type"]] = by_operation.get(r["operation_type"], 0) + 1
-    cost = sum((Decimal(str(r["estimated_cost_usd"])) for r in rows if r["estimated_cost_usd"] is not None), Decimal(0))
-    return {
-        "total_calls": len(rows),
-        "successful_calls": sum(1 for r in rows if r["success"] == 1),
-        "failed_calls": sum(1 for r in rows if r["success"] == 0),
-        "total_tokens": sum(r["total_tokens"] or 0 for r in rows),
-        "total_prompt_tokens": sum(r["prompt_tokens"] or 0 for r in rows),
-        "total_completion_tokens": sum(r["completion_tokens"] or 0 for r in rows),
-        "total_latency_ms": sum(latencies),
-        "avg_latency_ms": _pg_round_int(Decimal(sum(latencies)) / len(latencies)) if latencies else 0,
-        "estimated_cost_usd": float(cost.quantize(Decimal("0.000001"), rounding=ROUND_HALF_UP)),
-        "calls_by_operation": by_operation,
-    }
 
 
 # ---------------------------------------------------------------------------
@@ -222,8 +147,6 @@ def set_user_limit(
 __all__ = [
     "QUOTA_COLUMNS",
     "check_and_increment_quota",
-    "get_user_quota_usage",
-    "llm_usage_summary",
     "max_allowed",
     "set_user_limit",
 ]

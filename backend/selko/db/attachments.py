@@ -87,15 +87,6 @@ def finish_email_attachment(
 # ---------------------------------------------------------------------------
 
 
-def find_by_content_hash(db: Database, user_id: str, content_hash: str) -> dict[str, Any] | None:
-    """One of the user's attachments with this hash (``check_duplicate_attachment``)."""
-    row = db.query_one(
-        "SELECT * FROM attachments WHERE user_id = ? AND content_hash = ? LIMIT 1",
-        (codec.to_id(user_id), content_hash),
-    )
-    return _decode(db, row)
-
-
 def insert(db: Database, user_id: str, row: Mapping[str, Any]) -> dict[str, Any]:
     """Insert an attachment row (``save_attachment_metadata``); returns the stored row.
 
@@ -145,6 +136,24 @@ def for_email(db: Database, email_id: str) -> list[dict[str, Any]]:
     return [_decode(db, r) for r in rows]  # type: ignore[misc]
 
 
+def store_result(
+    db: Database,
+    attachment_id: str,
+    worker_id: str,
+    *,
+    storage_path: str,
+    content_hash: str,
+    size_bytes: int,
+) -> bool:
+    """Record a stored file on the attachment row, fenced on ``locked_by`` as today."""
+    with db.write() as tx:
+        return tx.execute(
+            "UPDATE attachments SET storage_path = ?, content_hash = ?, size_bytes = ?"
+            " WHERE id = ? AND locked_by = ?",
+            (storage_path, content_hash, int(size_bytes), codec.to_id(attachment_id), worker_id),
+        ).rowcount > 0
+
+
 def ensure_descriptors(
     db: Database, email_id: str, user_id: str, descriptors: Iterable[Mapping[str, Any]]
 ) -> int:
@@ -180,39 +189,13 @@ def ensure_descriptors(
     return created
 
 
-def store_result(
-    db: Database,
-    attachment_id: str,
-    worker_id: str,
-    *,
-    storage_path: str,
-    content_hash: str,
-    size_bytes: int,
-) -> bool:
-    """Record a stored file on the attachment row, fenced on ``locked_by`` as today."""
-    with db.write() as tx:
-        return tx.execute(
-            "UPDATE attachments SET storage_path = ?, content_hash = ?, size_bytes = ?"
-            " WHERE id = ? AND locked_by = ?",
-            (storage_path, content_hash, int(size_bytes), codec.to_id(attachment_id), worker_id),
-        ).rowcount > 0
-
-
-def readiness(db: Database, email_id: str) -> bool:
-    """True when every attachment of the email is settled (none, counts as ready)."""
-    rows = db.query("SELECT ingestion_status FROM attachments WHERE email_id = ?", (codec.to_id(email_id),))
-    return all(r["ingestion_status"] in SETTLED_STATES for r in rows)
-
-
 __all__ = [
+    "ensure_descriptors",
     "claim_email_attachment",
     "delete",
-    "ensure_descriptors",
-    "find_by_content_hash",
     "finish_email_attachment",
     "for_email",
     "get",
     "insert",
-    "readiness",
     "store_result",
 ]

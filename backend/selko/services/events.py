@@ -4,7 +4,6 @@ import logging
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Optional
-from uuid import UUID
 from zoneinfo import ZoneInfo
 
 from selko.db import calendar_work as db_calendar_work
@@ -33,7 +32,6 @@ from selko.services.calendar_policy import materialize_all_day_event
 from selko.services.civil_time import ensure_aware, resolve_zone
 from selko.services.event_identity import IdentityHint, build_hints
 from selko.services.llm_gateway import LLMGateway
-from selko.services.retry_utils import calculate_retry_delay
 from selko.services.resolution_fingerprint import candidate_fingerprint
 from selko.services.resolution_metrics import resolution_metrics
 
@@ -217,23 +215,6 @@ def mark_email_status(
     if result is not None:
         update_data["processing_result"] = result
     db_events.mark_email_status(supabase_client, email_id, update_data)
-
-
-def should_skip_email(
-    supabase_client: Database, user_id: str, sender_email: str
-) -> bool:
-    """Check if sender is ignored and email should be skipped.
-
-    Args:
-        supabase_client: The Selko database.
-        user_id: UUID of user.
-        sender_email: Email address of sender.
-
-    Returns:
-        True if sender has an "ignore" rule.
-    """
-    sender_rule = check_sender_rules(supabase_client, user_id, sender_email)
-    return bool(sender_rule and sender_rule.get("action") == "ignore")
 
 
 def get_user_timezone(supabase_client: Database, user_id: str) -> str:
@@ -2507,26 +2488,3 @@ async def fail_event_sync(
     except Exception as e:
         raise EventsError(f"Failed to mark event sync as failed: {e}") from e
 
-
-async def unlock_expired_event_locks(pool: Database) -> int:
-    """Count calendar work items whose lease expired.
-
-    Claim-time recovery owns mutation: the next ``claim_calendar_work_item``
-    reclaims expired work atomically, without a periodic sweeper.
-
-    Args:
-        pool: The Selko database.
-
-    Returns:
-        Number of expired leases.
-
-    Raises:
-        EventsError: If the count fails.
-    """
-    try:
-        count = await pool.run(db_calendar_work.count_expired_leases, pool)
-        if count:
-            logger.warning(f"Unlocked {count} expired event sync locks")
-        return count or 0
-    except Exception as e:
-        raise EventsError(f"Failed to unlock expired event locks: {e}") from e

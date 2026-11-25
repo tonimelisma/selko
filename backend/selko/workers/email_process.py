@@ -13,7 +13,6 @@ import logging
 from typing import Any
 
 from selko.config import Config
-from selko.db import emails as db_emails
 from selko.db.connection import Database
 from selko.services.events import EventsError, process_email_for_events
 from selko.services.llm_gateway import create_llm_gateway
@@ -95,38 +94,3 @@ async def process_email(
 
 
 # Keep old function signature for backwards compatibility with existing tests
-async def process_email_process_job(
-    client: Database,
-    config: Config,
-    job_id: str,
-    payload: dict[str, Any],
-) -> None:
-    """Legacy function for processing email_process jobs.
-
-    This function is kept for backwards compatibility during the transition.
-    New code should use process_email() directly.
-
-    Args:
-        client: The process database.
-        config: Application configuration.
-        job_id: UUID of the job being processed (unused in new architecture).
-        payload: Job payload with {email_id: str}.
-
-    Raises:
-        EventsError: If event extraction/processing fails.
-    """
-    email_id = payload.get("email_id")
-
-    if not email_id:
-        raise ValueError("Missing email_id in payload")
-
-    # Fetch the full email record
-    try:
-        email = db_emails.get_for_extraction(client, email_id)
-    except Exception as e:
-        raise EventsError(f"Failed to fetch email {email_id}: {e}") from e
-    if email is None:
-        raise EventsError(f"Failed to fetch email {email_id}: not found")
-
-    # Process using new function
-    await process_email(client, config, email)

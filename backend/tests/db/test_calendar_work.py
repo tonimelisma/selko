@@ -382,7 +382,6 @@ class TestClaim:
         _set(db, "calendar_work_items", item["id"], attempts=3,
              locked_until=to_timestamp(utc_now() - timedelta(seconds=1)))
         assert _claim(db) is None
-        assert cw.count_expired_leases(db) == 1
 
     def test_pending_work_is_claimed_before_expired_leases(self, db, factory, user):
         expired_event = _approved(db, factory, user)
@@ -506,11 +505,8 @@ class TestClaimRoutesByProvider:
         event_id = factory.event(user)
         assert cw.calendar_write_provider(db, user, event_id) == "google_calendar"  # nothing connected
         factory.integration(user, provider="outlook", scopes=OUTLOOK_MAIL_ONLY)
-        assert cw.calendar_integration_writable(db, user, "outlook") is False
         assert cw.calendar_write_provider(db, user, event_id) == "google_calendar"
         _set_scopes(db, user, "outlook", OUTLOOK_CALENDAR_SCOPES)
-        assert cw.calendar_integration_writable(db, user, "outlook") is True
-        assert cw.calendar_integration_writable(db, user, "google_calendar") is False
         assert cw.calendar_write_provider(db, user, event_id) == "outlook"
         factory.integration(user, provider="google_calendar")
         assert cw.calendar_write_provider(db, user, event_id) == "google_calendar"
@@ -716,47 +712,6 @@ class TestCancellation:
         assert (latest["status"], latest["action"]) == ("pending", "cancel")
 
 
-class TestUnsync:
-    def _synced(self, db, factory, user):
-        event_id = factory.event(user, title="Unsync me", review_status="active",
-                                 google_calendar_event_id="google-delete-me")
-        with db.write() as tx:
-            tx.execute(
-                "INSERT INTO calendar_work_items (id, event_id, user_id, action, generation, status, "
-                "provider_event_id) VALUES ('00000000-0000-0000-0000-0000000000c1', ?, ?, 'upsert', 1, "
-                "'succeeded', 'google-delete-me')",
-                (event_id, user),
-            )
-        return event_id
-
-    def test_unsync_is_worker_owned_and_clears_remote_identity_on_completion(self, db, factory, user):
-        event_id = self._synced(db, factory, user)
-        queued = cw.unsync_event_and_enqueue_calendar_work(db, user, event_id, "etag-1")
-        assert queued["status"] == "pending_review"
-        assert queued["generation"] == 2
-        assert _event(db, event_id)["review_status"] == "pending_review"
-
-        item, _ = _claim(db, "unsync-worker")
-        assert item["id"] == queued["work_item_id"]
-        assert item["action"] == "cancel"
-        assert item["desired_event"] == {"delete_remote": True}
-        assert item["expected_provider_revision"] == "etag-1"
-        assert cw.complete_calendar_work(db, *_lease(item), item["provider_event_id"]) is True
-        final = _event(db, event_id)
-        assert final["review_status"] == "pending_review"  # not converted to cancelled
-        assert final["google_calendar_event_id"] is None
-        assert final["synced_at"] is None
-
-    def test_only_a_synced_event_can_be_unsynced(self, db, factory, user):
-        never_synced = factory.event(user, review_status="active", google_calendar_event_id="g-x")
-        with pytest.raises(InvalidArgument, match=f"event {never_synced} is not synced"):
-            cw.unsync_event_and_enqueue_calendar_work(db, user, never_synced)
-        no_id = factory.event(user, review_status="active")
-        with pytest.raises(InvalidArgument, match="is not synced"):
-            cw.unsync_event_and_enqueue_calendar_work(db, user, no_id)
-        with pytest.raises(NotOwned):
-            cw.unsync_event_and_enqueue_calendar_work(db, factory.user(), never_synced)
-        assert _event(db, never_synced)["review_status"] == "active"
 
 
 class TestUndo:
@@ -800,32 +755,7 @@ class TestReads:
         cw.complete_calendar_work(db, *_lease(item), "g")
         assert cw.get_leased_item(db, *_lease(item)) is None
 
-    def test_count_expired_leases_counts_and_never_mutates(self, db, factory, user):
-        _approved(db, factory, user)
-        _approved(db, factory, user)
-        a, _ = _claim(db, "a")
-        _claim(db, "b")
-        assert cw.count_expired_leases(db) == 0
-        _set(db, "calendar_work_items", a["id"], locked_until=to_timestamp(utc_now() - timedelta(seconds=5)))
-        assert cw.count_expired_leases(db) == 1
-        assert _item(db, a["id"])["status"] == "processing"
 
-    def test_delivery_items_for_events_is_owner_scoped(self, db, factory, user):
-        mine = factory.event(user, review_status="active")
-        cw.enqueue_calendar_work(db, user, mine, "upsert", {"t": 1})
-        cw.enqueue_calendar_work(db, user, mine, "cancel")
-        empty = factory.event(user)
-        other_user = factory.user()
-        theirs = factory.event(other_user, review_status="active")
-        cw.enqueue_calendar_work(db, other_user, theirs, "cancel")
-        items = cw.delivery_items_for_events(db, user, [mine, empty, theirs])
-        assert items[mine] == [
-            {"status": "superseded", "action": "upsert", "generation": 1, "failure_code": None},
-            {"status": "pending", "action": "cancel", "generation": 2, "failure_code": None},
-        ]
-        assert items[empty] == []
-        assert items[theirs] == []
-        assert cw.delivery_items_for_events(db, user, []) == {}
 
     def test_sync_log_latest_snapshot(self, db, factory, user):
         event_id = factory.event(user, review_status="active")

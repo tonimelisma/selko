@@ -947,7 +947,6 @@ class GeminiProvider(LLMProvider):
         from google.genai import types
 
         from selko.services.format_conversion import (
-            PROVIDER_ACCEPTED_FORMATS,
             prepare_content_for_provider,
         )
 

@@ -262,33 +262,6 @@ def reopen_event_change_proposal(
 # ---------------------------------------------------------------------------
 
 
-def resolve_event_change_proposal(db: Database, user_id: str, event_id: str, proposal_id: str,
-                                  expected_hash: str | None, resolution_reason: str | None) -> dict[str, Any]:
-    """Close a ``closed_legacy`` proposal as rejected (scripts/repair_review_queue_integrity.py)."""
-    user_id, event_id, proposal_id = _ids(user_id, event_id, proposal_id)
-    with db.write() as tx:
-        proposal = _row(
-            tx, "event_change_proposals",
-            "SELECT p.* FROM event_change_proposals p JOIN events e ON e.id = p.event_id "
-            "WHERE p.id = ? AND p.event_id = ? AND p.user_id = ?",
-            (proposal_id, event_id, user_id),
-        )
-        if proposal is None or proposal["status"] != "closed_legacy":
-            raise errors.ProposalStateError(f"proposal {proposal_id} is not an owned closed legacy proposal")
-        if expected_hash is not None and event_change_proposal_hash(proposal) != expected_hash:
-            raise errors.StaleProposal(f"proposal {proposal_id} changed before resolution")
-        if resolution_reason is not None and resolution_reason not in (
-            "historical_proposal_cleanup", "operator_confirmed_rejection"
-        ):
-            raise errors.InvalidArgument("invalid proposal resolution reason")
-        tx.execute(
-            "UPDATE event_change_proposals SET status = 'rejected', resolution_reason = ?, "
-            "resolved_at = ?, updated_at = ? WHERE id = ?",
-            (resolution_reason, tx.now_text, tx.now_text, proposal["id"]),
-        )
-    return {"event_id": event_id, "proposal_id": proposal["id"], "status": "rejected"}
-
-
 # ---------------------------------------------------------------------------
 # Reads (routes/events.py, services/events.py)
 # ---------------------------------------------------------------------------
@@ -324,5 +297,5 @@ def latest_applied(db: Database, user_id: str, event_id: str) -> dict[str, Any] 
 __all__ = [
     "apply_event_change_proposal", "event_change_proposal_hash", "get", "get_pending",
     "latest_applied", "reject_event_change_proposal", "reject_event_change_proposal_in_tx",
-    "reopen_event_change_proposal", "resolve_event_change_proposal",
+    "reopen_event_change_proposal",
 ]

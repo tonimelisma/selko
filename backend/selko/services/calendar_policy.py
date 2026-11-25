@@ -81,33 +81,6 @@ def all_day_policy_from_settings(settings: dict[str, Any] | None) -> AllDayPolic
     )
 
 
-def validate_all_day_policy(
-    mode: AllDayDisplayMode | str,
-    custom_start: Any = None,
-    custom_end: Any = None,
-) -> AllDayPolicy:
-    """Validate settings input; raise CalendarPolicyError on invalid custom."""
-    try:
-        resolved_mode = AllDayDisplayMode(mode)
-    except ValueError as e:
-        raise CalendarPolicyError(f"Invalid all_day_display_mode: {mode!r}") from e
-
-    start = parse_time_value(custom_start)
-    end = parse_time_value(custom_end)
-
-    if resolved_mode == AllDayDisplayMode.CUSTOM:
-        if start is None or end is None:
-            raise CalendarPolicyError(
-                "Custom all-day display mode requires both start and end times"
-            )
-        if end <= start:
-            raise CalendarPolicyError(
-                "Custom all-day end time must be later than start time"
-            )
-
-    return AllDayPolicy(mode=resolved_mode, custom_start=start, custom_end=end)
-
-
 def _window_for_policy(policy: AllDayPolicy) -> tuple[time, time]:
     if policy.mode == AllDayDisplayMode.ALL_DAY:
         raise CalendarPolicyError("ALL_DAY mode has no timed window")

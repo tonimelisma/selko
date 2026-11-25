@@ -7,15 +7,8 @@ only the calendar provider is faked.
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-from unittest.mock import MagicMock
 
-from selko.services.calendar_mirror import (
-    WINDOW_AHEAD,
-    WINDOW_BEHIND,
-    entry_row,
-    fetch_page,
-    rolling_window,
-)
+from selko.services.calendar_mirror import WINDOW_AHEAD, WINDOW_BEHIND, entry_row, rolling_window
 
 
 def _entry(**overrides):
@@ -97,32 +90,8 @@ def test_self_response_is_extracted_from_attendees():
     assert row["self_response"] == "declined"
 
 
-def test_a_sync_token_replaces_the_time_window():
-    """timeMin/timeMax may not be combined with syncToken.
-
-    Google keeps the window from the request that issued the token; sending both
-    is an error, and sending the window every time would defeat the incremental
-    read that keeps this inside the egress rule.
-    """
-    service = MagicMock()
-    window = rolling_window()
-
-    fetch_page(service, "primary", sync_token="tok", window=window)
-    params = service.events().list.call_args.kwargs
-    assert params["syncToken"] == "tok"
-    assert "timeMin" not in params and "timeMax" not in params
-
-    service.reset_mock()
-    fetch_page(service, "primary", sync_token=None, window=window)
-    params = service.events().list.call_args.kwargs
-    assert "syncToken" not in params
-    assert params["timeMin"] and params["timeMax"]
 
 
-def test_deleted_entries_are_requested_so_removals_are_visible():
-    service = MagicMock()
-    fetch_page(service, "primary", sync_token="tok", window=rolling_window())
-    assert service.events().list.call_args.kwargs["showDeleted"] is True
 
 
 def test_the_window_is_bounded():
@@ -321,13 +290,6 @@ def test_indexing_never_reads_another_users_entries(db, factory):
     assert _hints(db, user_id) == []
 
 
-def test_reload_stored_returns_the_stored_ids(db, factory):
-    from selko.services.calendar_mirror import _reload_stored
-
-    user_id, integration_id = _mirror_user(factory)
-    stored = _stored_entry(db, user_id, integration_id, "evt-1", "uid-1@example.com")
-
-    assert [r["id"] for r in _reload_stored(db, user_id, [{"provider_event_id": "evt-1"}])] == [stored["id"]]
 
 
 def test_every_calendar_is_mirrored_not_only_the_write_target(db):

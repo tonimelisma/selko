@@ -52,12 +52,6 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def gmail_label_is_permanently_excluded(label: dict[str, Any]) -> bool:
-    """Return whether a Gmail system label is outside the source set."""
-
-    return label.get("id") in PERMANENT_GMAIL_LABEL_IDS
-
-
 def outlook_folder_is_permanently_excluded(folder: dict[str, Any]) -> bool:
     """Return whether an Outlook well-known system folder is outside the source set."""
 

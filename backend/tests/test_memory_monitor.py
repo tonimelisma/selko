@@ -13,7 +13,6 @@ from selko.services.memory_monitor import (
     format_tracemalloc_diff,
     get_fd_count,
     get_rss_bytes,
-    run_memory_monitor,
     sample_memory_stats,
     start_memory_monitor,
 )

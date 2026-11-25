@@ -28,12 +28,10 @@ from selko.api.schemas.events import (
     EventChangeResponse,
     EventUndoRequest,
     EventUndoResponse,
-    EventUnsyncResponse,
 )
 from selko.services.calendars import (
     CalendarDivergedError,
     CalendarsError,
-    get_calendar_event,
 )
 from selko.services.events import (
     EventsError,
@@ -135,96 +133,6 @@ async def sync_event(
         raise HTTPException(
             status_code=500,
             detail=error_detail(ErrorCode.SYNC_FAILED, "Failed to queue event sync"),
-        )
-
-
-@router.post("/{event_id}/unsync", response_model=EventUnsyncResponse)
-async def unsync_event(
-    event_id: UUID,
-    client: Annotated[Database, Depends(get_authenticated_client)],
-    service_client: Annotated[Database, Depends(get_service_role_client)],
-    user: CurrentUser = Depends(get_current_user),
-) -> EventUnsyncResponse:
-    """Queue removal of a synced event from Google Calendar.
-
-    The calendar worker owns the provider deletion. The event is immediately
-    represented as pending review while the durable work item records the
-    deletion and its provider-revision fence.
-
-    Args:
-        event_id: UUID of the event to unsync.
-
-    Returns:
-        Unsync result with event_id and new status.
-
-    Raises:
-        400: Event is not in synced status.
-        404: Event not found or no calendar integration.
-        500: Calendar unsync failed.
-    """
-    try:
-        # Verify ownership and status, and capture the provider identity for
-        # the service-only queue RPC.
-        event = db_events.get_with_work_items(client, user.id, str(event_id))
-        if event is None:
-            raise HTTPException(
-                status_code=404,
-                detail=error_detail(ErrorCode.EVENT_NOT_FOUND, "Event not found"),
-            )
-
-        # Validate event is synced
-        current_status = derive_delivery_status(event)
-        if current_status != "synced":
-            raise HTTPException(
-                status_code=400,
-                detail=error_detail(
-                    ErrorCode.INVALID_REQUEST,
-                    f"Only synced events can be unsynced (current status: {current_status})",
-                ),
-            )
-
-        live_event = get_calendar_event(
-            service_client, user.id, event["google_calendar_event_id"]
-        )
-        expected_provider_revision = (
-            live_event.get("etag") or live_event.get("updated")
-            if live_event else None
-        )
-        db_calendar_work.unsync_event_and_enqueue_calendar_work(
-            service_client, user.id, str(event_id), expected_provider_revision, False
-        )
-
-        try:
-            from selko.api.app import worker_pool as _pool
-
-            if _pool is not None:
-                _pool.nudge()
-        except Exception:
-            pass
-
-        return EventUnsyncResponse(
-            event_id=str(event_id),
-            status="pending_review",
-        )
-
-    except HTTPException:
-        raise
-    except CalendarsError as e:
-        logger.error(f"Calendar unsync failed: {e}")
-        if "No Google Calendar credentials" in str(e):
-            raise HTTPException(
-                status_code=404,
-                detail=error_detail(ErrorCode.CREDENTIALS_NOT_FOUND, "No Google Calendar integration found. Connect Calendar first."),
-            )
-        raise HTTPException(
-            status_code=500,
-            detail=error_detail(ErrorCode.SYNC_FAILED, "Calendar unsync failed"),
-        )
-    except Exception as e:
-        logger.error(f"Failed to unsync event: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail=error_detail(ErrorCode.SYNC_FAILED, "Event unsync failed"),
         )
 
 

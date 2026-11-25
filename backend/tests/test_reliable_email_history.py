@@ -2,26 +2,18 @@
 
 from unittest.mock import MagicMock, patch
 
-import pytest
 
-from selko.services.email_folders import (
-    gmail_label_is_permanently_excluded,
-    outlook_folder_is_permanently_excluded,
-    upsert_discovered_folders,
-)
-from selko.services.attachments import AttachmentError
+from selko.services.email_folders import upsert_discovered_folders
 from selko.services.folder_classification import (
     FolderClassification,
     classify_email_folder,
 )
 from selko.services.gmail import (
-    GmailHistoryExpiredError,
     build_initial_sync_query,
     fetch_history_message_ids,
 )
 from selko.services.emails import complete_email_processing
 from selko.services.outlook import (
-    GraphHttpError,
     fetch_mail_folders,
     normalize_mail_folders,
 )
@@ -64,12 +56,6 @@ def test_gmail_history_drains_every_page_and_deduplicates_message_ids():
     assert history.list.call_count == 2
 
 
-def test_provider_system_folders_are_never_user_configurable():
-    assert gmail_label_is_permanently_excluded({"id": "CATEGORY_PROMOTIONS"})
-    assert gmail_label_is_permanently_excluded({"id": "TRASH"})
-    assert outlook_folder_is_permanently_excluded({"wellKnownName": "deleteditems"})
-    assert outlook_folder_is_permanently_excluded({"wellKnownName": "junkemail"})
-    assert not outlook_folder_is_permanently_excluded({"wellKnownName": "inbox"})
 
 
 def test_outlook_folder_paths_include_nested_parent_context():

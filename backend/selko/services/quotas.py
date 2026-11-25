@@ -7,7 +7,7 @@ email syncs, and calendar syncs.
 import logging
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
-from typing import Literal, Optional
+from typing import Literal
 
 from selko.db import quotas as db_quotas
 from selko.db.connection import Database
@@ -59,21 +59,6 @@ class QuotaCheckResult:
             tzinfo=timezone.utc,
         )
         return tomorrow_midnight.isoformat()
-
-
-@dataclass
-class UserUsage:
-    """User's current usage for all quota types."""
-
-    llm_calls_count: int
-    llm_calls_limit: int
-    llm_calls_remaining: int
-    email_syncs_count: int
-    email_syncs_limit: int
-    email_syncs_remaining: int
-    calendar_syncs_count: int
-    calendar_syncs_limit: int
-    calendar_syncs_remaining: int
 
 
 class QuotaService:
@@ -145,56 +130,6 @@ class QuotaService:
                 current_count=0,
                 limit=100,
                 remaining=100,
-            )
-
-    def get_usage(
-        self,
-        user_id: str,
-        for_date: Optional[date] = None,
-    ) -> UserUsage:
-        """Get user's current usage for all quota types.
-
-        Args:
-            user_id: User UUID.
-            for_date: Date to get usage for (defaults to today).
-
-        Returns:
-            UserUsage with counts and limits for all quota types.
-        """
-        try:
-            row = db_quotas.get_user_quota_usage(self.client, user_id, for_date)
-            return UserUsage(
-                llm_calls_count=row["llm_calls_count"],
-                llm_calls_limit=row["llm_calls_limit"],
-                llm_calls_remaining=row["llm_calls_remaining"],
-                email_syncs_count=row["email_syncs_count"],
-                email_syncs_limit=row["email_syncs_limit"],
-                email_syncs_remaining=row["email_syncs_remaining"],
-                calendar_syncs_count=row["calendar_syncs_count"],
-                calendar_syncs_limit=row["calendar_syncs_limit"],
-                calendar_syncs_remaining=row["calendar_syncs_remaining"],
-            )
-
-        except Exception as e:
-            # Alarmed fail-open: return defaults but log at ERROR for monitoring
-            logger.error(
-                "QUOTA_SERVICE_ERROR: Failed to get usage, returning defaults",
-                extra={
-                    "error_code": "QUOTA_SERVICE_ERROR",
-                    "user_id": user_id,
-                    "error": str(e),
-                },
-            )
-            return UserUsage(
-                llm_calls_count=0,
-                llm_calls_limit=100,
-                llm_calls_remaining=100,
-                email_syncs_count=0,
-                email_syncs_limit=50,
-                email_syncs_remaining=50,
-                calendar_syncs_count=0,
-                calendar_syncs_limit=100,
-                calendar_syncs_remaining=100,
             )
 
     def set_user_limit(

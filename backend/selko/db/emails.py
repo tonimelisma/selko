@@ -84,15 +84,6 @@ def _left(value: str | None, n: int) -> str | None:
 # ---------------------------------------------------------------------------
 
 
-def email_is_claimable(db: Database, email_id: str) -> bool:
-    """Whether the worker claim would consider this email right now."""
-    row = db.query_one(
-        f"SELECT 1 FROM emails e WHERE e.id = :id AND {CLAIMABLE_EMAIL_PREDICATE}",
-        {"id": codec.to_id(email_id), "now": codec.now_text()},
-    )
-    return row is not None
-
-
 # ---------------------------------------------------------------------------
 # 2 claim_unprocessed_email
 # ---------------------------------------------------------------------------
@@ -515,46 +506,6 @@ def acquisition_context(db: Database, email_id: str) -> dict[str, Any] | None:
     return None if row is None else dict(row)
 
 
-def mark_has_attachments(db: Database, user_id: str, email_id: str) -> bool:
-    """Flag one of the user's emails as carrying stored attachments."""
-    with db.write() as tx:
-        return tx.execute(
-            "UPDATE emails SET has_attachments = 1 WHERE id = ? AND user_id = ?",
-            (codec.to_id(email_id), codec.to_id(user_id)),
-        ).rowcount > 0
-
-
-def skip_email(
-    db: Database,
-    email_id: str,
-    *,
-    user_id: str | None = None,
-    outcome: str | None = None,
-    explanation: str | None = None,
-) -> bool:
-    """Mark an email skipped and drop its lease.
-
-    ``services/emails.skip_email_processing`` passes only the id (worker
-    scope); ``save_emails`` also records the outcome for an ingest-detected
-    calendar invite and scopes the update to the owner.
-    """
-    sets = "processing_status = 'skipped', locked_by = NULL, locked_until = NULL"
-    if outcome is not None:
-        sets += ", processing_outcome = :outcome, processing_explanation = :explanation, processed_at = :now"
-    where = "id = :id" + (" AND user_id = :user_id" if user_id is not None else "")
-    with db.write() as tx:
-        return tx.execute(
-            f"UPDATE emails SET {sets} WHERE {where}",
-            {
-                "id": codec.to_id(email_id),
-                "user_id": codec.to_id(user_id) if user_id is not None else None,
-                "outcome": outcome,
-                "explanation": explanation,
-                "now": tx.now_text,
-            },
-        ).rowcount > 0
-
-
 def exists_owned(db: Database, user_id: str, email_id: str) -> bool:
     """Whether the email exists and is the user's (a malformed id exists for no one)."""
     try:
@@ -605,23 +556,30 @@ def request_poll(db: Database, integration_id: str) -> bool:
         ).rowcount > 0
 
 
+def email_is_claimable(db: Database, email_id: str) -> bool:
+    """Whether the worker claim would consider this email right now."""
+    row = db.query_one(
+        f"SELECT 1 FROM emails e WHERE e.id = :id AND {CLAIMABLE_EMAIL_PREDICATE}",
+        {"id": codec.to_id(email_id), "now": codec.now_text()},
+    )
+    return row is not None
+
+
 __all__ = [
+    "email_is_claimable",
     "CLAIMABLE_EMAIL_PREDICATE",
     "EMAIL_SAVE_COLUMNS",
     "acquisition_context",
     "active_mail_integrations",
     "claim_unprocessed_email",
     "complete_email_processing",
-    "email_is_claimable",
     "exists_owned",
     "fail_email_processing",
     "get_email",
     "get_for_extraction",
     "list_ids_recent",
-    "mark_has_attachments",
     "reprocess_email",
     "request_poll",
     "save_email_with_attachment_descriptors",
-    "skip_email",
     "unlock_expired_email_locks",
 ]

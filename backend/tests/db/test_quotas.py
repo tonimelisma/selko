@@ -7,12 +7,11 @@ summary, and the edge cases of check_and_increment_quota.
 
 from __future__ import annotations
 
-from datetime import timedelta
 
 import pytest
 
 from selko.db import errors, ops, quotas
-from selko.db.codec import new_id, to_timestamp, utc_now
+from selko.db.codec import utc_now
 
 LIMITS = {"llm_calls_daily": (100, 1000), "email_syncs_daily": (50, 500), "calendar_syncs_daily": (100, 1000)}
 
@@ -96,22 +95,8 @@ def test_max_allowed(db, seeded):
     assert quotas.max_allowed(db, "nope_daily") is None
 
 
-def test_get_user_quota_usage(db, factory, seeded):
-    user = factory.user()
-    empty = quotas.get_user_quota_usage(db, user)
-    assert empty == {"llm_calls_count": 0, "llm_calls_limit": 100, "llm_calls_remaining": 100,
-                     "email_syncs_count": 0, "email_syncs_limit": 50, "email_syncs_remaining": 50,
-                     "calendar_syncs_count": 0, "calendar_syncs_limit": 100, "calendar_syncs_remaining": 100}
-    quotas.check_and_increment_quota(db, user, "llm_calls", 30)
-    used = quotas.get_user_quota_usage(db, user, _today())
-    assert used["llm_calls_count"] == 30 and used["llm_calls_remaining"] == 70
-    assert quotas.get_user_quota_usage(db, user, "2000-01-01")["llm_calls_count"] == 0
 
 
-def test_get_user_quota_usage_without_global_limits_uses_fallbacks(db, factory):
-    _drop_limits(db)
-    usage = quotas.get_user_quota_usage(db, factory.user())
-    assert usage["email_syncs_limit"] == 50 and usage["llm_calls_limit"] == 100
 
 
 def _log(db, user, op="extract_events", success=True, latency=1000, prompt=100, completion=50,
@@ -125,32 +110,5 @@ def _log(db, user, op="extract_events", success=True, latency=1000, prompt=100, 
     return ops.log_llm_call(db, user, row)
 
 
-def test_llm_usage_summary(db, factory):
-    user, other = factory.user(), factory.user()
-    for i in range(3):
-        _log(db, user, latency=1000 + i * 100)
-    _log(db, user, op="compare_events", success=False, latency=201, prompt=None, completion=None, cost=None)
-    _log(db, other)
-    _log(db, user, started=to_timestamp(utc_now() - timedelta(days=3)))
-
-    summary = quotas.llm_usage_summary(db, user)
-    assert summary["total_calls"] == 4
-    assert summary["successful_calls"] == 3
-    assert summary["failed_calls"] == 1
-    assert summary["total_tokens"] == 450
-    assert summary["total_prompt_tokens"] == 300
-    assert summary["total_completion_tokens"] == 150
-    assert summary["total_latency_ms"] == 3501
-    assert summary["avg_latency_ms"] == 875  # 875.25
-    assert summary["estimated_cost_usd"] == pytest.approx(0.0003)
-    assert summary["calls_by_operation"] == {"extract_events": 3, "compare_events": 1}
-
-    start = (utc_now() - timedelta(days=3)).date()
-    assert quotas.llm_usage_summary(db, user, start, utc_now().date())["total_calls"] == 5
 
 
-def test_llm_usage_summary_empty(db, factory):
-    assert quotas.llm_usage_summary(db, factory.user()) == {
-        "total_calls": 0, "successful_calls": 0, "failed_calls": 0, "total_tokens": 0,
-        "total_prompt_tokens": 0, "total_completion_tokens": 0, "total_latency_ms": 0,
-        "avg_latency_ms": 0, "estimated_cost_usd": 0.0, "calls_by_operation": {}}

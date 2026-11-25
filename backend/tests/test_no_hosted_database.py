@@ -39,7 +39,7 @@ def test_no_module_imports_a_hosted_database_client():
 
 
 def test_the_check_scans_the_package():
-    assert len(list(PACKAGE.rglob("*.py"))) > 100
+    assert len(list(PACKAGE.rglob("*.py"))) > 50
 
 
 def test_the_check_sees_imports_inside_functions(tmp_path, monkeypatch):

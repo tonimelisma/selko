@@ -52,9 +52,7 @@ SERVICE_WIDE: dict[str, str] = {
     # lease (an email, an integration, an ingestion item): the claim chose the
     # row service-wide, and the row carries its owner
     "attachments.for_email": "attachment worker, keyed by a claimed email",
-    "attachments.readiness": "acquisition worker, keyed by a claimed email",
     "calendar_work.get_leased_item": "calendar worker, fenced by its own lease",
-    "calendar_work.count_expired_leases": "startup/health count",
     "email_sync.upsert_discovered_email_items": "discovery worker, fenced by its sync lease",
     "email_sync.known_provider_message_ids": "discovery worker, keyed by a leased integration",
     "email_sync.remove_ingestion_item": "acquisition worker, fenced by its item lease",
@@ -87,7 +85,6 @@ SERVICE_WIDE: dict[str, str] = {
     "events.event_owner": "owner lookup only; every read after it is scoped by the owner it returns",
     # health and observability: counts across users, no row leaves
     "health.health_work_state": "health roll-up counts every user's work",
-    "health.dead_letter_integration_ids": "health evaluator: integration ids only",
     "health.pending_email_metrics": "/health gauges: a count and an age",
     "integrations.count_active_mailboxes": "/health/egress divisor: a count",
     "integrations.active_integration_user_ids": "photo scheduler fan-out: user ids only",
@@ -101,7 +98,6 @@ SERVICE_WIDE: dict[str, str] = {
     "integrations.delete_expired_oauth_states": "expiry sweep",
     # account administration (operator and auth flows, keyed by account)
     "accounts.get_account_by_email": "sign-in looks the account up by email",
-    "accounts.list_accounts": "operator listing (services/users.list_users)",
     "accounts.rotate_refresh_token": "keyed by the refresh token's hash",
     "accounts.session_for_refresh_token": "keyed by the refresh token's hash",
     "accounts.session_is_active": "keyed by the session id from a verified token",

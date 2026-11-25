@@ -3,7 +3,6 @@
 import io
 
 import fitz  # pymupdf
-import pytest
 from PIL import Image
 
 from selko.services.format_conversion import (

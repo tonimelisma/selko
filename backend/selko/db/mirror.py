@@ -185,25 +185,6 @@ def upsert_entries(db: Database, user_id: str, rows: list[dict[str, Any]]) -> li
     return stored
 
 
-def entries_by_provider_ids(
-    db: Database, user_id: str, provider_event_ids: list[str]
-) -> list[dict[str, Any]]:
-    """``id, ical_uid, original_start, deleted_at, join_url`` of the user's entries
-    with these provider ids (any integration or calendar, as the service's query)."""
-    uid = codec.to_id(user_id)
-    out: list[dict[str, Any]] = []
-    ids = [i for i in provider_event_ids if i]
-    for start in range(0, len(ids), _BATCH):
-        chunk = ids[start : start + _BATCH]
-        rows = db.query(
-            f"SELECT {_STORED_COLUMNS} FROM calendar_entries "
-            f"WHERE user_id = ? AND provider_event_id IN ({', '.join('?' for _ in chunk)})",
-            (uid, *chunk),
-        )
-        out.extend(dict(r) for r in rows)
-    return out
-
-
 def indexable_entries(db: Database, user_id: str, limit: int = 500) -> list[dict[str, Any]]:
     """``id, ical_uid, original_start`` of up to ``limit`` live entries carrying an iCalUID.
 
@@ -283,7 +264,6 @@ def upsert_entry_hints(db: Database, user_id: str, rows: list[dict[str, Any]]) -
 
 
 __all__ = [
-    "entries_by_provider_ids",
     "get_state",
     "hinted_entry_ids",
     "indexable_entries",

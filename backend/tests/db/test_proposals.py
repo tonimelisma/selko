@@ -301,16 +301,6 @@ def test_hash_round_trip_and_stale_hash(db, factory):
                                            proposals.event_change_proposal_hash(applied))
 
 
-def test_resolve_closes_a_legacy_proposal(db, factory):
-    user = factory.user()
-    event = _event(factory, user)
-    legacy = _proposal(factory, user, event, status="closed_legacy")
-    with pytest.raises(errors.InvalidArgument, match="invalid proposal resolution reason"):
-        proposals.resolve_event_change_proposal(db, user, event, legacy, None, "user_rejected")
-    assert proposals.resolve_event_change_proposal(db, user, event, legacy, None, "historical_proposal_cleanup") == {
-        "event_id": event, "proposal_id": legacy, "status": "rejected"}
-    with pytest.raises(errors.ProposalStateError, match="closed legacy"):
-        proposals.resolve_event_change_proposal(db, user, event, legacy, None, "historical_proposal_cleanup")
 
 
 # --- supersession through the real commit ---------------------------------------

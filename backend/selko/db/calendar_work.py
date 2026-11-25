@@ -30,7 +30,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from selko.db import errors
-from selko.db.codec import new_id, now_text, to_id, to_json, to_timestamp
+from selko.db.codec import new_id, to_id, to_json, to_timestamp
 from selko.db.connection import Database, Tx
 from selko.services.calendar_providers import (
     GOOGLE,
@@ -137,11 +137,6 @@ def integration_writable(integrations: list[dict[str, Any]], provider: str | Non
     return provider in writable_providers(integrations)
 
 
-def calendar_integration_writable(db: Database | Tx, user_id: str, provider: str) -> bool:
-    user_id = to_id(user_id)  # type: ignore[assignment]
-    return integration_writable(_integrations_by_user(db, [user_id])[user_id], provider)
-
-
 def calendar_write_provider(db: Database | Tx, user_id: str, event_id: str) -> str:
     user_id = to_id(user_id)  # type: ignore[assignment]
     event_id = to_id(event_id)  # type: ignore[assignment]
@@ -229,62 +224,6 @@ def enqueue_calendar_work(
             tx, event_id, user_id, action, desired_event, expected_provider_revision, force_overwrite
         )
     return {key: item[key] for key in ("id", "event_id", "generation", "status", "action")}
-
-
-def queue_event_cancellation(db: Database, user_id: str, event_id: str) -> dict[str, Any]:
-    """31: the operator repair's cancellation transition."""
-    event_id = to_id(event_id)  # type: ignore[assignment]
-    user_id = to_id(user_id)  # type: ignore[assignment]
-    with db.write() as tx:
-        event = _owned_event(tx, event_id, user_id)
-        if event["review_status"] == "cancelled":
-            return {"event_id": event_id, "status": "cancelled", "already_cancelled": True}
-        processing = tx.execute(
-            "SELECT 1 FROM calendar_work_items WHERE event_id = ? AND status = 'processing' LIMIT 1",
-            (event_id,),
-        ).fetchone()
-        if event["review_status"] == "rejected" or processing is not None:
-            raise errors.InvalidArgument(f"event {event_id} cannot be cancelled in its current state")
-        if event["review_status"] == "pending_review":
-            tx.execute(
-                "UPDATE events SET review_status = 'active', updated_at = ? WHERE id = ?",
-                (tx.now_text, event_id),
-            )
-        item = _enqueue_calendar_work(tx, event_id, user_id, "cancel", None, None, False)
-    return {
-        "event_id": event_id, "status": "cancel_queued", "work_item_id": item["id"],
-        "generation": item["generation"], "already_cancelled": False,
-    }
-
-
-def unsync_event_and_enqueue_calendar_work(
-    db: Database,
-    user_id: str,
-    event_id: str,
-    expected_provider_revision: str | None = None,
-    force_overwrite: bool | None = False,
-) -> dict[str, Any]:
-    """32: remove from the calendar (worker-owned) and put back in review."""
-    event_id = to_id(event_id)  # type: ignore[assignment]
-    user_id = to_id(user_id)  # type: ignore[assignment]
-    with db.write() as tx:
-        event = _owned_event(tx, event_id, user_id)
-        synced = tx.execute(
-            "SELECT 1 FROM calendar_work_items WHERE event_id = ? AND action = 'upsert' "
-            "AND status = 'succeeded' LIMIT 1",
-            (event_id,),
-        ).fetchone()
-        if event["google_calendar_event_id"] is None or synced is None:
-            raise errors.InvalidArgument(f"event {event_id} is not synced")
-        item = _enqueue_calendar_work(
-            tx, event_id, user_id, "cancel", {"delete_remote": True},
-            expected_provider_revision, force_overwrite,
-        )
-        tx.execute(
-            "UPDATE events SET review_status = 'pending_review', updated_at = ? WHERE id = ?",
-            (tx.now_text, event_id),
-        )
-    return {"status": "pending_review", "work_item_id": item["id"], "generation": item["generation"]}
 
 
 def undo_event_and_enqueue_calendar_work(
@@ -545,40 +484,6 @@ def get_leased_item(
     return _decode_item(db, row)
 
 
-def count_expired_leases(db: Database) -> int:
-    """The Python ``unlock_expired_event_locks``: counts, never mutates."""
-    row = db.query_one(
-        "SELECT count(*) FROM calendar_work_items WHERE status = 'processing' AND locked_until < ?",
-        (now_text(),),
-    )
-    return int(row[0]) if row else 0
-
-
-def delivery_items_for_events(
-    db: Database, user_id: str, event_ids: Iterable[str]
-) -> dict[str, list[dict[str, Any]]]:
-    """The ``calendar_work_items(status, action, generation, failure_code)`` embed.
-
-    Every item of each owned event (``derive_delivery_status`` filters
-    superseded ones itself), keyed by event id; events with none map to [].
-    """
-    ids = sorted({to_id(e) for e in event_ids})  # type: ignore[type-var]
-    out: dict[str, list[dict[str, Any]]] = {eid: [] for eid in ids}  # type: ignore[misc]
-    if not ids:
-        return out
-    for row in db.query(
-        "SELECT event_id, status, action, generation, failure_code FROM calendar_work_items "
-        "WHERE user_id = ? AND event_id IN (SELECT value FROM json_each(?)) "
-        "ORDER BY event_id, generation",
-        (to_id(user_id), to_json(ids)),
-    ):
-        out[row["event_id"]].append(
-            {"status": row["status"], "action": row["action"],
-             "generation": row["generation"], "failure_code": row["failure_code"]}
-        )
-    return out
-
-
 # ---------------------------------------------------------------------------
 # calendar_sync_log (services/calendars.py:711, :1096)
 # ---------------------------------------------------------------------------
@@ -629,25 +534,47 @@ def latest_sync_snapshot(
     return snapshot if isinstance(snapshot, dict) else None
 
 
+def queue_event_cancellation(db: Database, user_id: str, event_id: str) -> dict[str, Any]:
+    """31: the operator repair's cancellation transition."""
+    event_id = to_id(event_id)  # type: ignore[assignment]
+    user_id = to_id(user_id)  # type: ignore[assignment]
+    with db.write() as tx:
+        event = _owned_event(tx, event_id, user_id)
+        if event["review_status"] == "cancelled":
+            return {"event_id": event_id, "status": "cancelled", "already_cancelled": True}
+        processing = tx.execute(
+            "SELECT 1 FROM calendar_work_items WHERE event_id = ? AND status = 'processing' LIMIT 1",
+            (event_id,),
+        ).fetchone()
+        if event["review_status"] == "rejected" or processing is not None:
+            raise errors.InvalidArgument(f"event {event_id} cannot be cancelled in its current state")
+        if event["review_status"] == "pending_review":
+            tx.execute(
+                "UPDATE events SET review_status = 'active', updated_at = ? WHERE id = ?",
+                (tx.now_text, event_id),
+            )
+        item = _enqueue_calendar_work(tx, event_id, user_id, "cancel", None, None, False)
+    return {
+        "event_id": event_id, "status": "cancel_queued", "work_item_id": item["id"],
+        "generation": item["generation"], "already_cancelled": False,
+    }
+
+
 __all__ = [
+    "queue_event_cancellation",
     "GOOGLE",
     "OUTLOOK",
-    "calendar_integration_writable",
     "calendar_write_provider",
     "claim_calendar_work_item",
     "complete_calendar_work",
-    "count_expired_leases",
     "defer_calendar_work",
-    "delivery_items_for_events",
     "enqueue_calendar_work",
     "fail_calendar_work",
     "get_leased_item",
     "integration_writable",
     "latest_sync_snapshot",
     "log_calendar_sync",
-    "queue_event_cancellation",
     "retry_delay_seconds",
     "undo_event_and_enqueue_calendar_work",
-    "unsync_event_and_enqueue_calendar_work",
     "write_provider_for",
 ]

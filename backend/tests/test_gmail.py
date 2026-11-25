@@ -3,7 +3,6 @@
 from datetime import datetime
 from unittest.mock import MagicMock
 
-from selko.services.gmail import DEFAULT_MESSAGE_QUERY, fetch_messages
 from selko.services.integrations import _parse_token_expiry, get_oauth_credentials
 
 
@@ -26,45 +25,6 @@ def _mock_gmail_service(list_return=None):
     return service, list_mock
 
 
-class TestFetchMessages:
-    """Tests for fetch_messages label/query filtering."""
-
-    def test_default_applies_exclusion_query(self):
-        """Default fetch excludes spam/trash/drafts/sent/noisy categories."""
-        service, list_mock = _mock_gmail_service()
-
-        fetch_messages(service, max_results=10)
-
-        list_mock.assert_called_once_with(
-            userId="me",
-            maxResults=10,
-            q=DEFAULT_MESSAGE_QUERY,
-        )
-        assert "labelIds" not in list_mock.call_args.kwargs
-        assert "-category:promotions" in DEFAULT_MESSAGE_QUERY
-        assert "-in:spam" in DEFAULT_MESSAGE_QUERY
-
-    def test_explicit_inbox_filter_still_supported(self):
-        """Callers can still request INBOX-only pulls."""
-        service, list_mock = _mock_gmail_service()
-
-        fetch_messages(service, max_results=5, label_ids=["INBOX"])
-
-        list_mock.assert_called_once_with(
-            userId="me",
-            maxResults=5,
-            labelIds=["INBOX"],
-            q=DEFAULT_MESSAGE_QUERY,
-        )
-
-    def test_empty_query_disables_search_filter(self):
-        """Pass query='' to omit the Gmail search filter."""
-        service, list_mock = _mock_gmail_service()
-
-        fetch_messages(service, max_results=3, query="")
-
-        list_mock.assert_called_once_with(userId="me", maxResults=3)
-        assert "q" not in list_mock.call_args.kwargs
 
 
 class TestParseTokenExpiry:

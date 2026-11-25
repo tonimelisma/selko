@@ -572,9 +572,6 @@ def test_owned_reads_never_cross_users(db, factory, user):
     # PostgREST's order(desc) put NULLs first; the port keeps that.
     assert emails.list_ids_recent(db, user, 10) == [undated, newer, mine]
     assert emails.list_ids_recent(db, user, 1) == [undated]
-    assert emails.mark_has_attachments(db, other, mine) is False
-    assert emails.mark_has_attachments(db, user, mine) is True
-    assert factory.row("emails", mine)["has_attachments"] is True
 
 
 def test_acquisition_context_names_the_owner_and_provider(db, factory, user):
@@ -589,16 +586,3 @@ def test_acquisition_context_names_the_owner_and_provider(db, factory, user):
     assert emails.acquisition_context(db, codec.new_id()) is None
 
 
-def test_skip_email_drops_the_lease_and_records_an_outcome_for_the_owner_only(db, factory, user):
-    leased = factory.email(user, processing_status="processing", locked_by="w",
-                           locked_until="2999-01-01T00:00:00.000000Z", attempts=1)
-    assert emails.skip_email(db, leased) is True
-    row = factory.row("emails", leased)
-    assert (row["processing_status"], row["locked_by"], row["processing_outcome"]) == ("skipped", None, None)
-
-    invite = factory.email(user)
-    assert emails.skip_email(db, invite, user_id=factory.user(), outcome="calendar_invite") is False
-    assert emails.skip_email(db, invite, user_id=user, outcome="calendar_invite", explanation="x") is True
-    row = factory.row("emails", invite)
-    assert (row["processing_outcome"], row["processing_explanation"]) == ("calendar_invite", "x")
-    assert row["processed_at"] is not None

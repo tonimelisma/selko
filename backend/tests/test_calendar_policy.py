@@ -3,15 +3,12 @@
 from datetime import datetime, time
 from zoneinfo import ZoneInfo
 
-import pytest
 
 from selko.services.calendar_policy import (
     AllDayDisplayMode,
     AllDayPolicy,
-    CalendarPolicyError,
     materialize_all_day_event,
     parse_time_value,
-    validate_all_day_policy,
 )
 
 
@@ -172,13 +169,7 @@ class TestMaterializeAllDayEvent:
 
 
 class TestValidateAllDayPolicy:
-    def test_custom_requires_both_times(self):
-        with pytest.raises(CalendarPolicyError):
-            validate_all_day_policy("custom", custom_start="09:00", custom_end=None)
 
-    def test_custom_end_must_be_later(self):
-        with pytest.raises(CalendarPolicyError):
-            validate_all_day_policy("custom", custom_start="17:00", custom_end="09:00")
 
     def test_parse_time_value(self):
         assert parse_time_value("09:30:00") == time(9, 30)

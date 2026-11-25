@@ -141,24 +141,6 @@ def entry_row(
     }
 
 
-def fetch_page(
-    service: Any,
-    calendar_id: str,
-    *,
-    sync_token: str | None,
-    window: tuple[datetime, datetime],
-    page_token: str | None = None,
-) -> dict[str, Any]:
-    """One Google page of events, incremental when a sync token is available.
-
-    `timeMin`/`timeMax` may not be combined with `syncToken`; Google keeps the
-    window from the request that issued the token.
-    """
-    return GoogleCalendarAdapter(service).mirror_page(
-        calendar_id, sync_token=sync_token, window=window, page_token=page_token
-    )
-
-
 def _mirror_adapter(supabase_client: Database, user_id: str, provider: str) -> Any:
     if provider == providers.OUTLOOK:
         return calendar_adapter(supabase_client, user_id, provider)
@@ -310,22 +292,6 @@ def _write_entry_hints(
     except Exception:
         # A hint that fails to store costs a match, never a wrong one.
         logger.exception("Could not index calendar entry identity hints")
-
-
-def _reload_stored(
-    supabase_client: Database, user_id: str, rows: list[dict[str, Any]]
-) -> list[dict[str, Any]]:
-    """Fetch the ids of entries just written, in batches.
-
-    `sync_calendar` uses what the upsert returns; this re-reads by provider
-    id for a caller holding only the rows it sent.
-    """
-    provider_ids = [row["provider_event_id"] for row in rows if row.get("provider_event_id")]
-    try:
-        return db_mirror.entries_by_provider_ids(supabase_client, user_id, provider_ids)
-    except Exception:
-        logger.exception("Could not reload mirrored entries for indexing")
-        return []
 
 
 def _index_unhinted_entries(

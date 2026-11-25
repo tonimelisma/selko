@@ -497,11 +497,6 @@ def request_email_sync_now(db: Database, user_id: str | None, integration_id: st
         return cur.rowcount > 0
 
 
-def get_sync_state(db: Database, integration_id: str) -> dict[str, Any] | None:
-    row = db.query_one("SELECT * FROM email_sync_state WHERE integration_id = ?", (_id(integration_id),))
-    return _decode(db, "email_sync_state", row)
-
-
 def all_states(db: Database) -> list[dict[str, Any]]:
     """Every sync state row (the health evaluator's scan)."""
     rows = db.query("SELECT * FROM email_sync_state ORDER BY rowid")
@@ -659,7 +654,13 @@ def active_calendar_integrations(db: Database) -> list[dict[str, Any]]:
     return [_decode(db, "integrations", r) for r in rows]  # type: ignore[misc]
 
 
+def get_sync_state(db: Database, integration_id: str) -> dict[str, Any] | None:
+    row = db.query_one("SELECT * FROM email_sync_state WHERE integration_id = ?", (_id(integration_id),))
+    return _decode(db, "email_sync_state", row)
+
+
 __all__ = [
+    "get_sync_state",
     "active_calendar_integrations",
     "all_states",
     "claim_due_email_reconciliation",
@@ -676,7 +677,6 @@ __all__ = [
     "folders_for_integration",
     "folders_refreshed_at",
     "get_integration_by_id",
-    "get_sync_state",
     "get_user_folder",
     "heartbeat_email_sync",
     "integration_statuses",

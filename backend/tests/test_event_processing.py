@@ -8,7 +8,7 @@ import pytest
 
 from datetime import datetime, timezone
 
-from selko.api.schemas.calendar import CalendarEvent, CalendarEventExtraction, EventExtractionResponse
+from selko.api.schemas.calendar import CalendarEvent, EventExtractionResponse
 from selko.config import Config
 from selko.services.event_processing import (
     _build_prompt,
@@ -18,7 +18,7 @@ from selko.services.event_processing import (
     looks_like_json_schema,
 )
 from selko.services.llm_gateway import LLMGatewayError
-from selko.services.llm_gateway import LLMGateway, LLMGatewayError, LLMRateLimitError
+from selko.services.llm_gateway import LLMGateway, LLMRateLimitError
 from selko.services.llm_provider import LLMProvider, LLMResponse
 
 

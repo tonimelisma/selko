@@ -6,14 +6,12 @@ Handles Gmail OAuth flow and API interactions.
 import base64
 import binascii
 import logging
-import time
 from datetime import datetime, timedelta, timezone
 from typing import Any, Iterable, Optional
 
 from google.auth.exceptions import RefreshError
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from selko.db.connection import Database
@@ -86,52 +84,6 @@ def _wrap_http_error(e: HttpError, *, prefix: str) -> GmailError:
 def _auth_error(e: RefreshError, *, prefix: str) -> GmailAuthError:
     """Re-raise a RefreshError as a GmailAuthError (typed auth failure)."""
     return GmailAuthError(f"{prefix}: {e}")
-
-
-def run_oauth_flow(config: Config) -> Credentials:
-    """Run OAuth flow for Gmail access.
-
-    Opens a browser window for the user to authenticate.
-
-    Args:
-        config: Configuration with Google OAuth client credentials.
-
-    Returns:
-        Google Credentials object with tokens.
-
-    Raises:
-        GmailError: If client credentials not configured or flow fails.
-    """
-    if not config.google_client_id or not config.google_client_secret:
-        raise GmailError(
-            "Google OAuth client credentials not configured.\n"
-            "Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in your .env file."
-        )
-
-    try:
-        # Use fixed port 8080 for OAuth redirect so Web app clients work
-        # (Web app clients require exact redirect URI match including port)
-        redirect_uri = "http://localhost:8080"
-        client_config = {
-            "installed": {
-                "client_id": config.google_client_id,
-                "client_secret": config.google_client_secret,
-                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                "token_uri": "https://oauth2.googleapis.com/token",
-                "redirect_uris": [redirect_uri],
-            }
-        }
-        flow = InstalledAppFlow.from_client_config(client_config, SCOPES)
-
-        logger.info("Opening browser for authentication...")
-        logger.info("If browser doesn't open, visit the URL shown below.")
-
-        creds = flow.run_local_server(port=8080, prompt="consent")
-        logger.info("OAuth flow completed successfully")
-        return creds
-
-    except ValueError as e:
-        raise GmailError(f"Invalid OAuth configuration: {e}") from e
 
 
 def get_gmail_credentials(
@@ -455,30 +407,6 @@ def list_message_ids(
             return message_ids
 
 
-def get_message_metadata(service, message_id: str) -> dict:
-    """Fetch only labels and identity before deciding whether content is eligible."""
-
-    try:
-        return (
-            service.users()
-            .messages()
-            .get(
-                userId="me",
-                id=message_id,
-                format="metadata",
-            )
-            .execute()
-        )
-    except RefreshError as e:
-        raise _auth_error(e, prefix="Gmail credentials expired or revoked") from e
-    except HttpError as e:
-        if getattr(e.resp, "status", None) == 404:
-            raise GmailMessageNotFoundError(
-                f"Gmail message {message_id} no longer exists"
-            ) from e
-        raise _wrap_http_error(e, prefix="Gmail API error fetching message metadata") from e
-
-
 def get_messages_metadata_batch(service, message_ids: Iterable[str], *, batch_size: int = 100) -> dict[str, dict]:
     """Fetch metadata for many messages in one batch per ``batch_size`` IDs.
 
@@ -642,93 +570,3 @@ def fetch_history_message_ids(
         if not page_token:
             return sorted(message_ids), page.get("historyId") or latest_history_id
 
-
-def fetch_messages(
-    service,
-    max_results: int = 10,
-    label_ids: list[str] = None,
-    query: str = DEFAULT_MESSAGE_QUERY,
-    max_retries: int = 3,
-) -> list[dict]:
-    """Fetch email messages from Gmail with rate limit handling.
-
-    By default, fetches recent mail across the mailbox (not INBOX-only) while
-    excluding spam, trash, drafts, sent, promotions, social, and forums.
-    Many users archive aggressively, so INBOX-only pulls return nothing even
-    when recent actionable mail exists under category/archive labels.
-
-    Args:
-        service: Gmail API service.
-        max_results: Maximum number of messages to fetch.
-        label_ids: Optional list of label IDs to filter by. None means no
-            label filter. Pass ["INBOX"] to restrict to the inbox.
-        query: Gmail search query. Defaults to DEFAULT_MESSAGE_QUERY.
-            Pass an empty string to disable the search filter.
-        max_retries: Maximum retries for rate-limited requests.
-
-    Returns:
-        List of full message objects.
-
-    Raises:
-        GmailError: If credentials are invalid or API calls fail.
-    """
-    list_kwargs: dict = {
-        "userId": "me",
-        "maxResults": max_results,
-    }
-    if label_ids is not None:
-        list_kwargs["labelIds"] = label_ids
-    if query:
-        list_kwargs["q"] = query
-
-    try:
-        results = (
-            service.users()
-            .messages()
-            .list(**list_kwargs)
-            .execute()
-        )
-    except RefreshError as e:
-        raise GmailAuthError(f"Gmail credentials expired or revoked: {e}") from e
-    except HttpError as e:
-        raise _wrap_http_error(e, prefix="Gmail API error listing messages") from e
-
-    messages = results.get("messages", [])
-    if not messages:
-        logger.info("No messages found")
-        return []
-
-    logger.debug(f"Found {len(messages)} message IDs, fetching full details")
-
-    # Fetch full message details with rate limiting
-    full_messages = []
-    for i, msg in enumerate(messages):
-        for attempt in range(max_retries):
-            try:
-                full_msg = (
-                    service.users()
-                    .messages()
-                    .get(userId="me", id=msg["id"], format="full")
-                    .execute()
-                )
-                full_messages.append(full_msg)
-                break
-            except RefreshError as e:
-                raise GmailAuthError(f"Gmail credentials expired or revoked: {e}") from e
-            except HttpError as e:
-                if e.resp.status == 429:  # Rate limited
-                    wait_time = (2**attempt) + 1  # 1, 3, 5 seconds
-                    logger.warning(
-                        f"Rate limited, waiting {wait_time}s "
-                        f"(attempt {attempt + 1}/{max_retries})"
-                    )
-                    time.sleep(wait_time)
-                else:
-                    raise _wrap_http_error(e, prefix="Gmail API error fetching message") from e
-
-        # Small delay between requests to avoid hitting rate limits
-        if i < len(messages) - 1:
-            time.sleep(0.1)
-
-    logger.info(f"Fetched {len(full_messages)} messages")
-    return full_messages

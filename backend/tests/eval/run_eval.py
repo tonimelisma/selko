@@ -10,7 +10,6 @@ Run with: uv run python -m backend.tests.eval.run_eval --help
 
 import argparse
 import hashlib
-import inspect
 import json
 import sys
 import threading
@@ -33,7 +32,6 @@ from .eval_config import (
     ATTACHMENTS_DIR,
     AUTO_SCORE_THRESHOLDS,
     COMPARE_DIR,
-    COST_TIERS,
     DEFAULT_MODEL,
     DEFAULT_PROVIDER,
     DIFFICULTY_LEVELS,
@@ -491,7 +489,6 @@ def auto_score_event(expected: dict, actual: dict) -> dict[str, Any]:
             if exp_date and act_date:
                 # Allow ±1 day tolerance (exclusive vs inclusive end convention)
                 try:
-                    from datetime import timedelta
                     exp_d = datetime.strptime(exp_date, "%Y-%m-%d")
                     act_d = datetime.strptime(act_date, "%Y-%m-%d")
                     day_diff = abs((exp_d - act_d).days)
@@ -806,7 +803,6 @@ def run_preflight(eval_models: list[tuple]) -> bool:
 
     Returns True if all models pass, False if any fail.
     """
-    from selko.services.llm_provider import ContentPart
 
     print("Preflight: validating API credentials for each model...")
     all_ok = True

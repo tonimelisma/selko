@@ -24,7 +24,6 @@ from selko.services.events import (
     normalize_event_data,
     process_email_for_events,
     save_extracted_events,
-    should_skip_email,
 )
 from tests.event_pipeline import (
     claimed_email,
@@ -148,32 +147,6 @@ class TestMarkEmailStatus:
         assert row["processing_result"] == {"num_events": 0}
 
 
-class TestShouldSkipEmail:
-    """should_skip_email reads the user's real sender rules."""
-
-    def _rule(self, factory, user, **values):
-        from selko.db.codec import new_id
-
-        factory._insert("sender_rules", {"id": new_id(), "user_id": user, **values})
-
-    def test_returns_true_for_ignored_sender(self, db, factory, user):
-        self._rule(factory, user, sender_email="spam@example.com", action="ignore")
-        assert should_skip_email(db, user, "spam@example.com") is True
-
-    def test_returns_true_for_ignored_domain(self, db, factory, user):
-        self._rule(factory, user, sender_domain="spam.example", action="ignore")
-        assert should_skip_email(db, user, "anyone@spam.example") is True
-
-    def test_returns_false_for_auto_approve_sender(self, db, factory, user):
-        self._rule(factory, user, sender_email="school@example.com", action="auto_approve")
-        assert should_skip_email(db, user, "school@example.com") is False
-
-    def test_returns_false_when_no_rule(self, db, factory, user):
-        assert should_skip_email(db, user, "unknown@example.com") is False
-
-    def test_another_users_rule_does_not_apply(self, db, factory, user):
-        self._rule(factory, factory.user(), sender_email="spam@example.com", action="ignore")
-        assert should_skip_email(db, user, "spam@example.com") is False
 
 
 class TestNormalizeEventData:

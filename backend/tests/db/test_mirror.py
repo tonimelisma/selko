@@ -119,25 +119,8 @@ def test_upsert_refuses_unknown_columns(db, owner):
         mirror.upsert_entries(db, user, [row])
 
 
-def test_entries_are_read_back_by_provider_id(db, factory, owner):
-    """The read `_reload_stored` makes because PostgREST's upsert echoed nothing."""
-    user, integration = owner
-    mirror.upsert_entries(db, user, _rows(user, integration, _google("evt-1"), _google("evt-2"), _google("evt-3")))
-    other = factory.user()
-    other_integration = factory.integration(other, "google_calendar")
-    mirror.upsert_entries(db, other, _rows(other, other_integration, _google("evt-1")))
-
-    stored = mirror.entries_by_provider_ids(db, user, ["evt-1", "evt-3", "missing"])
-    assert sorted(r["ical_uid"] for r in stored) == ["evt-1@example.com", "evt-3@example.com"]
-    assert set(stored[0]) == {"id", "ical_uid", "original_start", "deleted_at", "join_url"}
-    assert len(mirror.entries_by_provider_ids(db, other, ["evt-1", "evt-3"])) == 1
 
 
-def test_entries_are_read_back_in_batches(db, owner):
-    user, integration = owner
-    events = [_google(f"evt-{i}") for i in range(1200)]
-    mirror.upsert_entries(db, user, _rows(user, integration, *events))
-    assert len(mirror.entries_by_provider_ids(db, user, [e["id"] for e in events])) == 1200
 
 
 # --- identity hints -----------------------------------------------------------

@@ -4,7 +4,6 @@ Loads environment-specific settings from .env files (local development) or
 environment variables (CI/CD). Supports development, staging, and production.
 """
 
-import argparse
 import logging
 import os
 import sys
@@ -559,23 +558,3 @@ def load_config(env_override: Optional[str] = None) -> Config:
         max_other_size_for_llm=int(getenv("MAX_OTHER_SIZE_FOR_LLM", str(20 * 1024 * 1024))),
     )
 
-
-def add_logging_arguments(parser: argparse.ArgumentParser) -> None:
-    """Add --verbose and --quiet flags to argument parser.
-
-    Args:
-        parser: argparse.ArgumentParser instance.
-    """
-    group = parser.add_mutually_exclusive_group()
-    group.add_argument(
-        "-v",
-        "--verbose",
-        action="store_true",
-        help="Enable verbose (DEBUG) logging",
-    )
-    group.add_argument(
-        "-q",
-        "--quiet",
-        action="store_true",
-        help="Only show warnings and errors",
-    )

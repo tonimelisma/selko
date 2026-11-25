@@ -14,7 +14,6 @@ from selko.services.llm_provider import (
     ContentPart,
     GeminiProvider,
     ImageContent,
-    LLMProvider,
     LLMProviderError,
     LLMResponse,
     ModelSpec,

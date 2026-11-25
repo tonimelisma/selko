@@ -132,31 +132,6 @@ def health_work_state(db: Database, warning_seconds: int, *, now: Any = None) ->
     }
 
 
-def dead_letter_integration_ids(db: Database) -> dict[str, set[str]]:
-    """Integrations owning at least one dead-letter row, per table.
-
-    Replaces ``email_sync_health._dead_letter_integration_ids`` (its paging
-    existed only because PostgREST truncates). Attachments reach their
-    integration through their email; rows whose email has no integration are
-    skipped, as the evaluator's extractor skipped them.
-    """
-    items = {
-        r[0]
-        for r in db.query(
-            "SELECT DISTINCT integration_id FROM email_ingestion_items "
-            "WHERE acquisition_status = 'dead_letter' AND integration_id IS NOT NULL"
-        )
-    }
-    attachments = {
-        r[0]
-        for r in db.query(
-            "SELECT DISTINCT e.integration_id FROM attachments a JOIN emails e ON e.id = a.email_id "
-            "WHERE a.ingestion_status = 'dead_letter' AND e.integration_id IS NOT NULL"
-        )
-    }
-    return {"email_ingestion_items": items, "attachments": attachments}
-
-
 def pending_email_metrics(db: Database, *, now: Any = None) -> dict[str, int | None]:
     """``/health``'s queue gauges: pending email count and the oldest one's age.
 
@@ -184,7 +159,6 @@ __all__ = [
     "CLAIMABLE_EMAIL_PREDICATE",
     "CLAIMABLE_INGESTION_ITEM_PREDICATE",
     "HEALTH_KEYS",
-    "dead_letter_integration_ids",
     "health_work_state",
     "pending_email_metrics",
     "ping",

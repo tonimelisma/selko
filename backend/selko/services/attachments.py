@@ -19,15 +19,11 @@ import os
 import tempfile
 import time
 from pathlib import Path
-from typing import Any, Optional
 from uuid import uuid4
 
 from googleapiclient.errors import HttpError
 
-from selko.config import Config
-from selko.db import attachments as db_attachments
 from selko.db.connection import Database
-from selko.db.errors import DbError
 from selko.db.runtime import attachments_dir
 from selko.services.egress import GMAIL, record_egress
 
@@ -93,46 +89,19 @@ def calculate_content_hash(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-def check_duplicate_attachment(
-    client: Database,
-    content_hash: str,
-    user_id: str | None = None,
-) -> Optional[dict]:
-    """Return the user's attachment with the same hash, if any.
-
-    Args:
-        client: The process database.
-        content_hash: SHA-256 hash to check.
-        user_id: Owner; duplicates are only ever the owner's own rows.
-
-    Returns:
-        Existing attachment record if found, None otherwise.
-    """
-    if user_id is None:
-        return None
-    try:
-        existing = db_attachments.find_by_content_hash(client, user_id, content_hash)
-    except DbError as e:
-        logger.warning(f"Error checking for duplicate: {e}")
-        return None
-    if existing:
-        logger.debug(f"Found duplicate attachment with hash: {content_hash[:16]}...")
-    return existing
-
-
 # ---------------------------------------------------------------------------
 # The file store
 # ---------------------------------------------------------------------------
 
 
-def _resolve_storage_path(storage_path: str) -> Path:
+def _resolve_storage_path(storage_path: str, root: Path | None = None) -> Path:
     """The file for a stored path, refusing anything outside the attachments dir."""
     if not storage_path or "\0" in storage_path:
         raise AttachmentError("empty or invalid storage path")
     relative = Path(storage_path)
     if relative.is_absolute() or ".." in relative.parts:
         raise AttachmentError(f"storage path escapes the attachments directory: {storage_path!r}")
-    root = attachments_dir().resolve()
+    root = (root or attachments_dir()).resolve()
     target = (root / relative).resolve()
     if root not in target.parents:
         raise AttachmentError(f"storage path escapes the attachments directory: {storage_path!r}")
@@ -158,21 +127,13 @@ def write_attachment_file(storage_path: str, data: bytes) -> Path:
     return target
 
 
-def read_attachment_file(storage_path: str) -> bytes:
-    """The stored bytes of an attachment."""
+def read_attachment_file(storage_path: str, root: Path | None = None) -> bytes:
+    """The stored bytes of an attachment (``root``: the attachments directory,
+    default the process database's)."""
     try:
-        return _resolve_storage_path(storage_path).read_bytes()
+        return _resolve_storage_path(storage_path, root).read_bytes()
     except FileNotFoundError as e:
         raise AttachmentError(f"attachment file missing: {storage_path}") from e
-
-
-def delete_attachment_file(storage_path: str) -> bool:
-    """Remove a stored file; False when it was already gone."""
-    try:
-        _resolve_storage_path(storage_path).unlink()
-        return True
-    except FileNotFoundError:
-        return False
 
 
 def download_gmail_attachment(
@@ -292,271 +253,3 @@ def upload_to_storage(
     logger.debug(f"Stored attachment at {storage_path}")
     return storage_path
 
-
-def save_attachment_metadata(
-    client: Database,
-    email_id: str,
-    provider_attachment_id: str,
-    filename: str,
-    mime_type: str,
-    size_bytes: int,
-    storage_path: str,
-    content_hash: str,
-    user_id: str | None = None,
-) -> dict:
-    """Save attachment metadata to database.
-
-    Args:
-        client: The process database.
-        email_id: UUID of parent email record.
-        provider_attachment_id: Provider's attachment ID.
-        filename: Original filename.
-        mime_type: MIME type.
-        size_bytes: File size in bytes.
-        storage_path: Path under the attachments directory.
-        content_hash: SHA-256 hash for deduplication.
-        user_id: Owner (required).
-
-    Returns:
-        Created attachment record.
-
-    Raises:
-        AttachmentError: If database insert fails.
-    """
-    if user_id is None:
-        raise AttachmentError("save_attachment_metadata needs the owning user_id")
-
-    record = {
-        "email_id": email_id,
-        "provider_attachment_id": provider_attachment_id,
-        "filename": filename,
-        "mime_type": mime_type,
-        "size_bytes": size_bytes,
-        "storage_path": storage_path,
-        "content_hash": content_hash,
-    }
-
-    try:
-        saved = db_attachments.insert(client, user_id, record)
-    except DbError as e:
-        raise AttachmentError(f"Failed to save attachment metadata: {e}") from e
-    logger.debug(f"Saved attachment metadata: {filename}")
-    return saved
-
-
-def store_attachment_bytes(
-    client: Database,
-    email_id: str,
-    *,
-    data: bytes,
-    filename: str,
-    mime_type: str,
-    config: Config,
-    provider_attachment_id: str = "",
-    user_id: str | None = None,
-) -> Optional[dict]:
-    """Store already-downloaded attachment bytes with hash deduplication."""
-    if not data:
-        return None
-
-    if len(data) > config.max_attachment_size:
-        logger.warning(
-            "Skipping oversized attachment: %s (%.1f MB > %.0f MB limit)",
-            filename,
-            len(data) / 1024 / 1024,
-            config.max_attachment_size / 1024 / 1024,
-        )
-        return None
-
-    if user_id is None:
-        raise AttachmentError("store_attachment_bytes needs the owning user_id")
-    owner_id = user_id
-    content_hash = calculate_content_hash(data)
-    existing = check_duplicate_attachment(client, content_hash, owner_id)
-    if existing:
-        logger.info("Skipping duplicate attachment: %s (hash match)", filename)
-        return existing
-
-    storage_path = upload_to_storage(
-        client=client,
-        user_id=owner_id,
-        filename=filename,
-        data=data,
-        mime_type=mime_type,
-        bucket=config.storage_bucket_attachments,
-    )
-    return save_attachment_metadata(
-        client=client,
-        email_id=email_id,
-        provider_attachment_id=provider_attachment_id,
-        filename=filename,
-        mime_type=mime_type,
-        size_bytes=len(data),
-        storage_path=storage_path,
-        content_hash=content_hash,
-        user_id=owner_id,
-    )
-
-
-def process_attachment(
-    client: Database,
-    gmail_service,
-    email_id: str,
-    message_id: str,
-    attachment_part: dict[str, Any],
-    config: Config,
-    user_id: str | None = None,
-) -> Optional[dict]:
-    """Process a single email attachment end-to-end.
-
-    This is the main orchestration function that:
-    1. Downloads attachment from Gmail
-    2. Calculates content hash
-    3. Checks for duplicates
-    4. Uploads to storage (if new)
-    5. Saves metadata to database
-
-    Args:
-        client: The process database.
-        gmail_service: Gmail API service.
-        email_id: UUID of parent email in database.
-        message_id: Gmail message ID.
-        attachment_part: Attachment metadata dict with keys:
-            - attachment_id: Gmail attachment ID
-            - filename: Original filename
-            - mime_type: MIME type
-            - size_bytes: Size in bytes
-        config: Application config.
-        user_id: Owner of the attachment (required).
-
-    Returns:
-        Attachment record (new or existing), or None if skipped.
-
-    Raises:
-        AttachmentError: If processing fails.
-    """
-    attachment_id = attachment_part.get("attachment_id")
-    filename = attachment_part.get("filename", "unnamed")
-    mime_type = attachment_part.get("mime_type", "application/octet-stream")
-    size_bytes = attachment_part.get("size_bytes", 0)
-
-    # Check size limit
-    if size_bytes > config.max_attachment_size:
-        logger.warning(
-            f"Skipping oversized attachment: {filename} "
-            f"({size_bytes / 1024 / 1024:.1f} MB > {config.max_attachment_size / 1024 / 1024:.0f} MB limit)"
-        )
-        return None
-
-    logger.info(f"Processing attachment: {filename} ({size_bytes} bytes)")
-
-    # Download from Gmail
-    data = download_gmail_attachment(gmail_service, message_id, attachment_id)
-
-    record = store_attachment_bytes(
-        client=client,
-        email_id=email_id,
-        data=data,
-        filename=filename,
-        mime_type=mime_type,
-        config=config,
-        provider_attachment_id=attachment_id,
-        user_id=user_id,
-    )
-
-    logger.info(f"Saved new attachment: {filename}")
-    return record
-
-
-def store_image_content(
-    client: Database,
-    email_id: str,
-    image_data: bytes,
-    mime_type: str,
-    filename: str,
-    config: Config,
-    user_id: str | None = None,
-) -> Optional[dict]:
-    """Store image data directly as an attachment (no Gmail API download needed).
-
-    For linked images and data URIs that are already downloaded/decoded.
-    Uses content hash deduplication like process_attachment().
-
-    Args:
-        client: The process database.
-        email_id: UUID of parent email record.
-        image_data: Raw image bytes.
-        mime_type: Image MIME type.
-        filename: Filename for the stored image.
-        config: Application config.
-        user_id: Owner of the attachment (required).
-
-    Returns:
-        Attachment record (new or existing), or None if skipped.
-    """
-    if not image_data:
-        return None
-
-    # Check size limit
-    if len(image_data) > config.max_attachment_size:
-        logger.warning(
-            f"Skipping oversized image: {filename} "
-            f"({len(image_data) / 1024 / 1024:.1f} MB)"
-        )
-        return None
-
-    record = store_attachment_bytes(
-        client=client,
-        email_id=email_id,
-        data=image_data,
-        filename=filename,
-        mime_type=mime_type,
-        config=config,
-        provider_attachment_id="",
-        user_id=user_id,
-    )
-
-    logger.info(f"Stored image: {filename} ({len(image_data)} bytes)")
-    return record
-
-
-def delete_attachment(
-    client: Database, attachment_id: str, config: Config, user_id: str | None = None
-) -> bool:
-    """Delete one of the user's attachments: the row, then its file.
-
-    The file goes only after the row's delete commits, so a crash between the
-    two leaves an orphan file, never a row pointing at nothing.
-
-    Args:
-        client: The process database.
-        attachment_id: UUID of attachment record.
-        config: Application config.
-        user_id: Owner (required).
-
-    Returns:
-        True if deleted successfully, False otherwise.
-    """
-    if user_id is None:
-        logger.warning("delete_attachment called without an owner; refusing")
-        return False
-    try:
-        row = db_attachments.get(client, user_id, attachment_id)
-        if not row:
-            logger.warning(f"Attachment not found: {attachment_id}")
-            return False
-        if not db_attachments.delete(client, user_id, attachment_id):
-            return False
-    except DbError as e:
-        logger.error(f"Failed to delete attachment: {e}")
-        return False
-
-    storage_path = row.get("storage_path")
-    if storage_path:
-        try:
-            delete_attachment_file(storage_path)
-            logger.debug(f"Deleted file: {storage_path}")
-        except Exception as e:
-            logger.warning(f"Failed to delete attachment file: {e}")
-    logger.info(f"Deleted attachment: {attachment_id}")
-    return True
