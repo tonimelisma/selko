@@ -286,8 +286,8 @@ class TestOAuthIntegrationsStaging:
 
         if creds is None:
             pytest.skip(
-                "No Gmail credentials in staging; run "
-                "'ENVIRONMENT=staging uv run python -m cli.cli_auth_gmail' to populate them"
+                "No Gmail credentials in staging; "
+                "connect Gmail for the staging test user in the staging web app to populate them"
             )
 
         assert creds.token is not None

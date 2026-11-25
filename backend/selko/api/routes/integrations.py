@@ -306,29 +306,6 @@ async def google_oauth_initiate(
     )
 
 
-@router.get("/gmail/auth")
-async def gmail_oauth_initiate(
-    user: CurrentUser = Depends(get_current_user),
-    config: Config = Depends(get_config),
-    redirect_uri: Annotated[
-        str | None, Query(description="OAuth callback URI")
-    ] = None,
-    accept: Annotated[str | None, Header()] = None,
-) -> Any:
-    """Connect Gmail -- through the combined Google consent.
-
-    Kept so shipped iOS and Android builds, which call this path, get the
-    single consent without an app-store release.
-    """
-    return _oauth_initiate_response(
-        config=config,
-        provider="google",
-        user_id=user.id,
-        redirect_uri=redirect_uri,
-        accept=accept,
-    )
-
-
 @router.get("/outlook/auth")
 async def outlook_oauth_initiate(
     user: CurrentUser = Depends(get_current_user),
@@ -523,26 +500,3 @@ async def microsoft_oauth_callback(
             status_value="error",
             message="OAuth callback failed",
         )
-
-
-@router.get("/calendar/auth")
-async def calendar_oauth_initiate(
-    user: CurrentUser = Depends(get_current_user),
-    config: Config = Depends(get_config),
-    redirect_uri: Annotated[
-        str | None, Query(description="OAuth callback URI")
-    ] = None,
-    accept: Annotated[str | None, Header()] = None,
-) -> Any:
-    """Connect Google Calendar -- through the combined Google consent.
-
-    Kept so shipped iOS and Android builds, which call this path, get the
-    single consent without an app-store release.
-    """
-    return _oauth_initiate_response(
-        config=config,
-        provider="google",
-        user_id=user.id,
-        redirect_uri=redirect_uri,
-        accept=accept,
-    )

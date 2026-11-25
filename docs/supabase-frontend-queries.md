@@ -518,11 +518,6 @@ GET /integrations/google/auth?redirect_uri={uri}
      (only those whose scopes the user left ticked), so they expire and
      reconnect together.
 
-GET /integrations/gmail/auth?redirect_uri={uri}
-GET /integrations/calendar/auth?redirect_uri={uri}
-  -> Same combined consent; kept for shipped mobile builds that call them.
-     The web client calls /integrations/google/auth.
-
 GET /integrations/google/callback?code={code}&state={state}
   -> Unified callback for all Google OAuth flows (public endpoint)
 ```

@@ -70,12 +70,6 @@ ENVIRONMENT=staging ENABLE_BACKGROUND_PROCESSING=true uv run python -m selko.wor
 
 Never run it while another writer is active for the same environment.
 
-To seed durable state for pre-existing integrations:
-
-```bash
-uv run python -m cli_backfill_email_ingestion_v2
-```
-
 ```bash
 # Start local Supabase
 supabase start
@@ -112,7 +106,7 @@ TOKEN=$(cat token.txt)
 
 ```bash
 # Initiate OAuth flow (redirects to Google consent screen)
-curl -X GET "http://localhost:8000/integrations/gmail/auth" \
+curl -X GET "http://localhost:8000/integrations/google/auth" \
   -H "Authorization: Bearer $TOKEN" \
   -L  # Follow redirects
 
@@ -258,11 +252,6 @@ GET /integrations/google/auth
   whose scopes were granted), so they expire and reconnect together.
 
 GET /integrations/google/auth     # one consent: Gmail + Google Calendar (clients use this)
-GET /integrations/gmail/auth      # same combined consent, kept for shipped mobile builds
-GET /integrations/calendar/auth   # same combined consent, kept for shipped mobile builds
-  Requires: Bearer token
-  Returns: The same combined consent (kept for shipped mobile builds)
-
 GET /integrations/google/callback?code={code}&state={state}
   Unified callback for all Google OAuth flows
   Public endpoint (no auth required)

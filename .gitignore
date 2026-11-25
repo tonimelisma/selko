@@ -17,10 +17,6 @@ xcuserdata/
 supabase/.env
 .mcp.json
 
-# CLI sensitive data
-cli/credentials.json
-cli/token.json
-
 # Python
 __pycache__/
 *.pyc

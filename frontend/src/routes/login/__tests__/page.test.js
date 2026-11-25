@@ -86,9 +86,9 @@ describe('Login Page', () => {
 		expect(mockGoto).toHaveBeenCalledWith('/app');
 	});
 
-	it('returns to the OAuth consent page that sent the user to sign in', async () => {
+	it('returns to the page that sent the user to sign in', async () => {
 		const user = userEvent.setup();
-		window.history.replaceState({}, '', '/login?next=' + encodeURIComponent('/oauth/consent?authorization_id=a1'));
+		window.history.replaceState({}, '', '/login?next=' + encodeURIComponent('/app/events/e1?tab=source'));
 		mockSignInWithPassword.mockResolvedValue({ data: { user: { id: '123' } }, error: null });
 
 		render(LoginPage);
@@ -96,7 +96,7 @@ describe('Login Page', () => {
 		await user.type(screen.getByLabelText(/password/i), 'password123');
 		await user.click(screen.getByRole('button', { name: /sign in/i }));
 
-		expect(mockGoto).toHaveBeenCalledWith('/oauth/consent?authorization_id=a1');
+		expect(mockGoto).toHaveBeenCalledWith('/app/events/e1?tab=source');
 		window.history.replaceState({}, '', '/');
 	});
 

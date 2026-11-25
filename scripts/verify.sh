@@ -141,8 +141,8 @@ create_user(
   # development is always the missing side, so use the documented explicit
   # staging -> development copy rather than the bidirectional sync command,
   # which intentionally refuses when the source access token is near expiry.
-  # The CLI and imported implementation both refuse production.
-  if ! uv run python -m cli.cli_seed_tokens --from staging --to development --provider gmail; then
+  # The seeder refuses production (argument parser and implementation).
+  if ! uv run python scripts/seed_test_tokens.py --from staging --to development --provider gmail; then
     if [[ "${ACCEPT_STALE_GMAIL_TOKEN:-0}" != "1" ]]; then
       echo "ERROR: no live Gmail token; rerun with --accept-stale-gmail-token only after recording the degradation." >&2
       return 1

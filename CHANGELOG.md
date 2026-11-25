@@ -4,6 +4,27 @@ All notable changes to this project are documented in this file.
 
 ## Unreleased
 
+### Change: CLI and MCP connector removed; mobile-only backend routes removed
+
+**Decision (owner, 2026-11-25):** the web app is Selko's only surface.
+
+- MCP connector removed: `/mcp` and its OAuth protected-resource metadata,
+  `backend/selko/api/mcp/` (tools, review-queue widget, connection alerts), the
+  `mcp` dependency, `docs/mcp.md` and its tests; on the web, the `/oauth/consent`
+  page, Settings' Connected apps section, the `?reconnect=` deep link and the
+  privacy policy's "Apps you connect" section. Supabase's OAuth server is off in
+  `supabase/config.toml`
+
+- `cli/` deleted (user, OAuth, fetch, process, extract, events, calendars,
+  dead-letter and email-body resync tools), with its workspace package, the
+  `typer` dependency, its tests and `docs/manual-email-to-calendar-walkthrough.md`
+- Kept, as test-gate infrastructure: the dev ↔ staging token copier, now
+  `scripts/seed_test_tokens.py` (still refuses production), which
+  `scripts/verify.sh` and `scripts/verify-staging.sh` use for the real-Gmail tests
+- `GET /integrations/gmail/auth` and `GET /integrations/calendar/auth`, kept
+  only for installed iOS/Android builds, removed; tests now cover
+  `/integrations/google/auth` and assert the old paths answer 404
+
 ### Change: iOS and Android apps ring-fenced as unmaintained legacy code
 
 **Decision (owner, 2026-11-25):** the web app is Selko's only client. The

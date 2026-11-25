@@ -75,7 +75,7 @@ application. If any migration step fails, the deploy hooks never fire.
 
 | Job | Runs On | Path Filter | Purpose |
 |-----|---------|-------------|---------|
-| `unit-tests` | Every push/PR | `backend/**`, `cli/**`, `pyproject.toml`, `uv.lock` | Backend unit tests, no external services |
+| `unit-tests` | Every push/PR | `backend/**`, `scripts/seed_test_tokens.py`, `pyproject.toml`, `uv.lock` | Backend unit tests, no external services |
 | `unit-tests` / `build` (frontend-tests.yml) | Every push/PR | `frontend/**` | Frontend unit + build + svelte-check |
 | `deploy-staging` | Main push only | `backend/**` or `supabase/**` | Deploy + verify staging while it runs; reports "paused" otherwise |
 
@@ -186,7 +186,7 @@ git push
 Common issues:
 - **Merge conflicts:** `git fetch origin main && git merge origin/main`, resolve, push, re-run `merge-and-cleanup.sh`
 - **A missing Actions secret:** the job names it; add it (Owner setup in `CLAUDE.md`)
-- **Expired Google OAuth tokens** (`RefreshError: invalid_grant`): `uv run python -m cli.cli_seed_tokens --sync --provider gmail` (dev ↔ staging; only if both are stale, re-auth one side then re-run `--sync`)
+- **Expired Google OAuth tokens** (`RefreshError: invalid_grant`): `uv run python scripts/seed_test_tokens.py --sync --provider gmail` (dev ↔ staging; only if both are stale, reconnect Gmail for the test user in one side's web app, then re-run `--sync`)
 
 ### Email Notifications
 

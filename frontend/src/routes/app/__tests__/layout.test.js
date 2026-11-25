@@ -100,14 +100,14 @@ describe('App Layout', () => {
 	});
 
 	it('keeps the deep link the user opened when sending them to sign in', async () => {
-		window.history.replaceState({}, '', '/app/settings?reconnect=google');
+		window.history.replaceState({}, '', '/app/events/e1?tab=source');
 		mockLoading.set(false);
 		mockUser.set(null);
 
 		render(AppLayout);
 
 		await waitFor(() => {
-			expect(mockGoto).toHaveBeenCalledWith('/login?next=%2Fapp%2Fsettings%3Freconnect%3Dgoogle');
+			expect(mockGoto).toHaveBeenCalledWith('/login?next=%2Fapp%2Fevents%2Fe1%3Ftab%3Dsource');
 		});
 		window.history.replaceState({}, '', '/');
 	});

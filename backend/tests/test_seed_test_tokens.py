@@ -1,4 +1,4 @@
-"""Guardrails for the OAuth token seeding CLI.
+"""Guardrails for the OAuth test-token seeder (scripts/seed_test_tokens.py).
 
 This tool exists to seed burner test tokens between local development and
 staging. Production holds real users' OAuth credentials and must never be
@@ -11,9 +11,9 @@ from unittest.mock import MagicMock
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "cli"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
 
-from cli_seed_tokens import (  # noqa: E402
+from seed_test_tokens import (  # noqa: E402
     TokenSeedError,
     get_integration_by_provider,
     seed_tokens,
@@ -38,7 +38,7 @@ def test_production_is_refused_at_either_end(source_env, target_env):
 def test_production_is_not_offered_on_the_command_line():
     """argparse should not even present production as a choice."""
     import argparse
-    import cli_seed_tokens
+    import seed_test_tokens
 
     parser_choices = []
 
@@ -52,8 +52,8 @@ def test_production_is_not_offered_on_the_command_line():
     argparse.ArgumentParser.add_argument = capture
     try:
         with pytest.raises(SystemExit):
-            sys.argv = ["cli_seed_tokens", "--help"]
-            cli_seed_tokens.main()
+            sys.argv = ["seed_test_tokens", "--help"]
+            seed_test_tokens.main()
     finally:
         argparse.ArgumentParser.add_argument = real_add_argument
 
@@ -94,7 +94,7 @@ def test_seeding_returns_none_without_any_integration():
     assert get_integration_by_provider(_client_returning([]), "gmail") is None
 
 def test_is_integration_stale_cases():
-    from cli_seed_tokens import is_integration_stale
+    from seed_test_tokens import is_integration_stale
     from datetime import datetime, timezone, timedelta
     # None -> stale
     assert is_integration_stale(None) is True
@@ -112,7 +112,7 @@ def test_is_integration_stale_cases():
 
 
 def test_sync_dev_staging_copies_working_to_stale(monkeypatch):
-    from cli_seed_tokens import sync_dev_staging, is_integration_stale
+    from seed_test_tokens import sync_dev_staging, is_integration_stale
     from datetime import datetime, timezone, timedelta
     future = (datetime.now(timezone.utc)+timedelta(hours=1)).isoformat()
     past = (datetime.now(timezone.utc)-timedelta(hours=1)).isoformat()
@@ -120,7 +120,7 @@ def test_sync_dev_staging_copies_working_to_stale(monkeypatch):
     stale = {"status": "expired", "token_expiry": past, "refresh_token": "r", "provider": "gmail"}
 
     # mock get_integration_by_provider to return fresh for dev, stale for staging
-    import cli_seed_tokens as m
+    import seed_test_tokens as m
     calls = {}
     def fake_get(client, provider, test_user_email=None):
         # client is mock with _env attr we set
@@ -180,11 +180,11 @@ def test_sync_dev_staging_copies_working_to_stale(monkeypatch):
 
 
 def test_sync_cli_requires_provider():
-    import cli_seed_tokens, sys
-    sys.argv = ["cli_seed_tokens", "--sync"]
+    import seed_test_tokens, sys
+    sys.argv = ["seed_test_tokens", "--sync"]
     import pytest as _pytest
     with _pytest.raises(SystemExit):
-        cli_seed_tokens.main()
+        seed_test_tokens.main()
 
 
 
@@ -236,7 +236,7 @@ class TestIntegrationSelectionIsScopedToTheTestUser:
         return client
 
     def test_fixture_integration_is_never_chosen_over_the_test_user(self):
-        from cli_seed_tokens import get_integration_by_provider
+        from seed_test_tokens import get_integration_by_provider
 
         users = [{"id": "real-user"}]
         integrations = [
@@ -257,7 +257,7 @@ class TestIntegrationSelectionIsScopedToTheTestUser:
         )
 
     def test_missing_test_user_refuses_rather_than_guessing(self):
-        from cli_seed_tokens import get_integration_by_provider
+        from seed_test_tokens import get_integration_by_provider
 
         integrations = [
             {"user_id": "fixture-user", "provider": "gmail", "status": "active",

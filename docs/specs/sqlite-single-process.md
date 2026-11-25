@@ -18,9 +18,8 @@ listed in Q0 with how to measure it.
 
 ## 1. Target
 
-**One process and one file.** The whole of Selko — web app, API, workers, MCP,
-sign-in, the OAuth 2.1 server Claude connects through, live updates,
-attachments — runs as a single Python process (`selko`) whose state is one
+**One process and one file.** The whole of Selko — web app, API, workers,
+sign-in, live updates, attachments — runs as a single Python process (`selko`) whose state is one
 SQLite database file plus one attachments directory, on one volume. A reverse
 proxy in front terminates TLS. Nothing else: no Postgres, PostgREST, GoTrue,
 Realtime, Storage, Kong or pooler, no Render, no hosted Supabase.
@@ -58,7 +57,7 @@ check), `auth.admin.*` in `services/users.py`. Storage: 3 calls.
 
 | Client | Supabase code | Uses |
 |---|---|---|
-| Web | 20 files, 3,122 lines mention Supabase | 9 tables, 2 RPCs, password sign-in/up, 5 `oauth.*` consent calls, 1 Broadcast channel, 1 Storage download |
+| Web | 20 files, 3,122 lines mention Supabase | 9 tables, 2 RPCs, password sign-in/up, 1 Broadcast channel, 1 Storage download |
 
 The web app is the only client. The native iOS and Android apps are
 unmaintained (`legacy/README.md`, owner decision 2026-11-25): this plan does not
@@ -78,12 +77,8 @@ reads today.
 - GoTrue stores standard bcrypt (`$2a$10$`, checked with a throwaway local
   user, deleted afterwards), so **existing passwords carry over**: Python's
   `bcrypt` verifies them.
-- The MCP SDK already installed (`mcp` 2.3.0) ships the OAuth 2.1
-  authorization-server endpoints (`mcp/server/auth/handlers`: metadata,
-  dynamic registration, authorize with PKCE, token, revoke) behind an
-  `OAuthAuthorizationServerProvider` interface; Selko implements its
-  storage. The end-to-end test `tests/integration/test_integration_mcp.py`
-  already describes the required behaviour.
+- No OAuth server: the MCP connector, its only user, was removed on
+  2026-11-25, so Selko issues tokens to its own web app only.
 
 **Tests:** 1,727 backend tests in 126 files; 368 integration tests in 45
 files run against real Postgres. 44 of 80 unit-test files stub the Supabase
@@ -172,11 +167,6 @@ recording file names and hashes.
   Refresh tokens: random, stored hashed, rotated on use, 10-second reuse
   window (today's settings). Sign-in rate limits through the existing
   `slowapi` limiter.
-- **MCP:** `mcp.server.auth` routes mounted in the app, with Selko's provider
-  on SQLite tables `oauth_clients`, `oauth_codes`, `oauth_grants`,
-  `oauth_tokens`. The consent page (`/oauth/consent`) keeps its UI and
-  calls 5 API endpoints instead of `supabase.auth.oauth.*`. MCP tokens keep
-  carrying `client_id`, so a web-session token is still refused at `/mcp`.
 
 ### 4.5 Live updates (replaces Realtime)
 
@@ -225,8 +215,8 @@ cannot send an `Authorization` header, so the web client uses a streaming
   substitute.
 - Up to 24 hours of data loss on a disk-snapshot restore; no point-in-time
   recovery.
-- The legacy iOS/Android apps stop working at cutover; web users and MCP
-  connectors sign in again (passwords still work).
+- The legacy iOS/Android apps stop working at cutover; web users sign in
+  again (passwords still work).
 
 ## 5. Increments
 
@@ -240,8 +230,8 @@ touches only the backend's data layer.
 | Q1 | **Client data through the API.** ~20 endpoints (§2) on today's database; the web app switches to them; PostgREST no longer called by any client | `test_frontend_select_columns_exist_in_the_live_schema` has nothing left to check and is deleted; a test proves no client source calls `.from(` |
 | Q2 | **Live updates through the API.** `/live` fed by today's `pg_notify`; the web app switches; `realtime.send` triggers removed | Realtime unused in production for 7 days |
 | Q3 | **Ownership without RLS.** Every client endpoint scoped by the token's user; a generated test calls every endpoint as user B with user A's ids and requires 404 | the cross-user test covers every route (it fails when a route is added without it) |
-| Q4 | **Image, signing, startup migrations, production-image lane** (§4.6) | lane boots the image and runs the smoke + MCP OAuth tests |
-| Q5 | **Own auth on today's database.** `accounts` filled from `auth.users` (bcrypt hashes copied), `/auth/*`, MCP authorization server on `mcp.server.auth`; the web app switches; GoTrue unused | sign-in with an existing password works in the web app; MCP connector added from scratch |
+| Q4 | **Image, signing, startup migrations, production-image lane** (§4.6) | lane boots the image and runs the smoke and sign-in tests |
+| Q5 | **Own auth on today's database.** `accounts` filled from `auth.users` (bcrypt hashes copied), `/auth/*`; the web app switches; GoTrue unused | sign-in with an existing password works in the web app |
 | Q6 | **The SQLite data layer** (the big one): `selko/db/` with the 73 functions and 22 asyncpg operations as Python, `0001_initial.sql`, attachments on disk; supabase-py and asyncpg removed; the 368 integration tests and the 44 stubbing unit-test files moved to a temp SQLite file | full backend suite green on SQLite; `test_no_worker_module_retains_a_postgrest_fallback` replaced by a test that `supabase` and `asyncpg` are not importable from `selko` |
 | Q7 | **Cutover** (owner's explicit yes): stop writes on Render; a one-shot `selko import-from-postgres` inside the signed image, run on the server, reads production through the read-only URL and writes `selko.db`, copies attachment objects to `attachments/`, and compares row counts and per-table checksums; start; switch DNS for `selkoapp.com` and `api.selkoapp.com`; deploy log T+0/T+15m/T+24h | health invariants green; counts match |
 | Q8 | **Retire** Render services and the Supabase project after 14 days untouched (the way back); remove `supabase/`, the Supabase CLI from setup and CI, and the PostgREST/asyncpg rules from CLAUDE.md | — |

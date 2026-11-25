@@ -74,27 +74,18 @@ supabase start
 # Explicit operator waiver for missing/stale development Gmail credentials.
 # The waiver is recorded in the evidence manifest; it is never implicit.
 ./scripts/verify.sh backend --accept-stale-gmail-token
-
-# Create test user
-uv run python -m cli.cli_user create \
-  --email test@selko.local \
-  --password testpass123 \
-  --auto-confirm
-
-# Seed Gmail tokens from staging
-uv run python -m cli.cli_seed_tokens \
-  --from staging \
-  --to development \
-  --provider gmail
 ```
+
+The gate creates the test user and seeds its Gmail token from staging
+(`scripts/seed_test_tokens.py`) after resetting the database.
 
 ### After Database Reset
 
-After running `supabase db reset`, you must re-run the setup:
+`./scripts/verify.sh backend` resets the database and recreates the test user
+and its token itself. After a manual `supabase db reset`, re-seed with:
 
 ```bash
-uv run python -m cli.cli_user create --email test@selko.local --password testpass123 --auto-confirm
-uv run python -m cli.cli_seed_tokens --from staging --to development --provider gmail
+uv run python scripts/seed_test_tokens.py --from staging --to development --provider gmail
 ```
 
 ### Refreshing Expired OAuth Tokens
@@ -103,16 +94,15 @@ If Gmail tests fail with `unauthorized_client` or `credentials expired or revoke
 
 ```bash
 # Auto-sync dev↔staging: checks both, copies working → stale (or no-op if both fresh)
-uv run python -m cli.cli_seed_tokens --sync --provider gmail
+uv run python scripts/seed_test_tokens.py --sync --provider gmail
 # For all providers:
-uv run python -m cli.cli_seed_tokens --sync --all-providers
+uv run python scripts/seed_test_tokens.py --sync --all-providers
 
-# If both are stale, re-auth one side then re-sync:
-#   uv run python -m cli.cli_auth_gmail   # or ENVIRONMENT=staging uv run python -m cli.cli_auth_gmail
-#   uv run python -m cli.cli_seed_tokens --sync --provider gmail
+# If both are stale, connect Gmail for the test user in one side's web app,
+# then re-sync.
 ```
 
-Staging tokens are persistent and usually valid. `--sync` is the normal fix; OAuth is only needed when both envs are stale.
+Staging tokens are persistent and usually valid. `--sync` is the normal fix; reconnecting is only needed when both envs are stale.
 
 > **WARNING: NEVER modify tests to skip when credentials are missing or invalid.**
 > Tests are designed to FAIL when credentials are unavailable. This is intentional.
@@ -134,7 +124,7 @@ Staging tokens are persistent and usually valid. `--sync` is the normal fix; OAu
 ### Staging (Cloud Supabase)
 
 - Database is **persistent** across runs
-- Real OAuth tokens from `cli_auth_gmail` must be preserved
+- Real OAuth tokens connected through the staging web app must be preserved
 - **Never** use `cleanup_integrations` with real providers in staging
 
 ## Pre-Commit Hook

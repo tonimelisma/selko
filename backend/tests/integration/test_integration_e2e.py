@@ -216,7 +216,7 @@ class TestEndToEndStaging:
         # Get Gmail credentials
         creds = get_credentials(admin_client, config, user_id=test_user_id)
         if creds is None:
-            pytest.skip("No Gmail credentials in staging - run cli_auth_gmail first")
+            pytest.skip("No Gmail credentials in staging - connect Gmail in the web app first")
 
         user_id = get_current_user_id(authenticated_client)
 
@@ -253,7 +253,7 @@ class TestEndToEndStaging:
         """Existing user can sign in and fetch new emails."""
         creds = get_credentials(admin_client, config, user_id=test_user_id)
         if creds is None:
-            pytest.skip("No Gmail credentials in staging - run cli_auth_gmail first")
+            pytest.skip("No Gmail credentials in staging - connect Gmail in the web app first")
 
         # Just verify the flow works
         service = build_service(creds)

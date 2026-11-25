@@ -188,7 +188,6 @@ Platform-specific commands and required visual verification are documented in
 | Document | Purpose |
 |---|---|
 | [PRD_ARCH.md](PRD_ARCH.md) | Product requirements and architecture |
-| [docs/manual-email-to-calendar-walkthrough.md](docs/manual-email-to-calendar-walkthrough.md) | End-to-end product walkthrough |
 | [docs/database-schema.md](docs/database-schema.md) | Database reference |
 | [docs/job-queue.md](docs/job-queue.md) | Background-worker architecture |
 | [docs/gmail-integration.md](docs/gmail-integration.md) | Gmail ingestion |

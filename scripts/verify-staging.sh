@@ -141,7 +141,7 @@ fi
 # What must never happen is implying coverage that was not obtained. The run
 # says plainly which tests did not execute and what the operator has to do.
 GMAIL_COVERAGE=1
-if ! uv run python -m cli.cli_seed_tokens --sync --provider gmail; then
+if ! uv run python scripts/seed_test_tokens.py --sync --provider gmail; then
   GMAIL_COVERAGE=0
   echo ""
   echo "=============================================================="
@@ -149,7 +149,7 @@ if ! uv run python -m cli.cli_seed_tokens --sync --provider gmail; then
   echo ""
   echo "Both the development and staging Gmail grants are dead, so no"
   echo "token copy can revive them. This is an operator action:"
-  echo "    ENVIRONMENT=staging uv run python -m cli.cli_auth_gmail"
+  echo "    connect Gmail for the staging test user in the staging web app"
   echo "then re-run this script to obtain the missing coverage."
   echo ""
   echo "Everything else below still ran and still gates."

@@ -1,7 +1,7 @@
 """FastAPI application factory."""
 
 import logging
-from contextlib import AsyncExitStack, asynccontextmanager
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -160,13 +160,7 @@ async def lifespan(app: FastAPI):
             "(set ENABLE_BACKGROUND_PROCESSING=true to enable)"
         )
 
-    # The MCP endpoint is a mounted Starlette app; mounted apps' lifespans
-    # never run, so its session manager is started here.
-    async with AsyncExitStack() as mcp_stack:
-        mcp_server = getattr(app.state, "mcp_server", None)
-        if mcp_server is not None:
-            await mcp_stack.enter_async_context(mcp_server.session_manager.run())
-        yield
+    yield
 
     # Shutdown
     logger.info("Shutting down Selko API")
@@ -391,12 +385,6 @@ def create_app() -> FastAPI:
                 "resets_at": "midnight UTC",
             },
         )
-
-    # Last, so the root mount only receives paths no FastAPI route claimed.
-    if config is not None:
-        from selko.api.mcp import mount_mcp
-
-        mount_mcp(app, config)
 
     return app
 

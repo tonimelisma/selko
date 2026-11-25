@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""CLI for copying OAuth tokens between environments.
+"""Copy burner OAuth test tokens between development and staging.
+
+Test-gate infrastructure for scripts/verify.sh and scripts/verify-staging.sh
+(the real-Gmail integration tests); never production.
 
 Copies OAuth tokens from one environment (e.g., staging) to another (e.g., development)
 with automatic user ID remapping. This enables running real Gmail integration tests
@@ -219,7 +222,7 @@ def seed_tokens(
         TokenSeedError: If seeding fails.
     """
     # Enforced here as well as in argparse: seed_tokens is importable and is
-    # called directly by CI, so the guarantee cannot live in the CLI surface
+    # called directly by CI, so the guarantee cannot live in the argument parser
     # alone. Production credentials belong to real users and must never reach a
     # lower-trust environment, nor be overwritten by burner tokens.
     for label, env in (("source", source_env), ("target", target_env)):
@@ -263,7 +266,7 @@ def seed_tokens(
     if not source_integration:
         raise TokenSeedError(
             f"No {provider} integration found in {source_env}. "
-            f"Run: ENVIRONMENT={source_env} uv run python -m cli.cli_auth_gmail"
+            f"Connect Gmail for the test user in the {source_env} web app first"
         )
 
     logger.debug(f"Found integration for provider_email: {source_integration.get('provider_email')}")
@@ -280,8 +283,8 @@ def seed_tokens(
     if not target_user:
         raise TokenSeedError(
             f"User {target_config.test_user_email} not found in {target_env}. "
-            f"Create user first: ENVIRONMENT={target_env} uv run python -m cli.cli_user create "
-            f"--email {target_config.test_user_email} --password <password> --auto-confirm"
+            f"Create it first (scripts/verify.sh creates it in development; "
+            f"otherwise sign up in the {target_env} web app)"
         )
 
     logger.debug(f"Found target user: {target_user['id']}")
@@ -416,8 +419,8 @@ def sync_dev_staging(provider: str) -> str:
         raise TokenSeedError(
             f"Both dev and staging {provider} tokens are stale and could not be "
             f"refreshed — the grant itself is dead, so this does need fresh OAuth. "
-            f"Run: uv run python -m cli.cli_auth_gmail (for dev) or "
-            f"ENVIRONMENT=staging uv run python -m cli.cli_auth_gmail"
+            f"Connect Gmail for the test user in the development or staging web app "
+            f"first"
         )
 
     if dev_stale and not staging_stale:
@@ -438,25 +441,25 @@ def main():
         epilog="""
 Examples:
   # Copy Gmail tokens from staging to local development
-  uv run python -m cli.cli_seed_tokens --from staging --to development --provider gmail
+  uv run python scripts/seed_test_tokens.py --from staging --to development --provider gmail
 
   # Copy with verbose logging
-  uv run python -m cli.cli_seed_tokens -v --from staging --to development --provider gmail
+  uv run python scripts/seed_test_tokens.py -v --from staging --to development --provider gmail
 
   # Auto-sync dev↔staging: check both, copy working → stale
-  uv run python -m cli.cli_seed_tokens --sync --provider gmail
-  uv run python -m cli.cli_seed_tokens --sync --provider gmail --provider outlook
+  uv run python scripts/seed_test_tokens.py --sync --provider gmail
+  uv run python scripts/seed_test_tokens.py --sync --provider gmail --provider outlook
 
 Prerequisites:
   1. OAuth tokens must exist in source environment (for explicit --from/--to):
-     ENVIRONMENT=staging uv run python -m cli.cli_auth_gmail
+     connect Gmail for the test user in the staging web app
 
   2. For --sync, at least one of dev/staging must have a fresh token; the
      stale side is overwritten with the fresh side. If both are stale, re-auth
      one side then re-run --sync.
 
   3. Test user must exist in target environment:
-     uv run python -m cli.cli_user create --email test@selko.local --password testpass123 --auto-confirm
+     scripts/verify.sh creates it in development; elsewhere, sign up in the web app
 
   4. Both environments must have SUPABASE_SERVICE_ROLE_KEY configured
 

@@ -18,7 +18,6 @@
 	import ConfirmModal from '$lib/components/ConfirmModal.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import SenderRulesPanel from '$lib/components/SenderRulesPanel.svelte';
-	import ConnectedApps from '$lib/components/ConnectedApps.svelte';
 	import ErrorAlert from '$lib/components/ErrorAlert.svelte';
 	import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
 	import LabeledSwitch from '$lib/components/LabeledSwitch.svelte';
@@ -140,28 +139,9 @@
 		});
 
 		loadData();
-		startRequestedReconnect();
 
 		return unsub;
 	});
-
-	/**
-	 * `?reconnect=google|outlook` is the durable link Claude (via Selko's MCP
-	 * connector) and reconnect prompts hand out: it starts that sign-in straight
-	 * away. The parameter is dropped first, so coming Back from the provider
-	 * does not start the sign-in a second time.
-	 */
-	async function startRequestedReconnect() {
-		const requested = new URLSearchParams(window.location.search).get('reconnect');
-		if (requested !== 'google' && requested !== 'outlook') return;
-		window.history.replaceState({}, '', window.location.pathname);
-		try {
-			await handleAuthorize(requested);
-		} catch (error) {
-			integrationError =
-				error instanceof Error && error.message ? error.message : $_('integrations.connectFailed');
-		}
-	}
 
 	async function loadData() {
 		isLoading = true;
@@ -583,9 +563,6 @@
 			<h2 class="mb-4 text-[11px] font-bold uppercase tracking-[0.08em] text-secondary">{$_('settings.automationRules')}</h2>
 			<SenderRulesPanel />
 		</section>
-
-		<!-- Apps connected through OAuth consent, e.g. Claude (hidden when none) -->
-		<ConnectedApps />
 
 		<!-- Section 5: Account -->
 		<section>

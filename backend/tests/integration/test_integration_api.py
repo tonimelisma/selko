@@ -175,35 +175,29 @@ class TestEmailSyncEndpoints:
 class TestOAuthEndpoints:
     """Test OAuth integration endpoints."""
 
-    def test_gmail_auth_requires_authentication(self, test_client):
-        """GET /integrations/gmail/auth requires authentication."""
-        response = test_client.get("/integrations/gmail/auth")
+    def test_google_auth_requires_authentication(self, test_client):
+        """GET /integrations/google/auth requires authentication."""
+        response = test_client.get("/integrations/google/auth")
 
         assert response.status_code == 401
 
-    def test_gmail_auth_redirect(self, test_client, auth_headers):
-        """GET /integrations/gmail/auth returns redirect."""
+    def test_google_auth_redirect(self, test_client, auth_headers):
+        """GET /integrations/google/auth returns redirect."""
         response = test_client.get(
-            "/integrations/gmail/auth", headers=auth_headers, follow_redirects=False
+            "/integrations/google/auth", headers=auth_headers, follow_redirects=False
         )
 
         # Should redirect to Google OAuth or return error if credentials missing
         assert response.status_code in [302, 500]
 
-    def test_calendar_auth_requires_authentication(self, test_client):
-        """GET /integrations/calendar/auth requires authentication."""
-        response = test_client.get("/integrations/calendar/auth")
+    @pytest.mark.parametrize(
+        "path", ["/integrations/gmail/auth", "/integrations/calendar/auth"]
+    )
+    def test_old_mobile_only_paths_are_gone(self, test_client, auth_headers, path):
+        """Removed with the native apps (legacy/); the web uses /google/auth."""
+        response = test_client.get(path, headers=auth_headers, follow_redirects=False)
 
-        assert response.status_code == 401
-
-    def test_calendar_auth_redirect(self, test_client, auth_headers):
-        """GET /integrations/calendar/auth returns redirect."""
-        response = test_client.get(
-            "/integrations/calendar/auth", headers=auth_headers, follow_redirects=False
-        )
-
-        # Should redirect to Google OAuth or return error if credentials missing
-        assert response.status_code in [302, 500]
+        assert response.status_code == 404
 
 
 @pytest.mark.integration

@@ -14,8 +14,8 @@
 	let isLoading = $state(true);
 
 	/**
-	 * Sign-in keeps the deep link the user opened (an event, or a reconnect
-	 * link from Claude) and returns to it; login only honours same-origin paths.
+	 * Sign-in keeps the deep link the user opened (for example an event) and
+	 * returns to it; login only honours same-origin paths.
 	 */
 	function loginPath() {
 		const here = window.location.pathname + window.location.search;

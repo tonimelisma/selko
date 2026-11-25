@@ -14,20 +14,20 @@ The system automatically ingests unstructured data from emails to create structu
 
 #### **3.0. Phase 0: Proof of Concept (Current - PARTIAL)**
 
-* **Platform:** Local Python CLI tools
+* **Platform:** Local Python CLI tools (removed 2026-11-25: the web app is the only client)
 * **Purpose:** Validate core data ingestion and AI extraction before building web application
 * **Status:** PARTIAL (updated 2026-01-26)
 
 **✅ Implemented Features:**
 | Feature | Status | Implementation | Tests |
 | :---- | :---- | :---- | :---- |
-| Gmail OAuth authentication | ✅ DONE | `cli/cli_auth_gmail.py` | Integration tests |
+| Gmail OAuth authentication | ✅ DONE | `backend/selko/api/routes/integrations.py` | Integration tests |
 | Email fetching and parsing | ✅ DONE | `backend/selko/services/emails.py` | Unit + Integration |
 | Attachment download | ✅ DONE | `backend/selko/services/attachments.py` | Unit + Integration |
 | Supabase Storage upload | ✅ DONE | With SHA-256 deduplication | Integration tests |
 | RLS-enforced multi-tenancy | ✅ DONE | All tables have RLS policies | Security tests |
 | **Gemini LLM integration** | ✅ DONE | `backend/selko/services/gemini.py` | 55 unit + 10 integration |
-| **Calendar event extraction** | ✅ DONE | `cli/cli_extract_events.py` | Real API evals |
+| **Calendar event extraction** | ✅ DONE | `backend/selko/services/event_processing.py` | Real API evals |
 | **Multimodal AI (text + images)** | ✅ DONE | Email body + attachments | Integration tests |
 | Unit + Integration tests | ✅ DONE | **166 total tests** (55 unit + 111 integration) | All passing |
 
@@ -268,7 +268,6 @@ The `calendar_sync_log.snapshot_synced` field stores what we sent to Google Cale
 | **Attachment Storage** | ✅ Complete | `selko/services/attachments.py` | 8 integration tests |
 | **Gemini LLM Integration** | ✅ Complete | `selko/services/gemini.py` | 55 unit + 10 integration |
 | **Calendar Event Extraction** | ✅ Complete | `selko/api/schemas/calendar.py` | Real API evals |
-| **CLI Tools** | ✅ Complete | `cli/*.py` (7 tools) | 10 CLI integration tests |
 | **Authentication** | ✅ Complete | `selko/services/auth.py` | 6 auth tests |
 | **RLS Security** | ✅ Complete | All tables | 8 security tests |
 
@@ -617,20 +616,16 @@ Integration tests validate end-to-end functionality with real services (Supabase
 #### **2.1 Development Environment Tests**
 - **Database**: Local Supabase via Docker (`supabase start`)
 - **Gmail**: Real Gmail API with tokens seeded from staging
-- **Credentials**: OAuth tokens copied via `cli_seed_tokens` with user ID remapping
+- **Credentials**: OAuth tokens copied via `scripts/seed_test_tokens.py` with user ID remapping
 - **Purpose**: Test real Gmail integration without deploying to staging or polluting cloud DB
 - **Cleanup**: `supabase db reset` clears everything, re-seed tokens as needed
 - **CI**: Tokens automatically seeded from staging before tests run
 
 **Setup:**
 ```bash
-# One-time setup after supabase start/reset
+# The gate resets the database, creates the test user and seeds the token
 supabase start
-uv run python -m cli.cli_user create --email test@selko.local --password testpass123 --auto-confirm
-uv run python -m cli.cli_seed_tokens --from staging --to development --provider gmail
-
-# Run development tests (uses real Gmail)
-uv run pytest backend/tests/integration/ -m "development" -v
+./scripts/verify.sh backend
 ```
 
 #### **2.2 Staging Environment Tests**
@@ -715,17 +710,6 @@ Tests complete user journeys across multiple services.
 | Existing user: sign in → fetch new emails | ✓ | ✓ | ✗ |
 | Delete user cascades all data | ✓ | ✓ | ✗ |
 
-#### **3.7 CLI Integration Tests** (`test_integration_cli.py`)
-Tests CLI tools as subprocess to validate argument parsing and output.
-
-| Test | Development | Staging | Production |
-|------|-------------|---------|------------|
-| cli_user create/list/delete | ✓ | ✓ | ✗ |
-| cli_fetch_emails --max N | ✓ | ✓ | ✗ |
-| --env flag overrides environment | ✓ | ✓ | ✗ |
-| -v verbose logging | ✓ | ✓ | ✗ |
-| -q quiet mode | ✓ | ✓ | ✗ |
-
 ### **4. Test Infrastructure**
 
 #### **4.1 Directory Structure**
@@ -745,8 +729,7 @@ backend/
         ├── test_integration_oauth.py
         ├── test_integration_gmail.py
         ├── test_integration_emails.py
-        ├── test_integration_e2e.py
-        └── test_integration_cli.py
+        └── test_integration_e2e.py
 ```
 
 #### **4.2 Pytest Markers**
@@ -808,11 +791,10 @@ ENVIRONMENT=production uv run pytest backend/tests/integration/ -m "production" 
 
 3. **Authorize OAuth (one side, then sync):**
    ```bash
-   # Authorize on either dev or staging, then sync to the other:
-   uv run python -m cli.cli_auth_gmail  # or ENVIRONMENT=staging uv run python -m cli.cli_auth_gmail
-   uv run python -m cli.cli_seed_tokens --sync --provider gmail
+   # Connect Gmail for the test user in the dev or staging web app, then sync:
+   uv run python scripts/seed_test_tokens.py --sync --provider gmail
    ```
-   - Complete OAuth flow in browser (only one side needed)
+   - Connect in the browser on one side only
    - `--sync` copies working dev↔staging token to the stale side (production never touched)
    - Tokens stored in both databases `integrations` tables
 

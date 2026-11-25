@@ -1,8 +1,7 @@
 {
   "permissions": {
     "allow": [
-      "Bash(find:*)",
-      "Bash(python -m cli.cli_user:*)"
+      "Bash(find:*)"
     ]
   },
   "hooks": {

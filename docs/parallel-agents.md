@@ -193,8 +193,7 @@ The Claude Code hook **blocks source code** but **allows config/docs**:
 |---------|---------|
 | `backend/` | `docs/` |
 | `frontend/src/` | `.env*` |
-| `cli/` | `CLAUDE.md`, `.claude/*` |
-| | `scripts/`, `supabase/` |
+| | `CLAUDE.md`, `.claude/*`, `scripts/`, `supabase/` |
 
 ## Troubleshooting
 

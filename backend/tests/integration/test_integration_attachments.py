@@ -314,7 +314,7 @@ class TestGmailAttachmentStaging:
         # 1. Get Gmail credentials
         creds = get_credentials(admin_client, config, user_id=test_user_id)
         if creds is None:
-            pytest.skip("No Gmail credentials - run cli_auth_gmail first")
+            pytest.skip("No Gmail credentials - connect Gmail in the web app first")
 
         # 2. Build service and fetch emails with attachments
         service = build_service(creds)

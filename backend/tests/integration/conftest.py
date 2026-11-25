@@ -67,7 +67,7 @@ def _get_env_for_markers(request) -> str:
     """Determine environment from test markers.
 
     The local_real marker uses development environment (local Supabase)
-    but expects real Gmail tokens to be seeded via cli_seed_tokens.
+    but expects real Gmail tokens to be seeded via scripts/seed_test_tokens.py.
     """
     if request.node.get_closest_marker("staging"):
         return "staging"

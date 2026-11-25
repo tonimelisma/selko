@@ -369,10 +369,10 @@ class TestAuthValidation:
         resp = client.post("/events/00000000-0000-0000-0000-000000000001/sync")
         assert resp.status_code == 401
 
-    def test_integrations_gmail_auth_requires_auth(self, unauthed_app):
-        """Gmail OAuth initiation requires auth."""
+    def test_integrations_google_auth_requires_auth(self, unauthed_app):
+        """Google OAuth initiation requires auth."""
         client = TestClient(unauthed_app, raise_server_exceptions=False)
-        resp = client.get("/integrations/gmail/auth")
+        resp = client.get("/integrations/google/auth")
         assert resp.status_code == 401
 
     def test_integrations_outlook_auth_requires_auth(self, unauthed_app):
@@ -856,27 +856,29 @@ class TestOAuthCallback:
 # ===========================================================================
 
 
-class TestEveryGoogleConnectIsOneConsent:
-    """Every Google connect path starts the same combined consent.
+class TestGoogleConnectIsOneConsent:
+    """Google connects through one combined consent, at one path."""
 
-    The Gmail and Calendar paths stay because shipped iOS and Android builds
-    call them; routing them to the combined flow is what gives those builds a
-    single sign-in without a release.
-    """
-
-    @pytest.mark.parametrize(
-        "path",
-        ["/integrations/google/auth", "/integrations/gmail/auth", "/integrations/calendar/auth"],
-    )
-    def test_path_starts_the_combined_flow(self, test_client, path):
+    def test_google_auth_starts_the_combined_flow(self, test_client):
         with patch(
             "selko.api.routes.integrations.initiate_oauth_flow",
             return_value={"auth_url": "https://accounts.google.com/o/oauth2"},
         ) as initiate:
-            resp = test_client.get(path, follow_redirects=False)
+            resp = test_client.get("/integrations/google/auth", follow_redirects=False)
 
         assert resp.status_code == 302
         assert initiate.call_args.kwargs["provider"] == "google"
+
+    @pytest.mark.parametrize(
+        "path", ["/integrations/gmail/auth", "/integrations/calendar/auth"]
+    )
+    def test_the_old_mobile_only_paths_are_gone(self, test_client, path):
+        """They existed only for the native apps, which are unmaintained (legacy/)."""
+        with patch("selko.api.routes.integrations.initiate_oauth_flow") as initiate:
+            resp = test_client.get(path, follow_redirects=False)
+
+        assert resp.status_code == 404
+        initiate.assert_not_called()
 
 
 class TestRedirectURIValidation:
@@ -889,7 +891,7 @@ class TestRedirectURIValidation:
             return_value={"auth_url": "https://accounts.google.com/o/oauth2"},
         ):
             resp = test_client.get(
-                "/integrations/gmail/auth",
+                "/integrations/google/auth",
                 params={
                     "redirect_uri": "http://localhost:8000/integrations/google/callback"
                 },
@@ -900,7 +902,7 @@ class TestRedirectURIValidation:
     def test_invalid_redirect_uri_returns_400(self, test_client):
         """Disallowed redirect URI returns 400."""
         resp = test_client.get(
-            "/integrations/gmail/auth",
+            "/integrations/google/auth",
             params={"redirect_uri": "http://evil.example.com/callback"},
             follow_redirects=False,
         )
@@ -913,7 +915,7 @@ class TestRedirectURIValidation:
             return_value={"auth_url": "https://accounts.google.com/o/oauth2"},
         ):
             resp = test_client.get(
-                "/integrations/gmail/auth",
+                "/integrations/google/auth",
                 headers={"Accept": "application/json"},
                 follow_redirects=False,
             )
@@ -930,7 +932,7 @@ class TestRedirectURIValidation:
             return_value={"auth_url": "https://accounts.google.com/o/oauth2"},
         ) as initiate:
             resp = test_client.get(
-                "/integrations/gmail/auth",
+                "/integrations/google/auth",
                 headers={"Accept": "application/json"},
                 follow_redirects=False,
             )
@@ -947,7 +949,7 @@ class TestRedirectURIValidation:
             return_value={"auth_url": "https://accounts.google.com/o/oauth2"},
         ):
             resp = test_client.get(
-                "/integrations/gmail/auth",
+                "/integrations/google/auth",
                 params={
                     "redirect_uri": (
                         "https://api.selkoapp.com/integrations/google/callback"

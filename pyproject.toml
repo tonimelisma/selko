@@ -6,7 +6,8 @@ readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
     "selko",
-    "selko-cli",
+    # scripts/cleanup_review_incident_20260713.py (came in through the CLI before)
+    "rich>=15.0.0",
 ]
 
 [project.optional-dependencies]
@@ -18,10 +19,9 @@ test = [
 
 [tool.uv.sources]
 selko = { workspace = true }
-selko-cli = { workspace = true }
 
 [tool.uv.workspace]
-members = ["backend", "cli"]
+members = ["backend"]
 
 [dependency-groups]
 dev = [

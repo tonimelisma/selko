@@ -289,7 +289,7 @@ class TestOAuthRedirectValidation:
     def test_valid_localhost_redirect(self, api_client):
         """Test valid localhost redirect URI is accepted."""
         response = api_client.get(
-            "/integrations/gmail/auth",
+            "/integrations/google/auth",
             params={"redirect_uri": "http://localhost:8000/integrations/google/callback"},
             follow_redirects=False,
         )
@@ -304,7 +304,7 @@ class TestOAuthRedirectValidation:
     def test_invalid_redirect_host_rejected(self, api_client):
         """Test invalid redirect host is rejected with 400."""
         response = api_client.get(
-            "/integrations/gmail/auth",
+            "/integrations/google/auth",
             params={"redirect_uri": "https://evil.com/callback"},
             follow_redirects=False,
         )
@@ -317,7 +317,7 @@ class TestOAuthRedirectValidation:
     def test_invalid_redirect_path_rejected(self, api_client):
         """Test invalid redirect path is rejected."""
         response = api_client.get(
-            "/integrations/gmail/auth",
+            "/integrations/google/auth",
             params={"redirect_uri": "http://localhost:8000/malicious/path"},
             follow_redirects=False,
         )

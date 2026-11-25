@@ -26,7 +26,7 @@
 			error = authError.message;
 			isLoading = false;
 		} else {
-			// e.g. back to /oauth/consent when Claude sent the user here to sign in
+			// back to the page that sent the user here to sign in
 			goto(safeNextPath(new URLSearchParams(window.location.search).get('next')));
 		}
 	}

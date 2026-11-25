@@ -3,7 +3,7 @@ import { safeNextPath } from '../safe-redirect.js';
 
 describe('safeNextPath', () => {
 	it('keeps a same-origin path with its query', () => {
-		expect(safeNextPath('/oauth/consent?authorization_id=abc')).toBe('/oauth/consent?authorization_id=abc');
+		expect(safeNextPath('/app/events/e1?tab=source')).toBe('/app/events/e1?tab=source');
 	});
 
 	it.each([
@@ -13,7 +13,7 @@ describe('safeNextPath', () => {
 		['//evil.example/steal'],
 		['/\\evil.example'],
 		['javascript:alert(1)'],
-		['oauth/consent']
+		['app/settings']
 	])('falls back to the app for %s', (next) => {
 		expect(safeNextPath(next)).toBe('/app');
 	});

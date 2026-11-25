@@ -35,7 +35,7 @@ fi
 
 for file in $STAGED_FILES; do
     case "$file" in
-        backend/*.py|cli/*.py)
+        backend/*.py|scripts/seed_test_tokens.py)
             BACKEND_CHANGED=true
             ;;
         frontend/src/*.js|frontend/src/*.svelte|frontend/src/**/*.js|frontend/src/**/*.svelte)
@@ -64,7 +64,7 @@ check_backend() {
     head_sha="$(git -C "$PROJECT_ROOT" rev-parse HEAD 2>/dev/null)"
     manifest="$PROJECT_ROOT/.verify/backend-${head_sha}.json"
     if [ -n "$head_sha" ] && [ -f "$manifest" ] && grep -q '"status": "passed"' "$manifest"; then
-        if [ -z "$(find "$PROJECT_ROOT/backend" "$PROJECT_ROOT/cli" -name '*.py' -newer "$manifest" 2>/dev/null | head -1)" ]; then
+        if [ -z "$(find "$PROJECT_ROOT/backend" "$PROJECT_ROOT/scripts/seed_test_tokens.py" -name '*.py' -newer "$manifest" 2>/dev/null | head -1)" ]; then
             return 0
         fi
     fi
@@ -79,7 +79,7 @@ check_backend() {
     fi
 
     # Check no source files newer than nodeids
-    if [ -n "$(find "$PROJECT_ROOT/backend" "$PROJECT_ROOT/cli" -name '*.py' -newer "$nodeids_file" 2>/dev/null | head -1)" ]; then
+    if [ -n "$(find "$PROJECT_ROOT/backend" "$PROJECT_ROOT/scripts/seed_test_tokens.py" -name '*.py' -newer "$nodeids_file" 2>/dev/null | head -1)" ]; then
         return 1  # Tests are stale
     fi
 

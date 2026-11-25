@@ -343,17 +343,10 @@ enabled = false
 # Obtain from https://clerk.com/setup/supabase
 # domain = "example.clerk.accounts.dev"
 
-# OAuth server configuration. Selko's MCP endpoint (/mcp) accepts tokens from
-# this server only. Dynamic registration is on, as MCP clients expect: Claude
-# registers itself when the connector is added, then the user signs in and
-# approves on /oauth/consent (docs/mcp.md).
+# OAuth server: off. It existed only for the MCP connector, removed 2026-11-25;
+# nothing in Selko issues tokens to third-party apps.
 [auth.oauth_server]
-# Enable OAuth server functionality
-enabled = true
-# Path for OAuth consent flow UI
-authorization_url_path = "/oauth/consent"
-# Allow dynamic client registration
-allow_dynamic_registration = true
+enabled = false
 
 [edge_runtime]
 enabled = true

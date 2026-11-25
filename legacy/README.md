@@ -16,6 +16,6 @@ What that means:
 - **Don't edit them**, and don't read them as a description of how Selko
   works today.
 
-The backend still serves a few paths kept only for builds already installed
-(`backend/selko/api/routes/integrations.py`). They can be removed whenever
-those builds no longer matter.
+The backend paths that existed only for these apps (`GET
+/integrations/gmail/auth` and `/integrations/calendar/auth`) were removed on
+2026-11-25; installed builds can no longer start a Google sign-in.

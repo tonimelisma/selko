@@ -19,14 +19,13 @@ description = "Tier 1: migrations applied to local Postgres, unit + integration"
 command = "./scripts/verify.sh backend"
 inputs = [
     "backend/**/*.py",
-    # Non-Python files the suite reads: the MCP widget the API serves, email
-    # fixtures, the skip budget, and the package manifests that build selko.
-    "backend/selko/api/mcp/**",
+    # Non-Python files the suite reads: email fixtures, the skip budget, and
+    # the package manifests that build selko.
     "backend/tests/fixtures/**",
     "backend/tests/skip_budget.toml",
     "backend/pyproject.toml",
-    "cli/**/*.py",
-    "cli/pyproject.toml",
+    # The real-Gmail tests get their token from it.
+    "scripts/seed_test_tokens.py",
     "supabase/migrations/**/*.sql",
     # Configures the local stack the integration tests run against.
     "supabase/config.toml",

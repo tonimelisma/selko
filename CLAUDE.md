@@ -155,7 +155,7 @@ files, claiming review comments, or making other implementation writes.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│  Source code (backend/, frontend/src/, cli/)                           │
+│  Source code (backend/, frontend/src/)                                 │
 │    → MUST use a feature branch + PR                                    │
 │      cloud session: in its own clone (no worktree)                     │
 │      Mac: in a worktree                                                │
@@ -387,7 +387,7 @@ not authorize unrelated production-data mutations.
 
 | You changed | Required before merge (Tier 1) | Required after merge (Tier 2) |
 |-------------|-------------------------------|-------------------------------|
-| `backend/**`, `cli/**` | `./scripts/verify.sh backend` — unit **+** integration against local Supabase | `./scripts/ops.py dispatch staging-tier2` |
+| `backend/**` | `./scripts/verify.sh backend` — unit **+** integration against local Supabase | `./scripts/ops.py dispatch staging-tier2` |
 | `supabase/**` (schema/migrations) | `./scripts/verify.sh backend` — the integration run is what proves the migration executes | `./scripts/ops.py dispatch staging-tier2` — **required**, migrations must reach staging before prod (paused: disclose the gap) |
 | `frontend/src/**` | Frontend unit tests + `npm run check` + **web** screenshots |
 | `legacy/**` (the unmaintained iOS and Android apps) | Nothing: don't change them (`legacy/README.md`) |
@@ -554,7 +554,7 @@ If it failed:
    jobs check their own secrets and say which one is missing; tell the
    operator which secret to add (Owner setup) — do not paper over it by
    disabling the check.
-3. **Google OAuth expired** (`RefreshError: invalid_grant`): run `uv run python -m cli.cli_seed_tokens --sync --provider gmail` (copies working dev↔staging token to stale side); only if both are stale, re-auth one side then re-run `--sync`.
+3. **Google OAuth expired** (`RefreshError: invalid_grant`): run `uv run python scripts/seed_test_tokens.py --sync --provider gmail` (copies working dev↔staging token to stale side); only if both are stale, reconnect Gmail for the test user in one side's web app, then re-run `--sync`.
 4. **Code issue** — follow-up PR.
 
 **A CI job may never imply coverage it does not have.** If a job cannot run part
@@ -587,13 +587,14 @@ hooks, then the served-SHA and health checks. It depends on no other job.
 | `npm run test:unit -- --reporter=json --outputFile=test-results.json` | Frontend tests (from `frontend/`) |
 | `uv run python -m selko.api` | Start FastAPI server |
 
-See `docs/testing-guide.md` for the full test guide and `docs/manual-email-to-calendar-walkthrough.md` for CLI tools and end-to-end walkthrough.
+See `docs/testing-guide.md` for the full test guide.
 
 ---
 
 ## Platform Preferences
 
-**The web app is Selko's only client.** The native apps in `legacy/ios/` and
+**The web app is Selko's only client.** There is no CLI and no MCP connector
+(both removed 2026-11-25), and Supabase's OAuth server is off. The native apps in `legacy/ios/` and
 `legacy/android/` are unmaintained (owner decision, 2026-11-25): never edit,
 build or test them, and don't read them as a description of how Selko works.
 
@@ -647,7 +648,7 @@ The script handles seeding, starting the API, capturing and resizing. See `docs/
 - **Durable email work state:** a `pending` email is invariant-guaranteed claimable (`emails_pending_is_claimable_check`: `attempts < max_attempts`, no owner, no unexpired lock). `claim_unprocessed_email` opportunistically reclaims one expired `processing` lease per call before claiming fresh work, so a crashed worker's row recovers on the next claim, never on a restart or a periodic sweep. `fail_email_processing` is the single fenced retry-or-terminate RPC; a stale `(worker_id, lock_generation)` is a no-op. Provider discovery leases (`email_sync_state`/`email_sync_runs`) are generation-fenced end to end via claim → heartbeat → complete/fail, and at most one `running` run exists per integration by a partial unique index. `health_work_state` is the single counted health RPC behind both `/health` and `/health/ingestion`; it reports `unclaimable_pending` (actionable, degrades the rollup) separately from `failed_emails` (terminal history, never degrades it) — merging them made `degraded` permanent after the first exhausted retry; see `docs/specs/state-ownership-and-deterministic-recovery.md` S1–S5 for the implemented current model. Local real-Postgres evidence and production observation/cutover remain explicit operator gates.
 - **Single-owner calendar sync:** Approval and proposal application enqueue `calendar_work_items`; the item owns action, generation, attempts, lease, error, and provider-write fencing. `events.review_status` owns the user decision — queueing calendar work never writes it, so each caller states the decision itself before enqueueing — while API and clients derive delivery state from the latest non-superseded work item. Automatic cancellation enqueues an item with `action='cancel'`. Background workers are the sole Google Calendar writers for both upserts and cancellations. Explicit `/events/{id}/sync` requests idempotently observe or requeue worker-owned work.
 - **Two calendar providers, one code path:** events are written to Google Calendar *or* Outlook Calendar. `selko/services/calendar_providers.py` holds both adapters, and both speak Google Calendar's event shape, so the writer, mirror, dedup read-back and undo divergence checks never branch on provider. **Provider identity lives in the ids:** Google ids stay bare, Outlook ids are stored qualified as `outlook:<graph id>` — in `user_calendar_settings.target_calendar_id`, `events.google_calendar_event_id` (historical name, kept because renaming it breaks every plpgsql body silently) and `calendar_entries.provider_event_id`. Routing (`calendar_write_provider`, migration `20261031000001`): an event already in a calendar stays there, otherwise the target calendar's provider, otherwise Google if connected. The claim stamps `calendar_work_items.provider`, only claims items whose provider is writable, and takes the providers whose circuit is closed (`BREAKER_KEYS`: `google_calendar`, `outlook_calendar`). One Microsoft consent covers mail and calendar (`Calendars.ReadWrite`); **a mail-only Outlook grant is not a writable calendar**, and its refresh must request only the scopes it holds (`outlook.refresh_scopes`) — asking for more fails the refresh and would expire mail too. Never mark the Outlook integration expired from a calendar failure: that row also carries mail.
-- **Reviewed repair tooling:** `scripts/repair_review_queue_integrity.py` is dry-run by default; production mutation requires an absolute manifest, exact confirmed user, `--environment production`, `--apply`, and a redacted reverse-operation artifact. It uses the service-only `event_repair_audit` table and `queue_event_cancellation` transition; never run production apply without explicit approval. `cli.cli_resync_email_bodies` follows the same posture for a different class: it re-fetches stored Gmail messages whose saved body says less than the provider snippet and upserts the re-parsed content, dry-run by default. It exists because **a fix to the sync path cannot heal history** — `reprocess_email` re-runs extraction on stored data and never re-fetches, so Reprocess appears to do nothing on a row saved with a placeholder body (#381).
+- **Reviewed repair tooling:** `scripts/repair_review_queue_integrity.py` is dry-run by default; production mutation requires an absolute manifest, exact confirmed user, `--environment production`, `--apply`, and a redacted reverse-operation artifact. It uses the service-only `event_repair_audit` table and `queue_event_cancellation` transition; never run production apply without explicit approval. **A fix to the sync path cannot heal history**: `reprocess_email` re-runs extraction on stored data and never re-fetches, so Reprocess appears to do nothing on a row saved with a placeholder body (#381). The re-fetch tool for that class was part of the CLI, removed 2026-11-25; a new repair needs its own reviewed script.
 - **Measure what the API answers, not only what the workers are doing.** Every
   health invariant here was internal — dead letters, worker liveness, listener,
   transport — so `POST /events/{id}/apply-change` could return 500 to *every*
@@ -678,7 +679,6 @@ The script handles seeding, starting the API, capturing and resizing. See `docs/
 - **Reconnect recovery:** Google Calendar reauthorization atomically creates a durable `integration_recoveries` generation (via `complete_integration_reauthorization`) that requeues OAuth-blocked calendar work items; email resumes from provider cursors via the `integrations_ensure_email_sync_state` trigger with no recovery record. Auth failures are classified on `calendar_work_items.failure_code` (`oauth_required`/`oauth_scope_required`) and never trip the global provider circuit breaker. The ConnectionRecovery card on the web shows catch-up progress (`integration_recoveries` is RLS-readable by the owner).
 - **Outbound traffic is metered:** `selko.services.egress` attributes every outbound byte to a destination (`supabase`/`gmail`/`graph`) and a bounded operation template, exposed at `/health/egress` and logged every `EGRESS_LOG_INTERVAL_SECONDS`. Supabase traffic is captured by an httpx response hook on the single shared service client in `get_service_client`, so it cannot be bypassed by a new call site — do not construct a second service client without that hook. This exists because a platform bandwidth alert reports a total with no attribution, which cannot tell constant polling apart from real provider downloads. Idle loops must not exist. Work arrives by notification; the safety-net poll is a floor, not a schedule. Any new unconditional periodic database call must be justified in the PR body against the two rules above: work arrives by notification, and the safety-net poll is a floor rather than a schedule.
 - **Fenced-resolution health:** `/health` exposes content-free, process-local resolution conflicts-per-hour, retry histogram, fenced-write count, conflict-exhaustion count, and pending-email age gauges. Event extraction writes are committed only through `commit_email_extraction`; direct event inserts in services/workers are guarded by AST tests. Google Photos ingestion remains parked.
-- **MCP endpoint for Claude:** `/mcp` (streamable HTTP, stateless) is mounted into the API by `create_app()`; code in `selko/api/mcp/`. **Supabase Auth's OAuth 2.1 server is the authorization server** — Selko only hosts the consent page (`/oauth/consent`) and checks tokens. Dynamic client registration is **on**, as every MCP client expects (users add the URL, nothing else; never make them paste a client ID). The consent page is the gate. Supabase ignores RFC 8707 `resource` and sets `aud=authenticated` on every token, so the verifier requires the `client_id` claim (minted only by the OAuth flow): a web-app session token is refused at `/mcp`. Consent API calls must come from the exact `site_url` origin (prod `https://selkoapp.com`). Reads go through PostgREST with the caller's token (RLS); writes reuse the apps' RPCs/service functions — never a second implementation. `list_review_queue` carries an MCP Apps widget (`ui://selko/review-queue.html`, vendored `ext-apps` runtime inlined because the iframe CSP blocks CDNs). Every tool needs `title` + `readOnlyHint` + `destructiveHint` (pinned by `test_mcp_server.py`). Connection health (`connections.py`) rides on every tool result as `connection_alert`; `reconnect_account` hands out a provider sign-in link and `/app/settings?reconnect=google|outlook` is the non-expiring one. Setup, scheduled runs and design notes: `docs/mcp.md`.
 - **End-to-End First:** Complete full journeys before expanding scope. First journey: Email → Calendar Event.
 - **LLM-Centric AI:** All intelligence uses multimodal LLMs (multi-provider registry; production runs `claude-haiku-5-5` only, `LLM_FALLBACK_PROVIDER=none`; an unset fallback is auto-filled, so `none` must stay explicit). Every provider that can receive email content is named in the public privacy policy at `/privacy`, so changing either is a policy change.
 - **YAGNI:** Add complexity only when measured need exists.
@@ -689,7 +689,7 @@ The script handles seeding, starting the API, capturing and resizing. See `docs/
 
 ## Self-Maintenance Rule
 
-**This CLAUDE.md is the single source of truth for all AI agents.** After major changes (new tables, endpoints, routes, CLI commands, docs, env vars, or architectural shifts), update this file. Keep it concise — link to detailed docs rather than duplicating content. Every linked doc must exist; remove stale links.
+**This CLAUDE.md is the single source of truth for all AI agents.** After major changes (new tables, endpoints, routes, docs, env vars, or architectural shifts), update this file. Keep it concise — link to detailed docs rather than duplicating content. Every linked doc must exist; remove stale links.
 
 ---
 
@@ -713,15 +713,16 @@ from a Microsoft Entra app registration.
 never seed burner tokens into production.** Production holds real users' OAuth
 refresh tokens; a lower-trust environment is a lower-trust environment.
 
-- `cli_seed_tokens` is **development ↔ staging only**. Production is rejected at
-  the argparse surface and inside `seed_tokens()` (CI imports the function
-  directly, so the CLI layer alone is not enough). Do not reintroduce it.
+- `scripts/seed_test_tokens.py` (the test gates' token copier) is
+  **development ↔ staging only**. Production is rejected by its argument parser
+  and inside `seed_tokens()` (tests import the function directly, so the parser
+  alone is not enough). Do not reintroduce it.
 - When a development or staging OAuth token dies, **do not ask the user to reauth** —
   check both dev and staging and copy the working token to the stale side:
-  `uv run python -m cli.cli_seed_tokens --sync --provider gmail` (checks both
+  `uv run python scripts/seed_test_tokens.py --sync --provider gmail` (checks both
   envs, copies `development→staging` or `staging→development` whichever is
-  working→stale; no-op if both fresh). If both are stale, re-auth one side
-  then run `--sync` again. Also supports `--all-providers`.
+  working→stale; no-op if both fresh). If both are stale, reconnect Gmail for
+  the test user in one side's web app, then run `--sync` again. Also supports `--all-providers`.
 - Reading production state for diagnosis is fine (status, expiry, row counts).
   Print no tokens and copy nothing.
 
@@ -731,7 +732,6 @@ refresh tokens; a lower-trust environment is a lower-trust environment.
 
 | Topic | Document | When to Read |
 |-------|----------|--------------|
-| **Email-to-Calendar walkthrough** | `docs/manual-email-to-calendar-walkthrough.md` | For end-to-end manual testing |
 | **Worktree workflow** | `docs/parallel-agents.md` | Before any source code task |
 | **Testing** | `docs/testing-guide.md` | Before running tests |
 | **Database schema** | `docs/database-schema.md` | When working with data |
@@ -739,7 +739,6 @@ refresh tokens; a lower-trust environment is a lower-trust environment.
 | **API workflow** | `docs/api-workflow.md` | When working with Python API |
 | **CI/CD** | `docs/ci-cd.md` | When troubleshooting CI |
 | **Job queue** | `docs/job-queue.md` | When working with background jobs |
-| **MCP / Claude** | `docs/mcp.md` | Connecting Claude (web, Desktop, Code), scheduled digests, the OAuth/token model, and the MCP design notes |
 | **Gmail integration** | `docs/gmail-integration.md` | When working with email sync |
 | **Microsoft Graph failure ledger** | `docs/microsoft-graph-failure-ledger.md` | Before changing Graph request/retry/resync behavior or after any production Graph failure |
 | **OAuth reconnect catch-up** | `docs/specs/oauth-reconnect-catch-up.md` | When implementing automatic email/calendar recovery after OAuth reauthorization |

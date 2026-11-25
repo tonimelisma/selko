@@ -384,8 +384,8 @@ class TestCrossUserRLSIsolationStaging:
         )
         if result is None or not result.data:
             pytest.skip(
-                "No seeded gmail integration for the test user; run "
-                "'ENVIRONMENT=staging uv run python -m cli.cli_auth_gmail' to populate it"
+                "No seeded gmail integration for the test user; "
+                "connect Gmail for the staging test user in the staging web app to populate it"
             )
         assert result.data["access_token"]
         assert result.data["refresh_token"]
