@@ -24,7 +24,7 @@ cost nothing.
 |----------|---------|------|
 | `test.yml` | push to `main`, PRs (path-filtered: `backend/**`, `scripts/seed_screenshot_data.py`, `pyproject.toml`, `uv.lock`) | `unit-tests`: the whole backend suite, unit + integration (SQLite needs no service) |
 | `frontend-tests.yml` | push to `main`, PRs touching `frontend/**` | `unit-tests` (Vitest), `build` (build + `svelte-check`) |
-| `image.yml` | push to `main`, PRs, manual; not for a change only to `docs/**`, `**/*.md` or `legacy/**` | `image`: build → `scripts/image-lane.sh` → on `main` only, push `:<sha>` unsigned; `release`: cosign-sign the digest, move `:main` (production follows it) |
+| `image.yml` | push to `main`, PRs, manual; not for a change only to `docs/**`, `**/*.md`, `legacy/**` or `.verify/**` | `image`: build → `scripts/image-lane.sh` → on `main` only, push `:<sha>` unsigned; `release`: cosign-sign the digest, move `:main` (production follows it) |
 
 ## image.yml
 

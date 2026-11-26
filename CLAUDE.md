@@ -424,9 +424,13 @@ inputs is reused rather than re-run: fix one lane, run again, and only that lane
 executes. Results are keyed by fingerprint, so reverting an edit restores the
 cached result instead of forcing a re-run.
 
-Every lane execution appends to `.verify/ledger.jsonl` (duration, outcome,
-executed-or-reused) and each run writes `.verify/runs/<id>.json`. That history is
-what makes verification improvable: `verify-report.py` shows which lanes have
+Every lane execution is recorded in the **lane ledger**, one tracked file per
+run, `.verify/ledger/<run id>.jsonl` (duration, outcome, executed-or-reused);
+each run also writes `.verify/runs/<id>.json` (untracked). The pre-commit hook
+stages new ledger files with the commit they verified, so they never sit
+uncommitted, and one file per run means two PRs never conflict on it. A commit
+that only adds ledger files releases nothing (`image.yml` `paths-ignore`). That
+history is what makes verification improvable: `verify-report.py` shows which lanes have
 ever caught a real failure and what each costs, so a lane that has never fired
 across many runs can be demoted on evidence rather than kept on faith.
 
@@ -445,7 +449,7 @@ above are the only ones. The native iOS and Android apps are unmaintained
 - [ ] `./scripts/merge-and-cleanup.sh <pr_number>` — squash-merges over REST and cleans up: GitHub deletes the remote branch itself, the script deletes the local branch, moves the clone to the merged `main` (cloud) or fast-forwards `main` and removes the worktree (Mac). **Does not wait on CI.**
 - [ ] **Check CI on `main` and fix forward if it ran and failed** — the `actions/runs?branch=main` query under "CI Ownership". On `main`, `image.yml` is what publishes `ghcr.io/tonimelisma/selko:<sha>`: a red image job means nothing new ships; a green `release` job means production picks it up.
 - [ ] If your change ships (`backend`/`frontend`/image), **report the `--gate prod` lane table** with the merge: it is the evidence the release went out on.
-- [ ] **Production deploys are automatic.** A merge to `main` builds and checks the image, pushes it as `:<sha>`, and the `release` job signs the digest and moves `:main`; a change only to docs or Markdown releases nothing (`paths-ignore`); the server follows `:main` within minutes and accepts only signed digests (cosign identity: `image.yml` on `refs/heads/main`). Deployment itself lives outside this repository. So the lanes passing before the merge *is* the release decision: never merge red. The one-time cutover from the hosted-Postgres build is done (`docs/specs/sqlite-single-process/04-data-cutover.md`); its importer was removed from the tree afterwards (the signed `ghcr.io/tonimelisma/selko-import:35f62d57` remains in the registry).
+- [ ] **Production deploys are automatic.** A merge to `main` builds and checks the image, pushes it as `:<sha>`, and the `release` job signs the digest and moves `:main`; a change only to docs, Markdown or `.verify/` releases nothing (`paths-ignore`); the server follows `:main` within minutes and accepts only signed digests (cosign identity: `image.yml` on `refs/heads/main`). Deployment itself lives outside this repository. So the lanes passing before the merge *is* the release decision: never merge red. The one-time cutover from the hosted-Postgres build is done (`docs/specs/sqlite-single-process/04-data-cutover.md`); its importer was removed from the tree afterwards (the signed `ghcr.io/tonimelisma/selko-import:35f62d57` remains in the registry).
 - [ ] **After any production deploy, open a `docs/deploy-log/<date>-<sha>.md` entry from `TEMPLATE.md` and fill the T+0 and T+15m rows before reporting done.** The T+24h row is filled the next day. Config, real-data and elapsed-time failures are only observable here — a deploy is not finished when it is applied, it is finished when it has been watched. Always fill in "which gate should have caught it"; that is what turns an incident into a permanent gate improvement instead of folklore.
 
 See `docs/parallel-agents.md` for the full workflow. See `docs/ci-cd.md` for CI architecture details.
@@ -456,7 +460,7 @@ See `docs/parallel-agents.md` for the full workflow. See `docs/ci-cd.md` for CI 
 lanes in the session. Workflows: `test.yml` (the whole backend suite),
 `frontend-tests.yml` (web unit tests, `svelte-check`, build), `image.yml`
 (build, image check, and on `main` push `:<sha>`; its `release` job then
-cosign-signs the image and moves `:main`, which production follows; a docs- or Markdown-only change runs no image job).
+cosign-signs the image and moves `:main`, which production follows; a change only to docs, Markdown or `.verify/` runs no image job).
 
 **A red CI is never left red.** A status nobody reads is worse than no status.
 

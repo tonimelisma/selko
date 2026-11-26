@@ -11,8 +11,9 @@
 #         accepts only signed digests, so only images that passed every check
 #         reach production.
 #
-# A change only to docs or other Markdown builds nothing: the image does not
-# contain them, and a release would restart production on identical code.
+# A change only to docs, Markdown or lane records (.verify/) builds nothing: the
+# image does not contain them, and a release would restart production on
+# identical code.
 #
 # A server verifies a pulled image with:
 #   cosign verify ghcr.io/tonimelisma/selko:<sha or main> \
@@ -23,9 +24,9 @@ name: Image
 on:
   push:
     branches: [main]
-    paths-ignore: ['docs/**', '**/*.md', 'legacy/**']
+    paths-ignore: ['docs/**', '**/*.md', 'legacy/**', '.verify/**']
   pull_request:
-    paths-ignore: ['docs/**', '**/*.md', 'legacy/**']
+    paths-ignore: ['docs/**', '**/*.md', 'legacy/**', '.verify/**']
   workflow_dispatch:
 
 permissions:

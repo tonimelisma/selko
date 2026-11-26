@@ -41,8 +41,10 @@ test-results/
 .verify/*
 # The ledger is the audit history that makes verification improvable over time
 # (which lanes cost what, which have ever caught a failure). Local-only history
-# is lost on a machine change, so this one file is tracked.
-!.verify/ledger.jsonl
+# is lost with a cloud session's clone, so it is tracked: one file per lane run
+# (.verify/ledger/<run id>.jsonl), staged by .githooks/pre-commit.
+!.verify/ledger/
+!.verify/ledger/*.jsonl
 
 # MCP tool artifacts
 .playwright-mcp/

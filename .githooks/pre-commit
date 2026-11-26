@@ -17,6 +17,15 @@ if [ -z "$STAGED_FILES" ]; then
     exit 0
 fi
 
+# Lane records (.verify/ledger/<run id>.jsonl) ride with the commit they
+# verified: the lanes run before the commit, so their record is new or grown
+# here. Without this they were left uncommitted and lost with the clone.
+LEDGER_CHANGES=$(git -C "$PROJECT_ROOT" ls-files --others --modified --exclude-standard -- .verify/ledger)
+if [ -n "$LEDGER_CHANGES" ]; then
+    git -C "$PROJECT_ROOT" add -- $LEDGER_CHANGES
+    echo "Pre-commit: staged lane records: $(echo $LEDGER_CHANGES | tr '\n' ' ')"
+fi
+
 # Determine which modules have changes
 BACKEND_CHANGED=false
 FRONTEND_CHANGED=false

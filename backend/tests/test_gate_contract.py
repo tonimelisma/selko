@@ -294,3 +294,30 @@ def test_a_skip_budget_entry_may_list_several_acceptable_reasons(tmp_path):
     rejected = run_writer()
     assert rejected.returncode != 0
     assert "skip reason changed" in (rejected.stderr + rejected.stdout)
+
+
+def test_the_release_never_skips_a_change_to_what_the_image_is_built_from():
+    """image.yml ignores docs, Markdown and lane records so they release nothing.
+
+    The filter must never cover a file the image or its check is built from: a
+    change there would merge, and production would quietly keep the old build.
+    """
+    import fnmatch
+    import tomllib
+
+    import yaml
+
+    root = Path(__file__).resolve().parents[2]
+    workflow = yaml.safe_load((root / ".github/workflows/image.yml").read_text())
+    triggers = workflow.get("on", workflow.get(True))
+    ignored = triggers["push"]["paths-ignore"]
+    assert ignored == triggers["pull_request"]["paths-ignore"]
+    assert ".verify/**" in ignored and "docs/**" in ignored  # what the filter is for
+
+    inputs = tomllib.loads((root / "scripts/lanes.toml").read_text())["lanes"]["image"]["inputs"]
+    tracked = subprocess.run(["git", "ls-files"], cwd=root, capture_output=True, text=True, check=True).stdout.split()
+    built_from = [f for f in tracked if any(fnmatch.fnmatch(f, pattern) for pattern in inputs)]
+    assert len(built_from) > 100  # the inputs resolved to real files
+    skipped = [f for f in built_from if any(fnmatch.fnmatch(f, pattern) for pattern in ignored)]
+    # README.md under backend/ is copied for packaging only; Markdown never changes the build.
+    assert all(f.endswith(".md") for f in skipped), skipped

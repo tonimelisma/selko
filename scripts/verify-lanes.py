@@ -9,8 +9,12 @@ fix it, run again, and only that lane executes. Fingerprints hash file contents,
 not mtimes, so a touched-but-unchanged file does not invalidate a lane and a
 reverted edit correctly restores the cached result.
 
-Auditability: every lane execution appends a record to .verify/ledger.jsonl with
-its duration, outcome, and whether it was executed or reused. scripts/
+Auditability: every lane execution appends a record to .verify/ledger/<run id>.jsonl
+with its duration, outcome, and whether it was executed or reused. One file per
+run, so two branches that each ran the lanes never touch the same file: a single
+append-only file conflicted on every pair of PRs, and GitHub's merge does not
+honour merge=union. The files are tracked (a cloud session's clone is thrown
+away) and the pre-commit hook stages new ones with the commit they verified. scripts/
 verify-report.py turns that history into the question we actually care about --
 which lanes have ever caught anything, and what each one costs us. A lane that
 has never failed across many runs and costs minutes is a candidate for removal;
@@ -35,7 +39,7 @@ ROOT = Path(__file__).resolve().parent.parent
 # instead of racing the repository's.
 VERIFY_DIR = Path(os.environ.get("SELKO_VERIFY_DIR", ROOT / ".verify"))
 STATE_PATH = VERIFY_DIR / "lane-state.json"
-LEDGER_PATH = VERIFY_DIR / "ledger.jsonl"
+LEDGER_DIR = VERIFY_DIR / "ledger"
 LOG_DIR = VERIFY_DIR / "logs"
 RUN_DIR = VERIFY_DIR / "runs"
 
@@ -156,8 +160,8 @@ def save_state(state: dict) -> None:
 
 
 def append_ledger(record: dict) -> None:
-    VERIFY_DIR.mkdir(parents=True, exist_ok=True)
-    with LEDGER_PATH.open("a") as handle:
+    LEDGER_DIR.mkdir(parents=True, exist_ok=True)
+    with (LEDGER_DIR / f"{record['run_id']}.jsonl").open("a") as handle:
         handle.write(json.dumps(record, sort_keys=True) + "\n")
 
 

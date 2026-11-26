@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Summarise .verify/ledger.jsonl: what each lane costs and what it has caught.
+"""Summarise the lane ledger (.verify/ledger/*.jsonl, one file per run): what each lane costs and what it has caught.
 
 The point of the ledger is to make verification subject to evidence rather than
 belief. For each lane it answers:
@@ -21,12 +21,12 @@ from collections import defaultdict
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-LEDGER_PATH = ROOT / ".verify" / "ledger.jsonl"
+LEDGER_PATH = ROOT / ".verify" / "ledger"
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--ledger", type=Path, default=LEDGER_PATH)
+    parser.add_argument("--ledger", type=Path, default=LEDGER_PATH, help="a ledger directory or one .jsonl file")
     parser.add_argument("--last", type=int, default=0, help="only the N most recent records")
     args = parser.parse_args()
 
@@ -34,13 +34,16 @@ def main() -> int:
         print(f"No ledger yet at {args.ledger}. Run ./scripts/verify-lanes.py first.")
         return 0
 
+    files = sorted(args.ledger.glob("*.jsonl")) if args.ledger.is_dir() else [args.ledger]
     records = []
-    for line in args.ledger.read_text().splitlines():
-        if line.strip():
-            try:
-                records.append(json.loads(line))
-            except json.JSONDecodeError:
-                continue
+    for path in files:
+        for line in path.read_text().splitlines():
+            if line.strip():
+                try:
+                    records.append(json.loads(line))
+                except json.JSONDecodeError:
+                    continue
+    records.sort(key=lambda record: record.get("timestamp", ""))
     if args.last:
         records = records[-args.last :]
 

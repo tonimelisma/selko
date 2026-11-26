@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -104,18 +105,39 @@ def test_a_failing_lane_is_never_cached_as_passing(probe_file, tmp_path):
     assert "reused" not in second.stdout.splitlines()[0], second.stdout
 
 
-def test_every_execution_is_recorded_in_the_ledger(probe_file, tmp_path):
-    ledger = tmp_path / "verify" / "ledger.jsonl"
+def _ledger(tmp_path):
+    files = sorted((tmp_path / "verify" / "ledger").glob("*.jsonl"))
+    return files, [json.loads(line) for f in files for line in f.read_text().splitlines() if line.strip()]
 
+
+def test_every_execution_is_recorded_in_the_ledger(probe_file, tmp_path):
     lanes = _write_lanes(tmp_path, probe_file, "true")
     _run(lanes, tmp_path)
 
-    after = [json.loads(line) for line in ledger.read_text().splitlines() if line.strip()]
+    files, after = _ledger(tmp_path)
     assert len(after) == 1
     record = after[-1]
     assert record["lane"] == "probe"
     assert "duration_seconds" in record
     assert "executed" in record
+    # One file per run, named by it: two branches never append to the same file.
+    assert [f.name for f in files] == [f"{record['run_id']}.jsonl"]
+
+
+def test_each_run_writes_its_own_ledger_file_and_the_report_reads_them_all(probe_file, tmp_path):
+    lanes = _write_lanes(tmp_path, probe_file, "false")  # failing: executes every time
+    _run(lanes, tmp_path)
+    time.sleep(1.1)  # run ids have one-second resolution
+    _run(lanes, tmp_path)
+
+    files, records = _ledger(tmp_path)
+    assert len(files) == 2 and len(records) == 2
+    report = subprocess.run(
+        [sys.executable, str(ROOT / "scripts" / "verify-report.py"), "--ledger", str(tmp_path / "verify" / "ledger")],
+        capture_output=True, text=True, check=True,
+    )
+    probe = next(line for line in report.stdout.splitlines() if line.startswith("probe"))
+    assert probe.split()[2:6] == ["2", "2", "0", "2"], probe  # runs, executed, reused, caught
 
 
 def test_an_unmet_precondition_is_red_not_skipped(probe_file, tmp_path):
