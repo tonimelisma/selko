@@ -577,7 +577,9 @@ The script handles seeding, starting the API, capturing and resizing. See `docs/
   fixed-width `YYYY-MM-DDTHH:MM:SS.ffffffZ` text. Tables are `STRICT`; JSON
   columns are `CHECK (json_valid(...))`. Migrations live in
   `backend/selko/db/migrations/` and apply at startup (`selko.db.migrate`, with
-  a hash-checked ledger and a `VACUUM INTO` backup before each).
+  a hash-checked ledger and a `VACUUM INTO` backup before each in
+  `<SELKO_DATA_DIR>/backups/pre-NNNN.db`; only the two newest are kept, about
+  300 MB each in production).
 - **Typed errors, not driver errors.** `selko.db.errors` translates SQLite
   failures into `NotFound`, `NotOwned`, `InvalidArgument`, `UniqueViolation`,
   `CheckViolation`, `ForeignKeyViolation`, `NotNullViolation`, `DbBusy` and the

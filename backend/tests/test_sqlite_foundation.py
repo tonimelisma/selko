@@ -125,6 +125,47 @@ def test_pending_migration_is_applied_after_a_backup(tmp_path):
     assert [r[1] for r in copy.execute("PRAGMA table_info(t)")] == ["x"]
 
 
+def test_only_the_newest_backups_are_kept(tmp_path):
+    """Each migration copies the whole database (~300 MB in production); old copies go."""
+    from selko.db.migrate import BACKUPS_KEPT
+
+    mdir = tmp_path / "m"
+    mdir.mkdir()
+    _write(mdir, "0001_a.sql", "CREATE TABLE t (x INTEGER) STRICT;")
+    path = tmp_path / "data" / "selko.db"
+    path.parent.mkdir()
+    migrate(path, mdir)
+    backups = path.parent / "backups"
+    for n in range(2, 6):
+        _write(mdir, f"{n:04d}_m{n}.sql", f"ALTER TABLE t ADD COLUMN c{n} INTEGER;")
+        migrate(path, mdir)
+    (backups / "keep-me.db").write_text("not a migration backup")
+    _write(mdir, "0006_m6.sql", "ALTER TABLE t ADD COLUMN c6 INTEGER;")
+    assert migrate(path, mdir) == ["0006_m6.sql"]
+    names = sorted(p.name for p in backups.iterdir())
+    assert BACKUPS_KEPT == 2
+    assert names == ["keep-me.db", "pre-0005.db", "pre-0006.db"]
+    # The newest copy is the database as it stood before 0006.
+    copy = sqlite3.connect(backups / "pre-0006.db")
+    assert "c6" not in [r[1] for r in copy.execute("PRAGMA table_info(t)")]
+
+
+def test_a_failed_migration_removes_no_backup(tmp_path):
+    mdir = tmp_path / "m"
+    mdir.mkdir()
+    _write(mdir, "0001_a.sql", "CREATE TABLE t (x INTEGER) STRICT;")
+    path = tmp_path / "data" / "selko.db"
+    path.parent.mkdir()
+    migrate(path, mdir)
+    for n in (2, 3):
+        _write(mdir, f"{n:04d}_m{n}.sql", f"ALTER TABLE t ADD COLUMN c{n} INTEGER;")
+        migrate(path, mdir)
+    _write(mdir, "0004_bad.sql", "ALTER TABLE nope ADD COLUMN z INTEGER;")
+    with pytest.raises(MigrationError):
+        migrate(path, mdir)
+    assert sorted(p.name for p in (path.parent / "backups").iterdir()) == ["pre-0002.db", "pre-0003.db", "pre-0004.db"]
+
+
 def test_failing_migration_rolls_back_whole(tmp_path):
     mdir = tmp_path / "m"
     mdir.mkdir()

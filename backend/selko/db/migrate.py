@@ -28,6 +28,11 @@ logger = logging.getLogger(__name__)
 
 MIGRATIONS_DIR = Path(__file__).parent / "migrations"
 _NAME = re.compile(r"^(\d{4})_[a-z0-9_]+\.sql$")
+_BACKUP = re.compile(r"^pre-(\d{4})\.db$")
+# Each migration first copies the whole database (VACUUM INTO), ~300 MB in
+# production, and nothing removed the old copies. Keep the newest few: the one
+# taken before the latest migration, and one before that.
+BACKUPS_KEPT = 2
 
 
 class MigrationError(RuntimeError):
@@ -145,9 +150,30 @@ def migrate(
                 raise MigrationError(f"{migration.name} failed and was rolled back: {exc}") from exc
             logger.info("migrate: applied %s", migration.name)
             names.append(migration.name)
+        if done:
+            prune_backups(backup_dir)
         return names
     finally:
         conn.close()
+
+
+def prune_backups(backup_dir: Path, keep: int = BACKUPS_KEPT) -> list[str]:
+    """Remove all but the ``keep`` newest ``pre-NNNN.db`` copies; returns the names removed.
+
+    Runs only after every pending migration applied, so the copy just taken is
+    always kept. Files of any other name are never touched.
+    """
+    copies = sorted(
+        (int(m.group(1)), path)
+        for path in backup_dir.iterdir()
+        if path.is_file() and (m := _BACKUP.match(path.name))
+    )
+    removed = []
+    for _version, path in copies[: max(len(copies) - keep, 0)]:
+        path.unlink()
+        logger.info("migrate: removed the old backup %s", path.name)
+        removed.append(path.name)
+    return removed
 
 
 def current_version(conn: sqlite3.Connection) -> int:
