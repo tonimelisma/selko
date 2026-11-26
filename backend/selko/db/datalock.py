@@ -2,12 +2,12 @@
 
 SQLite keeps one database consistent across processes, but Selko's design
 assumes a single process owns ``selko.db``: leases, the in-process work signals
-and the live bus are all process-local. Two servers on one directory, or the
-importer writing while a server runs, would each believe they own the work.
+and the live bus are all process-local. Two servers on one directory would each
+believe they own the work.
 The host's tooling prevents that; this lock is the second safeguard.
 
-The server (``selko.api`` and ``selko.worker_app``) and the importer take it for
-as long as they run. Operator commands (``python -m selko.admin``) do not: they
+The server (``selko.api`` and ``selko.worker_app``) takes it for as long as it
+runs. Operator commands (``python -m selko.admin``) do not: they
 are meant to run beside the server, and SQLite serializes their writes.
 
 The lock is ``flock``: the kernel releases it when the process exits, however

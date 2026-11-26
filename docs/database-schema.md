@@ -621,5 +621,6 @@ by `selko.db.migrate` whenever the process opens the database (or by
 `VACUUM INTO` backup in `<SELKO_DATA_DIR>/backups/`, with foreign keys checked
 before commit. Every database test applies them all to a fresh file.
 
-The data in the old hosted Postgres database is carried over once, at cutover,
-by `selko_import` (`docs/specs/sqlite-single-process/04-data-cutover.md`).
+The data in the old hosted Postgres database was carried over once, at the
+cutover on 2026-11-25, by a one-time importer since removed
+(`docs/specs/sqlite-single-process/04-data-cutover.md`).

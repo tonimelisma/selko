@@ -44,10 +44,10 @@ def test_a_second_owner_is_refused_and_named(tmp_path):
     first = datalock.acquire(tmp_path, "selko.api")
     try:
         with pytest.raises(datalock.DataDirLocked, match="selko.api"):
-            datalock.acquire(tmp_path, "selko_import database")
+            datalock.acquire(tmp_path, "selko.worker_app")
     finally:
         datalock.release(first)
-    again = datalock.acquire(tmp_path, "selko_import database")
+    again = datalock.acquire(tmp_path, "selko.worker_app")
     datalock.release(again)
 
 
@@ -65,7 +65,7 @@ def test_another_process_holds_it_until_it_dies(tmp_path):
 
 
 def test_a_server_refuses_before_touching_the_database(tmp_path):
-    holder = datalock.acquire(tmp_path, "selko_import database")
+    holder = datalock.acquire(tmp_path, "selko.worker_app")
     try:
         with pytest.raises(datalock.DataDirLocked):
             runtime.open_database(tmp_path, owner="selko.api")
@@ -77,7 +77,7 @@ def test_a_server_refuses_before_touching_the_database(tmp_path):
 def test_the_server_holds_it_until_close_and_operator_commands_still_open(tmp_path):
     runtime.open_database(tmp_path, owner="selko.api")
     with pytest.raises(datalock.DataDirLocked):
-        datalock.acquire(tmp_path, "selko_import database")
+        datalock.acquire(tmp_path, "selko.worker_app")
     # An operator command beside the running server: no owner, no lock.
     script = (
         "from selko.db.runtime import open_database;"
@@ -85,24 +85,5 @@ def test_the_server_holds_it_until_close_and_operator_commands_still_open(tmp_pa
     )
     subprocess.run([sys.executable, "-c", script], check=True)
     runtime.close_database()
-    handle = datalock.acquire(tmp_path, "selko_import database")
+    handle = datalock.acquire(tmp_path, "selko.worker_app")
     datalock.release(handle)
-
-
-def test_the_importer_exits_4_and_writes_nothing_while_the_server_runs(tmp_path, capsys):
-    import importlib
-    from pathlib import Path
-
-    root = Path(__file__).resolve().parents[3]
-    if str(root) not in sys.path:
-        sys.path.insert(0, str(root))
-    main = importlib.import_module("selko_import.__main__").main
-
-    url = tmp_path / "source.url"
-    url.write_text("postgresql://nobody@127.0.0.1:1/none")
-    runtime.open_database(tmp_path / "data", owner="selko.api")
-    assert main(["database", "--source-url-file", str(url), "--target", str(tmp_path / "data" / "new.db")]) == 4
-    assert main(["attachments", "--source-url-file", str(url), "--storage-url", "http://127.0.0.1:1",
-                 "--storage-key-file", str(url), "--data-dir", str(tmp_path / "data")]) == 4
-    assert "in use by selko.api" in capsys.readouterr().err
-    assert not (tmp_path / "data" / "new.db").exists()

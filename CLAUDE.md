@@ -70,7 +70,7 @@ This is the whole loop. Do not invent a different one per task.
 |---|---|---|
 | `backend` | prod | `./scripts/verify.sh backend`: unit + integration suites; every database test gets a fresh SQLite file with every migration applied |
 | `frontend` | prod | `./scripts/verify.sh frontend`: web unit tests and `svelte-check` |
-| `image` | prod | `./scripts/image-lane.sh`: builds the image and runs it the way the server does — read-only root, no capabilities, 400 MB, `/data` the only volume — then checks health and the production invariants, sign-up/sign-in/refresh, review + live update, attachment download, and a database imported from a Postgres fixture |
+| `image` | prod | `./scripts/image-lane.sh`: builds the image and runs it the way the server does — read-only root, no capabilities, 400 MB, `/data` the only volume — then checks health and the production invariants, sign-up/sign-in/refresh, review + live update, attachment download, and a database imported from Postgres (`backend/tests/fixtures/imported_from_postgres.sql`) |
 | `prod-health` | observe | `./scripts/check-production-health.sh`: the invariants below against running production |
 
 ### Checking that production is actually healthy
@@ -94,11 +94,8 @@ image is held to production's rules before it ships. **A check that never runs
 against the environment that matters is not a check**, and one that cannot
 return to green is ignored just as fast as one that cannot go red.
 
-**Production is `https://api.selkoapp.com`.** Until the cutover to the signed
-image, it still runs the previous (hosted-Postgres) build, whose listener and
-transport fields differ: this branch's `check-production-health.sh` is red
-against it by construction. For that deployment's deploy-log observations use
-its own assertions: `git show 7207aac5:scripts/assert-health.sh`.
+**Production is `https://api.selkoapp.com`**, the signed image on the server
+since the cutover (2026-11-25 22:00 UTC, `docs/deploy-log/2026-11-25-35f62d57.md`).
 
 ### Long-running commands: one at a time, stop what you start
 
@@ -319,7 +316,7 @@ dimension").
 | `backend/**` | `./scripts/verify.sh backend` |
 | `backend/selko/db/migrations/**` | `./scripts/verify.sh backend` — every database test applies every migration to a fresh file, so this is what proves the migration executes; plus a run on a production-shaped copy when it touches a populated table |
 | `frontend/src/**` | `./scripts/verify.sh frontend` + **web** screenshots |
-| `Dockerfile`, `.dockerignore`, `scripts/build-image.sh`, `scripts/image-*.sh`, `selko_import/**` | `./scripts/image-lane.sh` (its inputs include `backend/selko/**` and `frontend/src/**` too; `verify-lanes.py` runs it when any changed) |
+| `Dockerfile`, `.dockerignore`, `scripts/build-image.sh`, `scripts/image-*.sh`, `backend/tests/fixtures/imported_from_postgres.sql` | `./scripts/image-lane.sh` (its inputs include `backend/selko/**` and `frontend/src/**` too; `verify-lanes.py` runs it when any changed) |
 | `legacy/**` (the unmaintained iOS and Android apps) | Nothing: don't change them (`legacy/README.md`) |
 | `docs/`, `*.md`, `.env*`, other `scripts/`, `.claude/`, config only | Nothing to test — commit & push |
 
@@ -349,9 +346,11 @@ dimension").
   above was stated three times and broken three times; mocks cannot notice a
   module nobody imports, an import graph can.
 - **Nothing reaches a hosted database.** `backend/tests/test_no_hosted_database.py`
-  fails if any module under `backend/selko` imports supabase, postgrest,
-  asyncpg or psycopg. `selko_import` (outside the package, never in the image) is
-  the one reader of the old Postgres database.
+  fails if any Python file in the repository imports supabase, postgrest,
+  asyncpg or psycopg, or `uv.lock` carries one. The one-time importer was
+  removed after the cutover; the database it made from the Postgres fixture is
+  kept as `backend/tests/fixtures/imported_from_postgres.sql`, and every
+  migration must still apply to it (`backend/tests/db/test_imported_fixture.py`).
 - **Never narrow a CHECK constraint without checking its writers.** Enumerated
   text domains are pinned in `backend/tests/schema_domains.py`
   (`EXPECTED_CHECK_DOMAINS`, asserted by `test_sqlite_schema.py`).
@@ -396,7 +395,7 @@ these numbers. Match the dimension instead:
 | Dimension your change touches | Required beyond the lanes |
 |---|---|
 | A one-line config or env var | Verify the value **in the target environment**. A correct diff plus a missing value is an outage; `.env.example` proves nothing |
-| Migration touching a populated table | Run it on a copy of a production-shaped database (`selko_import` output, or the fixture in `selko_import/fixture/`). A migration that applies cleanly to an empty file has not been tested |
+| Migration touching a populated table | Run it on a copy of a production-shaped database (`backend/tests/fixtures/imported_from_postgres.sql` at least; for a large table, a copy made on the server). A migration that applies cleanly to an empty file has not been tested |
 | Worker, loop, or long-running path | Watch RSS and `/health/egress` over hours, recorded in the deploy log. A laptop has no memory ceiling and no token expiry |
 | New user-owned table | Its `selko.db` functions take `user_id` (`backend/tests/db/test_ownership.py` fails otherwise) |
 | New code path behind a flag or injected dependency | A test asserting the dependency actually reaches the call site |
@@ -446,7 +445,7 @@ above are the only ones. The native iOS and Android apps are unmaintained
 - [ ] `./scripts/merge-and-cleanup.sh <pr_number>` — squash-merges over REST and cleans up: GitHub deletes the remote branch itself, the script deletes the local branch, moves the clone to the merged `main` (cloud) or fast-forwards `main` and removes the worktree (Mac). **Does not wait on CI.**
 - [ ] **Check CI on `main` and fix forward if it ran and failed** — the `actions/runs?branch=main` query under "CI Ownership". On `main`, `image.yml` is what publishes `ghcr.io/tonimelisma/selko:<sha>`: a red image job means nothing new ships; a green `release` job means production picks it up.
 - [ ] If your change ships (`backend`/`frontend`/image), **report the `--gate prod` lane table** with the merge: it is the evidence the release went out on.
-- [ ] **Production deploys are automatic.** A merge to `main` builds and checks the images, pushes them as `:<sha>`, and the `release` job signs both digests and moves `:main`; the server follows `:main` within minutes and accepts only signed digests (cosign identity: `image.yml` on `refs/heads/main`). Deployment itself lives outside this repository. So the lanes passing before the merge *is* the release decision: never merge red. The first cutover from the previous hosted-Postgres build imports its data once, on the server, with the signed importer image `ghcr.io/tonimelisma/selko-import:<sha>` (`database` copies and checksums every table; `attachments` copies every Storage object and verifies its size and SHA-256; secrets are read from files, never a command line; database exit 3 = schema drift or leftover Google Photos data, 5 = verification failed, nothing written; attachments exit 6 = missing or mismatched objects, re-runnable) — `docs/specs/sqlite-single-process/04-data-cutover.md`.
+- [ ] **Production deploys are automatic.** A merge to `main` builds and checks the image, pushes it as `:<sha>`, and the `release` job signs the digest and moves `:main`; a change only to docs or Markdown releases nothing (`paths-ignore`); the server follows `:main` within minutes and accepts only signed digests (cosign identity: `image.yml` on `refs/heads/main`). Deployment itself lives outside this repository. So the lanes passing before the merge *is* the release decision: never merge red. The one-time cutover from the hosted-Postgres build is done (`docs/specs/sqlite-single-process/04-data-cutover.md`); its importer was removed from the tree afterwards (the signed `ghcr.io/tonimelisma/selko-import:35f62d57` remains in the registry).
 - [ ] **After any production deploy, open a `docs/deploy-log/<date>-<sha>.md` entry from `TEMPLATE.md` and fill the T+0 and T+15m rows before reporting done.** The T+24h row is filled the next day. Config, real-data and elapsed-time failures are only observable here — a deploy is not finished when it is applied, it is finished when it has been watched. Always fill in "which gate should have caught it"; that is what turns an incident into a permanent gate improvement instead of folklore.
 
 See `docs/parallel-agents.md` for the full workflow. See `docs/ci-cd.md` for CI architecture details.
@@ -457,7 +456,7 @@ See `docs/parallel-agents.md` for the full workflow. See `docs/ci-cd.md` for CI 
 lanes in the session. Workflows: `test.yml` (the whole backend suite),
 `frontend-tests.yml` (web unit tests, `svelte-check`, build), `image.yml`
 (build, image check, and on `main` push `:<sha>`; its `release` job then
-cosign-signs both images and moves `:main`, which production follows).
+cosign-signs the image and moves `:main`, which production follows; a docs- or Markdown-only change runs no image job).
 
 **A red CI is never left red.** A status nobody reads is worse than no status.
 
@@ -556,9 +555,8 @@ The script handles seeding, starting the API, capturing and resizing. See `docs/
   in `SELKO_DATA_DIR` (`/data` in the image): `selko.db` and `attachments/`.
   Settings come from an env file. The root filesystem is never written.
 - **One owner per data directory.** The server (`selko.api`, `selko.worker_app`)
-  and the importer hold an exclusive `flock` on `<SELKO_DATA_DIR>/.selko.lock`
-  for as long as they run (`selko.db.datalock`); a second owner refuses to start
-  (the importer exits 4). Operator commands (`selko.admin`) take no lock and run
+  holds an exclusive `flock` on `<SELKO_DATA_DIR>/.selko.lock` for as long as
+  it runs (`selko.db.datalock`); a second owner refuses to start. Operator commands (`selko.admin`) take no lock and run
   beside the server. The host's tooling also prevents two containers on one
   directory; the lock is the second safeguard.
 - **One writer, many readers.** `selko.db.Database` keeps one writer connection
@@ -671,8 +669,8 @@ from a Microsoft Entra app registration.
 
 **Never move production credentials or data into development.** Production
 holds real users' OAuth refresh tokens and mail; a development machine is a
-lower-trust environment. Never copy production's `selko.db`, its attachments or
-an import of its old database anywhere but the server that runs production.
+lower-trust environment. Never copy production's `selko.db` or its attachments
+anywhere but the server that runs production.
 Reading production state for diagnosis is fine (health endpoints, counts).
 Print no tokens and copy nothing.
 

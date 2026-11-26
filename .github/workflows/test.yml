@@ -30,7 +30,6 @@ jobs:
           filters: |
             backend:
               - 'backend/**'
-              - 'selko_import/**'
               - 'scripts/seed_screenshot_data.py'
               - 'pyproject.toml'
               - 'uv.lock'

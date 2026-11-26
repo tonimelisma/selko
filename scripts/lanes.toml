@@ -28,8 +28,6 @@ inputs = [
     "pyproject.toml",
     "uv.lock",
     "scripts/verify.sh",
-    # The importer and its frozen fixture are tested by this suite.
-    "selko_import/**",
     # Seeded and asserted by test_integration_seed_fixtures.py.
     "scripts/seed_screenshot_data.py",
     # Read by test_gate_contract.py: the workflow structure is asserted here.
@@ -78,7 +76,7 @@ inputs = [
 
 [lanes.image]
 gate = "prod"
-description = "The image under the server's limits: health, auth, review, live, attachment, import from a Postgres fixture"
+description = "The image under the server's limits: health, auth, review, live, attachment, a database imported from the Postgres fixture"
 # Builds the image and runs scripts/image-check.sh on it with a read-only
 # root, no capabilities, 400 MB and /data as the only volume -- the same
 # script .github/workflows/image.yml runs on the image it pushes and signs.
@@ -96,7 +94,7 @@ inputs = [
     "frontend/vite.config.js",
     "pyproject.toml",
     "uv.lock",
-    "selko_import/**",
+    "backend/tests/fixtures/imported_from_postgres.sql",
     "scripts/build-image.sh",
     "scripts/image-check.sh",
     "scripts/image-lane.sh",

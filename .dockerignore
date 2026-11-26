@@ -1,13 +1,10 @@
-# Only what the images build from: backend/selko, selko_import (the importer
-# image), frontend sources, the lockfiles.
+# Only what the image builds from: backend/selko, frontend sources, the lockfiles.
 *
 !pyproject.toml
 !uv.lock
 !backend/pyproject.toml
 !backend/README.md
 !backend/selko/**
-!selko_import/*.py
-!selko_import/columns.json
 !frontend/package.json
 !frontend/package-lock.json
 !frontend/jsconfig.json

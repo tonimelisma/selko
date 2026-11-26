@@ -8,7 +8,7 @@
 #   cannot write outside /data; sign-up and sign-in work (refresh cookie
 #   included); a demo event can be reviewed; the accept reaches a live stream;
 #   the event's attachment downloads byte for byte; memory stays under the limit.
-# With IMPORTED_DB (a selko.db made by selko_import), it starts a second
+# With IMPORTED_DB (a selko.db imported from Postgres), it starts a second
 # container on a volume holding that file and checks it migrates, serves, and
 # that the fixture account signs in with its carried password and sees its
 # events.

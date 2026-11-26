@@ -2,15 +2,17 @@
 # main release them. A merge to main is a release: production follows :main
 # automatically (Toni, 2026-11-25).
 #
-# image   (every push and PR) builds ghcr.io/tonimelisma/selko and the one-time
-#         importer ghcr.io/tonimelisma/selko-import, and checks them with
-#         scripts/image-lane.sh. On main it pushes both as :<sha>, unsigned.
+# image   (every push and PR) builds ghcr.io/tonimelisma/selko and checks it
+#         with scripts/image-lane.sh. On main it pushes it as :<sha>, unsigned.
 #         Nothing is pushed unless every check passed, and the image that was
 #         checked is the image that is pushed (one build, pushed by digest).
-# release (main only, after image passes) signs both digests with cosign
-#         (keyless) and moves :main to them. The server follows :main and
+# release (main only, after image passes) signs the digest with cosign
+#         (keyless) and moves :main to it. The server follows :main and
 #         accepts only signed digests, so only images that passed every check
 #         reach production.
+#
+# A change only to docs or other Markdown builds nothing: the image does not
+# contain them, and a release would restart production on identical code.
 #
 # A server verifies a pulled image with:
 #   cosign verify ghcr.io/tonimelisma/selko:<sha or main> \
@@ -21,7 +23,9 @@ name: Image
 on:
   push:
     branches: [main]
+    paths-ignore: ['docs/**', '**/*.md', 'legacy/**']
   pull_request:
+    paths-ignore: ['docs/**', '**/*.md', 'legacy/**']
   workflow_dispatch:
 
 permissions:
@@ -39,27 +43,20 @@ jobs:
       packages: write   # push :<sha> to ghcr.io (main only)
     env:
       IMAGE: ghcr.io/tonimelisma/selko:${{ github.sha }}
-      # The one-time cutover importer: a separate image, so the app image never
-      # carries a Postgres driver.
-      IMPORTER: ghcr.io/tonimelisma/selko-import:${{ github.sha }}
     outputs:
       digest: ${{ steps.push.outputs.digest }}
-      importer_digest: ${{ steps.push.outputs.importer_digest }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
-      - name: Build the images
+      - name: Build the image
         run: |
           docker build --build-arg "GIT_COMMIT_SHA=${GITHUB_SHA}" -t "$IMAGE" .
-          docker build --build-arg "GIT_COMMIT_SHA=${GITHUB_SHA}" --target importer -t "$IMPORTER" .
-          docker image inspect "$IMAGE" "$IMPORTER" --format '{{index .RepoTags 0}} {{.Size}} bytes'
+          docker image inspect "$IMAGE" --format '{{index .RepoTags 0}} {{.Size}} bytes'
 
-      # The same script as the session's image lane: a throwaway Postgres holding
-      # selko_import/fixture, imported with the importer image, then image-check.sh.
+      # The same script as the session's image lane: a fresh database, then the
+      # database imported from the Postgres fixture.
       - name: Check the image (read-only root, no capabilities, 400 MB, /data only)
-        env:
-          SELKO_FIXTURE_POSTGRES_IMAGE: postgres:17
-        run: ./scripts/image-lane.sh "$IMAGE" "$IMPORTER"
+        run: ./scripts/image-lane.sh "$IMAGE"
 
       - name: Push :<sha>
         id: push
@@ -69,12 +66,9 @@ jobs:
         run: |
           echo "$GH_TOKEN" | docker login ghcr.io -u "${GITHUB_ACTOR}" --password-stdin
           docker push -q "$IMAGE"
-          docker push -q "$IMPORTER"
           digest="$(docker image inspect "$IMAGE" --format '{{index .RepoDigests 0}}')"
-          importer_digest="$(docker image inspect "$IMPORTER" --format '{{index .RepoDigests 0}}')"
-          echo "pushed $digest and $importer_digest"
+          echo "pushed $digest"
           echo "digest=$digest" >> "$GITHUB_OUTPUT"
-          echo "importer_digest=$importer_digest" >> "$GITHUB_OUTPUT"
 
   release:
     needs: image
@@ -100,26 +94,24 @@ jobs:
       # `docker buildx imagetools create` does) would leave :main on an
       # unsigned digest, which the server rightly refuses. So the job proves
       # it: :main resolves to the signed digest and verifies by itself.
-      - name: Sign both digests and move :main to them
+      - name: Sign the digest and move :main to it
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DIGEST: ${{ needs.image.outputs.digest }}
-          IMPORTER_DIGEST: ${{ needs.image.outputs.importer_digest }}
         run: |
           echo "$GH_TOKEN" | docker login ghcr.io -u "${GITHUB_ACTOR}" --password-stdin
           identity="https://github.com/${GITHUB_REPOSITORY}/.github/workflows/image.yml@refs/heads/main"
           issuer="https://token.actions.githubusercontent.com"
-          for ref in "$DIGEST" "$IMPORTER_DIGEST"; do
-            repo="${ref%@*}"
-            digest="${ref#*@}"
-            cosign sign --yes "$ref"
-            cosign verify "$ref" --certificate-identity "$identity" --certificate-oidc-issuer "$issuer" >/dev/null
-            crane tag "$ref" main
-            moved="$(crane digest "$repo:main")"
-            if [ "$moved" != "$digest" ]; then
-              echo "::error::$repo:main is $moved, not the signed $digest"
-              exit 1
-            fi
-            cosign verify "$repo:main" --certificate-identity "$identity" --certificate-oidc-issuer "$issuer" >/dev/null
-            echo "released $ref as $repo:main (same digest, signature verified on :main)"
-          done
+          ref="$DIGEST"
+          repo="${ref%@*}"
+          digest="${ref#*@}"
+          cosign sign --yes "$ref"
+          cosign verify "$ref" --certificate-identity "$identity" --certificate-oidc-issuer "$issuer" >/dev/null
+          crane tag "$ref" main
+          moved="$(crane digest "$repo:main")"
+          if [ "$moved" != "$digest" ]; then
+            echo "::error::$repo:main is $moved, not the signed $digest"
+            exit 1
+          fi
+          cosign verify "$repo:main" --certificate-identity "$identity" --certificate-oidc-issuer "$issuer" >/dev/null
+          echo "released $ref as $repo:main (same digest, signature verified on :main)"

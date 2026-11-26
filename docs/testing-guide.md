@@ -32,11 +32,11 @@ def test_something(db, factory):
     ...
 ```
 
-**One exception needs Docker:** the importer tests
-(`backend/tests/integration/test_import_from_postgres.py`) start a throwaway
-Postgres container holding `selko_import/fixture/`, or use the server named by
-`SELKO_IMPORT_TEST_POSTGRES_URL`. Without either they fail; they never skip,
-because they are the only proof the cutover tool works.
+No test needs Docker or a database service. The database the one-time
+importer made from the Postgres fixture is kept as
+`backend/tests/fixtures/imported_from_postgres.sql`;
+`backend/tests/db/test_imported_fixture.py` migrates it and signs in its
+account, so every migration must still apply to an imported database.
 
 Route tests run the real app (`create_app()`) over that database with a real
 access token from `selko.services.accounts`. Streaming routes (`/live`) are
@@ -64,8 +64,8 @@ or nothing proves the API sends it.
 `scripts/image-check.sh` runs the image with a read-only root, no capabilities,
 a 400 MB limit and `/data` as the only volume, and checks `/health`, the
 production health invariants, sign-up/sign-in/refresh, review with a live
-update, attachment download, and a database imported from the Postgres fixture
-in `selko_import/fixture/`.
+update, attachment download, and the database imported from the Postgres
+fixture (`backend/tests/fixtures/imported_from_postgres.sql`).
 
 The native iOS and Android apps are unmaintained and have no tests to run
 (`legacy/README.md`).
@@ -74,7 +74,7 @@ The native iOS and Android apps are unmaintained and have no tests to run
 
 | Marker | Description | Requirements |
 |--------|-------------|--------------|
-| `integration` | Tests under `backend/tests/integration/` | None (SQLite); the importer tests need Docker |
+| `integration` | Tests under `backend/tests/integration/` | None (SQLite) |
 | `llm` / `--run-llm` | Tests requiring real LLM API calls | Provider keys |
 
 ## Test Architecture

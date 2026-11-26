@@ -7,8 +7,8 @@ Future enhancements for Selko, documented for prioritization.
 Parked 2026-07-13 on cost/value, after Google Photos library-wide read access was
 revoked, and removed 2026-11-25: the routes, services, worker, the `photos` and
 `scheduled_tasks` tables, the `google_photos` provider and source values, and the
-photo-source rendering in the web app. The importer refuses a source database that
-still holds any photo data rather than drop it (`selko_import`, exit 3).
+photo-source rendering in the web app. The cutover importer refused a source database that
+still held any photo data rather than drop it; production's had none.
 **Do not re-propose until the cost/value picture changes.** The OneDrive ingestion
 design and the earlier surface-removal procedure are recoverable from git:
 

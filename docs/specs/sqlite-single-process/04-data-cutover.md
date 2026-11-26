@@ -1,5 +1,13 @@
 # 05 — Data conversion, import tool, cutover, rollback, risks (Q7)
 
+> **Done and removed.** The cutover ran on 2026-11-25 (T+0 22:00 UTC,
+> `docs/deploy-log/2026-11-25-35f62d57.md`). The importer (`selko_import/`, the
+> `importer` Dockerfile target) was deleted from the tree afterwards; the signed
+> `ghcr.io/tonimelisma/selko-import:35f62d57` remains in the registry, and the
+> database it made from the Postgres fixture is kept as
+> `backend/tests/fixtures/imported_from_postgres.sql`. The rest of this file is
+> the historical record of how it worked.
+
 Part of the plan for `docs/specs/sqlite-single-process.md`. This file covers
 increment Q7 (cutover) and the import tool it needs. The source schema was
 read from the repository and the local stack on 2026-11-25 (all 120 Postgres

@@ -74,7 +74,7 @@ SQLite instead:**
 | S5 | `/live` on the bus; the web app moves off supabase-js ([03 §C–D](03-api-auth-web.md)) | frontend lane; web screenshots — **done 2026-11-25** (24 captures over SQLite) |
 | S6 | Import tool and its round-trip test on a seeded Postgres fixture ([04 §A–B](04-data-cutover.md)) | [05 §B.3](05-verification.md) — **done 2026-11-25** (`selko_import/fixture/`, exit 5 on a refused row) |
 | S7 | Image workflow: build, sign with cosign on `main`, the image job under the VM limits ([05 §B.10](05-verification.md)) | the end-state table — **built 2026-11-25**: `image.yml` + `scripts/image-lane.sh` pass locally; the first green run on `main` completes it |
-| S8 | Remove Supabase, asyncpg, Render, `supabase/`, staging tooling; lanes, hooks, CI, CLAUDE.md and docs ([05 §C–D](05-verification.md)) | every lane green; no `supabase`/`asyncpg` in source, lockfile or image — **done 2026-11-25** (`asyncpg` remains only as the workspace root's dependency for `selko_import`, never in the image) |
+| S8 | Remove Supabase, asyncpg, Render, `supabase/`, staging tooling; lanes, hooks, CI, CLAUDE.md and docs ([05 §C–D](05-verification.md)) | every lane green; no `supabase`/`asyncpg` in source, lockfile or image — **done 2026-11-25** ; `selko_import` and `asyncpg` removed after the cutover, 2026-11-26 |
 
 ## Decisions recorded here
 
@@ -86,7 +86,7 @@ SQLite instead:**
 | D4 | `/live` is a streaming `fetch` with the normal `Authorization` header | one auth path; no tokens in URLs or logs ([03 §C.2](03-api-auth-web.md)) |
 | D5 | SQLite triggers call Python functions registered on the writer connection for timestamps and events | a write from any other connection fails rather than skipping the event bus ([02 §0](02-data-layer.md)) |
 | D6 | `estimated_cost_usd` stays REAL under its name (not micro-dollar integers, as 01 first proposed) | report-only; renaming would ripple for no benefit |
-| D7 | The importer lives in a sibling package, `selko_import/`, deleted after the cutover | it needs a Postgres driver, which `selko` must not import ([04 §B.1](04-data-cutover.md)) |
+| D7 | The importer lives in a sibling package, `selko_import/`, deleted after the cutover (**deleted 2026-11-26**) | it needs a Postgres driver, which `selko` must not import ([04 §B.1](04-data-cutover.md)) |
 | D8 | Attachment files keep their existing `storage_path` layout | the column's checksum stays valid through the import ([04 §B.7](04-data-cutover.md)) |
 
 ## What the research found broken today

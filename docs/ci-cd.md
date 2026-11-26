@@ -22,31 +22,30 @@ cost nothing.
 
 | Workflow | Runs on | Jobs |
 |----------|---------|------|
-| `test.yml` | push to `main`, PRs (path-filtered: `backend/**`, `selko_import/**`, `scripts/seed_screenshot_data.py`, `pyproject.toml`, `uv.lock`) | `unit-tests`: the whole backend suite, unit + integration (SQLite needs no service) |
+| `test.yml` | push to `main`, PRs (path-filtered: `backend/**`, `scripts/seed_screenshot_data.py`, `pyproject.toml`, `uv.lock`) | `unit-tests`: the whole backend suite, unit + integration (SQLite needs no service) |
 | `frontend-tests.yml` | push to `main`, PRs touching `frontend/**` | `unit-tests` (Vitest), `build` (build + `svelte-check`) |
-| `image.yml` | push to `main`, PRs, manual | `image`: build both images → `scripts/image-lane.sh` → on `main` only, push `:<sha>` unsigned; `release`: cosign-sign both digests, move `:main` (production follows it) |
+| `image.yml` | push to `main`, PRs, manual; not for a change only to `docs/**`, `**/*.md` or `legacy/**` | `image`: build → `scripts/image-lane.sh` → on `main` only, push `:<sha>` unsigned; `release`: cosign-sign the digest, move `:main` (production follows it) |
 
 ## image.yml
 
 ```
 image (every push and PR)
     docker build -t ghcr.io/tonimelisma/selko:<sha> .
-    docker build --target importer -t ghcr.io/tonimelisma/selko-import:<sha> .
         |
-    scripts/image-lane.sh <image> <importer>
-        |-- throwaway Postgres holding selko_import/fixture, imported with the
-        |   importer image (read-only, no capabilities)
+    scripts/image-lane.sh <image>
+        |-- loads backend/tests/fixtures/imported_from_postgres.sql (the
+        |   database the one-time importer made from the Postgres fixture)
         |-- scripts/image-check.sh: read-only root, --cap-drop ALL,
         |   no-new-privileges, 400 MB, /data the only volume; /health, health
         |   invariants, web shell, non-root, no Postgres/Supabase client, the
         |   data-directory lock, sign-up/sign-in/refresh, review + /live,
         |   attachment download, memory, the imported database
         |
-    main only: docker push :<sha> for both (unsigned)
+    main only: docker push :<sha> (unsigned)
 
 release (main only, after image passes)
-    cosign sign --yes <digest>, cosign verify <digest>   (both images)
-    crane tag <digest> main  (both images; :main is the signed digest itself,
+    cosign sign --yes <digest>, cosign verify <digest>
+    crane tag <digest> main  (:main is the signed digest itself,
                               asserted, and cosign verify passes on :main)
 ```
 
