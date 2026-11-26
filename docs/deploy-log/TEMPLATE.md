@@ -17,6 +17,8 @@
 ## Observation
 
 Run `./scripts/check-production-health.sh` at each window and paste the result.
+RSS is `/health` → `memory.rss_bytes` (and `cgroup_current_bytes` against
+`cgroup_limit_bytes`, what the OOM killer acts on).
 It asserts the invariants that must hold whatever the worker posture: no dead
 letters, no stale or unclaimable work, workers alive, listener connected.
 | Window | /health | ingestion | egress | RSS | dead letters | task restarts |

@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -63,6 +64,42 @@ def _pending_email_metrics() -> dict[str, int | None]:
         return {"pending_emails": None, "oldest_pending_age_seconds": None}
 
 
+def _read_int(path: str) -> int | None:
+    try:
+        text = Path(path).read_text().strip()
+    except OSError:
+        return None
+    return int(text) if text.isdigit() else None
+
+
+def memory_snapshot(proc_status: str = "/proc/self/status", cgroup: str = "/sys/fs/cgroup") -> dict[str, int | None]:
+    """Resident and peak memory of this process, and the cgroup's usage and limit.
+
+    Every value is None where the platform does not expose it (no /proc, no
+    cgroup v2, or ``memory.max`` reading ``max``): absent, never a guess.
+    """
+    fields: dict[str, int | None] = {"rss_bytes": None, "peak_rss_bytes": None}
+    try:
+        for line in Path(proc_status).read_text().splitlines():
+            key, _, value = line.partition(":")
+            parts = value.split()
+            if key in ("VmRSS", "VmHWM") and len(parts) == 2 and parts[1] == "kB" and parts[0].isdigit():
+                fields["rss_bytes" if key == "VmRSS" else "peak_rss_bytes"] = int(parts[0]) * 1024
+    except OSError:
+        pass
+    # cgroup v2 (the server, CI) first, then v1, whose "no limit" is a huge number.
+    current = _read_int(f"{cgroup}/memory.current")
+    limit = _read_int(f"{cgroup}/memory.max")
+    if current is None:
+        current = _read_int(f"{cgroup}/memory/memory.usage_in_bytes")
+        limit = _read_int(f"{cgroup}/memory/memory.limit_in_bytes")
+        if limit is not None and limit >= 1 << 60:
+            limit = None
+    fields["cgroup_current_bytes"] = current
+    fields["cgroup_limit_bytes"] = limit
+    return fields
+
+
 @router.get("/health", response_model=HealthResponse)
 async def health_check(config: Config = Depends(get_config)) -> HealthResponse:
     """Basic health check endpoint.
@@ -77,6 +114,7 @@ async def health_check(config: Config = Depends(get_config)) -> HealthResponse:
         started_at=resolution_metrics.started_at.isoformat(),
         requests=request_metrics.snapshot(),
         resolution=resolution,
+        memory=memory_snapshot(),
     )
 
 

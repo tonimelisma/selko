@@ -6,7 +6,9 @@
 > `ghcr.io/tonimelisma/selko-import:35f62d57` remains in the registry, and the
 > database it made from the Postgres fixture is kept as
 > `backend/tests/fixtures/imported_from_postgres.sql`. The rest of this file is
-> the historical record of how it worked.
+> the historical record of how it worked. The old stack (the Render services
+> and the production Supabase project) was deleted on 2026-11-26, so the
+> rollback paths below no longer exist.
 
 Part of the plan for `docs/specs/sqlite-single-process.md`. This file covers
 increment Q7 (cutover) and the import tool it needs. The source schema was

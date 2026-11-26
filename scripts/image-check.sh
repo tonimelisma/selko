@@ -145,7 +145,11 @@ code="$(curl -sS -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $OTHER
 pass "attachment download (owner only)"
 
 usage="$(docker stats --no-stream --format '{{.MemUsage}}' "$CURRENT")"
-pass "memory $usage (limit 400 MiB)"
+memory="$(curl -fsS "$BASE/health" | json 'd["memory"]')"
+[[ "$(curl -fsS "$BASE/health" | json 'd["memory"]["cgroup_limit_bytes"]')" == "419430400" ]] \
+  || fail "/health does not report the container's 400 MiB limit: $memory"
+(( $(curl -fsS "$BASE/health" | json 'd["memory"]["rss_bytes"] or 0') > 0 )) || fail "/health reports no resident memory: $memory"
+pass "memory $usage (limit 400 MiB); /health reports it: $memory"
 
 # --- 2. a database imported from Postgres -------------------------------------
 

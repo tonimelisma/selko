@@ -103,6 +103,11 @@ class HealthResponse(BaseModel):
     #: returned 500 for eight days with all other invariants green.
     requests: dict[str, object] = {}
     resolution: dict[str, object] = {}
+    #: This process's resident memory and, inside a container, the cgroup's
+    #: usage against its limit (what the kernel's OOM killer acts on). Without
+    #: it a leak was visible only from the host: 138 -> 231 MiB in 2h20m after
+    #: the cutover was seen by the server's operator, never by the deploy log.
+    memory: dict[str, int | None] = {}
 
 
 class HealthDbResponse(BaseModel):

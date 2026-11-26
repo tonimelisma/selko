@@ -146,6 +146,41 @@ class TestHealthEndpoints:
         assert resp.status_code == 200
         assert resp.json()["build_sha"] == "abc123"
 
+    def test_health_publishes_this_process_memory(self, test_client, health_db):
+        memory = test_client.get("/health").json()["memory"]
+        # The suite runs on Linux: /proc is there, so these are real numbers.
+        assert memory["rss_bytes"] > 10 * 1024 * 1024
+        assert memory["peak_rss_bytes"] >= memory["rss_bytes"]
+        assert set(memory) == {"rss_bytes", "peak_rss_bytes", "cgroup_current_bytes", "cgroup_limit_bytes"}
+
+    def test_memory_snapshot_reads_proc_and_cgroup_and_reports_absence_as_none(self, tmp_path):
+        from selko.api.routes.health import memory_snapshot
+
+        status_file = tmp_path / "status"
+        status_file.write_text("Name:\tpython\nVmHWM:\t  240000 kB\nVmRSS:\t  131072 kB\n")
+        cgroup = tmp_path / "cg"
+        cgroup.mkdir()
+        (cgroup / "memory.current").write_text("150000000\n")
+        (cgroup / "memory.max").write_text("419430400\n")
+        assert memory_snapshot(str(status_file), str(cgroup)) == {
+            "rss_bytes": 131072 * 1024,
+            "peak_rss_bytes": 240000 * 1024,
+            "cgroup_current_bytes": 150000000,
+            "cgroup_limit_bytes": 419430400,
+        }
+        (cgroup / "memory.max").write_text("max\n")  # no limit set
+        assert memory_snapshot(str(tmp_path / "missing"), str(cgroup)) == {
+            "rss_bytes": None, "peak_rss_bytes": None,
+            "cgroup_current_bytes": 150000000, "cgroup_limit_bytes": None,
+        }
+        v1 = tmp_path / "v1"
+        (v1 / "memory").mkdir(parents=True)
+        (v1 / "memory" / "memory.usage_in_bytes").write_text("99000000\n")
+        (v1 / "memory" / "memory.limit_in_bytes").write_text("419430400\n")
+        assert memory_snapshot(str(status_file), str(v1))["cgroup_limit_bytes"] == 419430400
+        (v1 / "memory" / "memory.limit_in_bytes").write_text("9223372036854771712\n")  # v1's "no limit"
+        assert memory_snapshot(str(status_file), str(v1))["cgroup_limit_bytes"] is None
+
     def test_health_degraded_when_work_state_reports_degraded(self, test_client, health_db, factory):
         factory.email(factory.user(), processing_status="processing")  # no lease: stale
         resp = test_client.get("/health")
