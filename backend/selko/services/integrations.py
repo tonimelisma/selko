@@ -13,10 +13,28 @@ from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import Flow
+from typing import TYPE_CHECKING
+
 from selko.config import Config
 from selko.db import integrations as db_integrations
+
+if TYPE_CHECKING:
+    from google.oauth2.credentials import Credentials
+
+# The Google client stack (google.oauth2, discovery, oauthlib) costs ~20 MiB
+# resident; it loads on the first Google call, not at startup, so an
+# Outlook-only deployment never pays for it.
+
+
+class Flow:
+    """google_auth_oauthlib's Flow, imported on first use (tests patch this name)."""
+
+    @staticmethod
+    def from_client_config(*args: Any, **kwargs: Any) -> Any:
+        from google_auth_oauthlib.flow import Flow as _Flow
+
+        return _Flow.from_client_config(*args, **kwargs)
+
 from selko.db import recovery as db_recovery
 from selko.db.connection import Database
 from selko.db.errors import DbError
@@ -310,6 +328,8 @@ def get_oauth_credentials(
             expiry = _parse_token_expiry(row["token_expiry"])
 
         # Reconstruct credentials with client_id/secret for refresh
+        from google.oauth2.credentials import Credentials
+
         creds = Credentials(
             token=row["access_token"],
             refresh_token=row.get("refresh_token"),

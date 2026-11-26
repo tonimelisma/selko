@@ -406,7 +406,7 @@ def fetch_email_with_attachments(
             email = db_emails.get_for_extraction(supabase_client, email_id)
             if email is None:
                 raise LLMGatewayError(f"Email not found: {email_id}")
-        logger.debug(f"Fetched email: {email.get('subject', '(no subject)')}")
+        logger.debug(f"Fetched email {email.get('id')}")
 
         # Build metadata
         email_metadata = {

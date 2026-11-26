@@ -9,16 +9,22 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any, Iterable, Optional
 
+from typing import TYPE_CHECKING
+
 from google.auth.exceptions import RefreshError
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
-from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from selko.db.connection import Database
 
 from selko.config import Config
 from selko.services.egress import GMAIL, record_egress
 from selko.services.google_errors import google_error_reason
+if TYPE_CHECKING:
+    from google.oauth2.credentials import Credentials
+
+# The Google client stack (google.oauth2, discovery, oauthlib) costs ~20 MiB
+# resident; it loads on the first Google call, not at startup, so an
+# Outlook-only deployment never pays for it.
+
 from selko.services.integrations import (
     get_oauth_credentials,
     update_integration_status,
@@ -115,6 +121,8 @@ def get_gmail_credentials(
     if creds.expired and creds.refresh_token:
         try:
             logger.info("Token expired, refreshing...")
+            from google.auth.transport.requests import Request
+
             creds.refresh(Request())
 
             # Retry save up to 3 times for atomicity
@@ -162,6 +170,8 @@ def build_service(credentials: Credentials):
     Returns:
         Gmail API service object.
     """
+    from googleapiclient.discovery import build
+
     return build("gmail", "v1", credentials=credentials)
 
 

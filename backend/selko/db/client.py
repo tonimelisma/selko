@@ -96,18 +96,29 @@ def events_with_relations(
     return [events[i] for i in ids]
 
 
-def review_event_ids(db: Database, user_id: str, now: str) -> list[str]:
-    """E1: upcoming owned events that are new, or active with a pending change."""
-    return [r[0] for r in db.query(
-        "SELECT e.id FROM events e WHERE e.user_id = ?"
-        " AND e.review_status IN ('pending_review', 'active')"
-        " AND (e.end_datetime >= ? OR (e.end_datetime IS NULL AND e.start_datetime >= ?)"
-        "      OR (e.end_datetime IS NULL AND e.start_datetime IS NULL))"
-        " AND (e.review_status = 'pending_review' OR EXISTS ("
-        "      SELECT 1 FROM event_change_proposals p WHERE p.event_id = e.id AND p.status = 'pending'))"
-        " ORDER BY e.start_datetime IS NULL, e.start_datetime, e.id",
-        (user_id, now, now),
+_REVIEW_WHERE = (
+    " FROM events e WHERE e.user_id = ?"
+    " AND e.review_status IN ('pending_review', 'active')"
+    " AND (e.end_datetime >= ? OR (e.end_datetime IS NULL AND e.start_datetime >= ?)"
+    "      OR (e.end_datetime IS NULL AND e.start_datetime IS NULL))"
+    " AND (e.review_status = 'pending_review' OR EXISTS ("
+    "      SELECT 1 FROM event_change_proposals p WHERE p.event_id = e.id AND p.status = 'pending'))"
+)
+
+
+def review_event_ids(db: Database, user_id: str, now: str, limit: int = 200) -> tuple[list[str], int]:
+    """E1: upcoming owned events that are new, or active with a pending change.
+
+    The soonest ``limit`` of them, and how many there are in all. Unbounded, a
+    queue of 15,000 pending events answered 17 MB in one response, held in
+    memory several times over while it was built.
+    """
+    total = db.query_one("SELECT count(*)" + _REVIEW_WHERE, (user_id, now, now))[0]
+    ids = [r[0] for r in db.query(
+        "SELECT e.id" + _REVIEW_WHERE + " ORDER BY e.start_datetime IS NULL, e.start_datetime, e.id LIMIT ?",
+        (user_id, now, now, limit),
     )]
+    return ids, int(total)
 
 
 def activity_page(db: Database, user_id: str, limit: int, offset: int) -> tuple[list[str], int]:
@@ -150,12 +161,19 @@ def email_history(db: Database, user_id: str, limit: int, offset: int) -> tuple[
         " OR (processing_status = 'skipped' AND processing_outcome = 'calendar_invite'))"
     )
     total = db.query_one(f"SELECT count(*) FROM emails WHERE {where}", (user_id,))[0]
-    emails = [dict(r) for r in db.query(
-        "SELECT id, email_provider, subject, from_email, from_name, date_sent, processing_status,"
-        " processing_error, processing_outcome, processing_explanation, processed_at"
-        f" FROM emails WHERE {where} ORDER BY date_sent IS NOT NULL, date_sent DESC, id DESC LIMIT ? OFFSET ?",
+    # Order the ids from the covering index (idx_emails_history_order), then read
+    # only that page's rows: ordering whole rows read every email body.
+    page = [r[0] for r in db.query(
+        f"SELECT id FROM emails WHERE {where} ORDER BY date_sent IS NOT NULL, date_sent DESC, id DESC LIMIT ? OFFSET ?",
         (user_id, limit, offset),
     )]
+    rows = {r["id"]: dict(r) for r in db.query(
+        "SELECT id, email_provider, subject, from_email, from_name, date_sent, processing_status,"
+        " processing_error, processing_outcome, processing_explanation, processed_at"
+        f" FROM emails WHERE user_id = ? AND id IN ({_marks(page)})",
+        (user_id, *page),
+    )} if page else {}
+    emails = [rows[i] for i in page if i in rows]
     by_id = {e["id"]: e for e in emails}
     for e in emails:
         e["event_sources"] = []

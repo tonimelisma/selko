@@ -47,9 +47,8 @@ async def sync_event(
     """
     event_id = event["id"]
     user_id = event["user_id"]
-    title = event.get("title", "(no title)")
 
-    logger.info(f"Syncing event {event_id} to calendar: {title[:50]}")
+    logger.info(f"Syncing event {event_id} to calendar")
 
     # Sync to Google Calendar using the calendars service (off event loop)
     try:

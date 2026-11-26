@@ -475,10 +475,9 @@ class WorkerPool:
         from selko.workers.email_process import process_email
 
         email_id = email["id"]
-        subject = email.get("subject", "(no subject)")[:50]
         generation = int(email.get("lock_generation") or 0)
 
-        logger.info(f"{worker_id}: Processing email {email_id}: {subject}")
+        logger.info(f"{worker_id}: Processing email {email_id}")
 
         try:
             result = await asyncio.wait_for(
@@ -534,9 +533,8 @@ class WorkerPool:
         lease = event["calendar_work_lease"]
         if not isinstance(lease, WorkItemLease):
             raise TypeError("claimed calendar work must carry a WorkItemLease")
-        title = event.get("title", "(no title)")[:50]
 
-        logger.info(f"{worker_id}: Syncing event {event_id}: {title}")
+        logger.info(f"{worker_id}: Syncing event {event_id}")
         is_cancellation = event.get("calendar_work_item_action") == "cancel"
         breaker = calendar_providers.BREAKER_KEYS.get(
             event.get("calendar_work_item_provider") or calendar_providers.GOOGLE,

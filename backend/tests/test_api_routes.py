@@ -151,7 +151,12 @@ class TestHealthEndpoints:
         # The suite runs on Linux: /proc is there, so these are real numbers.
         assert memory["rss_bytes"] > 10 * 1024 * 1024
         assert memory["peak_rss_bytes"] >= memory["rss_bytes"]
-        assert set(memory) == {"rss_bytes", "peak_rss_bytes", "cgroup_current_bytes", "cgroup_limit_bytes"}
+        assert set(memory) == {"rss_bytes", "peak_rss_bytes", "cgroup_current_bytes", "cgroup_limit_bytes",
+                               "threads", "reader_connections"}
+        from selko.db import connection
+
+        assert memory["threads"] >= 1
+        assert 1 <= memory["reader_connections"] <= connection.READER_POOL_SIZE  # the request itself read
 
     def test_memory_snapshot_reads_proc_and_cgroup_and_reports_absence_as_none(self, tmp_path):
         from selko.api.routes.health import memory_snapshot
@@ -162,14 +167,16 @@ class TestHealthEndpoints:
         cgroup.mkdir()
         (cgroup / "memory.current").write_text("150000000\n")
         (cgroup / "memory.max").write_text("419430400\n")
-        assert memory_snapshot(str(status_file), str(cgroup)) == {
+        snapshot = memory_snapshot(str(status_file), str(cgroup))
+        assert {k: snapshot[k] for k in ("rss_bytes", "peak_rss_bytes", "cgroup_current_bytes", "cgroup_limit_bytes")} == {
             "rss_bytes": 131072 * 1024,
             "peak_rss_bytes": 240000 * 1024,
             "cgroup_current_bytes": 150000000,
             "cgroup_limit_bytes": 419430400,
         }
         (cgroup / "memory.max").write_text("max\n")  # no limit set
-        assert memory_snapshot(str(tmp_path / "missing"), str(cgroup)) == {
+        snapshot = memory_snapshot(str(tmp_path / "missing"), str(cgroup))
+        assert {k: snapshot[k] for k in ("rss_bytes", "peak_rss_bytes", "cgroup_current_bytes", "cgroup_limit_bytes")} == {
             "rss_bytes": None, "peak_rss_bytes": None,
             "cgroup_current_bytes": 150000000, "cgroup_limit_bytes": None,
         }

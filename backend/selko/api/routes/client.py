@@ -57,9 +57,16 @@ async def _one_event(db: Database, user_id: str, event_id: str) -> dict[str, Any
 
 
 @router.get("/events/review")
-async def review_queue(user: CurrentUser = Depends(get_current_user), db: Database = Depends(get_db)) -> list[dict[str, Any]]:
+async def review_queue(
+    response: Response,
+    limit: int = Query(200, ge=1, le=500),
+    user: CurrentUser = Depends(get_current_user),
+    db: Database = Depends(get_db),
+) -> list[dict[str, Any]]:
+    """The soonest ``limit`` events to review; ``X-Total-Count`` says how many wait in all."""
     now = to_timestamp(datetime.now(timezone.utc))
-    ids = await db.run(data.review_event_ids, db, user.id, now)
+    ids, total = await db.run(data.review_event_ids, db, user.id, now, limit)
+    response.headers["X-Total-Count"] = str(total)
     return _with_status(await db.run(data.events_with_relations, db, user.id, ids))
 
 

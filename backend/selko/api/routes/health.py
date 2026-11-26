@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import threading
 from pathlib import Path
 from typing import Any
 
@@ -97,6 +98,15 @@ def memory_snapshot(proc_status: str = "/proc/self/status", cgroup: str = "/sys/
             limit = None
     fields["cgroup_current_bytes"] = current
     fields["cgroup_limit_bytes"] = limit
+    fields["threads"] = threading.active_count()
+    # Each read connection keeps its own page cache, so their count times
+    # READER_CACHE_KIB bounds that part of the process's memory.
+    try:
+        from selko.db.runtime import get_database
+
+        fields["reader_connections"] = get_database().reader_count()
+    except RuntimeError:
+        fields["reader_connections"] = None
     return fields
 
 

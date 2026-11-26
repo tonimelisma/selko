@@ -9,7 +9,7 @@ from selko.logging import setup_logging
 
 if __name__ == "__main__":
     # Set up logging for development
-    setup_logging(level="INFO")
+    setup_logging()
 
     # Run uvicorn with auto-reload for development
     uvicorn.run(

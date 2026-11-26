@@ -564,9 +564,16 @@ The script handles seeding, starting the API, capturing and resizing. See `docs/
   beside the server. The host's tooling also prevents two containers on one
   directory; the lock is the second safeguard.
 - **One writer, many readers.** `selko.db.Database` keeps one writer connection
-  behind a lock with `BEGIN IMMEDIATE`, and reader connections in WAL mode
-  (`query_only`). Every write is a `db.write()` transaction; `tx.now` is one
-  strictly increasing UTC timestamp per transaction; timestamps are stored as
+  behind a lock with `BEGIN IMMEDIATE`, and a fixed pool of four reader
+  connections in WAL mode (`query_only`, `Database.reading()`), each with a
+  2 MB page cache. One reader per thread with a 32 MB cache each took a
+  400 MB database's process from 93 to 301 MiB under load; the pool holds it
+  near 100 MiB, and the kernel's file cache serves reads as fast. `/health` →
+  `memory` reports RSS, the cgroup against its limit, threads and open readers.
+  The heavy client libraries (the Google stack, PyMuPDF, the LLM SDKs) load on
+  first use, never at startup (`backend/tests/test_startup_footprint.py`).
+  Log lines carry ids, never email content (`backend/tests/test_logging.py`).
+  Every write is a `db.write()` transaction; `tx.now` is one strictly increasing UTC timestamp per transaction; timestamps are stored as
   fixed-width `YYYY-MM-DDTHH:MM:SS.ffffffZ` text. Tables are `STRICT`; JSON
   columns are `CHECK (json_valid(...))`. Migrations live in
   `backend/selko/db/migrations/` and apply at startup (`selko.db.migrate`, with

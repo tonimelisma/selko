@@ -21,7 +21,6 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
 from selko.db import mirror as db_mirror
@@ -147,6 +146,8 @@ def _mirror_adapter(supabase_client: Database, user_id: str, provider: str) -> A
     credentials = get_credentials(supabase_client, user_id, "google_calendar")
     if not credentials:
         raise CalendarsError("No Google Calendar credentials found")
+    from googleapiclient.discovery import build  # ~20 MiB with google.auth; loaded on first Google use
+
     return GoogleCalendarAdapter(build("calendar", "v3", credentials=credentials))
 
 

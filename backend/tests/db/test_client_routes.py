@@ -78,6 +78,38 @@ def test_review_queue_lists_new_events_with_their_sources(api, world):
     assert row["calendar_work_items"] == [] and row["event_change_proposals"] == []
 
 
+def test_review_queue_is_bounded_soonest_first_and_says_how_many_wait(api, world, factory):
+    later = [factory.event(world["a"], review_status="pending_review", start_datetime=f"2031-01-{d:02d}T10:00:00.000000Z")
+             for d in range(1, 6)]
+    response = api.get("/events/review?limit=3", headers=world["a_h"])
+    assert response.status_code == 200
+    assert response.headers["X-Total-Count"] == "6"
+    assert [r["id"] for r in response.json()] == [world["pending"], *later[:2]]  # soonest first
+    everything = api.get("/events/review", headers=world["a_h"])
+    assert len(everything.json()) == 6 and everything.headers["X-Total-Count"] == "6"
+    assert api.get("/events/review?limit=501", headers=world["a_h"]).status_code == 422
+
+
+def test_email_history_orders_from_the_covering_index_not_the_rows(db, factory):
+    """Ordering whole rows read every email body of the user on each page."""
+    from selko.db import client as data
+
+    user = factory.user()
+    dated = [factory.email(user, processing_status="processed", date_sent=f"2026-0{m}-01T10:00:00.000000Z") for m in (1, 3, 2)]
+    undated = factory.email(user, processing_status="processed", date_sent=None)
+    factory.email(user, processing_status="pending")  # not history
+    items, total = data.email_history(db, user, 10, 0)
+    assert total == 4
+    assert [e["id"] for e in items] == [undated, dated[1], dated[2], dated[0]]  # undated first, then newest
+    assert [e["id"] for e in data.email_history(db, user, 2, 1)[0]] == [dated[1], dated[2]]
+    where = ("user_id = ? AND (processing_status IN ('processed', 'failed')"
+             " OR (processing_status = 'skipped' AND processing_outcome = 'calendar_invite'))")
+    plan = " ".join(r[3] for r in db.query(
+        f"EXPLAIN QUERY PLAN SELECT id FROM emails WHERE {where}"
+        " ORDER BY date_sent IS NOT NULL, date_sent DESC, id DESC LIMIT 10", (user,)))
+    assert "COVERING INDEX idx_emails_history_order" in plan, plan
+
+
 def test_activity_pages_decided_events(api, world):
     page = api.get("/events/activity?limit=1", headers=world["a_h"]).json()
     assert page["total"] == 1 and [i["id"] for i in page["items"]] == [world["active"]]

@@ -10,10 +10,21 @@ from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any, Optional
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
 from selko.db import calendar_work as db_calendar_work
+
+# The Google client stack (google.oauth2, discovery, oauthlib) costs ~20 MiB
+# resident; it loads on the first Google call, not at startup, so an
+# Outlook-only deployment never pays for it.
+
+
+def build(*args: Any, **kwargs: Any) -> Any:
+    """googleapiclient's discovery.build, imported on first use (tests patch this name)."""
+    from googleapiclient.discovery import build as _build
+
+    return _build(*args, **kwargs)
+
 from selko.db import events as db_events
 from selko.db import integrations as db_integrations
 from selko.db import recovery as db_recovery

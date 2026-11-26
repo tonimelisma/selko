@@ -323,9 +323,8 @@ async def claim_pending_email(
             db_emails.claim_unprocessed_email, pool, worker_id, lock_duration_seconds
         )
         if email:
-            subject = (email.get("subject") or "(no subject)")[:50]
             logger.info(
-                f"Worker {worker_id} claimed email {email['id']}: {subject} "
+                f"Worker {worker_id} claimed email {email['id']} "
                 f"(attempt {email.get('attempts', 0)}/{email.get('max_attempts', 0)})"
             )
             return email

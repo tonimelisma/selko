@@ -46,9 +46,19 @@ PRAGMAS = (
     "PRAGMA synchronous = NORMAL",
     "PRAGMA foreign_keys = ON",
     "PRAGMA busy_timeout = 5000",
-    # Negative means KiB: at most a 32 MB page cache per connection.
-    "PRAGMA cache_size = -32000",
 )
+
+# Page cache per connection (negative means KiB). Each connection holds its own
+# copy in this process's memory, which the kernel cannot reclaim; the kernel's
+# own file cache serves repeated reads just as fast and can be reclaimed under
+# the container's limit. With one reader per thread and a 32 MB cache each, a
+# 400 MB database took the process from 93 to 301 MiB under 40 concurrent
+# requests; with 2 MB readers it stayed at 118 MiB, and no slower.
+WRITER_CACHE_KIB = 16_000
+READER_CACHE_KIB = 2_000
+# Readers are pooled, so their total cache has a fixed bound however many
+# threads FastAPI and the workers run (up to 40), rather than one per thread.
+READER_POOL_SIZE = 4
 
 # The deferred invariant Postgres enforced on event_change_proposals/events
 # (enforce_event_change_proposal_invariant), checked before COMMIT.
@@ -69,15 +79,16 @@ LIMIT 1
 """
 
 
-def _connect(path: Path | str) -> sqlite3.Connection:
+def _connect(path: Path | str, cache_kib: int = WRITER_CACHE_KIB) -> sqlite3.Connection:
     conn = sqlite3.connect(
         str(path),
         isolation_level=None,  # transactions are explicit
-        check_same_thread=False,  # guarded by Database's lock / thread-local use
+        check_same_thread=False,  # guarded by Database's lock / the reader pool
     )
     conn.row_factory = sqlite3.Row
     for pragma in PRAGMAS:
         conn.execute(pragma)
+    conn.execute(f"PRAGMA cache_size = -{int(cache_kib)}")
     return conn
 
 
@@ -142,9 +153,10 @@ class Database:
         self._write_lock = threading.Lock()
         self._current: Tx | None = None
         self._last_now: datetime | None = None
-        self._local = threading.local()
+        # Idle readers, most recently used last (LIFO keeps the warm cache busy).
+        self._idle: list[sqlite3.Connection] = []
         self._readers: list[sqlite3.Connection] = []
-        self._readers_lock = threading.Lock()
+        self._readers_cond = threading.Condition()
         self._register_functions()
         self.schema = Schema(self._writer)
 
@@ -213,26 +225,46 @@ class Database:
 
     # -- reading -------------------------------------------------------------
 
-    def reader(self) -> sqlite3.Connection:
-        """This thread's read connection (created on first use)."""
-        conn = getattr(self._local, "conn", None)
-        if conn is None:
-            conn = _connect(self.path)
-            conn.execute("PRAGMA query_only = ON")
-            self._local.conn = conn
-            with self._readers_lock:
+    @contextlib.contextmanager
+    def reading(self) -> Iterator[sqlite3.Connection]:
+        """A read connection from the pool, for one statement or a few.
+
+        At most READER_POOL_SIZE exist; a caller waits for a free one rather
+        than opening another. Finish with the connection inside the block:
+        fetch results, do not keep a cursor.
+        """
+        with self._readers_cond:
+            while not self._idle and len(self._readers) >= READER_POOL_SIZE:
+                self._readers_cond.wait()
+            if self._idle:
+                conn = self._idle.pop()
+            else:
+                conn = _connect(self.path, READER_CACHE_KIB)
+                conn.execute("PRAGMA query_only = ON")
                 self._readers.append(conn)
-        return conn
+        try:
+            yield conn
+        finally:
+            with self._readers_cond:
+                self._idle.append(conn)
+                self._readers_cond.notify()
+
+    def reader_count(self) -> int:
+        """Read connections open now (bounded by READER_POOL_SIZE)."""
+        with self._readers_cond:
+            return len(self._readers)
 
     def query(self, sql: str, params: Any = ()) -> list[sqlite3.Row]:
         try:
-            return self.reader().execute(sql, params).fetchall()
+            with self.reading() as conn:
+                return conn.execute(sql, params).fetchall()
         except sqlite3.Error as exc:
             raise errors.translate(exc) from exc
 
     def query_one(self, sql: str, params: Any = ()) -> sqlite3.Row | None:
         try:
-            return self.reader().execute(sql, params).fetchone()
+            with self.reading() as conn:
+                return conn.execute(sql, params).fetchone()
         except sqlite3.Error as exc:
             raise errors.translate(exc) from exc
 
@@ -241,9 +273,10 @@ class Database:
         return await asyncio.to_thread(fn, *args, **kwargs)
 
     def close(self) -> None:
-        with self._readers_lock:
+        with self._readers_cond:
             for conn in self._readers:
                 conn.close()
             self._readers.clear()
+            self._idle.clear()
         with self._write_lock:
             self._writer.close()

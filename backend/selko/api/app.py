@@ -27,9 +27,11 @@ from selko.services.request_metrics import request_metrics
 from selko.services.integrations import IntegrationError, OAuthStateError
 from selko.services.quotas import QuotaExceededError
 from selko.config import load_config
+from selko.logging import setup_logging
 from selko.services.memory_monitor import start_memory_monitor
 from selko.workers.pool import WorkerPool
 
+setup_logging()
 logger = logging.getLogger(__name__)
 
 # Global worker pool instance
@@ -216,6 +218,7 @@ def create_app() -> FastAPI:
         allow_origins=allowed_origins,
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+        expose_headers=["X-Total-Count"],
         allow_headers=["Authorization", "Content-Type", "Accept"],
     )
 

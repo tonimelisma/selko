@@ -564,9 +564,7 @@ def save_extracted_events(
         )
 
         if not event_data.get("start_datetime") and not cancellation_mode:
-            logger.info(
-                "Skipping event with no start_datetime: %s", event_data.get("title")
-            )
+            logger.info("Skipping an extracted event with no start_datetime")
             continue
 
         start_str = event_data.get("start_datetime")
@@ -576,7 +574,7 @@ def save_extracted_events(
                 if start_dt.tzinfo is None:
                     start_dt = start_dt.replace(tzinfo=user_tz)
                 if start_dt < cutoff and not cancellation_mode:
-                    logger.info(f"Skipping past event: {event_data.get('title')} ({start_str})")
+                    logger.info(f"Skipping past event starting {start_str}")
                     continue
             except (ValueError, TypeError):
                 pass
@@ -603,8 +601,8 @@ def save_extracted_events(
 
         if match is not None and match.stale_authoritative:
             logger.info(
-                "Stale authoritative calendar identity is an audited no-op for event %s",
-                event_data.get("title"),
+                "Stale authoritative calendar identity is an audited no-op for match %s",
+                match.match_id,
             )
             if cancellation_mode:
                 cancellation_outcomes.append("cancellation_unmatched")
@@ -612,8 +610,8 @@ def save_extracted_events(
 
         if match is not None and match.on_other_calendar:
             logger.info(
-                "Event already on another visible calendar; not adopting %s",
-                event_data.get("title"),
+                "Event already on another visible calendar; not adopting match %s",
+                match.match_id,
             )
             if cancellation_mode:
                 cancellation_outcomes.append("cancellation_unmatched")
@@ -804,9 +802,8 @@ def save_extracted_events(
 
         if change_set.kind == "noop":
             logger.info(
-                "Skipping noop rediscovery for match %s (%s)",
+                "Skipping noop rediscovery for match %s",
                 match.match_id,
-                event_data.get("title"),
             )
             continue
 
@@ -1046,7 +1043,7 @@ def process_email_for_events(
         rule_action = sender_rule.get("action") if sender_rule else None
 
         if rule_action == "ignore":
-            logger.info(f"Sender {sender_email} is ignored, skipping event extraction")
+            logger.info("Sender rule: ignored, skipping event extraction")
             commit = _commit_email_extraction(
                 supabase_client, email_id, locked_by, lock_generation, [], "skipped"
             )
@@ -1058,7 +1055,7 @@ def process_email_for_events(
         # Determine initial status based on sender rule
         if rule_action == "auto_approve":
             initial_status = "approved"
-            logger.info(f"Sender {sender_email} is auto-approved, events will be created as approved")
+            logger.info("Sender rule: auto-approved, events will be created as approved")
         else:
             initial_status = "pending_review"
 
@@ -2333,12 +2330,10 @@ async def claim_approved_event_for_sync(
         event["expected_provider_revision"] = item.get("expected_provider_revision")
         event["force_overwrite"] = bool(item.get("force_overwrite"))
         event["calendar_work_desired_event"] = item.get("desired_event")
-        title = (event.get("title") or "(no title)")[:50]
         logger.info(
-            "Worker %s claimed event %s: %s (attempt %s/%s)",
+            "Worker %s claimed event %s (attempt %s/%s)",
             worker_id,
             event["id"],
-            title,
             event.get("calendar_work_item_attempts", 0),
             event.get("calendar_work_item_max_attempts", 0),
         )

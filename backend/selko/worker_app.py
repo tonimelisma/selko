@@ -64,5 +64,7 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
+    from selko.logging import setup_logging
+
+    setup_logging()
     asyncio.run(main())

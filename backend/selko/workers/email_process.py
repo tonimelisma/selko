@@ -50,9 +50,8 @@ async def process_email(
     """
     email_id = email["id"]
     user_id = email["user_id"]
-    subject = email.get("subject", "(no subject)")
 
-    logger.info(f"Processing email {email_id} for calendar events: {subject[:50]}")
+    logger.info(f"Processing email {email_id} for calendar events")
 
     # Create gateway with logging service
     # Note: Workers don't enforce quotas (that's done at the API level)
@@ -80,11 +79,11 @@ async def process_email(
             logger.info(f"Email {email_id} skipped")
         elif num_events > 0:
             logger.info(
-                f"Extracted {num_events} events from email '{subject[:50]}': "
+                f"Extracted {num_events} events from email {email_id}: "
                 f"{num_new} new, {num_updated} updated"
             )
         else:
-            logger.info(f"No events found in email '{subject[:50]}'")
+            logger.info(f"No events found in email {email_id}")
 
         return result
 

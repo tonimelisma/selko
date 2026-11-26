@@ -49,12 +49,13 @@ def _tables(conn: sqlite3.Connection) -> set[str]:
 
 def test_initial_schema_creates_every_table(tmp_path):
     path = tmp_path / "selko.db"
-    assert migrate(path) == ["0001_initial.sql"]
+    applied = migrate(path)
+    assert applied[0] == "0001_initial.sql" and applied == [m.name for m in available()]
     conn = sqlite3.connect(path)
     tables = _tables(conn)
     assert POSTGRES_TABLES <= tables, POSTGRES_TABLES - tables
     assert {"accounts", "auth_sessions", "auth_refresh_tokens", "schema_migrations"} <= tables
-    assert current_version(conn) == 1
+    assert current_version(conn) == len(applied)
 
 
 def test_every_table_is_strict(tmp_path):
@@ -233,12 +234,13 @@ def test_rollback_discards_writes(db):
                 "VALUES ('00000000-0000-0000-0000-000000000001', 'a@b.c', 'x', '2026', '2026')"
             )
             raise RuntimeError("boom")
-    assert db.reader().execute("SELECT count(*) FROM accounts").fetchone()[0] == 0
+    assert db.query_one("SELECT count(*) FROM accounts")[0] == 0
 
 
 def test_readers_cannot_write(db):
     with pytest.raises(sqlite3.OperationalError):
-        db.reader().execute("DELETE FROM accounts")
+        with db.reading() as conn:
+            conn.execute("DELETE FROM accounts")
 
 
 def test_run_moves_work_off_the_event_loop(db):
@@ -354,7 +356,7 @@ def _event(tx, event_id, user_id=USER, review_status="active"):
 
 
 def _columns(db, table):
-    return {r[1]: r for r in db.reader().execute(f"PRAGMA table_info({table})")}
+    return {r[1]: r for r in db.query(f"PRAGMA table_info({table})")}
 
 
 def test_now_is_strictly_increasing(db):
@@ -526,10 +528,56 @@ def test_every_timestamp_default_writes_the_codec_format(db):
 
     pattern = re.compile(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{6}Z")
     checked = 0
-    for (table,) in db.reader().execute("SELECT name FROM sqlite_master WHERE type='table'"):
-        for _cid, name, _type, _notnull, default, _pk in db.reader().execute(f"PRAGMA table_info({table})"):
+    for (table,) in db.query("SELECT name FROM sqlite_master WHERE type='table'"):
+        for _cid, name, _type, _notnull, default, _pk in db.query(f"PRAGMA table_info({table})"):
             if default and "strftime" in default:
-                value = db.reader().execute(f"SELECT {default}").fetchone()[0]
+                value = db.query_one(f"SELECT {default}")[0]
                 assert pattern.fullmatch(value), (table, name, value)
                 checked += 1
     assert checked >= 40
+
+
+def test_readers_are_pooled_with_a_small_cache_whatever_the_thread_count(db):
+    """One reader per thread with a 32 MB cache each grew a 400 MB database's
+    process from 93 to 301 MiB under load; the pool bounds it."""
+    import threading
+
+    from selko.db import connection
+
+    barrier = threading.Barrier(12)
+
+    def read():
+        barrier.wait()
+        for _ in range(50):
+            db.query("SELECT count(*) FROM accounts")
+
+    threads = [threading.Thread(target=read) for _ in range(12)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert 1 <= db.reader_count() <= connection.READER_POOL_SIZE
+    with db.reading() as conn:
+        assert conn.execute("PRAGMA cache_size").fetchone()[0] == -connection.READER_CACHE_KIB
+        assert conn.execute("PRAGMA query_only").fetchone()[0] == 1
+
+
+def test_a_reader_waits_for_a_free_connection_rather_than_opening_another(db):
+    import threading
+
+    from selko.db import connection
+
+    held = [db.reading() for _ in range(connection.READER_POOL_SIZE)]
+    conns = [h.__enter__() for h in held]
+    assert len({id(c) for c in conns}) == connection.READER_POOL_SIZE
+    got = []
+    waiter = threading.Thread(target=lambda: got.append(db.query_one("SELECT 1")[0]))
+    waiter.start()
+    waiter.join(0.3)
+    assert waiter.is_alive() and not got  # waiting: every connection is in use
+    held[0].__exit__(None, None, None)
+    waiter.join(5)
+    assert got == [1]
+    for h in held[1:]:
+        h.__exit__(None, None, None)
+    assert db.reader_count() == connection.READER_POOL_SIZE
