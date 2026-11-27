@@ -232,15 +232,20 @@ the clone onto the merged `main` instead of removing a worktree.
 | image | `./scripts/image-lane.sh` (Docker; builds through the session proxy with `scripts/build-image.sh`) |
 | web screenshots | `./scripts/capture-all-screenshots.sh web` |
 | prod-health, deploy-log windows | `./scripts/check-production-health.sh` |
-| LLM evals / real-model tests | `uv run python -m backend.tests.eval.run_eval --fixture <category/name>` (or `--all --all-operations`, per `docs/evals-process.md`); `uv run pytest backend/tests/<file> --run-llm`. Needs the provider keys (Owner setup) |
+| LLM evals / real-model tests | `uv run python -m backend.tests.eval.run_eval --fixture <category/name>` (or `--all --all-operations`, per `docs/evals-process.md`); `uv run pytest backend/tests/<file> --run-llm`. Needs the Anthropic key (Owner setup) |
 
-**LLM keys are the one credential kept as environment variables** (owner
-decision), in the dedicated personal "selko" cloud environment. setup never
-copies one into a file: `.env` gets a placeholder only for a key the
-environment does *not* provide, and a placeholder left from an earlier session
-is dropped once the key appears. **Claude Code removes `ANTHROPIC_API_KEY` from
-the shells it starts**, so that key is stored as `SELKO_ANTHROPIC_API_KEY` and
-mapped back by reference in `CLAUDE_ENV_FILE`.
+**The Anthropic key is the one LLM credential, kept as an environment
+variable** (owner decision), in the dedicated personal "selko" cloud
+environment. Production runs Anthropic only, so evals do too; every other
+provider's key is optional and unset (a model whose key is missing fails,
+never passes). setup never copies a key into a file: `.env`
+gets a placeholder only for a key the environment does *not* provide, and a
+placeholder left from an earlier session is dropped once the key appears.
+**Claude Code removes `ANTHROPIC_API_KEY` from the shells it starts**, so that
+key is stored as `SELKO_ANTHROPIC_API_KEY` and mapped back by reference in
+`CLAUDE_ENV_FILE`. The proxy's network secrets cannot carry an Anthropic key
+(none is ever injected into requests to api.anthropic.com), which is why this
+one is a variable.
 
 **GitHub from the VM.** `gh api` REST works (pulls, merges, check-runs,
 issues, Actions runs and job logs); GraphQL is refused, so `gh pr
@@ -253,12 +258,14 @@ secrets/variables are refused too. Merged branches are deleted by GitHub
 
 Values are never handled by an agent.
 
-**Cloud environment "selko"** (claude.ai → environment settings; personal),
-*environment variables* — the LLM keys config.py reads, only those you use:
-`SELKO_ANTHROPIC_API_KEY` (the Anthropic key; see above), `GEMINI_API_KEY`,
-`OPENAI_API_KEY`, `XAI_API_KEY`, `META_MODEL_API_KEY` (or `META_API_KEY` /
-`MODEL_API_KEY`), `MOONSHOT_API_KEY`, `ZAI_API_KEY` (or `ZHIPU_API_KEY`),
-`DEEPSEEK_API_KEY`, `ALIBABA_API_KEY`, `MINIMAX_API_KEY`, `TINKER_API_KEY`.
+**Cloud environment "selko"** (claude.ai → environment settings; personal;
+limited network with package managers, allowed hosts `api.selkoapp.com` for
+prod-health and `public.ecr.aws` for the image lane's base images;
+api.anthropic.com is reachable without listing it), *environment variable*:
+`SELKO_ANTHROPIC_API_KEY` (the Anthropic key; see above). Nothing else. To
+evaluate another provider later, add its key the same way (the names
+config.py reads are in `scripts/cloud-setup.sh` `LLM_KEY_NAMES`) and its API
+host to the allowed hosts.
 
 **Image signing needs no secret.** `image.yml` pushes with the workflow's
 `GITHUB_TOKEN` and signs keylessly with cosign through GitHub's OIDC token.
