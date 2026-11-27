@@ -43,15 +43,25 @@ LLM_KEY_NAMES=(
 	MINIMAX_API_KEY TINKER_API_KEY
 )
 
+# The LLM keys come from Azure Key Vault (scripts/fetch-cloud-secrets.sh): the
+# shared cloud environment's only variable, MELISMA_SECRETS_CLIENT_SECRET, lets
+# that script read them at session start, export them here, and append them to
+# CLAUDE_ENV_FILE (Claude Code's per-session environment file) for later shells.
+# shellcheck source=scripts/fetch-cloud-secrets.sh
+. "$ROOT/scripts/fetch-cloud-secrets.sh"
+
 # Claude Code removes ANTHROPIC_API_KEY from the shells it starts (its own
 # credential name): the Default environment defines it, yet `env` in a Bash
-# tool call shows only ANTHROPIC_BASE_URL (measured 2026-11-22). The cloud
-# environment therefore carries the key as SELKO_ANTHROPIC_API_KEY, and this
-# maps it back -- here for this script, and in CLAUDE_ENV_FILE by *reference*
-# (persist_path), so the value is never written to any file.
-if [[ -z "${ANTHROPIC_API_KEY:-}" && -n "${SELKO_ANTHROPIC_API_KEY:-}" ]]; then
-	export ANTHROPIC_API_KEY="$SELKO_ANTHROPIC_API_KEY"
-fi
+# tool call shows only ANTHROPIC_BASE_URL (measured 2026-11-22). The vault
+# therefore carries the key as SELKO_ANTHROPIC_API_KEY, and this maps it back
+# -- here for this script, and in CLAUDE_ENV_FILE by *reference*
+# (persist_path).
+map_anthropic_key() {
+	if [[ -z "${ANTHROPIC_API_KEY:-}" && -n "${SELKO_ANTHROPIC_API_KEY:-}" ]]; then
+		export ANTHROPIC_API_KEY="$SELKO_ANTHROPIC_API_KEY"
+	fi
+}
+map_anthropic_key
 
 SUDO=""
 if [[ $EUID -ne 0 ]] && command -v sudo >/dev/null 2>&1; then
@@ -248,7 +258,7 @@ report_status() {
 	if ((${#present[@]} > 0)); then
 		say "  ready: LLM keys from the environment: ${present[*]}"
 	else
-		say "  note: no LLM keys in the environment; run_eval and --run-llm need the 'selko' cloud environment (CLAUDE.md, Owner setup)"
+		say "  note: no LLM keys in the environment; run_eval and --run-llm need MELISMA_SECRETS_CLIENT_SECRET in the cloud environment (CLAUDE.md, Owner setup)"
 	fi
 	((ok == 1))
 }
@@ -270,11 +280,16 @@ esac
 
 : >"$LOG"
 step "Selko cloud setup (CLAUDE_CODE_REMOTE=true)"
+failed=()
+if [[ -n "${MELISMA_SECRETS_CLIENT_SECRET:-}" ]]; then
+	step "fetching LLM keys from Azure Key Vault"
+	fetch_cloud_secrets || failed+=("vault-keys")
+	map_anthropic_key
+fi
 persist_path
 # On the Mac core.hooksPath lives in .git/config, which a fresh clone does not
 # have, so without this the pre-commit test gate silently never runs here.
 git config core.hooksPath .githooks
-failed=()
 apt_install jq lsof curl openssl || failed+=("apt")
 ensure_docker || failed+=("docker")
 ensure_uv || failed+=("uv-sync")

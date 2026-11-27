@@ -213,6 +213,7 @@ preinstalled Chrome (`$CHROME_PATH`), sets `core.hooksPath=.githooks`, starts
 `SELKO_JWT_SECRET`, `SELKO_DATA_DIR=data`, local `ALLOWED_ORIGINS` and labelled
 non-functional placeholders for the OAuth client IDs and for any LLM key the
 environment does not provide. The backend needs no database service.
+It also fetches the LLM keys from Azure Key Vault (see below).
 `scripts/cloud-setup.sh --status` says what is ready; full log:
 `.verify/cloud-setup.log`.
 
@@ -234,18 +235,24 @@ the clone onto the merged `main` instead of removing a worktree.
 | prod-health, deploy-log windows | `./scripts/check-production-health.sh` |
 | LLM evals / real-model tests | `uv run python -m backend.tests.eval.run_eval --fixture <category/name>` (or `--all --all-operations`, per `docs/evals-process.md`); `uv run pytest backend/tests/<file> --run-llm`. Needs the Anthropic key (Owner setup) |
 
-**The Anthropic key is the one LLM credential, kept as an environment
-variable** (owner decision), in the dedicated personal "selko" cloud
-environment. Production runs Anthropic only, so evals do too; every other
-provider's key is optional and unset (a model whose key is missing fails,
-never passes). setup never copies a key into a file: `.env`
-gets a placeholder only for a key the environment does *not* provide, and a
-placeholder left from an earlier session is dropped once the key appears.
-**Claude Code removes `ANTHROPIC_API_KEY` from the shells it starts**, so that
-key is stored as `SELKO_ANTHROPIC_API_KEY` and mapped back by reference in
-`CLAUDE_ENV_FILE`. The proxy's network secrets cannot carry an Anthropic key
-(none is ever injected into requests to api.anthropic.com), which is why this
-one is a variable.
+**LLM keys come from Azure Key Vault** (owner decision). Cloud sessions run
+in one shared claude.ai environment whose only variable is
+`MELISMA_SECRETS_CLIENT_SECRET`, the client secret of the Entra app
+`cloud-sessions-reader` (read-only on vault `kv-melisma-dev`; the store is
+managed from the private repo `tonimelisma/secrets`). At session start
+`scripts/fetch-cloud-secrets.sh` (called by `cloud-setup.sh`) gets a vault
+token with that secret, reads each key in its `SECRET_MAP` and appends
+`export NAME='value'` lines to `CLAUDE_ENV_FILE`, so later shells have them; it
+prints only how many it fetched, and on failure the secret names and HTTP
+status. Keys rotate in the vault; a session picks up the new value at its next
+start. Production runs Anthropic only, so evals do too; the other providers'
+keys are fetched for comparisons. A session without the variable gets no keys
+(a model whose key is missing fails, never passes). Setup never copies a key
+into `.env`: it gets a placeholder only for a key the environment does *not*
+provide, and a placeholder left from an earlier session is dropped once the
+key appears. **Claude Code removes `ANTHROPIC_API_KEY` from the shells it
+starts**, so that key is stored as `SELKO_ANTHROPIC_API_KEY` and mapped back
+by reference in `CLAUDE_ENV_FILE`.
 
 **GitHub from the VM.** `gh api` REST works (pulls, merges, check-runs,
 issues, Actions runs and job logs); GraphQL is refused, so `gh pr
@@ -258,14 +265,23 @@ secrets/variables are refused too. Merged branches are deleted by GitHub
 
 Values are never handled by an agent.
 
-**Cloud environment "selko"** (claude.ai → environment settings; personal;
-limited network with package managers, allowed hosts `api.selkoapp.com` for
-prod-health and `public.ecr.aws` for the image lane's base images;
-api.anthropic.com is reachable without listing it), *environment variable*:
-`SELKO_ANTHROPIC_API_KEY` (the Anthropic key; see above). Nothing else. To
-evaluate another provider later, add its key the same way (the names
-config.py reads are in `scripts/cloud-setup.sh` `LLM_KEY_NAMES`) and its API
-host to the allowed hosts.
+**The shared cloud environment** (claude.ai → environment settings), used by
+every cloud session. *Environment variable*: `MELISMA_SECRETS_CLIENT_SECRET`
+only (Entra app `cloud-sessions-reader`, client ID
+`5154d2ee-bdf5-49cf-8643-8918b3e8c32c`, tenant
+`00000000-0000-0000-0000-000000000000`). No network secrets. Network: limited,
+with package managers; allowed hosts `login.microsoftonline.com` and
+`kv-melisma-dev.vault.azure.net` (the key fetch), the provider API hosts selko
+calls (`api.openai.com`, `generativelanguage.googleapis.com`,
+`dashscope-intl.aliyuncs.com`, `api.z.ai`, `api.meta.ai`, `api.moonshot.ai`,
+`api.deepseek.com`, `api.minimax.io`, `tinker.thinkingmachines.dev`;
+`api.anthropic.com` is always reachable), plus `api.selkoapp.com` for
+prod-health and `public.ecr.aws` for the image lane's base images. The keys
+themselves live in Azure Key Vault `kv-melisma-dev` and rotate there; to add a
+provider, add its secret to the vault, its `ENV_NAME=secret-name` pair to
+`SECRET_MAP` in `scripts/fetch-cloud-secrets.sh` (the names config.py reads
+are in `scripts/cloud-setup.sh` `LLM_KEY_NAMES`), and its API host to the
+allowed hosts.
 
 **Image signing needs no secret.** `image.yml` pushes with the workflow's
 `GITHUB_TOKEN` and signs keylessly with cosign through GitHub's OIDC token.

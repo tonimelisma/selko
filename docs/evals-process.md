@@ -44,14 +44,17 @@ When something fails, categorize the root cause:
 
 ## Where evals run: a cloud session
 
-Evals and real-model tests run in a claude.ai/code session on the dedicated
-**"selko" cloud environment**, which holds one LLM key: the Anthropic key, as
-the environment variable `SELKO_ANTHROPIC_API_KEY` (`CLAUDE.md` → "Owner
-setup"). Production runs Anthropic only, so that is the model evals target;
-other providers' keys are optional and not set. Nothing else is needed: the
-SessionStart hook leaves the key out of `.env`, so the process environment
-supplies it, and maps `SELKO_ANTHROPIC_API_KEY` to `ANTHROPIC_API_KEY`
-(Claude Code removes the latter from the shells it starts).
+Evals and real-model tests run in a claude.ai/code session on the shared
+cloud environment, whose one variable, `MELISMA_SECRETS_CLIENT_SECRET`, lets
+the SessionStart hook read the LLM keys from Azure Key Vault
+(`scripts/fetch-cloud-secrets.sh`; `CLAUDE.md` → "Owner setup"). The keys live
+and rotate in the vault; there are no network secrets. Production runs
+Anthropic only, so that is the model evals target; the other providers' keys
+(OpenAI, Gemini, Alibaba, Z.AI, Meta, Moonshot, DeepSeek, MiniMax, Tinker; no
+xAI) are fetched too, for comparisons. The hook leaves the keys out of `.env`,
+so the process environment supplies them, and maps `SELKO_ANTHROPIC_API_KEY`
+to `ANTHROPIC_API_KEY` (Claude Code removes the latter from the shells it
+starts).
 
 ```bash
 scripts/cloud-setup.sh --status          # "ready: LLM keys from the environment: …"
@@ -61,8 +64,8 @@ uv run pytest backend/tests/<test_file>.py --run-llm   # real-LLM pytest cases
 ```
 
 A key that is missing shows up as an unauthorized provider error, never as a
-pass, so `--all-models` reports every non-Anthropic model as failed until its
-key (and API host) is added to the environment. The commands below are the
+pass, so `--all-models` reports a model as failed when its key is not in the
+vault or its API host is not in the environment's allowed hosts. The commands below are the
 same in a session and on the Mac.
 
 ---
