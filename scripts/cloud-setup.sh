@@ -32,36 +32,10 @@ START=$SECONDS
 NODE_MIN_VERSION="22.12.0"
 NODE_PIN_VERSION="22.12.0"
 
-# LLM provider keys config.py reads. When the cloud environment sets one, .env
-# must not carry a placeholder for it: a placeholder line read with
-# override=True would replace the real key and every --run-llm test would fail
-# as unauthorized.
-LLM_KEY_NAMES=(
-	ANTHROPIC_API_KEY GEMINI_API_KEY OPENAI_API_KEY XAI_API_KEY
-	META_API_KEY META_MODEL_API_KEY MODEL_API_KEY MOONSHOT_API_KEY
-	ZAI_API_KEY ZHIPU_API_KEY DEEPSEEK_API_KEY ALIBABA_API_KEY
-	MINIMAX_API_KEY TINKER_API_KEY
-)
-
-# The LLM keys come from Azure Key Vault (scripts/fetch-cloud-secrets.sh): the
-# shared cloud environment's only variable, MELISMA_SECRETS_CLIENT_SECRET, lets
-# that script read them at session start, export them here, and append them to
-# CLAUDE_ENV_FILE (Claude Code's per-session environment file) for later shells.
-# shellcheck source=scripts/fetch-cloud-secrets.sh
-. "$ROOT/scripts/fetch-cloud-secrets.sh"
-
-# Claude Code removes ANTHROPIC_API_KEY from the shells it starts (its own
-# credential name): the Default environment defines it, yet `env` in a Bash
-# tool call shows only ANTHROPIC_BASE_URL (measured 2026-11-22). The vault
-# therefore carries the key as SELKO_ANTHROPIC_API_KEY, and this maps it back
-# -- here for this script, and in CLAUDE_ENV_FILE by *reference*
-# (persist_path).
-map_anthropic_key() {
-	if [[ -z "${ANTHROPIC_API_KEY:-}" && -n "${SELKO_ANTHROPIC_API_KEY:-}" ]]; then
-		export ANTHROPIC_API_KEY="$SELKO_ANTHROPIC_API_KEY"
-	fi
-}
-map_anthropic_key
+# The LLM keys come from Azure Key Vault, read by selko itself at startup
+# (backend/selko/keyvault.py) with the client secret in the shared cloud
+# environment's only variable, MELISMA_SECRETS_CLIENT_SECRET. Nothing here
+# fetches them, exports them or writes them anywhere, and no `az` is needed.
 
 SUDO=""
 if [[ $EUID -ne 0 ]] && command -v sudo >/dev/null 2>&1; then
@@ -90,9 +64,6 @@ persist_path() {
 		if [[ -n "${UV_SYSTEM_CERTS:-}" ]]; then
 			echo "export UV_SYSTEM_CERTS=\"$UV_SYSTEM_CERTS\"; unset UV_NATIVE_TLS" >>"$CLAUDE_ENV_FILE"
 		fi
-		# Single quotes: the line holds the variable's name, not its value.
-		# shellcheck disable=SC2016
-		echo 'if [ -n "${SELKO_ANTHROPIC_API_KEY:-}" ] && [ -z "${ANTHROPIC_API_KEY:-}" ]; then export ANTHROPIC_API_KEY="$SELKO_ANTHROPIC_API_KEY"; fi' >>"$CLAUDE_ENV_FILE"
 	fi
 }
 
@@ -205,11 +176,11 @@ write_env_files() {
 			# gateway and the OAuth sign-in URL before deciding anything, so
 			# without a value they answer 500. Nothing reaches a provider with
 			# these: real-LLM tests need --run-llm, and a real call would be
-			# refused as unauthorized. The LLM key placeholder is written only
-			# when the cloud environment does not provide the key (see
-			# LLM_KEY_NAMES): a real key lives in the process environment and is
-			# never copied into this file.
-			[[ -n "${ANTHROPIC_API_KEY:-}" ]] || echo "ANTHROPIC_API_KEY=placeholder-cloud-session-not-a-key"
+			# refused as unauthorized. A set value wins over Key Vault, so the
+			# Anthropic placeholder is written only when the session cannot read
+			# the vault. The OAuth clients live in a vault this session's app
+			# cannot read, so they always get one.
+			[[ -n "${MELISMA_SECRETS_CLIENT_SECRET:-}" ]] || echo "ANTHROPIC_API_KEY=placeholder-cloud-session-not-a-key"
 			echo "GOOGLE_CLIENT_ID=placeholder-cloud-session.apps.googleusercontent.com"
 			echo "GOOGLE_CLIENT_SECRET=placeholder-cloud-session-not-a-secret"
 			echo "MICROSOFT_CLIENT_ID=00000000-0000-0000-0000-000000000000"
@@ -239,17 +210,14 @@ upgrade_allowed_origins() {
 }
 
 drop_shadowed_llm_placeholders() {
-	# An .env written before the key was added to the environment still holds
-	# the placeholder. Remove only placeholder lines, and only for keys the
-	# environment now provides; a hand-written value is never touched.
-	[[ -f .env ]] || return 0
-	local name
-	for name in "${LLM_KEY_NAMES[@]}"; do
-		if [[ -n "${!name:-}" ]] && grep -q "^${name}=placeholder-" .env; then
-			sed -i "/^${name}=placeholder-/d" .env
-			echo "dropped the ${name} placeholder from .env: the environment provides the key"
-		fi
-	done
+	# An .env written by an earlier version (or before the vault was
+	# reachable) holds an Anthropic placeholder, which would win over the vault
+	# key. Remove only that placeholder line; a hand-written value stays.
+	[[ -f .env && -n "${MELISMA_SECRETS_CLIENT_SECRET:-}" ]] || return 0
+	if grep -q "^ANTHROPIC_API_KEY=placeholder-" .env; then
+		sed -i "/^ANTHROPIC_API_KEY=placeholder-/d" .env
+		echo "dropped the ANTHROPIC_API_KEY placeholder from .env: selko reads the key from Key Vault"
+	fi
 }
 
 write_frontend_env() {
@@ -268,14 +236,17 @@ report_status() {
 	[[ -d frontend/node_modules ]] && say "  ready: frontend/node_modules" || { say "  MISSING: frontend/node_modules"; ok=0; }
 	docker info >/dev/null 2>&1 && say "  ready: docker (the image lane)" || say "  note: docker is not running; only the image lane needs it"
 	[[ -f .env ]] && say "  ready: .env" || { say "  MISSING: .env"; ok=0; }
-	local name present=()
-	for name in "${LLM_KEY_NAMES[@]}"; do
-		[[ -n "${!name:-}" ]] && present+=("$name")
-	done
-	if ((${#present[@]} > 0)); then
-		say "  ready: LLM keys from the environment: ${present[*]}"
-	else
-		say "  note: no LLM keys in the environment; run_eval and --run-llm need MELISMA_SECRETS_CLIENT_SECRET in the cloud environment (CLAUDE.md, Owner setup)"
+	if [[ -z "${MELISMA_SECRETS_CLIENT_SECRET:-}" ]]; then
+		say "  note: no MELISMA_SECRETS_CLIENT_SECRET; run_eval and --run-llm have no LLM keys (CLAUDE.md, Owner setup)"
+	elif [[ -x .venv/bin/python ]]; then
+		# selko's own loader, the way the app runs it; prints a count only.
+		local readable
+		readable="$(.venv/bin/python -c '
+import os
+from selko import keyvault
+names = [n for n, (v, _) in keyvault.SECRETS.items() if v == keyvault.DEV_VAULT]
+print(len(keyvault.fetch_missing(names, os.environ.get)), "of", len(names))' 2>/dev/null)"
+		say "  vault: ${readable:-none} LLM keys readable from Key Vault"
 	fi
 	((ok == 1))
 }
@@ -298,11 +269,6 @@ esac
 : >"$LOG"
 step "Selko cloud setup (CLAUDE_CODE_REMOTE=true)"
 failed=()
-if [[ -n "${MELISMA_SECRETS_CLIENT_SECRET:-}" ]]; then
-	step "fetching LLM keys from Azure Key Vault"
-	fetch_cloud_secrets || failed+=("vault-keys")
-	map_anthropic_key
-fi
 persist_path
 # On the Mac core.hooksPath lives in .git/config, which a fresh clone does not
 # have, so without this the pre-commit test gate silently never runs here.

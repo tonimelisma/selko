@@ -341,7 +341,7 @@ def test_the_release_skips_what_the_image_is_not_built_from():
     push, _, tracked = _image_triggers()
     for outside in [
         "scripts/cloud-setup.sh",
-        "scripts/fetch-cloud-secrets.sh",
+        "scripts/merge-and-cleanup.sh",
         "scripts/image-check.sh",  # checked on the PR; the image is unchanged
         "CLAUDE.md",
         "docs/deploy-log/TEMPLATE.md",

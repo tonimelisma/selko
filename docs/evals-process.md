@@ -46,18 +46,16 @@ When something fails, categorize the root cause:
 
 Evals and real-model tests run in a claude.ai/code session on the shared
 cloud environment, whose one variable, `MELISMA_SECRETS_CLIENT_SECRET`, lets
-the SessionStart hook read the LLM keys from Azure Key Vault
-(`scripts/fetch-cloud-secrets.sh`; `CLAUDE.md` → "Owner setup"). The keys live
-and rotate in the vault; there are no network secrets. Production runs
-Anthropic only, so that is the model evals target; the other providers' keys
-(OpenAI, Gemini, Alibaba, Z.AI, Meta, Moonshot, DeepSeek, MiniMax, Tinker; no
-xAI) are fetched too, for comparisons. The hook leaves the keys out of `.env`,
-so the process environment supplies them, and maps `SELKO_ANTHROPIC_API_KEY`
-to `ANTHROPIC_API_KEY` (Claude Code removes the latter from the shells it
-starts).
+selko read the LLM keys from Azure Key Vault itself when it starts
+(`backend/selko/keyvault.py`; `CLAUDE.md` → "Owner setup"). On the Mac the
+same happens through `az login`; no `.env` carries a key. The keys live and
+rotate in the vault; there are no network secrets. Production runs Anthropic
+only, so that is the model evals target; the other providers' keys (OpenAI,
+Gemini, Alibaba, Z.AI, Meta, Moonshot, DeepSeek, MiniMax, Tinker; no xAI) are
+read too, for comparisons. A key set in the environment wins over the vault.
 
 ```bash
-scripts/cloud-setup.sh --status          # "ready: LLM keys from the environment: …"
+scripts/cloud-setup.sh --status          # "vault: 10 of 10 LLM keys readable from Key Vault"
 uv run python -m backend.tests.eval.run_eval --fixture <category/fixture_name>
 uv run python -m backend.tests.eval.run_eval --all --all-operations
 uv run pytest backend/tests/<test_file>.py --run-llm   # real-LLM pytest cases

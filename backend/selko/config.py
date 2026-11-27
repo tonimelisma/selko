@@ -340,6 +340,8 @@ def _fallback_key_present(provider_name: Optional[str], getenv=os.getenv) -> boo
         )
     if provider_name == "zai":
         return bool(getenv("ZAI_API_KEY") or getenv("ZHIPU_API_KEY"))
+    if provider_name == "anthropic":
+        return bool(getenv("ANTHROPIC_API_KEY") or getenv("SELKO_ANTHROPIC_API_KEY"))
     return bool(getenv(key_env))
 
 
@@ -456,6 +458,12 @@ def load_config(env_override: Optional[str] = None) -> Config:
         logger.error(f"Copy .env.example to {env_file} and fill in values.")
         logger.error("Or set environment variables directly (for CI/CD).")
         sys.exit(1)
+    # External API keys the configuration does not set come from Azure Key
+    # Vault (selko.keyvault); a set variable always wins.
+    from selko import keyvault
+
+    for key, value in keyvault.fetch_missing(keyvault.missing_names(values), values.get).items():
+        values.setdefault(key, value)
     getenv = values.get
 
     # Get required variables
@@ -498,7 +506,9 @@ def load_config(env_override: Optional[str] = None) -> Config:
         alibaba_api_key=getenv("ALIBABA_API_KEY"),
         minimax_api_key=getenv("MINIMAX_API_KEY"),
         openai_api_key=getenv("OPENAI_API_KEY"),
-        anthropic_api_key=getenv("ANTHROPIC_API_KEY"),
+        # Claude Code removes ANTHROPIC_API_KEY from the shells it starts, so a
+        # cloud environment can set the key as SELKO_ANTHROPIC_API_KEY.
+        anthropic_api_key=getenv("ANTHROPIC_API_KEY") or getenv("SELKO_ANTHROPIC_API_KEY"),
         xai_api_key=getenv("XAI_API_KEY"),
         # Meta docs use MODEL_API_KEY; local .env may use META_MODEL_API_KEY.
         meta_api_key=(

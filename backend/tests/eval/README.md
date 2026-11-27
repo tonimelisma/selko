@@ -59,14 +59,14 @@ studies (writes a side artifact, never overwrites the canonical key).
 
 ### Prerequisites
 
-```bash
-# Set the API key for the provider you want to test
-export ANTHROPIC_API_KEY="your-api-key"
+The provider keys come from Azure Key Vault: selko reads them at startup
+(`backend/selko/keyvault.py`) — on the Mac through `az login`, in a cloud
+session through `MELISMA_SECRETS_CLIENT_SECRET`. Nothing to export.
 
-# Or use a different provider
+```bash
+# A different provider
 export LLM_PROVIDER=moonshot
 export LLM_MODEL=kimi-k2.6
-export MOONSHOT_API_KEY="your-api-key"
 ```
 
 ### Run All Evaluations

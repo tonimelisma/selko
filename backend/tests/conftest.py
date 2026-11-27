@@ -1,5 +1,6 @@
 """Pytest fixtures for Selko tests."""
 
+import os
 from unittest.mock import MagicMock
 
 import pytest
@@ -21,7 +22,12 @@ def pytest_addoption(parser):
 
 
 def pytest_configure(config):
-    """Register custom markers."""
+    """Register custom markers; keep Key Vault out of runs that need no keys."""
+    # load_config() reads missing API keys from Azure Key Vault (selko.keyvault).
+    # Only --run-llm needs real keys; every other test must see exactly the
+    # environment it sets up, on the Mac (az login) as in CI.
+    if not config.getoption("--run-llm"):
+        os.environ.setdefault("SELKO_KEYVAULT_AUTH", "off")
     config.addinivalue_line(
         "markers", "llm: marks tests as requiring real LLM API calls (deselect with '-m \"not llm\"')"
     )
