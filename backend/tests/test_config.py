@@ -196,10 +196,14 @@ class TestLoadConfigAllowedOrigins:
         assert "https://selko-web-staging.onrender.com" in config.allowed_origins
         assert "https://selkoapp.com" in config.allowed_origins
 
-    def test_load_config_defaults_without_env_var(self, monkeypatch):
+    def test_load_config_defaults_without_env_var(self, monkeypatch, tmp_path):
         """load_config() uses defaults when ALLOWED_ORIGINS not set."""
+        from selko import config as config_module
         from selko.config import load_config
 
+        # No .env: a developer's local file (cloud-setup.sh writes
+        # ALLOWED_ORIGINS into it) must not stand in for the defaults.
+        monkeypatch.setattr(config_module, "PROJECT_ROOT", tmp_path)
         monkeypatch.setenv("ENVIRONMENT", "development")
         monkeypatch.setenv("SELKO_DATA_DIR", "data")
         monkeypatch.delenv("ALLOWED_ORIGINS", raising=False)

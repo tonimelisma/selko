@@ -200,7 +200,7 @@ write_env_files() {
 			echo "# Local values only; no hosted credential belongs in this file."
 			echo "SELKO_DATA_DIR=data"
 			echo "SELKO_JWT_SECRET=$(openssl rand -hex 32)"
-			echo "ALLOWED_ORIGINS=http://localhost:5173,http://localhost:8000"
+			echo "ALLOWED_ORIGINS=${CLOUD_ALLOWED_ORIGINS}"
 			# Non-functional placeholders, not credentials. Routes build the LLM
 			# gateway and the OAuth sign-in URL before deciding anything, so
 			# without a value they answer 500. Nothing reaches a provider with
@@ -218,7 +218,24 @@ write_env_files() {
 		say "wrote .env (local values)"
 	fi
 	drop_shadowed_llm_placeholders
+	upgrade_allowed_origins
 	write_frontend_env
+}
+
+# The dev defaults (selko.config) plus the API port, which serves the built web
+# app locally. The CORS integration tests send Origin localhost:3000 and
+# 127.0.0.1:3000; leaving those out made the backend lane red in every session.
+CLOUD_ALLOWED_ORIGINS="http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173,http://localhost:8000"
+OLD_CLOUD_ALLOWED_ORIGINS="http://localhost:5173,http://localhost:8000"
+
+upgrade_allowed_origins() {
+	# Replace only the exact value earlier versions of this script wrote; a
+	# hand-edited ALLOWED_ORIGINS is left alone.
+	[[ -f .env ]] || return 0
+	if grep -qxF "ALLOWED_ORIGINS=${OLD_CLOUD_ALLOWED_ORIGINS}" .env; then
+		sed -i "s|^ALLOWED_ORIGINS=${OLD_CLOUD_ALLOWED_ORIGINS}\$|ALLOWED_ORIGINS=${CLOUD_ALLOWED_ORIGINS}|" .env
+		echo "updated ALLOWED_ORIGINS in .env to include the dev defaults"
+	fi
 }
 
 drop_shadowed_llm_placeholders() {

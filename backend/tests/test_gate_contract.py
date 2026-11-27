@@ -296,28 +296,72 @@ def test_a_skip_budget_entry_may_list_several_acceptable_reasons(tmp_path):
     assert "skip reason changed" in (rejected.stderr + rejected.stdout)
 
 
-def test_the_release_never_skips_a_change_to_what_the_image_is_built_from():
-    """image.yml ignores docs, Markdown and lane records so they release nothing.
-
-    The filter must never cover a file the image or its check is built from: a
-    change there would merge, and production would quietly keep the old build.
-    """
-    import fnmatch
-    import tomllib
-
+def _image_triggers() -> tuple[list[str], list[str], list[str]]:
+    """(push paths, pull_request paths, tracked files) for image.yml."""
     import yaml
 
     root = Path(__file__).resolve().parents[2]
     workflow = yaml.safe_load((root / ".github/workflows/image.yml").read_text())
     triggers = workflow.get("on", workflow.get(True))
-    ignored = triggers["push"]["paths-ignore"]
-    assert ignored == triggers["pull_request"]["paths-ignore"]
-    assert ".verify/**" in ignored and "docs/**" in ignored  # what the filter is for
-
-    inputs = tomllib.loads((root / "scripts/lanes.toml").read_text())["lanes"]["image"]["inputs"]
+    for event in ("push", "pull_request"):
+        assert "paths-ignore" not in triggers[event], f"{event}: use a paths allowlist"
     tracked = subprocess.run(["git", "ls-files"], cwd=root, capture_output=True, text=True, check=True).stdout.split()
-    built_from = [f for f in tracked if any(fnmatch.fnmatch(f, pattern) for pattern in inputs)]
-    assert len(built_from) > 100  # the inputs resolved to real files
-    skipped = [f for f in built_from if any(fnmatch.fnmatch(f, pattern) for pattern in ignored)]
-    # README.md under backend/ is copied for packaging only; Markdown never changes the build.
-    assert all(f.endswith(".md") for f in skipped), skipped
+    return triggers["push"]["paths"], triggers["pull_request"]["paths"], tracked
+
+
+def _matches(path: str, patterns: list[str]) -> bool:
+    import fnmatch
+
+    return any(path == p or fnmatch.fnmatch(path, p) for p in patterns)
+
+
+def test_the_release_never_skips_a_change_to_what_the_image_is_built_from():
+    """On main, image.yml releases for every file the image is built from.
+
+    A change there that did not release would merge, and production would
+    quietly keep the old build. The image is built from exactly what
+    .dockerignore admits, plus the Dockerfile and .dockerignore themselves.
+    """
+    root = Path(__file__).resolve().parents[2]
+    push, _, tracked = _image_triggers()
+    admitted = [line[1:] for line in (root / ".dockerignore").read_text().splitlines() if line.startswith("!")]
+    built_from = [f for f in tracked if _matches(f, ["Dockerfile", ".dockerignore", *admitted])]
+    assert len(built_from) > 100  # the patterns resolved to real files
+    missed = [f for f in built_from if not _matches(f, push)]
+    assert not missed, missed
+
+
+def test_the_release_skips_what_the_image_is_not_built_from():
+    """A merge that changes nothing in the image releases nothing.
+
+    Production follows :main, so a release restarts it. 4406c8ac changed only
+    cloud-session scripts, the old paths-ignore filter released it anyway, and
+    that restart ended in a rollback (docs/deploy-log/2026-11-27-4406c8ac.md).
+    """
+    push, _, tracked = _image_triggers()
+    for outside in [
+        "scripts/cloud-setup.sh",
+        "scripts/fetch-cloud-secrets.sh",
+        "scripts/image-check.sh",  # checked on the PR; the image is unchanged
+        "CLAUDE.md",
+        "docs/deploy-log/TEMPLATE.md",
+        "backend/tests/test_gate_contract.py",
+        "legacy/README.md",
+    ]:
+        assert outside in tracked, outside  # the example is a real file
+        assert not _matches(outside, push), f"{outside} is not in the image but would release"
+    assert not _matches(".verify/ledger/x.jsonl", push)
+
+
+def test_every_pr_that_touches_the_image_or_its_check_runs_the_image_check():
+    """Pull requests run the image check for every image-lane input."""
+    import tomllib
+
+    root = Path(__file__).resolve().parents[2]
+    push, pull, tracked = _image_triggers()
+    inputs = tomllib.loads((root / "scripts/lanes.toml").read_text())["lanes"]["image"]["inputs"]
+    lane_files = [f for f in tracked if _matches(f, inputs)]
+    assert len(lane_files) > 100
+    missed = [f for f in lane_files if not _matches(f, pull)]
+    assert not missed, missed
+    assert all(p in pull for p in push), "a path that releases on main must be checked on its PR"

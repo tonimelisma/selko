@@ -11,9 +11,15 @@
 #         accepts only signed digests, so only images that passed every check
 #         reach production.
 #
-# A change only to docs, Markdown or lane records (.verify/) builds nothing: the
-# image does not contain them, and a release would restart production on
-# identical code.
+# Only a change to what the image is built from releases. On main the trigger is
+# an allowlist of the image's inputs (the files .dockerignore lets in, plus
+# Dockerfile, .dockerignore and this workflow): anything else -- docs, Markdown,
+# lane records, cloud-session scripts -- would rebuild identical code and
+# restart production for nothing. 4406c8ac (scripts/ only) did exactly that and
+# the restart ended in a rollback (docs/deploy-log/2026-11-27-4406c8ac.md).
+# Pull requests also run for the image check's own scripts, so a change to the
+# check is tested before it merges. Keep both lists in step with .dockerignore
+# and with [lanes.image] inputs in scripts/lanes.toml.
 #
 # A server verifies a pulled image with:
 #   cosign verify ghcr.io/tonimelisma/selko:<sha or main> \
@@ -24,9 +30,50 @@ name: Image
 on:
   push:
     branches: [main]
-    paths-ignore: ['docs/**', '**/*.md', 'legacy/**', '.verify/**']
+    paths:
+      - 'Dockerfile'
+      - '.dockerignore'
+      - '.github/workflows/image.yml'
+      - 'pyproject.toml'
+      - 'uv.lock'
+      - 'backend/pyproject.toml'
+      - 'backend/README.md'
+      - 'backend/selko/**'
+      - 'frontend/package.json'
+      - 'frontend/package-lock.json'
+      - 'frontend/jsconfig.json'
+      - 'frontend/svelte.config.js'
+      - 'frontend/vite.config.js'
+      - 'frontend/postcss.config.js'
+      - 'frontend/scripts/**'
+      - 'frontend/src/**'
+      - 'frontend/static/**'
   pull_request:
-    paths-ignore: ['docs/**', '**/*.md', 'legacy/**', '.verify/**']
+    paths:
+      - 'Dockerfile'
+      - '.dockerignore'
+      - '.github/workflows/image.yml'
+      - 'pyproject.toml'
+      - 'uv.lock'
+      - 'backend/pyproject.toml'
+      - 'backend/README.md'
+      - 'backend/selko/**'
+      - 'frontend/package.json'
+      - 'frontend/package-lock.json'
+      - 'frontend/jsconfig.json'
+      - 'frontend/svelte.config.js'
+      - 'frontend/vite.config.js'
+      - 'frontend/postcss.config.js'
+      - 'frontend/scripts/**'
+      - 'frontend/src/**'
+      - 'frontend/static/**'
+      # The image check itself: tested on the PR, released only with the image.
+      - 'scripts/build-image.sh'
+      - 'scripts/image-check.sh'
+      - 'scripts/image-lane.sh'
+      - 'scripts/check-production-health.sh'
+      - 'scripts/assert-health.sh'
+      - 'backend/tests/fixtures/imported_from_postgres.sql'
   workflow_dispatch:
 
 permissions:
