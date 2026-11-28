@@ -140,10 +140,10 @@ def entry_row(
     }
 
 
-def _mirror_adapter(supabase_client: Database, user_id: str, provider: str) -> Any:
+def _mirror_adapter(db: Database, user_id: str, provider: str) -> Any:
     if provider == providers.OUTLOOK:
-        return calendar_adapter(supabase_client, user_id, provider)
-    credentials = get_credentials(supabase_client, user_id, "google_calendar")
+        return calendar_adapter(db, user_id, provider)
+    credentials = get_credentials(db, user_id, "google_calendar")
     if not credentials:
         raise CalendarsError("No Google Calendar credentials found")
     from googleapiclient.discovery import build  # ~20 MiB with google.auth; loaded on first Google use
@@ -152,7 +152,7 @@ def _mirror_adapter(supabase_client: Database, user_id: str, provider: str) -> A
 
 
 def sync_calendar(
-    supabase_client: Database,
+    db: Database,
     user_id: str,
     integration_id: str,
     calendar_id: str = "primary",
@@ -164,11 +164,11 @@ def sync_calendar(
 
     Returns a content-free summary: counts and whether a full resync happened.
     """
-    adapter = _mirror_adapter(supabase_client, user_id, provider)
+    adapter = _mirror_adapter(db, user_id, provider)
 
     window = rolling_window(now)
 
-    state = db_mirror.get_state(supabase_client, user_id, integration_id, calendar_id)
+    state = db_mirror.get_state(db, user_id, integration_id, calendar_id)
     sync_token = (state or {}).get("sync_token")
 
     full_resync = sync_token is None
@@ -217,8 +217,8 @@ def sync_calendar(
         # no hint was ever written: production mirrored 1595 entries carrying
         # 1595 iCalUIDs and indexed none of them. The mirror tests run on a
         # real database so that gap stays visible.
-        stored = db_mirror.upsert_entries(supabase_client, user_id, rows)
-        _write_entry_hints(supabase_client, user_id, stored)
+        stored = db_mirror.upsert_entries(db, user_id, rows)
+        _write_entry_hints(db, user_id, stored)
 
     # Index anything still missing a hint, whether or not this pass changed it.
     #
@@ -228,10 +228,10 @@ def sync_calendar(
     # indexed. Production sat at 1595 mirrored entries and 0 hints for exactly
     # that reason. Making this a repair rather than a side effect of writing
     # means the index converges on its own.
-    _index_unhinted_entries(supabase_client, user_id)
+    _index_unhinted_entries(db, user_id)
 
     db_mirror.save_state(
-        supabase_client,
+        db,
         user_id,
         integration_id,
         calendar_id,
@@ -252,7 +252,7 @@ def sync_calendar(
 
 
 def _write_entry_hints(
-    supabase_client: Database, user_id: str, stored: list[dict[str, Any]]
+    db: Database, user_id: str, stored: list[dict[str, Any]]
 ) -> None:
     """Index mirrored entries by identity so matching can find them.
 
@@ -289,14 +289,14 @@ def _write_entry_hints(
     if not payload:
         return
     try:
-        db_mirror.upsert_entry_hints(supabase_client, user_id, payload)
+        db_mirror.upsert_entry_hints(db, user_id, payload)
     except Exception:
         # A hint that fails to store costs a match, never a wrong one.
         logger.exception("Could not index calendar entry identity hints")
 
 
 def _index_unhinted_entries(
-    supabase_client: Database, user_id: str, limit: int = 500
+    db: Database, user_id: str, limit: int = 500
 ) -> int:
     """Write hints for mirrored entries that have none. Returns how many.
 
@@ -305,7 +305,7 @@ def _index_unhinted_entries(
     the whole sync.
     """
     try:
-        entries = db_mirror.indexable_entries(supabase_client, user_id, limit)
+        entries = db_mirror.indexable_entries(db, user_id, limit)
     except Exception:
         logger.exception("Could not list calendar entries for indexing")
         return 0
@@ -313,7 +313,7 @@ def _index_unhinted_entries(
         return 0
 
     try:
-        hinted = db_mirror.hinted_entry_ids(supabase_client, user_id)
+        hinted = db_mirror.hinted_entry_ids(db, user_id)
     except Exception:
         logger.exception("Could not list existing calendar hints")
         return 0
@@ -321,13 +321,13 @@ def _index_unhinted_entries(
     missing = [entry for entry in entries if entry.get("id") not in hinted]
     if not missing:
         return 0
-    _write_entry_hints(supabase_client, user_id, missing)
+    _write_entry_hints(db, user_id, missing)
     logger.info("Indexed %d previously unindexed calendar entries", len(missing))
     return len(missing)
 
 
 def sync_all_calendars(
-    supabase_client: Database,
+    db: Database,
     user_id: str,
     integration_id: str,
     provider: str = providers.GOOGLE,
@@ -345,7 +345,7 @@ def sync_all_calendars(
     stop the rest, so each is attempted independently.
     """
     try:
-        calendars = list_provider_calendars(supabase_client, user_id, provider)
+        calendars = list_provider_calendars(db, user_id, provider)
     except Exception as exc:
         raise CalendarsError(f"Could not list calendars: {exc}") from exc
 
@@ -365,7 +365,7 @@ def sync_all_calendars(
             continue
         try:
             summary = sync_calendar(
-                supabase_client, user_id, integration_id, calendar_id,
+                db, user_id, integration_id, calendar_id,
                 provider=provider,
             )
             totals["calendars"] += 1

@@ -370,7 +370,7 @@ def extract_calendar_events(
 
 
 def fetch_email_with_attachments(
-    supabase_client: Database,
+    db: Database,
     email_id: str,
     email_row: dict[str, Any] | None = None,
 ) -> tuple[dict[str, Any], str, list[dict[str, Any]]]:
@@ -380,14 +380,14 @@ def fetch_email_with_attachments(
     and only attachments are fetched — Inc1 payload fix.
 
     Args:
-        supabase_client: The Selko database.
+        db: The Selko database.
         email_id: UUID of email record in database.
         email_row: Optional already-fetched email dict to skip SELECT.
 
     Returns:
 
     Args:
-        supabase_client: The Selko database.
+        db: The Selko database.
         email_id: UUID of email record in database.
 
     Returns:
@@ -403,7 +403,7 @@ def fetch_email_with_attachments(
         if email_row is not None:
             email = email_row
         else:
-            email = db_emails.get_for_extraction(supabase_client, email_id)
+            email = db_emails.get_for_extraction(db, email_id)
             if email is None:
                 raise LLMGatewayError(f"Email not found: {email_id}")
         logger.debug(f"Fetched email {email.get('id')}")
@@ -431,11 +431,11 @@ def fetch_email_with_attachments(
 
         # Read attachments from disk (all image types are stored at sync time)
         attachments: list[dict[str, Any]] = []
-        for att_record in db_attachments.for_email(supabase_client, email_id):
+        for att_record in db_attachments.for_email(db, email_id):
             storage_path = att_record.get("storage_path")
             if storage_path:
                 try:
-                    data = read_attachment_file(storage_path, supabase_client.path.parent / ATTACHMENTS_DIR)
+                    data = read_attachment_file(storage_path, db.path.parent / ATTACHMENTS_DIR)
                     attachments.append(
                         {
                             "data": data,

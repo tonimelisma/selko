@@ -141,7 +141,7 @@ class EventMatch:
 
 
 def _commit_email_extraction(
-    supabase_client: Database,
+    db: Database,
     email_id: str,
     locked_by: str,
     lock_generation: int,
@@ -150,7 +150,7 @@ def _commit_email_extraction(
 ) -> dict[str, Any]:
     """Commit one extraction envelope through the lease-fenced commit."""
     result = db_events.commit_email_extraction(
-        supabase_client, email_id, locked_by, lock_generation, decisions, terminal
+        db, email_id, locked_by, lock_generation, decisions, terminal
     )
     if not isinstance(result, dict):
         raise EventsError("commit_email_extraction returned an invalid result")
@@ -180,7 +180,7 @@ def _window_fields(window: Optional[CandidateWindow]) -> dict[str, Any]:
 
 
 def mark_email_status(
-    supabase_client: Database,
+    db: Database,
     email_id: str,
     status: str,
     error: Optional[str] = None,
@@ -192,7 +192,7 @@ def mark_email_status(
     """Update email processing status.
 
     Args:
-        supabase_client: The Selko database.
+        db: The Selko database.
         email_id: UUID of email to update.
         status: New processing status (processing, processed, skipped, failed).
         error: Optional error message (only used for failed status).
@@ -214,14 +214,14 @@ def mark_email_status(
         update_data["processing_explanation"] = explanation
     if result is not None:
         update_data["processing_result"] = result
-    db_events.mark_email_status(supabase_client, email_id, update_data)
+    db_events.mark_email_status(db, email_id, update_data)
 
 
-def get_user_timezone(supabase_client: Database, user_id: str) -> str:
+def get_user_timezone(db: Database, user_id: str) -> str:
     """Get user's IANA timezone from calendar settings.
 
     Args:
-        supabase_client: The Selko database.
+        db: The Selko database.
         user_id: UUID of user.
 
     Returns:
@@ -229,7 +229,7 @@ def get_user_timezone(supabase_client: Database, user_id: str) -> str:
         "America/New_York" if not set.
     """
     try:
-        settings = db_integrations.get_calendar_settings(supabase_client, user_id)
+        settings = db_integrations.get_calendar_settings(db, user_id)
         if settings:
             return settings.get("timezone") or "America/New_York"
     except Exception as e:
@@ -362,14 +362,14 @@ def keep_timed_update_within_a_day(
 
 
 def _fetch_baseline_info_date(
-    supabase_client: Database, event_id: str
+    db: Database, event_id: str
 ) -> Optional[str]:
     """Newest ``emails.date_sent`` across a local event's non-undone sources.
 
     Used as the "current information" recency baseline for propose_event_update.
     """
     try:
-        dates = db_events.source_email_dates(supabase_client, event_id)
+        dates = db_events.source_email_dates(db, event_id)
     except Exception as e:
         logger.debug("Could not fetch baseline info date for %s: %s", event_id, e)
         return None
@@ -377,7 +377,7 @@ def _fetch_baseline_info_date(
     return max(dates) if dates else None
 
 
-def _is_from_users_calendar(supabase_client: Database, event_id: str) -> bool:
+def _is_from_users_calendar(db: Database, event_id: str) -> bool:
     """Whether a local event was adopted from the user's own calendar.
 
     Selko-created events carry email provenance only; an event the user made
@@ -386,14 +386,14 @@ def _is_from_users_calendar(supabase_client: Database, event_id: str) -> bool:
     review instead of rewriting a calendar entry the user may own.
     """
     try:
-        return db_events.has_source_origin(supabase_client, event_id, "google_calendar")
+        return db_events.has_source_origin(db, event_id, "google_calendar")
     except Exception as e:
         logger.warning("Could not read provenance of event %s: %s", event_id, e)
         return True
 
 
 def _load_identity_context(
-    supabase_client: Database,
+    db: Database,
     email_id: str,
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     """Load only metadata needed to derive content-free identity hints."""
@@ -402,13 +402,13 @@ def _load_identity_context(
     try:
         # Only these four columns. A select naming a dropped column (body_html)
         # once failed silently here, so no provider_thread hint was written.
-        email = db_events.email_identity_context(supabase_client, email_id)
+        email = db_events.email_identity_context(db, email_id)
     except Exception as exc:
         logger.debug("Could not load email identity metadata (%s)", type(exc).__name__)
     try:
         components = [
             {key: row[key] for key in ("component_index", "uid_hash", "recurrence_id", "sequence", "dtstamp")}
-            for row in db_events.email_calendar_components(supabase_client, email_id)
+            for row in db_events.email_calendar_components(db, email_id)
         ]
     except Exception as exc:
         logger.debug("Could not load calendar identity components (%s)", type(exc).__name__)
@@ -416,7 +416,7 @@ def _load_identity_context(
 
 
 def _invite_is_already_on_calendar(
-    supabase_client: Database, user_id: str, email_id: str
+    db: Database, user_id: str, email_id: str
 ) -> bool:
     """True when this invitation's UID is already on the user's calendar.
 
@@ -431,7 +431,7 @@ def _invite_is_already_on_calendar(
     one they do not have is a commitment they never learn about.
     """
     try:
-        components = db_events.email_calendar_components(supabase_client, email_id)
+        components = db_events.email_calendar_components(db, email_id)
     except Exception:
         logger.debug("Could not read calendar components for invite check")
         return False
@@ -444,7 +444,7 @@ def _invite_is_already_on_calendar(
         return False
 
     try:
-        return db_events.calendar_entry_hint_exists(supabase_client, user_id, "ical_uid", uid_hashes)
+        return db_events.calendar_entry_hint_exists(db, user_id, "ical_uid", uid_hashes)
     except Exception:
         logger.debug("Could not check the calendar mirror for invite UID")
         return False
@@ -471,7 +471,7 @@ def _identity_hints_for_event(
 
 
 def save_extracted_events(
-    supabase_client: Database,
+    db: Database,
     gateway: LLMGateway,
     user_id: str,
     email_id: str,
@@ -515,7 +515,7 @@ def save_extracted_events(
       change (``intent="review"``), or the change is applied immediately when
       ``initial_status == "approved"`` (sender auto_approve).
     Args:
-        supabase_client: The Selko database.
+        db: The Selko database.
         gateway: LLMGateway instance for LLM operations.
         user_id: UUID of user.
         email_id: UUID of source email.
@@ -533,11 +533,11 @@ def save_extracted_events(
     cancellation_outcomes: list[str] = []
     decisions: list[dict[str, Any]] = []
     identity_email, identity_components = _load_identity_context(
-        supabase_client, email_id
+        db, email_id
     )
     # Load timezone + all-day policy once per email (lean; no GCal list).
     all_day_policy, user_timezone = calendars.get_all_day_policy_and_timezone(
-        supabase_client, user_id
+        db, user_id
     )
     auto_apply = initial_status == "approved"
     initial_review_status = "active" if auto_apply else "pending_review"
@@ -583,7 +583,7 @@ def save_extracted_events(
             identity_email, identity_components, event_index, event_data
         )
         resolution = find_matching_event(
-            supabase_client, gateway, user_id, event_data,
+            db, gateway, user_id, event_data,
             user_timezone=user_timezone,
             with_window=True,
             identity_hints=identity_hints,
@@ -774,7 +774,7 @@ def save_extracted_events(
         # LLM proposes what to update; code gate drops no-ops
         baseline_info_date = (
             None if match.is_gcal
-            else _fetch_baseline_info_date(supabase_client, match.match_id)
+            else _fetch_baseline_info_date(db, match.match_id)
         )
         try:
             change_set = event_processing.propose_event_update(
@@ -920,7 +920,7 @@ def save_extracted_events(
             # the Changes lane.
             change_set.kind != "cancellation"
             and match.baseline.get("review_status") == "active"
-            and not _is_from_users_calendar(supabase_client, match.match_id)
+            and not _is_from_users_calendar(db, match.match_id)
         ):
             applied = apply_asserted_fields(match.baseline, proposed_fields)
             decisions.append({
@@ -947,7 +947,7 @@ def save_extracted_events(
         num_updated += 1
 
     outcome = _commit_email_extraction(
-        supabase_client,
+        db,
         email_id,
         locked_by,
         lock_generation,
@@ -970,7 +970,7 @@ def save_extracted_events(
         if commit_result is not None:
             commit_result.clear()
         return save_extracted_events(
-            supabase_client,
+            db,
             gateway,
             user_id,
             email_id,
@@ -995,7 +995,7 @@ def save_extracted_events(
 
 
 def process_email_for_events(
-    supabase_client: Database,
+    db: Database,
     gateway: LLMGateway,
     email_id: str,
     user_id: str,
@@ -1010,7 +1010,7 @@ def process_email_for_events(
     Orchestrates sender checking, LLM extraction, dedup, and persistence.
 
     Args:
-        supabase_client: The Selko database.
+        db: The Selko database.
         gateway: LLMGateway instance for LLM operations.
         email_id: UUID of email to process.
         user_id: UUID of user who owns the email.
@@ -1027,29 +1027,29 @@ def process_email_for_events(
     lock_generation = int((email_row or {}).get("lock_generation") or 0)
 
     try:
-        mark_email_status(supabase_client, email_id, "processing")
+        mark_email_status(db, email_id, "processing")
 
         email_metadata, email_text, attachments = event_processing.fetch_email_with_attachments(
-            supabase_client, email_id, email_row=email_row
+            db, email_id, email_row=email_row
         )
 
         # Inject user timezone for timezone-aware current_date in prompt
-        email_metadata["user_timezone"] = get_user_timezone(supabase_client, user_id)
+        email_metadata["user_timezone"] = get_user_timezone(db, user_id)
 
         sender_email = email_metadata.get("from_email", "")
 
         # Check sender rules: ignore, auto_approve, or no rule
-        sender_rule = check_sender_rules(supabase_client, user_id, sender_email)
+        sender_rule = check_sender_rules(db, user_id, sender_email)
         rule_action = sender_rule.get("action") if sender_rule else None
 
         if rule_action == "ignore":
             logger.info("Sender rule: ignored, skipping event extraction")
             commit = _commit_email_extraction(
-                supabase_client, email_id, locked_by, lock_generation, [], "skipped"
+                db, email_id, locked_by, lock_generation, [], "skipped"
             )
             if commit.get("fenced"):
                 return {"num_events": 0, "num_new": 0, "num_updated": 0, "skipped": True, "fenced": True}
-            mark_email_status(supabase_client, email_id, "skipped")
+            mark_email_status(db, email_id, "skipped")
             return {"num_events": 0, "num_new": 0, "num_updated": 0, "skipped": True}
 
         # Determine initial status based on sender rule
@@ -1068,7 +1068,7 @@ def process_email_for_events(
         if not structured_cancellation and email_metadata.get("is_calendar_invite"):
             try:
                 structured_cancellation = db_events.email_has_component_method(
-                    supabase_client, email_id, "CANCEL"
+                    db, email_id, "CANCEL"
                 )
             except Exception:
                 logger.debug("Could not inspect structured cancellation components for %s", email_id)
@@ -1089,20 +1089,20 @@ def process_email_for_events(
             or invite_method in ics_parser.INVITE_METHODS
         )
         already_on_calendar = (
-            _invite_is_already_on_calendar(supabase_client, user_id, email_id)
+            _invite_is_already_on_calendar(db, user_id, email_id)
             if is_invite
             else False
         )
         if not structured_cancellation and is_invite and already_on_calendar:
             result = {"num_events": 0, "num_new": 0, "num_updated": 0, "skipped": True}
             commit = _commit_email_extraction(
-                supabase_client, email_id, locked_by, lock_generation, [], "skipped"
+                db, email_id, locked_by, lock_generation, [], "skipped"
             )
             if commit.get("fenced"):
                 result["fenced"] = True
                 return result
             mark_email_status(
-                supabase_client, email_id, "skipped",
+                db, email_id, "skipped",
                 outcome="calendar_invite",
                 explanation="Calendar invitation already present on your calendar.",
                 result=result,
@@ -1127,13 +1127,13 @@ def process_email_for_events(
             logger.info("No events found in email")
             result = {"num_events": 0, "num_new": 0, "num_updated": 0}
             commit = _commit_email_extraction(
-                supabase_client, email_id, locked_by, lock_generation, [], "processed"
+                db, email_id, locked_by, lock_generation, [], "processed"
             )
             if commit.get("fenced"):
                 result["fenced"] = True
                 return result
             mark_email_status(
-                supabase_client,
+                db,
                 email_id,
                 "processed",
                 outcome="cancellation_unmatched" if cancellation_mode else "no_event",
@@ -1147,7 +1147,7 @@ def process_email_for_events(
 
         commit_result: dict[str, Any] = {}
         num_new, num_updated = save_extracted_events(
-            supabase_client, gateway, user_id, email_id, extraction,
+            db, gateway, user_id, email_id, extraction,
             initial_status=initial_status,
             treat_as_civil=not from_ics,
             email_date_sent=email_metadata.get("date_sent"),
@@ -1188,13 +1188,13 @@ def process_email_for_events(
             "num_updated": num_updated,
         }
         try:
-            source_types = db_events.source_types_for_email(supabase_client, email_id)
+            source_types = db_events.source_types_for_email(db, email_id)
             if "cancellation" in source_types:
                 outcome = "event_cancelled"
         except Exception:
             logger.debug("Could not determine cancellation outcome for %s", email_id)
         mark_email_status(
-            supabase_client,
+            db,
             email_id,
             "processed",
             outcome=outcome,
@@ -1212,7 +1212,7 @@ def process_email_for_events(
         # route answers 429 and the email stays as it was.
         raise
     except Exception as e:
-        mark_email_status(supabase_client, email_id, "failed", error=str(e))
+        mark_email_status(db, email_id, "failed", error=str(e))
         raise EventsError(f"Failed to process email for events: {e}") from e
 
 
@@ -1235,7 +1235,7 @@ def _event_baseline(row: dict[str, Any]) -> dict[str, Any]:
 
 
 def _load_identity_candidates(
-    supabase_client: Database,
+    db: Database,
     user_id: str,
     hints: list[IdentityHint],
 ) -> tuple[dict[str, list[dict[str, Any]]], dict[str, dict[str, Any]], str, tuple[str, ...]]:
@@ -1247,7 +1247,7 @@ def _load_identity_candidates(
         key = _identity_key(hint)
         try:
             found = db_events.hints_matching(
-                supabase_client, user_id, [(hint.kind, hint.value_hash, hint.recurrence_id)]
+                db, user_id, [(hint.kind, hint.value_hash, hint.recurrence_id)]
             )
             rows_by_key[key] = found.get(key, [])
         except Exception as exc:
@@ -1265,7 +1265,7 @@ def _load_identity_candidates(
     })
     if entry_ids:
         try:
-            for entry in db_events.mirror_entries_by_ids(supabase_client, user_id, entry_ids):
+            for entry in db_events.mirror_entries_by_ids(db, user_id, entry_ids):
                 if not entry.get("provider_event_id"):
                     continue
                 identity_events[f"gcal:{entry['provider_event_id']}"] = {
@@ -1285,7 +1285,7 @@ def _load_identity_candidates(
         try:
             events_by_id = {
                 str(row["id"]): row
-                for row in db_events.get_many(supabase_client, user_id, event_ids)
+                for row in db_events.get_many(db, user_id, event_ids)
             }
         except Exception as exc:
             logger.debug("Could not load identity event candidates (%s)", type(exc).__name__)
@@ -1298,12 +1298,12 @@ def _load_identity_candidates(
     # its updated_at. Fingerprinting the candidate map above instead dropped the
     # mirrored entries (they carry no updated_at there), so any hint naming a
     # calendar entry conflicted on every attempt.
-    fingerprint = db_events.hint_fingerprint(supabase_client, user_id, keys) if keys else ""
+    fingerprint = db_events.hint_fingerprint(db, user_id, keys) if keys else ""
     return rows_by_key, events_by_id, fingerprint, keys
 
 
 def _mirror_candidates_in_window(
-    supabase_client: Database, user_id: str, time_min: str, time_max: str
+    db: Database, user_id: str, time_min: str, time_max: str
 ) -> list[dict[str, Any]]:
     """Mirrored calendar entries in the same band as the events read.
 
@@ -1321,7 +1321,7 @@ def _mirror_candidates_in_window(
     assumption is introduced.
     """
     try:
-        entries = db_events.mirror_entries_in_window(supabase_client, user_id, time_min, time_max)
+        entries = db_events.mirror_entries_in_window(db, user_id, time_min, time_max)
     except Exception as exc:
         # Fail toward the previous behaviour rather than losing the extraction.
         # A missed match shows a duplicate the user can reject; raising here
@@ -1541,7 +1541,7 @@ def _strong_identity_candidates(
 
 
 def find_matching_event(
-    supabase_client: Database,
+    db: Database,
     gateway: LLMGateway,
     user_id: str,
     event_data: dict[str, Any],
@@ -1557,7 +1557,7 @@ def find_matching_event(
     Returns an EventMatch with baseline fields for change detection.
     """
     if user_timezone is None:
-        user_timezone = get_user_timezone(supabase_client, user_id)
+        user_timezone = get_user_timezone(db, user_id)
 
     identity_hints = identity_hints or []
     start_dt = event_data.get("start_datetime")
@@ -1580,15 +1580,15 @@ def find_matching_event(
         return (None, None) if with_window else None
 
     candidates: list[dict[str, Any]] = db_events.in_window(
-        supabase_client, user_id, time_min, time_max
+        db, user_id, time_min, time_max
     )
     # The user's own calendar belongs in the candidate set, not behind a
     # structured-hint gate that most real emails cannot pass.
     candidates.extend(
-        _mirror_candidates_in_window(supabase_client, user_id, time_min, time_max)
+        _mirror_candidates_in_window(db, user_id, time_min, time_max)
     )
     identity_rows, identity_events, hint_fingerprint, hint_keys = _load_identity_candidates(
-        supabase_client, user_id, identity_hints
+        db, user_id, identity_hints
     )
     candidate_window = CandidateWindow(
         window_start=time_min,
@@ -1648,7 +1648,7 @@ def find_matching_event(
 
     try:
         gcal_events = calendars.fetch_calendar_events_for_date_range(
-            supabase_client, user_id, time_min, time_max,
+            db, user_id, time_min, time_max,
             user_timezone=user_timezone,
         )
         for gcal_event in gcal_events:
@@ -1745,7 +1745,7 @@ def find_matching_event(
         # the caller down the adopt-a-new-row path and produced a duplicate of
         # something they had already said no to; the declined row is the correct
         # match, and routes to record_only.
-        row = db_events.by_provider_event_id(supabase_client, user_id, gcal_id)
+        row = db_events.by_provider_event_id(db, user_id, gcal_id)
         if row is not None:
             return resolved(EventMatch(
                 match_id=row["id"],
@@ -1819,7 +1819,7 @@ def _instant(value: Any) -> Optional[datetime]:
 
 
 def retire_pending_already_on_calendar(
-    supabase_client: Database,
+    db: Database,
     user_id: str,
     arrived: list[dict[str, Any]],
     gateway_factory: Callable[[], LLMGateway],
@@ -1859,7 +1859,7 @@ def retire_pending_already_on_calendar(
 
     try:
         pending = db_events.pending_in_window(
-            supabase_client, user_id, min(by_start), max(by_start)
+            db, user_id, min(by_start), max(by_start)
         )
     except Exception:
         logger.exception("Could not load pending events to check against the calendar")
@@ -1886,7 +1886,7 @@ def retire_pending_already_on_calendar(
         if gateway is None:
             gateway = gateway_factory()
             gateway.for_user(user_id)
-            user_timezone = get_user_timezone(supabase_client, user_id)
+            user_timezone = get_user_timezone(db, user_id)
         try:
             matched_id = event_processing.compare_events(
                 gateway, event, candidates, user_timezone=user_timezone
@@ -1899,27 +1899,27 @@ def retire_pending_already_on_calendar(
         if matched is None:
             continue
 
-        if not db_events.retire_pending(supabase_client, user_id, event["id"]):
+        if not db_events.retire_pending(db, user_id, event["id"]):
             continue
         retired += 1
         logger.info("Event %s is already on the calendar; removed from New", event["id"])
-        _explain_late_match(supabase_client, event["id"], matched["title"])
+        _explain_late_match(db, event["id"], matched["title"])
     return retired
 
 
-def _explain_late_match(supabase_client: Database, event_id: str, entry_title: str) -> None:
+def _explain_late_match(db: Database, event_id: str, entry_title: str) -> None:
     """Say in History why an email's event left New without the user acting.
 
     Only an email whose sole event this was is relabelled; an email that also
     produced other events still created those, and "matched" would hide them.
     """
     try:
-        for email_id in db_events.source_email_ids(supabase_client, event_id):
-            row = db_events.email_outcome(supabase_client, email_id) or {}
+        for email_id in db_events.source_email_ids(db, event_id):
+            row = db_events.email_outcome(db, email_id) or {}
             result = row.get("processing_result") or {}
             if row.get("processing_outcome") != "event_created" or result.get("num_events") != 1:
                 continue
-            db_events.mark_email_status(supabase_client, row["id"], {
+            db_events.mark_email_status(db, row["id"], {
                 "processing_outcome": "event_matched",
                 "processing_explanation": f"Already on your calendar as “{entry_title}”.",
             })
@@ -1929,23 +1929,23 @@ def _explain_late_match(supabase_client: Database, event_id: str, entry_title: s
 
 
 def _owned_event_and_proposal(
-    supabase_client: Database, event_id: str, proposal_id: str | None, user_id: str | None
+    db: Database, event_id: str, proposal_id: str | None, user_id: str | None
 ) -> tuple[dict[str, Any], Optional[dict[str, Any]]]:
     """The event (scoped to its owner) and the named or pending proposal."""
-    owner = user_id or db_events.event_owner(supabase_client, event_id)
-    event = db_events.get(supabase_client, owner, event_id) if owner else None
+    owner = user_id or db_events.event_owner(db, event_id)
+    event = db_events.get(db, owner, event_id) if owner else None
     if event is None:
         raise EventsError(f"Event {event_id} not found")
     proposal = (
-        db_proposals.get(supabase_client, event["user_id"], event_id, proposal_id)
+        db_proposals.get(db, event["user_id"], event_id, proposal_id)
         if proposal_id
-        else db_proposals.get_pending(supabase_client, event["user_id"], event_id)
+        else db_proposals.get_pending(db, event["user_id"], event_id)
     )
     return event, proposal
 
 
 def apply_change_proposal(
-    supabase_client: Database,
+    db: Database,
     event_id: str,
     proposal_id: str | None = None,
     *,
@@ -1957,7 +1957,7 @@ def apply_change_proposal(
     (which may still say ``all_day=true``) cannot undo all-day materialization.
     ``user_id``, when given, scopes every read to that user's rows.
     """
-    event, proposal = _owned_event_and_proposal(supabase_client, event_id, proposal_id, user_id)
+    event, proposal = _owned_event_and_proposal(db, event_id, proposal_id, user_id)
     if not proposal:
         raise EventsError(f"No pending change proposal for event {event_id}")
 
@@ -1994,7 +1994,7 @@ def apply_change_proposal(
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }
     db_proposals.apply_event_change_proposal(
-        supabase_client,
+        db,
         event["user_id"],
         event_id,
         proposal["id"],
@@ -2014,7 +2014,7 @@ def apply_change_proposal(
 
 
 def reject_change_proposal(
-    supabase_client: Database,
+    db: Database,
     event_id: str,
     proposal_id: str | None = None,
     *,
@@ -2026,7 +2026,7 @@ def reject_change_proposal(
     proposal requires an active event -- or ``"deleted"`` when the Selko row is
     a provider-only adopt with no original invitation and is removed.
     """
-    event, proposal = _owned_event_and_proposal(supabase_client, event_id, proposal_id, user_id)
+    event, proposal = _owned_event_and_proposal(db, event_id, proposal_id, user_id)
     if not proposal:
         raise EventsError(f"No pending change proposal for event {event_id}")
     snapshot = proposal.get("event_snapshot_before")
@@ -2042,7 +2042,7 @@ def reject_change_proposal(
     # before -- the arm's behaviour depended on when the row happened to be
     # created. The provider-id-plus-sources test below is what it was reaching
     # for and does not depend on a vanished column.
-    sources = db_events.sources(supabase_client, event_id)
+    sources = db_events.sources(db, event_id)
     source_types = {s.get("source_type") for s in sources}
     gcal_only_proposal = (
         proposal.get("status") == "pending"
@@ -2053,7 +2053,7 @@ def reject_change_proposal(
 
     if gcal_only_proposal:
         db_proposals.reject_event_change_proposal(
-            supabase_client,
+            db,
             event["user_id"],
             event_id,
             proposal["id"],
@@ -2093,7 +2093,7 @@ def reject_change_proposal(
                 restored_event[key] = snapshot[key]
 
     db_proposals.reject_event_change_proposal(
-        supabase_client,
+        db,
         event["user_id"],
         event_id,
         proposal["id"],
@@ -2113,7 +2113,7 @@ def reject_change_proposal(
 
 
 def undo_history_event(
-    supabase_client: Database,
+    db: Database,
     event_id: str,
     user_id: str | None = None,
     *,
@@ -2133,7 +2133,7 @@ def undo_history_event(
     compensation.
 
     Args:
-        supabase_client: The Selko database.
+        db: The Selko database.
         event_id: Event UUID.
         user_id: Owner user id (required when the event is calendar-synced).
         force: When True, overwrite diverged GCal edits with the pre-Selko state.
@@ -2141,12 +2141,12 @@ def undo_history_event(
     Returns:
         The new review lane (``pending_review`` or ``active``).
     """
-    owner_id = user_id or db_events.event_owner(supabase_client, event_id)
-    event = db_events.get(supabase_client, owner_id, event_id) if owner_id else None
+    owner_id = user_id or db_events.event_owner(db, event_id)
+    event = db_events.get(db, owner_id, event_id) if owner_id else None
     if event is None:
         raise EventsError(f"Event {event_id} not found")
 
-    change_proposal = db_proposals.latest_applied(supabase_client, owner_id, event_id)
+    change_proposal = db_proposals.latest_applied(db, owner_id, event_id)
 
     google_event_id = event.get("google_calendar_event_id")
     provider_exists = bool(google_event_id)
@@ -2158,12 +2158,12 @@ def undo_history_event(
             )
         # Read the provider state outside the database transaction. The worker
         # will revalidate this revision immediately before writing.
-        live = calendars.get_calendar_event(supabase_client, user_id, google_event_id)
+        live = calendars.get_calendar_event(db, user_id, google_event_id)
         if live is not None:
             expected_provider_revision = live.get("etag") or live.get("updated")
             if not force:
                 calendars.assert_calendar_not_diverged(
-                    supabase_client, user_id, event_id, google_event_id, force=False
+                    db, user_id, event_id, google_event_id, force=False
                 )
         else:
             provider_exists = False
@@ -2185,7 +2185,7 @@ def undo_history_event(
 
         desired_event = dict(restore_fields)
         result = db_proposals.reopen_event_change_proposal(
-            supabase_client,
+            db,
             owner_id,
             event_id,
             change_proposal["id"],
@@ -2202,7 +2202,7 @@ def undo_history_event(
 
     # New approval / rejection undo
     result = db_calendar_work.undo_event_and_enqueue_calendar_work(
-        supabase_client,
+        db,
         owner_id,
         event_id,
         "cancel" if provider_exists else None,
@@ -2223,34 +2223,34 @@ def undo_history_event(
 
 
 def check_sender_rules(
-    supabase_client: Database, user_id: str, sender_email: str
+    db: Database, user_id: str, sender_email: str
 ) -> Optional[dict[str, Any]]:
     """Check if auto-approve/ignore applies to sender.
 
     Args:
-        supabase_client: The Selko database.
+        db: The Selko database.
         user_id: UUID of user.
         sender_email: Email address of sender.
 
     Returns:
         Sender rule dict if found (exact address first, then domain), None otherwise.
     """
-    return db_sender_rules.matching(supabase_client, user_id, sender_email or "")
+    return db_sender_rules.matching(db, user_id, sender_email or "")
 
 
 def generate_source_attribution(
-    supabase_client: Database, event_id: str
+    db: Database, event_id: str
 ) -> str:
     """Generate natural English attribution for event.
 
     Args:
-        supabase_client: The Selko database.
+        db: The Selko database.
         event_id: UUID of event.
 
     Returns:
         Natural English attribution string.
     """
-    sources = db_events.sources_with_emails(supabase_client, event_id)
+    sources = db_events.sources_with_emails(db, event_id)
     if not sources:
         return ""
 

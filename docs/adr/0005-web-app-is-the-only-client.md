@@ -33,8 +33,7 @@ way. Every client multiplied the API surface and the verification lanes. Require
 The web app is Selko's only client. It talks only to the API through
 `frontend/src/lib/api/client.js` (Bearer token in memory, one shared refresh on 401); there is no
 database client in the browser. There is no CLI and no MCP connector. The native apps are
-unmaintained: no lane, CI job or setup step builds or tests them, and they do not describe how
-Selko works.
+removed from the tree (git history keeps them): nothing builds, tests or ships them.
 
 ## Consequences
 

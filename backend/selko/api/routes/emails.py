@@ -210,7 +210,7 @@ async def process_email(
     # Process email for events (gateway handles rate limiting)
     try:
         process_result = process_email_for_events(
-            supabase_client=client,
+            db=client,
             gateway=gateway,
             email_id=email_id,
             user_id=user.id,
@@ -296,7 +296,7 @@ async def batch_process_emails(
         for email_id in email_ids:
             try:
                 process_result = process_email_for_events(
-                    supabase_client=client,
+                    db=client,
                     gateway=gateway,
                     email_id=email_id,
                     user_id=user.id,

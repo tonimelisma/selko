@@ -8,8 +8,7 @@ reads that information, understands the details, and turns it into clear
 calendar suggestions—without asking you to copy dates, decipher PDFs, or hunt
 through your inbox again.
 
-**Selko is live in production on the web.** (The native iOS and Android apps
-are unmaintained; see [`legacy/`](legacy/README.md).)
+**Selko is live in production on the web**, its only client.
 
 ## From email overload to a calm review queue
 

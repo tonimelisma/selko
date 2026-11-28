@@ -41,6 +41,6 @@ rule moves into a test, an ADR or `CLAUDE.md`, or a problem is solved, its entry
 
 - Defects found while writing the requirements (UID hash case, run counters, invite skip,
   folder classification, privacy-policy defaults): #457.
-- Postgres-era leftovers weaken guards (reachability exemption, `supabase_client` names, code
+- Postgres-era leftovers weaken guards (reachability exemption, `client` and `pg_pool` names, code
   comments citing deleted specs): #456.
 - No storage or schema-version surface on `/health`, and no restore test on record: #452.

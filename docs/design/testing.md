@@ -69,8 +69,7 @@ production health invariants, sign-up/sign-in/refresh, review with a live
 update, attachment download, and the database imported from the Postgres
 fixture (`backend/tests/fixtures/imported_from_postgres.sql`).
 
-The native iOS and Android apps are unmaintained and have no tests to run
-(`legacy/README.md`).
+The web app is the only client; the native apps were removed.
 
 ## Test Markers
 

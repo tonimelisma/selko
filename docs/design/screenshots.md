@@ -3,9 +3,7 @@ GOVERNS: scripts/capture-all-screenshots.sh scripts/capture-web-screenshots.sh s
 # Screenshot Capture Guide
 
 Screenshots of the web app live in `docs/screenshots/` and are used for
-documentation and visual verification. The web app is Selko's only client; the
-native iOS and Android apps are unmaintained (`legacy/README.md`) and are not
-captured.
+documentation and visual verification. The web app is Selko's only client.
 
 ---
 

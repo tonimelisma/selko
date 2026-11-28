@@ -1,7 +1,6 @@
 """Pytest fixtures for Selko tests."""
 
 import os
-from unittest.mock import MagicMock
 
 import pytest
 
@@ -53,16 +52,6 @@ def mock_config():
         google_client_id="test-client-id",
         google_client_secret="test-client-secret",
     )
-
-
-@pytest.fixture
-def mock_supabase_client():
-    """Create a mock Supabase client."""
-    client = MagicMock()
-    client.auth.get_session.return_value = MagicMock(
-        user=MagicMock(id="test-user-id")
-    )
-    return client
 
 
 @pytest.fixture

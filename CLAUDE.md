@@ -34,8 +34,8 @@ Architecture: [docs/architecture.md](docs/architecture.md). The software is prop
   I/O. ([ADR 0003](docs/adr/0003-one-writer-many-readers.md))
 - Nothing reaches a hosted database: no supabase, postgrest, asyncpg or psycopg anywhere.
   ([ADR 0004](docs/adr/0004-no-hosted-database.md))
-- The web app is the only client and talks only to the API; the native apps in `legacy/` are
-  unmaintained: never edit, build or test them. ([ADR 0005](docs/adr/0005-web-app-is-the-only-client.md))
+- The web app is the only client and talks only to the API; the native apps were removed (git
+  history keeps them). ([ADR 0005](docs/adr/0005-web-app-is-the-only-client.md))
 - Selko's own sign-in: bcrypt, short-lived HS256 access tokens in memory, a rotating HttpOnly
   refresh cookie. ([ADR 0006](docs/adr/0006-own-sign-in.md))
 - Attachments are files under the data directory, owner-only.
@@ -164,7 +164,6 @@ blocking on it would deadlock a fix for a degraded production.
 | `backend/selko/db/migrations/**` | the backend lane (every database test applies every migration to a fresh file), plus a run on a production-shaped copy when it touches a populated table |
 | `frontend/src/**` | `./scripts/verify.sh frontend` and `./scripts/capture-all-screenshots.sh web`, reviewed |
 | `Dockerfile`, `.dockerignore`, `scripts/build-image.sh`, `scripts/image-*.sh`, the imported fixture | `./scripts/image-lane.sh` (its inputs include `backend/selko/**` and `frontend/src/**` too) |
-| `legacy/**` | nothing: don't change it |
 | docs, `*.md`, `.env*`, other scripts, `.claude/` | `script/process-check` |
 
 Only what you edited counts: a backend-only change runs no web tests or screenshots. CI runs the

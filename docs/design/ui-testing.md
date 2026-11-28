@@ -2,7 +2,7 @@ GOVERNS: frontend/tests/** frontend/playwright.config.ts
 
 # UI Testing Guide
 
-Guide to UI testing of the web app, Selko's only client, in three layers: unit/component tests, E2E tests, and MCP visual verification. The native iOS and Android apps are unmaintained and untested (`legacy/README.md`).
+Guide to UI testing of the web app, Selko's only client, in three layers: unit/component tests, E2E tests, and MCP visual verification.
 
 ---
 

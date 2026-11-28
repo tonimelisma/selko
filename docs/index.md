@@ -66,6 +66,7 @@ One doc per module; each starts with `GOVERNS:` naming the paths it describes.
 ## Research
 
 - [2026-01-21-gmail-synchronization](research/2026-01-21-gmail-synchronization.md)
+- [Gemini setup for email analysis (2026-02-15)](research/2026-02-15-gemini-email-analysis-setup.md)
 - [Production breakage by root cause (2026-08-22)](research/2026-08-22-production-breakage-root-causes.md)
 
 ## History

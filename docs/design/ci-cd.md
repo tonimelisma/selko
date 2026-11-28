@@ -31,6 +31,11 @@ pushes to `main`, on a weekly schedule and on dispatch.
 | `process` | `script/process-check` (requirements, `Validates:` tags, doc links) and `script/pr-check` (the PR description) |
 | `CI gate` | Needs every other job and always reports; the one required check |
 
+The image job takes the official base images from `mirror.gcr.io` (build argument
+`BASE_REGISTRY`): `public.ecr.aws`, the Dockerfile's default and the registry cloud sessions'
+network allows, refuses anonymous pulls from shared runner addresses once their data limit is
+spent. A pull that still gets `429 Too Many Requests` is retried up to four times.
+
 ## Workflow `Image` (`.github/workflows/image.yml`)
 
 Runs on `workflow_run` when `CI` completes successfully for a push to `main`.

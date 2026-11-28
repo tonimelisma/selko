@@ -249,17 +249,17 @@ class CalendarDivergedError(CalendarsError):
         self.google_event_url = google_event_url
 
 
-def _user_integrations(supabase_client: Database, user_id: str) -> list[dict[str, Any]]:
+def _user_integrations(db: Database, user_id: str) -> list[dict[str, Any]]:
     """The user's integration rows, for deciding which calendars are writable."""
     try:
-        return db_integrations.list_integrations(supabase_client, user_id)
+        return db_integrations.list_integrations(db, user_id)
     except Exception as exc:
         logger.warning("Could not read integrations for user %s: %s", user_id, exc)
         return []
 
 
 def calendar_adapter(
-    supabase_client: Database,
+    db: Database,
     user_id: str,
     provider: str,
     *,
@@ -272,13 +272,13 @@ def calendar_adapter(
         from selko.services.outlook import OutlookError, get_access_token
 
         config = load_config()
-        row = get_provider_integration(supabase_client, providers.OUTLOOK, user_id=user_id) or {}
+        row = get_provider_integration(db, providers.OUTLOOK, user_id=user_id) or {}
         if not providers.outlook_scopes_allow_calendar(row.get("scopes")):
             raise CalendarAuthRequiredError(
                 "Outlook is connected without calendar permission", provider=providers.OUTLOOK
             )
         try:
-            token = get_access_token(supabase_client, config, user_id)
+            token = get_access_token(db, config, user_id)
         except OutlookError as exc:
             raise CalendarAuthRequiredError(str(exc), provider=providers.OUTLOOK) from exc
         if not token:
@@ -287,13 +287,13 @@ def calendar_adapter(
             )
         return OutlookCalendarAdapter(
             token,
-            client=supabase_client,
+            client=db,
             config=config,
             integration_id=row.get("id"),
             time_zone=time_zone,
         )
 
-    creds = get_credentials(supabase_client, user_id, "google_calendar")
+    creds = get_credentials(db, user_id, "google_calendar")
     if not creds:
         raise CalendarAuthRequiredError("No Google Calendar credentials found")
     return GoogleCalendarAdapter(build("calendar", "v3", credentials=creds))
@@ -307,17 +307,17 @@ def calendar_id_for(provider: str, target_calendar_id: Optional[str]) -> str:
 
 
 def target_provider(
-    supabase_client: Database, user_id: str, settings: dict[str, Any]
+    db: Database, user_id: str, settings: dict[str, Any]
 ) -> str:
     """Where a new event is written: the target calendar's provider, else a default."""
     target = settings.get("target_calendar_id")
     if target:
         return providers.provider_of_id(target)
-    return providers.resolve_target_provider(None, _user_integrations(supabase_client, user_id))
+    return providers.resolve_target_provider(None, _user_integrations(db, user_id))
 
 
 def fetch_calendar_events_for_date_range(
-    supabase_client: Database,
+    db: Database,
     user_id: str,
     time_min: str,
     time_max: str,
@@ -330,7 +330,7 @@ def fetch_calendar_events_for_date_range(
     Google's shape with qualified ids, so callers need no provider branch.
 
     Args:
-        supabase_client: The process database.
+        db: The process database.
         user_id: UUID of user.
         time_min: ISO datetime string for range start.
         time_max: ISO datetime string for range end.
@@ -340,11 +340,11 @@ def fetch_calendar_events_for_date_range(
         List of Google-shaped event dicts. Empty list on any error.
     """
     try:
-        settings = get_calendar_settings(supabase_client, user_id, include_name=False)
-        provider = target_provider(supabase_client, user_id, settings)
+        settings = get_calendar_settings(db, user_id, include_name=False)
+        provider = target_provider(db, user_id, settings)
         tz = user_timezone or settings.get("timezone") or "America/New_York"
         try:
-            adapter = calendar_adapter(supabase_client, user_id, provider, time_zone=tz)
+            adapter = calendar_adapter(db, user_id, provider, time_zone=tz)
         except CalendarAuthRequiredError:
             logger.debug("No %s credentials for calendar read-back", provider)
             return []
@@ -363,7 +363,7 @@ def fetch_calendar_events_for_date_range(
 
 
 def list_provider_calendars(
-    supabase_client: Database, user_id: str, provider: str
+    db: Database, user_id: str, provider: str
 ) -> list[dict[str, Any]]:
     """Every calendar one provider exposes, as {id, summary, primary, can_write}.
 
@@ -371,11 +371,11 @@ def list_provider_calendars(
         CalendarsError: If listing fails.
     """
     try:
-        return calendar_adapter(supabase_client, user_id, provider).list_calendars()
+        return calendar_adapter(db, user_id, provider).list_calendars()
     except Exception as e:
         if isinstance(e, HttpError) and getattr(e.resp, "status", None) == 401:
             update_integration_status(
-                supabase_client,
+                db,
                 "google_calendar",
                 "expired",
                 user_id=user_id,
@@ -384,12 +384,12 @@ def list_provider_calendars(
 
 
 def list_calendars(
-    supabase_client: Database, user_id: str
+    db: Database, user_id: str
 ) -> list[dict[str, Any]]:
     """List the calendars Selko can write to, across every connected provider.
 
     Args:
-        supabase_client: The process database.
+        db: The process database.
         user_id: UUID of user.
 
     Returns:
@@ -400,14 +400,14 @@ def list_calendars(
     Raises:
         CalendarsError: If no provider could be listed.
     """
-    integrations = _user_integrations(supabase_client, user_id)
+    integrations = _user_integrations(db, user_id)
     # With no writable provider recorded, try Google: that is the historical
     # behaviour, and it yields the "connect Calendar" error callers map to 404.
     candidates = providers.writable_providers(integrations) or [providers.GOOGLE]
 
     try:
         target_calendar_id = get_calendar_settings(
-            supabase_client, user_id, include_name=False
+            db, user_id, include_name=False
         ).get("target_calendar_id")
     except Exception as e:
         logger.warning(f"Failed to read target calendar: {e}")
@@ -420,7 +420,7 @@ def list_calendars(
     errors: list[CalendarsError] = []
     for provider in candidates:
         try:
-            listed = list_provider_calendars(supabase_client, user_id, provider)
+            listed = list_provider_calendars(db, user_id, provider)
         except CalendarsError as e:
             errors.append(e)
             logger.warning("Could not list %s calendars: %s", provider, e)
@@ -453,12 +453,12 @@ _DEFAULT_ALL_DAY_SETTINGS: dict[str, Any] = {
 
 
 def get_calendar_settings(
-    supabase_client: Database, user_id: str, *, include_name: bool = True
+    db: Database, user_id: str, *, include_name: bool = True
 ) -> dict[str, Any]:
     """Get target calendar and default invitees.
 
     Args:
-        supabase_client: The process database.
+        db: The process database.
         user_id: UUID of user.
         include_name: Resolve the target calendar's display name. That lists
             every connected provider's calendars, so provider writes and
@@ -469,7 +469,7 @@ def get_calendar_settings(
         Dict with target_calendar_id, target_calendar_name, default_invitees,
         timezone, and all-day materialization preference fields.
     """
-    settings = db_integrations.get_calendar_settings(supabase_client, user_id)
+    settings = db_integrations.get_calendar_settings(db, user_id)
 
     if not settings:
         return {
@@ -484,7 +484,7 @@ def get_calendar_settings(
     calendar_name = None
     if include_name and settings.get("target_calendar_id"):
         try:
-            calendars = list_calendars(supabase_client, user_id)
+            calendars = list_calendars(db, user_id)
             for cal in calendars:
                 if cal["id"] == settings["target_calendar_id"]:
                     calendar_name = cal["name"]
@@ -504,7 +504,7 @@ def get_calendar_settings(
 
 
 def get_all_day_policy_and_timezone(
-    supabase_client: Database, user_id: str
+    db: Database, user_id: str
 ) -> tuple["AllDayPolicy", str]:
     """Lean fetch of timezone + all-day preference (no GCal list call).
 
@@ -515,7 +515,7 @@ def get_all_day_policy_and_timezone(
 
     row: dict[str, Any]
     try:
-        row = db_integrations.get_all_day_settings(supabase_client, user_id) or {}
+        row = db_integrations.get_all_day_settings(db, user_id) or {}
     except Exception as e:
         logger.warning(f"Failed to fetch all-day policy for user {user_id}: {e}")
         row = {}
@@ -616,7 +616,7 @@ def _build_calendar_event_body(
 
 
 def _log_sync(
-    supabase_client: Database,
+    db: Database,
     user_id: str,
     event_id: str,
     google_calendar_event_id: str,
@@ -626,7 +626,7 @@ def _log_sync(
     """Log a calendar sync operation.
 
     Args:
-        supabase_client: The process database.
+        db: The process database.
         user_id: UUID of user.
         event_id: UUID of Selko event.
         google_calendar_event_id: Google Calendar event ID.
@@ -635,7 +635,7 @@ def _log_sync(
     """
     try:
         db_calendar_work.log_calendar_sync(
-            supabase_client, user_id, event_id, google_calendar_event_id, action, snapshot
+            db, user_id, event_id, google_calendar_event_id, action, snapshot
         )
         logger.debug(f"Logged sync: {action} for event {event_id}")
     except Exception as e:
@@ -644,7 +644,7 @@ def _log_sync(
 
 
 def _write_provider(
-    supabase_client: Database,
+    db: Database,
     user_id: str,
     event: dict[str, Any],
     settings: dict[str, Any],
@@ -660,11 +660,11 @@ def _write_provider(
         return providers.provider_of_id(existing)
     if provider:
         return provider
-    return target_provider(supabase_client, user_id, settings)
+    return target_provider(db, user_id, settings)
 
 
 def sync_event_to_calendar(
-    supabase_client: Database,
+    db: Database,
     user_id: str,
     event_id: str,
     *,
@@ -684,7 +684,7 @@ def sync_event_to_calendar(
     All operations are logged to calendar_sync_log for audit trail.
 
     Args:
-        supabase_client: The process database.
+        db: The process database.
         user_id: UUID of user.
         event_id: UUID of event to sync.
         provider: The provider the claimed work item was stamped with.
@@ -698,14 +698,14 @@ def sync_event_to_calendar(
     provider_name = providers.GOOGLE
     try:
         # Fetch event
-        event = db_events.get(supabase_client, user_id, event_id)
+        event = db_events.get(db, user_id, event_id)
         if event is None:
             raise NotFound(f"event {event_id} not found")
 
-        settings = get_calendar_settings(supabase_client, user_id, include_name=False)
-        provider_name = _write_provider(supabase_client, user_id, event, settings, provider)
+        settings = get_calendar_settings(db, user_id, include_name=False)
+        provider_name = _write_provider(db, user_id, event, settings, provider)
         adapter = calendar_adapter(
-            supabase_client, user_id, provider_name,
+            db, user_id, provider_name,
             time_zone=settings.get("timezone") or "America/New_York",
         )
         calendar_id = calendar_id_for(provider_name, settings.get("target_calendar_id"))
@@ -749,7 +749,7 @@ def sync_event_to_calendar(
 
         # Log the sync operation
         _log_sync(
-            supabase_client,
+            db,
             user_id,
             event_id,
             provider_event_id,
@@ -771,7 +771,7 @@ def sync_event_to_calendar(
             and provider_name == providers.GOOGLE
         ):
             update_integration_status(
-                supabase_client,
+                db,
                 "google_calendar",
                 "expired",
                 user_id=user_id,
@@ -837,7 +837,7 @@ def _update_or_recreate_calendar_event(
 
 
 def cancel_event_to_calendar(
-    supabase_client: Database,
+    db: Database,
     user_id: str,
     event_id: str,
     *,
@@ -853,7 +853,7 @@ def cancel_event_to_calendar(
     qualified id names.
     """
     try:
-        event = db_events.get(supabase_client, user_id, event_id)
+        event = db_events.get(db, user_id, event_id)
         if event is None:
             raise NotFound(f"event {event_id} not found")
         provider_event_id = event.get("google_calendar_event_id")
@@ -862,7 +862,7 @@ def cancel_event_to_calendar(
             return
 
         adapter, calendar_id = _calendar_service_for_event(
-            supabase_client, user_id, provider_event_id
+            db, user_id, provider_event_id
         )
         try:
             existing_event = adapter.get_event(calendar_id, provider_event_id)
@@ -886,7 +886,7 @@ def cancel_event_to_calendar(
             logger.info("Calendar event %s already deleted", provider_event_id)
             action = "deleted" if delete_remote else "cancelled"
         _log_sync(
-            supabase_client,
+            db,
             user_id,
             event_id,
             provider_event_id,
@@ -1009,34 +1009,34 @@ def calendar_event_diverged(
 
 
 def get_latest_sync_snapshot(
-    supabase_client: Database, event_id: str, *, user_id: str
+    db: Database, event_id: str, *, user_id: str
 ) -> dict[str, Any] | None:
     """Return the latest created/updated calendar_sync_log snapshot for an event."""
     return db_calendar_work.latest_sync_snapshot(
-        supabase_client, user_id, event_id, ("created", "updated")
+        db, user_id, event_id, ("created", "updated")
     )
 
 
 def _calendar_service_for_event(
-    supabase_client: Database, user_id: str, provider_event_id: str
+    db: Database, user_id: str, provider_event_id: str
 ) -> tuple[providers.CalendarAdapter, str]:
     """Adapter and calendar id for the calendar an existing event lives in."""
     provider = providers.provider_of_id(provider_event_id)
-    settings = get_calendar_settings(supabase_client, user_id, include_name=False)
+    settings = get_calendar_settings(db, user_id, include_name=False)
     adapter = calendar_adapter(
-        supabase_client, user_id, provider,
+        db, user_id, provider,
         time_zone=settings.get("timezone") or "America/New_York",
     )
     return adapter, calendar_id_for(provider, settings.get("target_calendar_id"))
 
 
 def get_calendar_event(
-    supabase_client: Database, user_id: str, google_event_id: str
+    db: Database, user_id: str, google_event_id: str
 ) -> dict[str, Any] | None:
     """Fetch a live calendar event by its stored id. Returns None if missing (404)."""
     try:
         adapter, calendar_id = _calendar_service_for_event(
-            supabase_client, user_id, google_event_id
+            db, user_id, google_event_id
         )
         return adapter.get_event(calendar_id, google_event_id)
     except CalendarEventNotFound:
@@ -1048,7 +1048,7 @@ def get_calendar_event(
 
 
 def assert_calendar_not_diverged(
-    supabase_client: Database,
+    db: Database,
     user_id: str,
     event_id: str,
     google_event_id: str,
@@ -1063,11 +1063,11 @@ def assert_calendar_not_diverged(
     if force:
         return
 
-    live = get_calendar_event(supabase_client, user_id, google_event_id)
+    live = get_calendar_event(db, user_id, google_event_id)
     if live is None:
         return
 
-    snapshot = get_latest_sync_snapshot(supabase_client, event_id, user_id=user_id)
+    snapshot = get_latest_sync_snapshot(db, event_id, user_id=user_id)
     if snapshot is None:
         raise CalendarDivergedError(
             "This calendar event may have changed since Selko synced it. "

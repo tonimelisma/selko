@@ -35,7 +35,6 @@ frontend/build/
 frontend/coverage/
 
 # Test results (generated, used by pre-commit hook)
-legacy/ios/TestResults.xcresult/
 frontend/test-results.json
 test-results/
 .verify/*
