@@ -108,8 +108,11 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0 # a newer release answering instead is recognised by ancestry
           persist-credentials: false
 
+      # A later merge may release before production picks this one up; then
+      # production answering with a descendant of this commit is success too.
       - name: Wait for production to answer with this commit
         run: |
           deadline=$(( $(date +%s) + 900 ))
@@ -118,6 +121,10 @@ jobs:
             running="$(printf '%s' "$body" | jq -r '.build_sha // empty' 2>/dev/null || true)"
             if [ "$running" = "$SHA" ]; then
               echo "production answers with $SHA (status $(printf '%s' "$body" | jq -r .status))"
+              break
+            fi
+            if [ -n "$running" ] && git fetch -q origin main && git merge-base --is-ancestor "$SHA" "$running" 2>/dev/null; then
+              echo "production answers with $running, a newer release that contains $SHA"
               break
             fi
             if [ "$(date +%s)" -ge "$deadline" ]; then

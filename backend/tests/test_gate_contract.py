@@ -409,3 +409,19 @@ def test_the_release_runs_only_after_ci_passed_for_a_push_to_main():
     script = "\n".join(s.get("run", "") for s in release["steps"])
     assert "/.github/workflows/image.yml@refs/heads/main" in script
     assert "cosign sign" in script
+
+
+def test_the_health_check_accepts_a_newer_release_that_contains_this_one():
+    """Two merges in quick succession: production may skip straight to the second.
+
+    The first release's health job then sees the second commit. That is a
+    healthy deploy, not a failure, so it must not open a deploy-failure issue.
+    """
+    import yaml
+
+    workflow = yaml.safe_load((ROOT / ".github/workflows/image.yml").read_text())
+    steps = workflow["jobs"]["health"]["steps"]
+    checkout = next(s for s in steps if s.get("uses", "").startswith("actions/checkout@"))
+    assert checkout["with"]["fetch-depth"] == 0
+    wait = next(s for s in steps if s.get("name", "").startswith("Wait for production"))["run"]
+    assert 'merge-base --is-ancestor "$SHA" "$running"' in wait
