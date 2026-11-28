@@ -92,6 +92,7 @@ class TestSaveOAuthCredentials:
         save_oauth_credentials(db, user, "gmail", _creds(refresh=None, scopes=None))
         assert get_provider_integration(db, "gmail", user_id=user)["scopes"] == []
 
+    # Validates: SEL-456
     def test_reconnect_keeps_the_stored_refresh_token(self, db, factory):
         user = factory.user()
         save_oauth_credentials(db, user, "gmail", _creds(refresh="first"))
@@ -325,6 +326,7 @@ class TestOAuthStateDB:
             code_verifier=kw.get("code_verifier", "pkce-verifier-abc"),
         )
 
+    # Validates: SEL-450
     def test_save_oauth_state(self, process_db, factory):
         user = factory.user()
         self._save(user)
@@ -350,6 +352,7 @@ class TestOAuthStateDB:
             "code_verifier": "pkce-verifier-xyz",
         }
 
+    # Validates: SEL-451
     def test_validate_expired_state_raises_and_deletes_it(self, process_db, factory):
         self._save(factory.user(), state="expired-state")
         with process_db.write() as tx:
@@ -369,6 +372,7 @@ class TestOAuthStateDB:
         with pytest.raises(OAuthStateError):
             _validate_and_consume_oauth_state("one-time-state")
 
+    # Validates: SEL-450
     def test_cleanup_removes_only_expired_states(self, process_db, factory):
         user = factory.user()
         self._save(user, state="old")
@@ -382,6 +386,7 @@ class TestOAuthStateDB:
 class TestInitiateOAuthFlow:
     """Test OAuth flow initiation with DB-backed state."""
 
+    # Validates: SEL-450
     @patch("selko.services.integrations._clean_expired_oauth_states")
     @patch("selko.services.integrations._save_oauth_state")
     @patch("selko.services.integrations.Flow")
@@ -468,6 +473,7 @@ class TestInitiateOAuthFlow:
 class TestCombinedGoogleConsent:
     """One consent for Gmail and Calendar, tolerant of a partial grant."""
 
+    # Validates: SEL-453
     @patch("selko.services.integrations._validate_and_consume_oauth_state")
     @patch("selko.services.integrations.Flow")
     def test_partial_grant_is_accepted_only_during_the_exchange(
@@ -584,6 +590,7 @@ class TestCombinedGoogleConsent:
             )
         assert token["scope"] == GMAIL_SCOPES
 
+    # Validates: SEL-454
     def test_half_of_the_calendar_scopes_is_not_calendar(self):
         """Calendar needs both of its scopes; one alone would fail on write."""
         from selko.services.integrations import CALENDAR_SCOPES, granted_google_providers
@@ -629,6 +636,7 @@ class TestCompleteOAuthFlow:
         assert flow_kwargs.get("autogenerate_code_verifier") is False
         mock_flow.fetch_token.assert_called_once_with(code="auth-code-123")
 
+    # Validates: SEL-452
     @patch("selko.services.integrations._validate_and_consume_oauth_state")
     def test_complete_requires_persisted_code_verifier(self, mock_validate, mock_config):
         """Regression: missing PKCE verifier must fail before token exchange."""
@@ -646,6 +654,7 @@ class TestCompleteOAuthFlow:
                 state="test-state",
             )
 
+    # Validates: SEL-452
     @patch("selko.services.integrations._validate_and_consume_oauth_state")
     @patch("selko.services.integrations.Flow")
     def test_rejected_provider_does_not_exchange_code(
@@ -702,6 +711,7 @@ class TestGetCredentialsPassesUserId:
             db, mock_load_config.return_value, "google_calendar", user_id="user-abc"
         )
 
+    # Validates: SEL-458
     def test_failed_refresh_marks_the_integration_expired(self, db, factory, monkeypatch):
         """A refresh Google refuses expires the row (read back from the database)."""
         from google.auth.exceptions import RefreshError

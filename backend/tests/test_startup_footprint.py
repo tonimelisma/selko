@@ -25,6 +25,7 @@ DEFERRED = (
 )
 
 
+# Validates: SEL-631
 def test_starting_the_app_loads_none_of_the_heavy_clients():
     script = (
         "import json, sys, selko.api.app\n"
@@ -38,6 +39,7 @@ def test_starting_the_app_loads_none_of_the_heavy_clients():
     assert loaded == [], f"imported at startup: {loaded}"
 
 
+# Validates: SEL-631
 def test_the_deferred_google_names_still_work():
     """The names tests patch stay in place, and calling them imports the real thing."""
     from selko.services import calendars, integrations

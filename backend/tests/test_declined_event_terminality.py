@@ -74,6 +74,7 @@ def _save(db, factory, declined, extraction, *, cancellation_mode=False, propose
     return counts, event, email, llm
 
 
+# Validates: SEL-230
 @pytest.mark.parametrize("declined", ["rejected", "cancelled"])
 def test_an_update_matching_a_declined_event_records_only(db, factory, spy_commit, declined):
     counts, event, email, propose = _save(db, factory, declined, _extraction())
@@ -93,6 +94,7 @@ def test_an_update_matching_a_declined_event_records_only(db, factory, spy_commi
     assert db.query_one("SELECT count(*) FROM events")[0] == 1, "no duplicate in New"
 
 
+# Validates: SEL-231
 @pytest.mark.parametrize("declined", ["rejected", "cancelled"])
 def test_a_cancellation_matching_a_declined_event_records_only(db, factory, spy_commit, declined):
     """Cancelling a declined event would revive it and queue a provider write."""
@@ -140,6 +142,7 @@ def test_a_declined_adopted_event_is_matched_not_adopted_again(db, factory, decl
     assert match.baseline["review_status"] == declined
 
 
+# Validates: SEL-232
 def test_a_booking_for_a_rejected_event_reopens_it_for_review(db, factory, spy_commit):
     """Regression: a ticket receipt for a play the user had rejected.
 
@@ -173,6 +176,7 @@ def test_a_booking_for_a_rejected_event_reopens_it_for_review(db, factory, spy_c
     assert db.query("SELECT 1 FROM calendar_work_items WHERE event_id = ?", (event,)) == []
 
 
+# Validates: SEL-233
 def test_a_booking_never_revives_an_organizer_cancelled_event(db, factory, spy_commit):
     """Cancelled is the organizer's word, not the user's: a receipt cannot undo it."""
     counts, event, _, _ = _save(db, factory, "cancelled", _extraction(booking_confirmed=True))
@@ -182,6 +186,7 @@ def test_a_booking_never_revives_an_organizer_cancelled_event(db, factory, spy_c
     assert factory.row("events", event)["review_status"] == "cancelled"
 
 
+# Validates: SEL-230
 def test_an_announcement_for_a_rejected_event_leaves_it_rejected(db, factory, spy_commit):
     """The other half: a newsletter repeating the event must not nag again."""
     extraction = _extraction()
@@ -192,6 +197,7 @@ def test_an_announcement_for_a_rejected_event_leaves_it_rejected(db, factory, sp
     assert factory.row("events", event)["review_status"] == "rejected"
 
 
+# Validates: SEL-125
 def test_extraction_carries_booking_confirmed_from_the_llm_response():
     """The flag must reach save_extracted_events, not stop at the LLM response."""
     from selko.api.schemas.calendar import EventExtractionResponse

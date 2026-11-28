@@ -100,6 +100,7 @@ def _make_http_error(status):
 
 
 class TestGetMessagesMetadataBatch:
+    # Validates: SEL-023
     def test_404_in_batch_becomes_deleted_not_failure(self):
         """Per-message 404 (deleted between listing and fetch) must become _deleted."""
         service = MagicMock()
@@ -122,6 +123,7 @@ class TestGetMessagesMetadataBatch:
         assert result["msg-ok"]["labelIds"] == ["INBOX"]
         assert result["msg-404"] == {"id": "msg-404", "_deleted": True}
 
+    # Validates: SEL-023
     def test_transient_500_is_not_swallowed(self):
         """One 500 in a 100-chunk must not silently disappear — it raises transient."""
         service = MagicMock()
@@ -147,6 +149,7 @@ class TestGetMessagesMetadataBatch:
             assert e.status_code == 500
             assert "partial failure" in str(e)
 
+    # Validates: SEL-023
     def test_auth_in_batch_aborts(self):
         """Auth error in callback must surface as GmailAuthError, not swallow."""
         service = MagicMock()

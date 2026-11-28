@@ -13,6 +13,7 @@ class TestErrorDetail:
         result = error_detail("SOME_CODE", "Something went wrong")
         assert result == {"error": "SOME_CODE", "detail": "Something went wrong"}
 
+    # Validates: SEL-665
     def test_keys_are_error_and_detail(self):
         """Returned dict has exactly two keys: 'error' and 'detail'."""
         result = error_detail("CODE", "msg")
@@ -78,6 +79,7 @@ class TestErrorCodeConstants:
             assert hasattr(ErrorCode, code_name), f"ErrorCode.{code_name} is missing"
             assert getattr(ErrorCode, code_name) == code_name
 
+    # Validates: SEL-665
     def test_constant_name_matches_value(self):
         """Each constant's attribute name matches its string value."""
         for attr_name in dir(ErrorCode):

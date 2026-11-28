@@ -104,6 +104,7 @@ def _event_row(factory, event_id) -> dict:
 # --- the four intents ----------------------------------------------------
 
 
+# Validates: SEL-223
 def test_review_intent_holds_the_change_and_writes_no_calendar_work(db, factory):
     """The Changes lane: a pending proposal, an untouched event, no provider write."""
     user = factory.user()
@@ -125,6 +126,7 @@ def test_review_intent_holds_the_change_and_writes_no_calendar_work(db, factory)
     assert _work_items(db, event_id) == [], "nothing may reach the user's calendar before they accept"
 
 
+# Validates: SEL-175
 def test_apply_intent_applies_the_change_and_queues_calendar_work(db, factory):
     user = factory.user()
     email_id, worker, generation = _claim(db, factory, user)
@@ -149,6 +151,7 @@ def test_apply_intent_applies_the_change_and_queues_calendar_work(db, factory):
     )
 
 
+# Validates: SEL-175
 def test_apply_intent_on_a_new_lane_event_queues_no_calendar_work(db, factory):
     """Absorbing newer information into an unapproved event is not a delivery."""
     user = factory.user()
@@ -167,6 +170,7 @@ def test_apply_intent_on_a_new_lane_event_queues_no_calendar_work(db, factory):
     assert _work_items(db, event_id) == []
 
 
+# Validates: SEL-230
 @pytest.mark.parametrize("declined", ["rejected", "cancelled"])
 def test_record_only_leaves_a_declined_event_untouched(db, factory, declined):
     """review-queue-integrity 8.2: record the match, change nothing."""
@@ -195,6 +199,7 @@ def _future_day() -> datetime:
     return (datetime.now() + timedelta(days=30)).replace(hour=10, minute=0, second=0, microsecond=0)
 
 
+# Validates: SEL-232
 def test_a_booking_reopens_a_rejected_event_into_the_new_lane(db, factory):
     """Regression: a ticket receipt for a play the user had rejected.
 
@@ -233,6 +238,7 @@ def test_a_booking_reopens_a_rejected_event_into_the_new_lane(db, factory):
 # --- fail-closed ---------------------------------------------------------
 
 
+# Validates: SEL-172
 def test_a_decision_without_an_intent_is_refused(db, factory):
     """The regression itself: silence must never mean 'apply and deliver'."""
     user = factory.user()
@@ -245,6 +251,7 @@ def test_a_decision_without_an_intent_is_refused(db, factory):
     assert _work_items(db, event_id) == []
 
 
+# Validates: SEL-173
 def test_a_decision_without_a_review_status_is_refused(db, factory):
     user = factory.user()
     email_id, worker, generation = _claim(db, factory, user)
@@ -278,6 +285,7 @@ def test_no_change_intent_cannot_carry_a_change_set(db, factory):
         _commit(db, email_id, worker, generation, decision)
 
 
+# Validates: SEL-234
 @pytest.mark.parametrize("declined", ["rejected", "cancelled"])
 def test_calendar_upsert_is_refused_for_a_declined_event(db, factory, declined):
     """The queue helper no longer resurrects; it fails closed."""
@@ -288,6 +296,7 @@ def test_calendar_upsert_is_refused_for_a_declined_event(db, factory, declined):
     assert _event_row(factory, event_id)["review_status"] == declined
 
 
+# Validates: SEL-234
 def test_queueing_calendar_work_does_not_change_the_review_decision(db, factory):
     """events.review_status owns the user decision; the queue helper does not.
 
@@ -303,6 +312,7 @@ def test_queueing_calendar_work_does_not_change_the_review_decision(db, factory)
     assert [item["action"] for item in _work_items(db, event_id)] == ["upsert"]
 
 
+# Validates: SEL-222, SEL-223
 @pytest.mark.parametrize("adopted_from_calendar", [False, True])
 def test_an_update_applies_to_a_selko_event_and_waits_on_a_calendar_one(db, factory, adopted_from_calendar):
     """Provenance is read from real rows and the decision goes through the real commit.

@@ -52,6 +52,7 @@ def _python_files() -> list[Path]:
     return files
 
 
+# Validates: SEL-679
 def test_events_are_written_only_by_the_commit_function():
     offenders = []
     writers_seen = set()
@@ -71,6 +72,7 @@ def test_events_are_written_only_by_the_commit_function():
     assert "db/events.py" in writers_seen
 
 
+# Validates: SEL-679
 def test_the_guard_recognizes_every_shape_of_event_write():
     for sql in (
         "INSERT INTO events (id) VALUES (?)",

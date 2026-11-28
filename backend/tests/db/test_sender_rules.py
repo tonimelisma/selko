@@ -50,6 +50,7 @@ def _rules(db, user: str) -> list[dict]:
 # --- ignore_sender_and_reject_pending -----------------------------------------
 
 
+# Validates: SEL-186
 def test_ignore_rejects_new_and_discards_pending_changes(db, factory):
     """The case that raises in Postgres today: the sender has a pending change."""
     user = factory.user()
@@ -78,6 +79,7 @@ def test_ignore_rejects_new_and_discards_pending_changes(db, factory):
     assert (restored["all_day"], restored["importance"]) == (False, "fyi")
 
 
+# Validates: SEL-186
 def test_ignore_by_domain_matches_suffix_case_sensitively(db, factory):
     user = factory.user()
     matching, _ = _new_lane_event(factory, user, "news@example.edu")
@@ -112,6 +114,7 @@ def test_ignore_is_idempotent_and_turns_an_auto_approve_rule_into_ignore(db, fac
     assert _rules(db, user) == [{"sender_email": "s@x.example", "sender_domain": None, "action": "ignore"}]
 
 
+# Validates: SEL-186
 def test_ignore_never_touches_another_users_rows(db, factory):
     user, other = factory.user(), factory.user()
     theirs, _ = _new_lane_event(factory, other, "s@x.example")
@@ -141,6 +144,7 @@ def test_ignore_requires_a_sender_and_a_user(db, factory):
     assert _rules(db, user) == []
 
 
+# Validates: SEL-186
 def test_ignore_is_all_or_nothing(db, factory):
     """A failure discarding a change rolls back the rule and the New-lane rejections too."""
     user = factory.user()
@@ -162,12 +166,14 @@ def test_check_sender_rules_exact_email(db, factory):
     assert sender_rules.matching(db, user, "school@example.edu")["action"] == "auto_approve"
 
 
+# Validates: SEL-183
 def test_check_sender_rules_domain_match(db, factory):
     user = factory.user()
     _rule(factory, user, action="ignore", sender_domain="example.edu")
     assert sender_rules.matching(db, user, "newsletter@example.edu")["action"] == "ignore"
 
 
+# Validates: SEL-183
 def test_exact_email_wins_over_domain_and_matching_is_per_user(db, factory):
     user, other = factory.user(), factory.user()
     _rule(factory, user, action="ignore", sender_domain="example.edu")
@@ -190,6 +196,7 @@ def _ago(days: float) -> str:
     return codec.to_timestamp(datetime.now(UTC) - timedelta(days=days))  # type: ignore[return-value]
 
 
+# Validates: SEL-187
 def test_deleting_ignore_rule_requeues_recent_skipped_mail(db, factory, monkeypatch):
     user = factory.user()
     rule = _rule(factory, user, sender_email="s@x.example")
@@ -223,6 +230,7 @@ def test_deleting_a_domain_rule_requeues_by_case_sensitive_suffix(db, factory):
     assert factory.row("emails", upper)["processing_status"] == "skipped"
 
 
+# Validates: SEL-187
 def test_deleting_an_auto_approve_rule_requeues_nothing(db, factory):
     user = factory.user()
     rule = _rule(factory, user, action="auto_approve", sender_email="s@x.example")

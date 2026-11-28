@@ -59,6 +59,7 @@ class TestFormatting:
             "memory: rss_mb=256.0 fds=42 threads=5 gc_gen2_objects=12345"
         )
 
+    # Validates: SEL-662
     def test_format_handles_unavailable_counters(self):
         """None values render as 'unknown' instead of crashing."""
         line = format_memory_stats(
@@ -89,6 +90,7 @@ class TestTracemallocDiff:
         finally:
             tracemalloc.stop()
 
+    # Validates: SEL-663
     def test_diff_reports_growth_between_snapshots(self):
         """Growth between snapshots is attributed to this file."""
         tracemalloc.start(1)
@@ -103,6 +105,7 @@ class TestTracemallocDiff:
         finally:
             tracemalloc.stop()
 
+    # Validates: SEL-663
     def test_growth_site_beyond_top_n_by_absolute_diff_is_not_masked(self):
         """Regression: compare_to() sorts by absolute size_diff, so large
         frees can fill the top N and crowd out real growth sites further
@@ -130,12 +133,14 @@ class TestTracemallocDiff:
 class TestMonitorTask:
     """Test the background monitor loop."""
 
+    # Validates: SEL-662
     @pytest.mark.asyncio
     async def test_start_disabled_returns_none(self):
         """Interval <= 0 disables the monitor."""
         assert start_memory_monitor(0) is None
         assert start_memory_monitor(-1) is None
 
+    # Validates: SEL-662
     @pytest.mark.asyncio
     async def test_monitor_logs_and_cancels(self, caplog):
         """Monitor emits a stats line and shuts down via cancellation."""

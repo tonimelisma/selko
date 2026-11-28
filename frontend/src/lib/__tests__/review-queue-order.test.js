@@ -12,6 +12,7 @@ function senderForEvent(e) {
 }
 
 describe('review-queue-order', () => {
+	// Validates: SEL-522
 	it('seeds order from server snapshot in array order', () => {
 		const events = [
 			{ id: 'a', sender: 'alice@x.com', start_datetime: '2026-08-10T10:00:00Z' },
@@ -26,6 +27,7 @@ describe('review-queue-order', () => {
 		expect(order.eventRank.get('c')).toBe(2);
 	});
 
+	// Validates: SEL-523
 	it('keeps sender group in place when earliest event is rejected and realtime refetches', () => {
 		// Initial snapshot: alice has 2 events, bob has 1
 		const initial = [
@@ -47,6 +49,7 @@ describe('review-queue-order', () => {
 		expect(sorted.map((e) => e.id)).toEqual(['a2', 'b1']);
 	});
 
+	// Validates: SEL-522
 	it('appends new card for existing sender after known cards', () => {
 		const initial = [
 			{ id: 'a1', sender: 'alice@x.com' },
@@ -66,6 +69,7 @@ describe('review-queue-order', () => {
 		expect(sorted.map((e) => e.id)).toEqual(['a1', 'a2', 'b1']);
 	});
 
+	// Validates: SEL-522
 	it('appends new sender after all known groups even if older', () => {
 		const initial = [
 			{ id: 'a1', sender: 'alice@x.com', start_datetime: '2026-08-11T10:00:00Z' }
@@ -80,6 +84,7 @@ describe('review-queue-order', () => {
 		expect(sorted.map((e) => e.id)).toEqual(['a1', 'c1']); // carol appends, not sorted by date
 	});
 
+	// Validates: SEL-523
 	it('retains removed rank for Undo', () => {
 		const initial = [
 			{ id: 'a1', sender: 'alice@x.com' },
@@ -99,6 +104,7 @@ describe('review-queue-order', () => {
 		expect(sorted.map((e) => e.id)).toEqual(['a1', 'a2']);
 	});
 
+	// Validates: SEL-522
 	it('sorts within sender by eventRank not start_datetime', () => {
 		const events = [
 			{ id: 'a2', sender: 'alice@x.com', start_datetime: '2026-08-11T12:00:00Z' },

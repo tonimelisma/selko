@@ -156,6 +156,7 @@ describe('Settings Page', () => {
 		});
 	});
 
+	// Validates: SEL-549
 	it('shows calendar settings when Google Calendar is connected', async () => {
 		mockFetchIntegrations.mockResolvedValue({
 			data: [
@@ -232,6 +233,7 @@ describe('Settings Page', () => {
 		});
 	});
 
+	// Validates: SEL-549
 	it('groups calendars by provider with provider labels when both are connected', async () => {
 		mockFetchIntegrations.mockResolvedValue({
 			data: [
@@ -268,6 +270,7 @@ describe('Settings Page', () => {
 		expect(select).toHaveValue('outlook:WORK');
 	});
 
+	// Validates: SEL-549
 	it('prompts to reconnect Outlook when it lacks calendar scope', async () => {
 		mockInitiateOutlookAuth.mockResolvedValue(undefined);
 		mockFetchIntegrations.mockResolvedValue({
@@ -339,6 +342,7 @@ describe('Settings Page', () => {
 		});
 	});
 
+	// Validates: SEL-548
 	it('shows one Google card with one Disconnect for Gmail and Calendar', async () => {
 		mockFetchIntegrations.mockResolvedValue({
 			data: [
@@ -367,6 +371,7 @@ describe('Settings Page', () => {
 		expect(screen.queryByText('Google Calendar', { selector: 'h3' })).not.toBeInTheDocument();
 	});
 
+	// Validates: SEL-548
 	it('disconnecting the Google card removes both Gmail and Calendar rows', async () => {
 		const user = userEvent.setup();
 		mockFetchIntegrations.mockResolvedValue({
@@ -405,6 +410,7 @@ describe('Settings Page', () => {
 		).toBeInTheDocument();
 	});
 
+	// Validates: SEL-551
 	it('shows Gmail and Outlook user folders with recommendation reasons', async () => {
 		mockFetchIntegrations.mockResolvedValue({
 			data: [
@@ -430,6 +436,7 @@ describe('Settings Page', () => {
 		expect(screen.queryByText('Inbox')).not.toBeInTheDocument();
 	});
 
+	// Validates: SEL-551
 	it('updates a folder override through the folder service', async () => {
 		const user = userEvent.setup();
 		mockFetchIntegrations.mockResolvedValue({
@@ -453,6 +460,7 @@ describe('Settings Page', () => {
 		expect(screen.getByRole('switch', { name: 'Exclude' })).toHaveAttribute('aria-checked', 'true');
 	});
 
+	// Validates: SEL-551
 	it('rolls back a failed folder update and retries only that row', async () => {
 		const user = userEvent.setup();
 		mockFetchIntegrations.mockResolvedValue({
@@ -516,6 +524,7 @@ describe('Settings Page', () => {
 		expect(screen.getByText(/Example: Water Day/)).toBeInTheDocument();
 	});
 
+	// Validates: SEL-550
 	it('shows an inline error when custom end is not later than start', async () => {
 		const user = userEvent.setup();
 		mockGetCalendarSettings.mockResolvedValue({

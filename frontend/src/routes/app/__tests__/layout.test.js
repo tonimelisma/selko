@@ -89,6 +89,7 @@ describe('App Layout', () => {
 		expect(document.querySelector('.loading.loading-spinner')).toBeTruthy();
 	});
 
+	// Validates: SEL-516
 	it('redirects to login when not authenticated', async () => {
 		mockLoading.set(false);
 		mockUser.set(null);
@@ -100,6 +101,7 @@ describe('App Layout', () => {
 		});
 	});
 
+	// Validates: SEL-516
 	it('keeps the deep link the user opened when sending them to sign in', async () => {
 		window.history.replaceState({}, '', '/app/events/e1?tab=source');
 		mockLoading.set(false);

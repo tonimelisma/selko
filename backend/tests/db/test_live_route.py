@@ -81,6 +81,7 @@ def _write_event(db, factory, user_id, delay=0.3):
     threading.Thread(target=go, daemon=True).start()
 
 
+# Validates: SEL-567, SEL-637
 def test_a_write_reaches_its_owner_once(client, app, db, factory):
     sam = _token(db, "sam@example.test")
     with client.stream(
@@ -95,6 +96,7 @@ def test_a_write_reaches_its_owner_once(client, app, db, factory):
     assert invalidations[0]["resource"] == "events" and invalidations[0]["operation"] == "INSERT"
 
 
+# Validates: SEL-567, SEL-637, SEL-638
 def test_another_users_write_is_never_heard(client, app, db, factory):
     sam = _token(db, "sam@example.test")
     alex = _token(db, "alex@example.test")
@@ -106,6 +108,7 @@ def test_another_users_write_is_never_heard(client, app, db, factory):
     assert not [e for e in events if e[0] == "invalidate"]
 
 
+# Validates: SEL-567, SEL-639
 def test_sign_out_ends_the_stream(client, app, db):
     sam = _token(db, "sam@example.test")
     headers = {"Authorization": f"Bearer {sam.access_token}"}
@@ -121,6 +124,7 @@ def test_sign_out_ends_the_stream(client, app, db):
     assert events[-1][0] == "revoked"
 
 
+# Validates: SEL-639
 def test_the_stream_ends_when_the_token_expires(client, app, db):
     sam = _token(db, "sam@example.test")
     claims = jwt.decode(sam.access_token, options={"verify_signature": False})
@@ -132,10 +136,12 @@ def test_the_stream_ends_when_the_token_expires(client, app, db):
     assert events[-1][0] == "reauth"
 
 
+# Validates: SEL-640
 def test_no_token_no_stream(client, app):
     assert client.get("/live").status_code == 401
 
 
+# Validates: SEL-567, SEL-640
 def test_a_user_gets_at_most_five_streams(client, app, db, monkeypatch):
     sam = _token(db, "sam@example.test")
     monkeypatch.setitem(live._open, sam.user["id"], live.MAX_STREAMS_PER_USER)

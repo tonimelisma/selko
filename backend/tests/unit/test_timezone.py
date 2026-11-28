@@ -16,6 +16,7 @@ class TestGetUserTimezone:
 
         assert get_user_timezone(db, user) == "America/Los_Angeles"
 
+    # Validates: SEL-134
     def test_returns_default_when_no_settings(self, db, factory):
         from selko.services.events import get_user_timezone
 
@@ -33,6 +34,7 @@ class TestGetUserTimezone:
 
         assert get_user_timezone(db, user) == "America/New_York"
 
+    # Validates: SEL-134
     def test_returns_default_on_db_error(self, tmp_path):
         from selko.db.connection import Database
         from selko.services.events import get_user_timezone
@@ -75,6 +77,7 @@ class TestNormalizeEventData:
         assert result["start_datetime"] is not None
         assert "-04:00" in result["start_datetime"] or "-05:00" in result["start_datetime"]
 
+    # Validates: SEL-132
     def test_aware_datetime_treated_as_civil_wall_time(self):
         """LLM offsets are untrusted — clock face is localized to user TZ."""
         from selko.services.events import normalize_event_data
@@ -109,6 +112,7 @@ class TestNormalizeEventData:
         result = normalize_event_data(event)  # No timezone specified
         assert "-04:00" in result["start_datetime"]
 
+    # Validates: SEL-134
     def test_invalid_timezone_falls_back_to_new_york(self):
         """Invalid timezone string should fall back to America/New_York."""
         from selko.services.events import normalize_event_data
@@ -170,6 +174,7 @@ class TestCalendarSettingsTimezone:
 class TestExtractCalendarEventsTzAwareness:
     """Tests for timezone-aware current_date in event_processing."""
 
+    # Validates: SEL-121
     def test_current_date_uses_user_timezone(self):
         """current_date computed in user's timezone, not server UTC."""
         from selko.api.schemas.calendar import EventExtractionResponse

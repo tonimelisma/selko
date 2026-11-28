@@ -183,6 +183,7 @@ class TestNormalizeEventData:
         assert result["location"] is None
         assert result["description"] == ""
 
+    # Validates: SEL-135
     def test_zero_length_event_gets_one_hour_duration(self):
         """Regression: end == start (e.g. an extracted deadline) must not sync
         as a zero-length sliver."""
@@ -203,6 +204,7 @@ class TestNormalizeEventData:
 
         assert result["end_datetime"] == "2026-03-15T21:00:00-04:00"
 
+    # Validates: SEL-135
     def test_end_before_start_gets_one_hour_duration(self):
         event = _make_calendar_event(
             start_datetime=datetime(2026, 3, 15, 20, 0),
@@ -237,6 +239,7 @@ class TestNormalizeEventData:
 class TestSaveExtractedEvents:
     """save_extracted_events builds decisions and the real commit writes them."""
 
+    # Validates: SEL-180
     def test_creates_new_event_when_no_match(self, db, user, email, spy_commit):
         num_new, num_updated = _save(db, user, email, _make_extraction(events=[_make_calendar_event()]))
 
@@ -248,6 +251,7 @@ class TestSaveExtractedEvents:
         assert [s["email_id"] for s in sources] == [email]
         assert _statuses(db, email)[0] == "processed"
 
+    # Validates: SEL-168
     def test_retries_resolution_after_candidate_conflict(self, db, factory, user, email, monkeypatch):
         """Every attempt meets a band that moved after it was read, until the budget runs out."""
         start = _future()
@@ -270,6 +274,7 @@ class TestSaveExtractedEvents:
         assert [e["title"] for e in _events(db, user)] == ["Rival"], "a conflict writes nothing"
         assert _statuses(db, email)[0] == "processing", "the email stays claimed for a retry"
 
+    # Validates: SEL-136
     def test_skips_event_with_null_start_datetime(self, db, user, email, spy_commit):
         """Regression: events with no start_datetime must not be created or matched."""
         extraction = _make_extraction(events=[_make_calendar_event(start_datetime=None, end_datetime=None)])
@@ -281,6 +286,7 @@ class TestSaveExtractedEvents:
         assert spy_commit.decisions == []
         assert _events(db, user) == []
 
+    # Validates: SEL-160
     def test_skips_noop_match(self, db, factory, user, email, spy_commit):
         event = event_at(factory, user, _future(), review_status="active")
 
@@ -293,6 +299,7 @@ class TestSaveExtractedEvents:
         assert len(_events(db, user)) == 1
         assert db.query("SELECT 1 FROM event_change_proposals") == []
 
+    # Validates: SEL-135
     def test_proposed_zero_length_change_gets_one_hour_duration(self, db, factory, user, email, spy_commit):
         """Regression: a proposal with matching start/end (e.g. a re-extracted
         deadline) must not persist a zero-length change."""
@@ -319,6 +326,7 @@ class TestSaveExtractedEvents:
         (proposal,) = db.query("SELECT change_set FROM event_change_proposals WHERE event_id = ?", (event,))
         assert "end_datetime" in proposal["change_set"]
 
+    # Validates: SEL-227
     def test_adopts_a_calendar_event_when_the_change_is_material(self, db, user, email, spy_commit):
         start = _future()
         live = [{
@@ -420,6 +428,7 @@ class TestSaveExtractedEvents:
         assert spy_commit.decisions == []
         assert _statuses(db, email)[0] == "processed"
 
+    # Validates: SEL-136
     def test_skips_events_older_than_24_hours(self, db, user, email):
         old_event = _make_calendar_event(
             title="Old Event",
@@ -433,6 +442,7 @@ class TestSaveExtractedEvents:
         match.assert_not_called()
         assert _events(db, user) == []
 
+    # Validates: SEL-136
     def test_keeps_events_exactly_at_24_hour_cutoff(self, db, user, email, spy_commit):
         boundary_event = _make_calendar_event(
             title="Boundary Event",
@@ -493,6 +503,7 @@ class TestProcessEmailPipeline:
             result = process_email_for_events(db, gateway(), email, user, email_row=email_row(db, email))
         return result, extract
 
+    # Validates: SEL-188
     def test_happy_path_end_to_end(self, db, user, email):
         result, extract = self._process(
             db, user, email, extraction=_make_extraction(events=[_make_calendar_event()]),
@@ -506,6 +517,7 @@ class TestProcessEmailPipeline:
         assert row["locked_by"] is None, "the commit released the lease"
         assert [e["review_status"] for e in _events(db, user)] == ["pending_review"]
 
+    # Validates: SEL-184
     def test_sender_ignored_short_circuits(self, db, factory, user, email):
         from selko.db.codec import new_id
 
@@ -519,6 +531,7 @@ class TestProcessEmailPipeline:
         assert _statuses(db, email)[0] == "skipped"
         assert _events(db, user) == []
 
+    # Validates: SEL-130
     def test_calendar_invite_already_on_the_calendar_short_circuits(self, db, factory, user):
         """An invitation the calendar already holds must not reach extraction.
 
@@ -551,6 +564,7 @@ class TestProcessEmailPipeline:
         # ingest-time marking, so it never shows up as a false "processed" row.
         assert _statuses(db, email) == ("skipped", "calendar_invite")
 
+    # Validates: SEL-130
     def test_an_invite_the_calendar_does_not_hold_is_processed(self, db, factory, user):
         """The case the old rule got wrong, stated as a test.
 
@@ -572,6 +586,7 @@ class TestProcessEmailPipeline:
         extract.assert_called_once()
         assert _statuses(db, email) == ("processed", "no_event")
 
+    # Validates: SEL-130
     def test_ics_invite_method_short_circuits(self, db, factory, user):
         """Regression: a Gmail METHOD:REQUEST .ics attachment must never reach LLM extraction."""
         from selko.db.codec import new_id
@@ -599,6 +614,7 @@ class TestProcessEmailPipeline:
         extract.assert_not_called()
         assert _statuses(db, email)[1] == "calendar_invite"
 
+    # Validates: SEL-127, SEL-130
     def test_publish_ics_still_extracts_events(self, db, factory, user):
         """A plain 'add to calendar' .ics (METHOD:PUBLISH or no METHOD) is not an invite."""
         email = claimed_email(factory, user, from_email="organizer@example.com")
@@ -616,6 +632,7 @@ class TestProcessEmailPipeline:
         assert _statuses(db, email) == ("processed", "event_created")
         assert [e["title"] for e in _events(db, user)] == ["Community Fest"]
 
+    # Validates: SEL-188
     def test_no_events_short_circuits(self, db, user, email, spy_commit):
         result, _ = self._process(db, user, email, extraction=_make_extraction(events=[], events_found=False))
 
@@ -623,6 +640,7 @@ class TestProcessEmailPipeline:
         assert spy_commit.decisions == []
         assert _statuses(db, email) == ("processed", "no_event")
 
+    # Validates: SEL-188
     def test_matched_event_has_distinct_processing_outcome(self, db, factory, user, email):
         start = _future()
         existing = event_at(factory, user, start, review_status="active")
@@ -636,6 +654,7 @@ class TestProcessEmailPipeline:
 
         assert _statuses(db, email) == ("processed", "event_matched")
 
+    # Validates: SEL-189
     def test_exception_marks_failed(self, db, user, email):
         with providers_offline(), \
              patch("selko.services.events.event_processing.extract_calendar_events",
@@ -646,6 +665,7 @@ class TestProcessEmailPipeline:
         row = email_row(db, email)
         assert (row["processing_status"], row["processing_error"]) == ("failed", "model unavailable")
 
+    # Validates: SEL-127
     def test_ics_attachment_skips_llm(self, db, factory, user, email):
         """When email has .ics attachment, LLM extraction is skipped."""
         start = (datetime.now(timezone.utc) + timedelta(days=30)).strftime("%Y%m%dT14%M00Z")
@@ -659,6 +679,7 @@ class TestProcessEmailPipeline:
         extract.assert_not_called()
         assert (result["num_events"], result["num_new"]) == (1, 1)
 
+    # Validates: SEL-128
     def test_ics_parse_failure_falls_back_to_llm(self, db, factory, user, email):
         """When .ics parsing fails, falls back to LLM extraction."""
         stored_attachment(db, factory, user, email, b"not valid ics", filename="bad.ics",
@@ -669,6 +690,7 @@ class TestProcessEmailPipeline:
         extract.assert_called_once()
         assert result["num_events"] == 1
 
+    # Validates: SEL-124
     def test_attachment_bytes_reach_the_extraction(self, db, factory, user, email):
         """The stored file is what the model is shown."""
         stored_attachment(db, factory, user, email, b"\x89PNG-bytes", filename="flyer.png", mime_type="image/png")
@@ -694,6 +716,7 @@ class TestAutoApproveSenderRule:
                    return_value=_make_extraction(events=[_make_calendar_event()])):
             return process_email_for_events(db, gateway(), email, user, email_row=email_row(db, email))
 
+    # Validates: SEL-180, SEL-185
     def test_process_email_auto_approve_creates_approved_events(self, db, factory, user, email):
         self._rule(factory, user, "auto_approve")
         result = self._process(db, user, email)
@@ -705,6 +728,7 @@ class TestAutoApproveSenderRule:
         work = db.query("SELECT action FROM calendar_work_items WHERE event_id = ?", (event["id"],))
         assert [w["action"] for w in work] == ["upsert"], "an approved event is queued for the calendar"
 
+    # Validates: SEL-185
     def test_process_email_no_rule_creates_pending_events(self, db, user, email):
         result = self._process(db, user, email)
 

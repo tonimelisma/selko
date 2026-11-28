@@ -121,6 +121,7 @@ def store(db):
 # --- repository -----------------------------------------------------------------
 
 
+# Validates: SEL-004
 def test_expired_sync_claim_returns_a_run_and_takes_the_lease(db, factory, mock_config):
     _, integration_id = _integration(
         db, factory, lease_owner="dead-worker", lease_expires_at=_ts(-5), last_success_at=_ts(-600)
@@ -139,6 +140,7 @@ def test_expired_sync_claim_returns_a_run_and_takes_the_lease(db, factory, mock_
     assert (run["status"], run["lease_generation"]) == ("running", claim.lease_generation)
 
 
+# Validates: SEL-003
 def test_a_live_lease_is_not_claimed(db, factory, mock_config):
     _integration(db, factory, lease_owner="other-worker", lease_expires_at=_ts(600))
     assert asyncio.run(EmailIngestionRepository(mock_config, db).claim_due_sync("worker-1")) is None
@@ -154,6 +156,7 @@ def test_sync_claim_normalizes_uuid_ids():
     assert claim.run_id == str(run_id)
 
 
+# Validates: SEL-056
 def test_ingestion_error_codes_are_stable_and_details_redacted():
     exc = ProviderMessageMissingError("Authorization: Bearer secret-token")
 
@@ -215,6 +218,7 @@ def test_claimed_attachment_is_json_safe(db, factory, mock_config):
     json.dumps(row)
 
 
+# Validates: SEL-078
 def test_outlook_unsupported_video_attachment_is_terminal_without_provider_call(db, mock_config):
     worker = EmailIngestionWorker(db, mock_config, "attachment-worker", pg_pool=db)
     attachment = {"mime_type": "video/mp4", "filename": "clip.mp4"}
@@ -222,6 +226,7 @@ def test_outlook_unsupported_video_attachment_is_terminal_without_provider_call(
     assert asyncio.run(worker.acquire_attachment(attachment)) == "unsupported"
 
 
+# Validates: SEL-095
 def test_graph_transport_sends_correlation_and_immutable_request_headers():
     response = MagicMock(status_code=200, headers={"request-id": "server-request"})
     response.json.return_value = {"value": []}
@@ -241,6 +246,7 @@ def test_graph_transport_sends_correlation_and_immutable_request_headers():
     assert headers["client-request-id"]
 
 
+# Validates: SEL-095
 def test_graph_429_honors_retry_after_before_success():
     throttled = MagicMock(status_code=429, headers={"Retry-After": "7"})
     throttled.json.return_value = {"error": {"code": "TooManyRequests"}}
@@ -276,6 +282,7 @@ def _gmail_message_with_inline_image() -> dict:
     }
 
 
+# Validates: SEL-080
 def test_gmail_inline_image_is_stored_rather_than_marked_unsupported(store, factory, mock_config):
     """extract_attachments() skips CID images, so the descriptor lookup must
     also consult extract_inline_images() or every inline image dead-ends."""
@@ -301,6 +308,7 @@ def test_gmail_inline_image_is_stored_rather_than_marked_unsupported(store, fact
     assert read_attachment_file(row["storage_path"]) == b"png-bytes"
 
 
+# Validates: SEL-081
 def test_a_stale_attachment_worker_cannot_record_a_stored_file(store, factory, mock_config):
     """The row update is fenced on locked_by: a worker that lost its lease writes nothing."""
     db = store
@@ -321,6 +329,7 @@ def test_a_stale_attachment_worker_cannot_record_a_stored_file(store, factory, m
     assert factory.row("attachments", attachment["id"])["storage_path"] is None
 
 
+# Validates: SEL-057
 def test_acquire_item_does_not_query_integrations_per_message(db, mock_config):
     """A dead per-message integrations lookup costs a round trip and can raise
     on a missing row, dead-lettering mail for an unrelated reason."""
@@ -457,6 +466,7 @@ def test_reopened_incident_can_send_a_second_recovery_notification(db, factory, 
     assert resolved["resolved_notification_sent_at"] is not None
 
 
+# Validates: SEL-096
 def test_graph_ledger_url_template_drops_item_ids_and_delta_tokens():
     url = (
         "https://graph.microsoft.com/v1.0/me/mailFolders/AAMkFolderId/messages/"
@@ -640,6 +650,7 @@ def _run_with(patches, coro_factory):
         return asyncio.run(coro_factory()), mocks
 
 
+# Validates: SEL-029
 def test_outlook_deleted_folder_is_removed_without_blocking_later_folders(db, factory, mock_config):
     """One folder's 404 must not abort the pass or lose other folders' cursors."""
     claim, rows = _outlook_with_folders(db, factory, mock_config, ["deleted", "current"])
@@ -667,6 +678,7 @@ def _gmail_integration(db, factory, mock_config, cursor: str | None = "history-c
     return replace(_claim(db, mock_config), run_kind=run_kind)
 
 
+# Validates: SEL-022
 def test_gmail_history_expiry_captures_replacement_cursor_before_listing(db, factory, mock_config):
     """The replacement historyId must be read before the bounded listing.
 
@@ -702,6 +714,7 @@ def test_gmail_history_expiry_captures_replacement_cursor_before_listing(db, fac
     assert upsert.call_args.kwargs["cursor"] == "replacement-cursor"
 
 
+# Validates: SEL-021
 def test_gmail_history_cursor_is_committed_by_the_real_upsert(db, factory, mock_config):
     """End to end on the database: the page and its cursor land together."""
     claim = _gmail_integration(db, factory, mock_config)
@@ -722,6 +735,7 @@ def test_gmail_history_cursor_is_committed_by_the_real_upsert(db, factory, mock_
     assert es.folders_refreshed_at(db, claim.integration_id) is not None
 
 
+# Validates: SEL-024
 def test_gmail_excluded_folders_come_from_the_database(db, factory, mock_config):
     """A label the user excluded removes its messages from discovery."""
     claim = _gmail_integration(db, factory, mock_config)
@@ -749,6 +763,7 @@ def test_gmail_excluded_folders_come_from_the_database(db, factory, mock_config)
     assert kinds == {"kept": "upsert", "dropped": "removed"}
 
 
+# Validates: SEL-021
 def test_gmail_incremental_poll_does_not_fetch_the_user_profile(db, factory, mock_config):
     """6c: the profile call is only needed where replacement_cursor is used.
 
@@ -770,6 +785,7 @@ def test_gmail_incremental_poll_does_not_fetch_the_user_profile(db, factory, moc
     profile.assert_not_called()
 
 
+# Validates: SEL-023, SEL-024
 def test_gmail_discovery_batches_metadata_and_matches_the_serial_result(db, factory, mock_config):
     """6a: batching must not change what discovery decides, only what it costs."""
     claim = _gmail_integration(db, factory, mock_config)
@@ -804,6 +820,7 @@ def test_gmail_discovery_batches_metadata_and_matches_the_serial_result(db, fact
     assert discovered["message-excluded"]["change_kind"] == "removed"
 
 
+# Validates: SEL-025
 def test_gmail_reconcile_skips_known_identities_and_resumes_next_pass(db, factory, mock_config):
     """6b: the reconcile bound must make forward progress, not re-truncate.
 
@@ -835,6 +852,7 @@ def test_gmail_reconcile_skips_known_identities_and_resumes_next_pass(db, factor
     assert requested == ["message-3", "message-4"]
 
 
+# Validates: SEL-025
 def test_gmail_reconcile_does_not_bound_the_incremental_path(db, factory, mock_config):
     """Only reconcile passes are bounded; an incremental delta is already O(delta)."""
     mock_config.email_reconcile_max_identities = 1
@@ -856,6 +874,7 @@ def test_gmail_reconcile_does_not_bound_the_incremental_path(db, factory, mock_c
     assert list(batch.call_args.args[1]) == ["a", "b", "c"]
 
 
+# Validates: SEL-025
 def test_known_provider_message_ids_answers_in_bounded_chunks(db, factory, mock_config):
     """A full reconcile window is queried a chunk at a time, and the answer is exact."""
     from selko.services.email_ingestion import KNOWN_ID_QUERY_CHUNK
@@ -885,6 +904,7 @@ def test_known_provider_message_ids_answers_in_bounded_chunks(db, factory, mock_
     assert sum(calls) == len(ids)
 
 
+# Validates: SEL-077
 def test_attachment_failure_cannot_touch_provider_cursors(db, factory, mock_config):
     """Attachment work is a separate claim, so it can never rewind discovery.
 
@@ -913,6 +933,7 @@ def test_attachment_failure_cannot_touch_provider_cursors(db, factory, mock_conf
     assert es.get_sync_state(db, integration_id) == state_before
 
 
+# Validates: SEL-080
 def test_outlook_attachment_decodes_base64_and_skips_item_attachments(store, factory, mock_config):
     """Only fileAttachment carries contentBytes; itemAttachment must not store."""
     db = store
@@ -945,6 +966,7 @@ def test_outlook_attachment_decodes_base64_and_skips_item_attachments(store, fac
     assert factory.row("attachments", by_provider["item-1"]["id"])["storage_path"] is None
 
 
+# Validates: SEL-010
 def test_missing_credentials_are_classified_as_auth_and_expire_the_integration(db, factory, mock_config):
     """A missing credential must mark the integration expired, not look like a
     deleted message — otherwise it retries forever and never prompts reconnect."""
@@ -972,6 +994,7 @@ def _gmail_error(status, reason=None, message="provider error"):
     return GmailError(message, status_code=status, reason=reason)
 
 
+# Validates: SEL-056
 @pytest.mark.parametrize(
     "exc, expected_code, expected_retryable, expected_auth_failure",
     [
@@ -1047,6 +1070,7 @@ def test_refresh_error_invalid_grant_no_longer_dead_letters():
     assert classification.auth_failure is True
 
 
+# Validates: SEL-056
 def test_safe_error_code_is_the_classifier_not_a_shadowed_substring_matcher():
     """Regression for the duplicate definition reported on PR #242.
 
@@ -1101,6 +1125,7 @@ def test_no_acquisition_failure_is_terminal_on_first_attempt(db, factory, mock_c
     assert row["next_retry_at"] is not None
 
 
+# Validates: SEL-055
 def test_permanent_error_is_terminal_on_first_attempt(db, factory, mock_config):
     """The only first-attempt terminal path is a deliberate ProviderPermanentError."""
     item = _claimed_item(db, factory, mock_config)
@@ -1114,6 +1139,7 @@ def test_permanent_error_is_terminal_on_first_attempt(db, factory, mock_config):
     assert row["last_error_code"] == "provider_permanent"
 
 
+# Validates: SEL-055
 def test_a_stale_worker_cannot_fail_an_item_it_no_longer_owns(db, factory, mock_config):
     item = _claimed_item(db, factory, mock_config)
 
@@ -1124,6 +1150,7 @@ def test_a_stale_worker_cannot_fail_an_item_it_no_longer_owns(db, factory, mock_
     assert factory.row("email_ingestion_items", item["id"])["acquisition_status"] == "processing"
 
 
+# Validates: SEL-010
 def test_gmail_401_during_discovery_expires_the_integration(db, factory, mock_config):
     """Regression: Gmail 401 used to never reach the auth-failure path (so the
     ConnectionRecovery card never fired for Gmail)."""
@@ -1184,6 +1211,7 @@ def test_run_acquisition_once_does_not_mark_terminal_on_code(db, mock_config):
     assert terminal is None
 
 
+# Validates: SEL-030
 def test_outlook_token_expiring_mid_pass_refreshes_instead_of_expiring_the_account(
     db, factory, mock_config,
 ):
@@ -1217,6 +1245,7 @@ def test_outlook_token_expiring_mid_pass_refreshes_instead_of_expiring_the_accou
     assert es.get_integration_by_id(db, claim.integration_id)["status"] == "active"
 
 
+# Validates: SEL-028
 def test_outlook_resync_sentinel_is_never_persisted_as_a_cursor(db, factory, mock_config):
     """Committing RESYNC_REQUIRED would be sent to Graph as a URL forever."""
     from selko.services.outlook import RESYNC_REQUIRED
@@ -1233,6 +1262,7 @@ def test_outlook_resync_sentinel_is_never_persisted_as_a_cursor(db, factory, moc
     assert folder["sync_cursor"] != RESYNC_REQUIRED
 
 
+# Validates: SEL-031
 def test_discover_heartbeats_around_long_listing(db, factory, mock_config):
     """R4: listing must heartbeat before and after long provider calls, not just before upsert."""
     claim = _gmail_integration(db, factory, mock_config, cursor="cursor-1")
@@ -1252,6 +1282,7 @@ def test_discover_heartbeats_around_long_listing(db, factory, mock_config):
     assert fh.called
 
 
+# Validates: SEL-031
 def test_discovery_stops_when_the_lease_was_taken_over(db, factory, mock_config):
     """A worker whose lease is gone must not commit a page or a cursor."""
     from selko.services.email_ingestion import LeaseLostError
@@ -1301,6 +1332,7 @@ class TestExecutorConcurrency:
     def _worker(self, db, mock_config, width: int):
         return EmailIngestionWorker(db, _concurrency_config(mock_config, width), "c4-worker", pg_pool=db)
 
+    # Validates: SEL-051
     @pytest.mark.asyncio
     async def test_acquisition_respects_executor_width(self, db, factory, mock_config):
         """Concurrency 4 with 10 items — one claim loop, max 4 in flight, all 10 done."""
@@ -1338,6 +1370,7 @@ class TestExecutorConcurrency:
         statuses = {r["acquisition_status"] for r in db.query("SELECT acquisition_status FROM email_ingestion_items")}
         assert statuses == {"completed"}
 
+    # Validates: SEL-051
     @pytest.mark.asyncio
     async def test_saturated_acquisition_executor_does_not_block_attachments(self, db, mock_config):
         """A full acquisition executor must not block attachment work."""
@@ -1352,6 +1385,7 @@ class TestExecutorConcurrency:
         finally:
             worker._acquisition_semaphore.release()
 
+    # Validates: SEL-051
     @pytest.mark.asyncio
     async def test_claim_never_precedes_acquire(self, db, factory, mock_config):
         """C4.1: a saturated executor must not claim a row and hold a lease."""

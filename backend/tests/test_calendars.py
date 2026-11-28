@@ -214,6 +214,7 @@ def _settings(db, user_id, **fields):
 class TestGetCalendarSettings:
     """Tests for retrieving calendar settings."""
 
+    # Validates: SEL-391
     def test_returns_defaults_when_no_settings(self, db, user):
         """Test that defaults are returned when user has no settings."""
         settings = get_calendar_settings(db, user)
@@ -240,6 +241,7 @@ class TestGetCalendarSettings:
         assert settings["target_calendar_name"] == "Family"
         assert settings["default_invitees"] == "spouse@example.com"
 
+    # Validates: SEL-391
     def test_reads_only_the_callers_settings(self, db, factory, user):
         other = factory.user()
         _settings(db, other, target_calendar_id="theirs", timezone="Europe/Helsinki")
@@ -263,6 +265,7 @@ class TestGetAllDayPolicyAndTimezone:
         assert tz == "Europe/Helsinki"
         assert policy.mode.value == "day_9_to_5"
 
+    # Validates: SEL-391
     def test_defaults_without_a_row(self, db, user):
         from selko.services.calendars import get_all_day_policy_and_timezone
 
@@ -312,6 +315,7 @@ class TestListCalendars:
 
             assert "No Google Calendar credentials found" in str(exc_info.value)
 
+    # Validates: SEL-352
     def test_provider_401_marks_calendar_integration_expired(self, db, user):
         """Calendar-list token rejection must trigger reconnect UI state."""
         from googleapiclient.errors import HttpError
@@ -371,6 +375,7 @@ class TestSyncEventToCalendar:
         ]
         assert log[0]["snapshot_synced"]["summary"] == "Test Meeting"
 
+    # Validates: SEL-333
     def test_recovers_existing_event_before_retry_insert(self, db, factory, user):
         """An ambiguous earlier insert must not create a duplicate on retry."""
         event_id = _event(factory, user)
@@ -407,6 +412,7 @@ class TestSyncEventToCalendar:
         mock_service.events.return_value.update.assert_called_once()
         assert [r["action"] for r in _sync_log(db, event_id)] == ["updated"]
 
+    # Validates: SEL-332
     def test_updates_existing_calendar_event(self, db, factory, user):
         """Test updating an existing calendar event."""
         event_id = _event(
@@ -437,6 +443,7 @@ class TestSyncEventToCalendar:
             assert body["summary"] == "Updated Meeting"
             assert body["location"] == "New Room"
 
+    # Validates: SEL-332
     def test_recreates_deleted_calendar_event(self, db, factory, user):
         """Test that deleted calendar events are recreated."""
         from googleapiclient.errors import HttpError
@@ -464,6 +471,7 @@ class TestSyncEventToCalendar:
             mock_service.events.return_value.insert.assert_called_once()
         assert [r["action"] for r in _sync_log(db, event_id)] == ["created"]
 
+    # Validates: SEL-331
     def test_failure_leaves_event_and_log_untouched(self, db, factory, user):
         """A failed write changes nothing locally: the worker's fenced call owns failure state."""
         event_id = _event(factory, user)
@@ -497,6 +505,7 @@ class TestSyncEventToCalendar:
 
         mock_build.return_value.events.return_value.insert.assert_not_called()
 
+    # Validates: SEL-352
     def test_provider_401_marks_calendar_integration_expired(self, db, factory, user):
         """A direct Google API token rejection must trigger reconnect UI state."""
         from googleapiclient.errors import HttpError
@@ -529,6 +538,7 @@ class TestSyncEventToCalendar:
 class TestCancelEventToCalendar:
     """The worker-owned cancellation write (replaces the removed inline cancellation)."""
 
+    # Validates: SEL-334, SEL-335
     def test_prefixes_title_with_cancelled_once(self, db, factory, user):
         event_id = _event(factory, user, title="Meeting", google_calendar_event_id="g-1")
 
@@ -554,6 +564,7 @@ class TestCancelEventToCalendar:
         # 'cancelled', so every one was refused and the error swallowed.
         assert [r["action"] for r in _sync_log(db, event_id)] == ["cancelled", "cancelled"]
 
+    # Validates: SEL-334, SEL-335
     def test_delete_remote_deletes_and_logs(self, db, factory, user):
         event_id = _event(factory, user, google_calendar_event_id="g-2")
 
@@ -568,6 +579,7 @@ class TestCancelEventToCalendar:
         assert [r["action"] for r in log] == ["deleted"]
         assert log[0]["snapshot_synced"] == {"deleted_google_event_id": "g-2"}
 
+    # Validates: SEL-334
     def test_local_only_event_touches_no_calendar(self, db, factory, user):
         event_id = _event(factory, user)
 
@@ -751,11 +763,13 @@ class TestClassifyCalendarError:
         assert result.retryable is False
         assert result.counts_toward_circuit_breaker is False
 
+    # Validates: SEL-350
     def test_http_401_is_oauth_required_and_isolated_from_circuit(self):
         result = classify_calendar_error(_http_error(401))
         assert result.code == "oauth_required"
         assert result.counts_toward_circuit_breaker is False
 
+    # Validates: SEL-350
     def test_http_403_insufficient_scope_is_distinct_from_permission_denied(self):
         result = classify_calendar_error(
             _http_error(403, reason="insufficientPermissions")
@@ -769,6 +783,7 @@ class TestClassifyCalendarError:
         assert result.code == "permission_denied"
         assert result.counts_toward_circuit_breaker is False
 
+    # Validates: SEL-350
     def test_http_429_is_rate_limited_and_counts_toward_circuit_breaker(self):
         result = classify_calendar_error(_http_error(429))
         assert result.code == "rate_limited"
@@ -780,6 +795,7 @@ class TestClassifyCalendarError:
         assert result.code == "provider_transient"
         assert result.counts_toward_circuit_breaker is True
 
+    # Validates: SEL-350
     def test_http_400_is_invalid_event_and_not_a_circuit_signal(self):
         result = classify_calendar_error(_http_error(400))
         assert result.code == "invalid_event"
@@ -794,6 +810,7 @@ class TestClassifyCalendarError:
 class TestSyncEventToCalendarOAuthScopeRequired:
     """An insufficient-scope 403 must be tagged distinctly from a plain sync failure."""
 
+    # Validates: SEL-352
     def test_marks_integration_expired_and_tags_event_without_dead_lettering(self, db, factory, user):
         event_id = _event(factory, user)
         before = factory.row("events", event_id)
@@ -932,6 +949,7 @@ class TestCalendarsRoute:
 
         client.user_state["user"] = CurrentUser(id=user_id, email=None, token="t")
 
+    # Validates: SEL-392
     def test_lists_the_callers_calendars_with_their_selection(self, db, client, user):
         _settings(db, user, target_calendar_id="cal-2")
         self._as(client, user)
@@ -956,6 +974,7 @@ class TestCalendarsRoute:
         assert creds.call_args.args[0] is db
         assert creds.call_args.args[1] == user
 
+    # Validates: SEL-392
     def test_no_calendar_connection_is_404(self, db, factory, client):
         self._as(client, factory.user())
 

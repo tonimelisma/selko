@@ -30,6 +30,7 @@ def imported(tmp_path):
     return path
 
 
+# Validates: SEL-629
 def test_the_imported_database_migrates_to_this_build(imported):
     migrate(imported)
     with sqlite3.connect(imported) as conn:
@@ -40,6 +41,7 @@ def test_the_imported_database_migrates_to_this_build(imported):
     assert migrate(imported) == []
 
 
+# Validates: SEL-629
 def test_the_carried_account_signs_in_and_owns_its_events(imported):
     migrate(imported)
     db = Database(imported)
@@ -52,6 +54,7 @@ def test_the_carried_account_signs_in_and_owns_its_events(imported):
     assert statuses == {"pending_review", "active"}, statuses
 
 
+# Validates: SEL-629
 def test_the_dump_is_a_real_import_not_an_empty_schema():
     text = DUMP.read_text(encoding="utf-8")
     assert "PRAGMA user_version" in text

@@ -3,6 +3,7 @@
 from selko.services.events import _commit_email_extraction
 
 
+# Validates: SEL-165
 def test_fenced_write_is_logged_not_raised(db, factory, caplog):
     user = factory.user()
     # The lease moved on: another worker holds generation 8.

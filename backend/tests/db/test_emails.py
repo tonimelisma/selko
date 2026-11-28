@@ -58,6 +58,7 @@ def user(factory):
 # --- claim_unprocessed_email -------------------------------------------------
 
 
+# Validates: SEL-085
 def test_claim_takes_oldest_date_sent_nulls_last(db, factory, user):
     no_date = make_email(factory, user, date_sent=None)
     newer = make_email(factory, user, date_sent="2020-01-01T00:00:00.000000Z")
@@ -67,6 +68,7 @@ def test_claim_takes_oldest_date_sent_nulls_last(db, factory, user):
     assert emails.claim_unprocessed_email(db, "w") is None
 
 
+# Validates: SEL-085
 def test_claim_sets_lease_attempts_and_generation(db, factory, user):
     email_id = make_email(factory, user)
     claimed = emails.claim_unprocessed_email(db, "worker-a", 120)
@@ -87,6 +89,7 @@ def test_claim_lease_is_at_least_one_second(db, factory, user):
     assert codec.parse_timestamp(claimed["locked_until"]) > datetime.now(timezone.utc)
 
 
+# Validates: SEL-085
 def test_claim_respects_next_retry_at_and_attempts(db, factory, user):
     make_email(factory, user, next_retry_at=ts(60))
     make_email(factory, user, processing_status="processed")
@@ -104,6 +107,7 @@ def test_expired_processing_email_is_reclaimed_without_restart(db, factory, user
     assert claimed["attempts"] == 2
 
 
+# Validates: SEL-087
 def test_one_expired_lease_is_reclaimed_per_call(db, factory, user):
     first = make_email(factory, user, processing_status="processing", attempts=1,
                        locked_by="dead", locked_until=ts(-20), next_retry_at=ts(600))
@@ -114,6 +118,7 @@ def test_one_expired_lease_is_reclaimed_per_call(db, factory, user):
     assert factory.row("emails", second)["processing_status"] == "processing"
 
 
+# Validates: SEL-087
 def test_expired_processing_email_at_attempt_limit_becomes_failed(db, factory, user):
     email_id = make_email(factory, user, processing_status="processing", attempts=3, max_attempts=3,
                           locked_by="dead-worker", locked_until=ts(-1))
@@ -125,6 +130,7 @@ def test_expired_processing_email_at_attempt_limit_becomes_failed(db, factory, u
     assert row["locked_by"] is None and row["locked_until"] is None
 
 
+# Validates: SEL-087
 def test_live_lease_is_not_reclaimed(db, factory, user):
     email_id = make_email(factory, user, processing_status="processing", attempts=1,
                           locked_by="live", locked_until=ts(300))
@@ -132,11 +138,13 @@ def test_live_lease_is_not_reclaimed(db, factory, user):
     assert factory.row("emails", email_id)["locked_by"] == "live"
 
 
+# Validates: SEL-086
 def test_pending_email_cannot_equal_max_attempts(factory, user):
     with pytest.raises(CheckViolation):
         make_email(factory, user, attempts=3, max_attempts=3)
 
 
+# Validates: SEL-087
 def test_reclaim_to_pending_emits_email_pending(db, factory, user):
     make_email(factory, user, processing_status="processing", attempts=1,
                locked_by="dead", locked_until=ts(-1), next_retry_at=ts(600))
@@ -145,6 +153,7 @@ def test_reclaim_to_pending_emits_email_pending(db, factory, user):
     assert db.signals.sent == ["email_pending"]
 
 
+# Validates: SEL-085
 def test_two_threads_never_claim_the_same_email(db, factory, user):
     ids = {make_email(factory, user) for _ in range(40)}
     claimed: list[str] = []
@@ -170,6 +179,7 @@ def test_two_threads_never_claim_the_same_email(db, factory, user):
 # --- the attachment readiness gate --------------------------------------------
 
 
+# Validates: SEL-057, SEL-076
 def test_atomic_save_blocks_llm_claim_until_attachment_descriptors_settle(db, factory, user):
     integration = factory.integration(user)
     email_id = emails.save_email_with_attachment_descriptors(
@@ -201,6 +211,7 @@ def test_atomic_save_blocks_llm_claim_until_attachment_descriptors_settle(db, fa
 # --- fail_email_processing -----------------------------------------------------
 
 
+# Validates: SEL-089
 def test_failure_transition_is_atomic(db, factory, user):
     email_id = make_email(factory, user, max_attempts=3)
     claimed = emails.claim_unprocessed_email(db, "worker-a")
@@ -226,6 +237,7 @@ def test_fail_email_processing_with_retry(db, factory, user):
     assert row["locked_by"] is None
 
 
+# Validates: SEL-088
 def test_stale_email_worker_cannot_fail_new_generation(db, factory, user):
     email_id = make_email(factory, user)
     first = emails.claim_unprocessed_email(db, "worker-a")
@@ -241,6 +253,7 @@ def test_stale_email_worker_cannot_fail_new_generation(db, factory, user):
     assert current["lock_generation"] == second["lock_generation"]
 
 
+# Validates: SEL-088
 def test_same_worker_with_old_generation_is_fenced(db, factory, user):
     email_id = make_email(factory, user)
     first = emails.claim_unprocessed_email(db, "worker-a")
@@ -251,6 +264,7 @@ def test_same_worker_with_old_generation_is_fenced(db, factory, user):
     assert factory.row("emails", email_id)["processing_status"] == "processing"
 
 
+# Validates: SEL-088
 def test_unleased_row_fences_any_caller(db, factory, user):
     """locked_by NULL IS DISTINCT FROM 'w': fenced, not a crash."""
     email_id = make_email(factory, user)
@@ -258,6 +272,7 @@ def test_unleased_row_fences_any_caller(db, factory, user):
         "fenced": True, "status": "pending"}
 
 
+# Validates: SEL-089
 def test_failure_backoff_grows_and_stays_capped(db, factory, user):
     email_id = make_email(factory, user, max_attempts=10)
     deltas = []
@@ -273,6 +288,7 @@ def test_failure_backoff_grows_and_stays_capped(db, factory, user):
     assert deltas == [60, 120, 240, 300, 300]
 
 
+# Validates: SEL-089
 def test_terminal_failure_dead_letters(db, factory, user):
     email_id = make_email(factory, user, max_attempts=1)
     claimed = emails.claim_unprocessed_email(db, "w")
@@ -303,6 +319,7 @@ def test_null_retry_settings_behave_like_greatest(db, factory, user):
 # --- reprocess_email -------------------------------------------------------------
 
 
+# Validates: SEL-091
 def test_reprocess_resets_any_unleased_terminal_or_legacy_pending_row(db, factory, user):
     exhausted = make_email(factory, user, processing_status="failed", attempts=3, max_attempts=3,
                            dead_letter_reason="legacy_attempts_exhausted", dead_letter_at=ts(-5),
@@ -375,6 +392,7 @@ def test_email_lock_expiry_recovery(db, factory, user):
 # --- complete / reads -------------------------------------------------------------
 
 
+# Validates: SEL-090
 def test_email_claim_complete_roundtrip(db, factory, user):
     email_id = make_email(factory, user)
     assert emails.claim_unprocessed_email(db, "w", 120)["id"] == email_id
@@ -427,6 +445,7 @@ def test_save_returns_uuid_and_inserts_pending_email(db, user):
     assert set(db.signals.sent) == {"email_pending", "attachment_pending"}
 
 
+# Validates: SEL-058
 def test_save_updates_only_supplied_columns(db, user):
     base = {"email_provider": "gmail", "provider_message_id": "m1"}
     first = emails.save_email_with_attachment_descriptors(
@@ -439,6 +458,7 @@ def test_save_updates_only_supplied_columns(db, user):
     assert (row["subject"], row["body_text"], row["processing_status"]) == ("s2", "the full body", "processed")
 
 
+# Validates: SEL-061
 def test_save_coerces_types_like_jsonb_populate_record(db, user):
     email_id = emails.save_email_with_attachment_descriptors(
         db, user,
@@ -455,6 +475,7 @@ def test_save_coerces_types_like_jsonb_populate_record(db, user):
     assert row["is_unread"] is True and row["is_starred"] is True and row["is_spam"] is False
 
 
+# Validates: SEL-061
 def test_save_naive_date_sent_is_utc(db, user):
     email_id = emails.save_email_with_attachment_descriptors(
         db, user, {"email_provider": "gmail", "provider_message_id": "m", "date_sent": "2026-01-01T12:00:00"}, [])
@@ -472,6 +493,7 @@ def test_save_requires_identity_and_a_settable_column(db, user):
             db, user, {"email_provider": "gmail", "provider_message_id": "m", "provider_labels": None}, [])
 
 
+# Validates: SEL-058
 def test_save_ignores_unknown_columns(db, user):
     email_id = emails.save_email_with_attachment_descriptors(
         db, user, {"email_provider": "gmail", "provider_message_id": "m", "subject": "s",
@@ -480,6 +502,7 @@ def test_save_ignores_unknown_columns(db, user):
     assert row["processing_status"] == "pending"
 
 
+# Validates: SEL-059
 def test_descriptor_fallbacks_and_filtering(db, user):
     email_id = emails.save_email_with_attachment_descriptors(
         db, user, {"email_provider": "gmail", "provider_message_id": "m", "subject": "s"},
@@ -498,6 +521,7 @@ def test_descriptor_fallbacks_and_filtering(db, user):
     assert all(r["user_id"] == user for r in rows.values())
 
 
+# Validates: SEL-059
 def test_descriptor_bad_size_rolls_back_everything(db, user):
     with pytest.raises(InvalidArgument):
         emails.save_email_with_attachment_descriptors(
@@ -506,6 +530,7 @@ def test_descriptor_bad_size_rolls_back_everything(db, user):
     assert db.query_one("SELECT count(*) FROM emails")[0] == 0
 
 
+# Validates: SEL-059
 def test_re_acquired_email_keeps_existing_attachment_rows_unreset(db, factory, user):
     integration = factory.integration(user)
     payload = {"email_provider": "gmail", "provider_message_id": "reacq", "subject": "re-acquire",
@@ -523,6 +548,7 @@ def test_re_acquired_email_keeps_existing_attachment_rows_unreset(db, factory, u
     assert by_id == {"att-1": "stored", "att-2": "pending"}
 
 
+# Validates: SEL-060
 def test_calendar_components_survive_empty_resave(db, user):
     payload = {"email_provider": "gmail", "provider_message_id": "cal", "subject": "probe",
                "from_email": "calendar-component@example.com", "provider_labels": ["INBOX"]}
@@ -548,6 +574,7 @@ def test_calendar_components_survive_empty_resave(db, user):
     assert [tuple(r) for r in rows] == [(0, "REQUEST", 0), (1, "REQUEST", 0)]
 
 
+# Validates: SEL-060
 def test_component_without_method_fails_the_whole_save(db, user):
     with pytest.raises(NotNullViolation):
         emails.save_email_with_attachment_descriptors(

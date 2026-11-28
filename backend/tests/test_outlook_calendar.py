@@ -25,6 +25,7 @@ from selko.services.msgraph import GraphRequestError
 # --- ids and writability -------------------------------------------------------
 
 
+# Validates: SEL-340
 def test_outlook_ids_are_qualified_and_google_ids_stay_bare():
     assert providers.qualify("outlook", "AAMk=") == "outlook:AAMk="
     assert providers.qualify("outlook", "outlook:AAMk=") == "outlook:AAMk="
@@ -37,6 +38,7 @@ def test_outlook_ids_are_qualified_and_google_ids_stay_bare():
     assert providers.provider_of_id(None) == "google_calendar"
 
 
+# Validates: SEL-343
 @pytest.mark.parametrize("scopes,expected", [
     (["Mail.Read", "User.Read"], False),
     (["Mail.Read", "Calendars.ReadWrite"], True),
@@ -221,6 +223,7 @@ def _adapter_with(responses):
     return OutlookCalendarAdapter("token", time_zone="America/New_York"), calls, patcher
 
 
+# Validates: SEL-340
 def test_insert_posts_to_the_target_calendar_and_returns_a_qualified_id():
     adapter, calls, patcher = _adapter_with([{"id": "NEW1", "subject": "x"}])
     with patcher:
@@ -324,6 +327,7 @@ def _writer_event(factory, user_id, **extra):
     return factory.event(user_id, **values)
 
 
+# Validates: SEL-342, SEL-344
 def test_a_new_event_is_written_to_the_outlook_target_calendar(db, factory):
     from selko.services import calendars
 
@@ -342,6 +346,7 @@ def test_a_new_event_is_written_to_the_outlook_target_calendar(db, factory):
     assert adapter.insert_event.call_args.args[0] == "outlook:CAL"
 
 
+# Validates: SEL-342, SEL-344
 def test_an_event_already_in_google_stays_there_after_switching_to_outlook(db, factory):
     """Updating it in Outlook would orphan the Google copy and duplicate it."""
     from selko.services import calendars
@@ -362,6 +367,7 @@ def test_an_event_already_in_google_stays_there_after_switching_to_outlook(db, f
     assert adapter.update_event.call_args.args[:2] == ("primary", "g-1")
 
 
+# Validates: SEL-333, SEL-342
 def test_the_claimed_provider_decides_when_no_target_is_chosen(db, factory):
     from selko.services import calendars
 
@@ -395,6 +401,7 @@ def test_with_no_target_and_no_stamp_a_writable_google_wins(db, factory):
     assert build_adapter.call_args.args[2] == "google_calendar"
 
 
+# Validates: SEL-342
 def test_with_no_target_an_outlook_only_user_writes_to_outlook(db, factory):
     from selko.services import calendars
 
@@ -410,6 +417,7 @@ def test_with_no_target_an_outlook_only_user_writes_to_outlook(db, factory):
     assert build_adapter.call_args.args[2] == "outlook"
 
 
+# Validates: SEL-353
 def test_an_outlook_auth_failure_never_expires_the_mail_integration(db, factory):
     """The Outlook row also carries mail; expiring it would stop ingestion."""
     from selko.services import calendars
@@ -434,6 +442,7 @@ def test_an_outlook_auth_failure_never_expires_the_mail_integration(db, factory)
     assert statuses["outlook"] == "active"
 
 
+# Validates: SEL-345
 def test_cancellation_goes_to_the_calendar_the_event_lives_in(db, factory):
     from selko.services import calendars
 
@@ -448,6 +457,7 @@ def test_cancellation_goes_to_the_calendar_the_event_lives_in(db, factory):
     adapter.delete_event.assert_called_once_with("primary", "outlook:E")
 
 
+# Validates: SEL-343
 def test_an_outlook_adapter_requires_a_calendar_grant(db, factory):
     from selko.services import calendars
 
@@ -464,6 +474,7 @@ def test_an_outlook_adapter_requires_a_calendar_grant(db, factory):
     assert raised.value.provider == "outlook"
 
 
+# Validates: SEL-392
 def test_calendars_from_both_providers_are_listed_together(db, factory):
     from selko.services import calendars
 
@@ -482,6 +493,7 @@ def test_calendars_from_both_providers_are_listed_together(db, factory):
     ]
 
 
+# Validates: SEL-392
 def test_a_mail_only_outlook_grant_is_not_listed(db, factory):
     from selko.services import calendars
 
@@ -501,6 +513,7 @@ def test_a_mail_only_outlook_grant_is_not_listed(db, factory):
 # --- failure classification ----------------------------------------------------
 
 
+# Validates: SEL-350
 @pytest.mark.parametrize("status,code,retryable,circuit", [
     (401, "oauth_required", False, False),
     (403, "oauth_scope_required", False, False),
@@ -521,6 +534,7 @@ def test_graph_failures_are_classified(status, code, retryable, circuit):
 # --- OAuth ---------------------------------------------------------------------
 
 
+# Validates: SEL-455
 def test_new_outlook_consent_requests_calendar_permission():
     from selko.services import outlook
 
@@ -530,6 +544,7 @@ def test_new_outlook_consent_requests_calendar_permission():
     assert "Calendars.ReadWrite" in msal_app.return_value.get_authorization_request_url.call_args.kwargs["scopes"]
 
 
+# Validates: SEL-346
 def test_a_mail_only_grant_is_refreshed_without_asking_for_calendar():
     """Asking a mail-only grant for more fails the refresh and expires mail."""
     from selko.services import outlook
@@ -538,6 +553,7 @@ def test_a_mail_only_grant_is_refreshed_without_asking_for_calendar():
     assert outlook.refresh_scopes(["Mail.Read", "Calendars.ReadWrite"]) == outlook.SCOPES
 
 
+# Validates: SEL-346
 def test_refresh_uses_the_stored_grant():
     from selko.services import outlook
 
@@ -560,6 +576,7 @@ def test_refresh_uses_the_stored_grant():
 # --- transport -----------------------------------------------------------------
 
 
+# Validates: SEL-095, SEL-347
 def test_a_post_is_not_retried_after_an_ambiguous_server_error():
     """A 5xx leaves it unknown whether Graph created the event."""
     from selko.services import msgraph
@@ -582,6 +599,7 @@ def test_a_delete_answering_204_is_a_success():
         assert msgraph.request_json("t", "https://graph/me/events/x", method="DELETE", operation="DELETE x") == {}
 
 
+# Validates: SEL-096
 def test_calendar_failures_are_ledgered_under_their_own_surface(db, factory):
     from selko.services import msgraph
 
@@ -600,6 +618,7 @@ def test_calendar_failures_are_ledgered_under_their_own_surface(db, factory):
 # --- wiring --------------------------------------------------------------------
 
 
+# Validates: SEL-315
 async def test_an_open_outlook_circuit_does_not_stop_google_claims():
     """Each provider has its own circuit; the claim receives only closed ones."""
     from selko.services.circuit_breaker import circuit_breaker
@@ -637,6 +656,7 @@ async def test_the_worker_hands_the_stamped_provider_to_the_writer(db):
     assert sync.call_args.kwargs["provider"] == "outlook"
 
 
+# Validates: SEL-315
 async def test_the_claim_passes_providers_to_the_rpc(db, factory):
     """The worker's open circuits reach the claim: only an allowed provider's item is taken."""
     from selko.db import calendar_work as db_calendar_work
@@ -662,6 +682,7 @@ async def test_the_claim_passes_providers_to_the_rpc(db, factory):
     )
 
 
+# Validates: SEL-370
 def test_the_mirror_loop_includes_calendar_capable_outlook_rows():
     import inspect
 

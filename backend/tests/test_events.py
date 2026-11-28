@@ -43,11 +43,13 @@ def _match(db, user, event_data, *, live=None, matched_id=None, compare_error=No
 
 
 class TestDeliveryStatus:
+    # Validates: SEL-202
     def test_review_lane_owns_pending_and_terminal_review_states(self):
         assert derive_delivery_status({"review_status": "pending_review"}) == "pending_review"
         assert derive_delivery_status({"review_status": "rejected"}) == "rejected"
         assert derive_delivery_status({"review_status": "cancelled"}) == "cancelled"
 
+    # Validates: SEL-309
     @pytest.mark.parametrize(
         ("work_item", "expected"),
         [
@@ -64,6 +66,7 @@ class TestDeliveryStatus:
         event = {"review_status": "active", "calendar_work_items": [work_item]}
         assert derive_delivery_status(event) == expected
 
+    # Validates: SEL-309
     def test_superseded_work_does_not_mask_latest_delivery(self):
         event = {
             "review_status": "active",
@@ -156,6 +159,7 @@ class TestFindMatchingEvent:
         assert result.match_id == event
         assert result.baseline["title"] == "Birthday Party"
 
+    # Validates: SEL-147
     def test_another_users_event_is_never_a_candidate(self, db, factory):
         user = factory.user()
         factory.event(factory.user(), title="Birthday Party", start_datetime="2026-03-15T14:00:00.000000Z")
@@ -167,6 +171,7 @@ class TestFindMatchingEvent:
         assert result is None
         compare.assert_not_called()
 
+    # Validates: SEL-155
     def test_handles_llm_comparison_failure(self, db, factory):
         user = factory.user()
         factory.event(user, title="Some Event", start_datetime="2026-03-15T14:00:00.000000Z")
@@ -189,6 +194,7 @@ class TestFindMatchingEvent:
         assert result is None
         assert [c["id"] for c in compare.call_args.args[2]] == [event], "same UTC day, so a candidate"
 
+    # Validates: SEL-167
     def test_the_band_fingerprint_is_the_commits(self, db, factory):
         """The producer fingerprints exactly the band the commit re-checks."""
         from selko.db import events as db_events
@@ -268,6 +274,7 @@ class TestDedupCandidateIntegrity:
         return _match(db, user, dict(self.NEW_EVENT), live=live, matched_id=matched_id,
                       user_timezone="America/Los_Angeles")
 
+    # Validates: SEL-155
     def test_a_synced_events_own_mirror_entry_is_not_a_second_candidate(self, db, factory):
         user = factory.user()
         parade = self._parade(factory, user)
@@ -277,6 +284,7 @@ class TestDedupCandidateIntegrity:
 
         assert [c["id"] for c in compare.call_args.args[2]] == [parade]
 
+    # Validates: SEL-155
     def test_one_provider_event_on_two_calendars_is_one_candidate(self, db, factory):
         user = factory.user()
         integration = factory.integration(user)
@@ -305,6 +313,7 @@ class TestDedupCandidateIntegrity:
 
         assert compare.call_args.kwargs["user_timezone"] == "America/Los_Angeles"
 
+    # Validates: SEL-157
     def test_a_match_on_another_calendar_is_not_adopted(self, db, factory):
         user = factory.user()
         self._mirror(factory, user, "spouse-parade", "Costume Parade and Class Party")
@@ -329,6 +338,7 @@ class TestDedupCandidateIntegrity:
         assert result.on_other_calendar is False
         assert result.gcal_raw == live
 
+    # Validates: SEL-157
     def test_saving_a_match_on_another_calendar_creates_nothing(self, db, factory):
         from selko.api.schemas.calendar import CalendarEventExtraction
         from selko.services.events import save_extracted_events
@@ -389,6 +399,7 @@ class TestFindMatchingEventGCal:
         assert result.match_id == "gcal:gcal-abc"
         assert result.is_gcal is True
 
+    # Validates: SEL-154
     def test_skips_selko_managed_gcal_events(self, db, factory):
         user = factory.user()
         managed = [{**self.LIVE[0], "extendedProperties": {"private": {"selko_event_id": "event-123"}}}]
@@ -410,6 +421,7 @@ class TestFindMatchingEventGCal:
         assert result is not None
         assert result.match_id == event
 
+    # Validates: SEL-147
     def test_evening_event_queries_local_day_not_utc_day(self, db, factory):
         """Regression: an evening local event must not query the next UTC day.
 
@@ -438,6 +450,7 @@ class TestFindMatchingEventGCal:
         assert read.call_args.args[2] == "2026-07-27T07:00:00+00:00"
         assert read.call_args.args[3] == "2026-07-28T07:00:00+00:00"
 
+    # Validates: SEL-156
     def test_reuses_existing_row_linked_to_matched_gcal_event(self, db, factory):
         """Regression: a second email matching the same GCal event must reuse
         the Selko row already tracking it, not stack a second change card."""
@@ -485,6 +498,7 @@ class TestMirroredEntriesAreCandidates:
             "_source": "calendar_mirror",
         }]
 
+    # Validates: SEL-147
     def test_deleted_and_out_of_band_entries_are_not_candidates(self, db, factory):
         from selko.services.events import _mirror_candidates_in_window
 

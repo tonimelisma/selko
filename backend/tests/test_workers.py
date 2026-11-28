@@ -840,6 +840,7 @@ class TestCalendarSyncWorker:
         sync.assert_not_awaited()
         complete.assert_not_awaited()
 
+    # Validates: SEL-351
     @pytest.mark.asyncio
     async def test_worker_parks_event_without_dead_lettering_on_oauth_failure(
         self, mock_config, fake_pg_pool, fake_work_listener
@@ -890,6 +891,7 @@ class TestCalendarSyncWorker:
         fail.assert_not_awaited()
         cb.record_failure.assert_not_called()
 
+    # Validates: SEL-351
     @pytest.mark.asyncio
     async def test_worker_dead_letters_and_trips_circuit_on_provider_failure(
         self, mock_config, fake_pg_pool, fake_work_listener
@@ -930,6 +932,7 @@ class TestCalendarSyncWorker:
         cb.record_failure.assert_called_once_with("google_calendar")
 
 
+# Validates: SEL-680
 def test_no_compat_shims_in_workers():
     """Rule 5: delete, do not deprecate (anywhere under backend/selko/)."""
     import re

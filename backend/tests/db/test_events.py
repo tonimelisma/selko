@@ -104,6 +104,7 @@ def _proposals(db, event_id: str) -> list[dict]:
 # --- the lease fence ------------------------------------------------------------
 
 
+# Validates: SEL-165
 def test_stale_generation_cannot_write(db, factory):
     user = factory.user()
     email = _claimed_email(factory, user, worker="new-worker", generation=2)
@@ -119,6 +120,7 @@ def test_same_worker_with_an_old_generation_is_fenced(db, factory):
     assert _commit(db, email, [], worker="w", generation=2)["fenced"] is True
 
 
+# Validates: SEL-165
 def test_zombie_generation_after_reclaim_writes_nothing(db, factory):
     user = factory.user()
     email = _claimed_email(factory, user, worker="replacement", generation=2)
@@ -140,6 +142,7 @@ def test_invalid_terminal_status_is_refused(db, factory):
         _commit(db, email, [], terminal="pending")
 
 
+# Validates: SEL-169
 def test_empty_commit_marks_the_email_terminal_and_releases_the_lease(db, factory):
     user = factory.user()
     email = _claimed_email(factory, user)
@@ -156,6 +159,7 @@ def test_empty_commit_marks_the_email_terminal_and_releases_the_lease(db, factor
 # --- atomicity ------------------------------------------------------------------
 
 
+# Validates: SEL-169
 def test_multi_event_email_commits_all_or_nothing(db, factory):
     user = factory.user()
     email = _claimed_email(factory, user)
@@ -166,6 +170,7 @@ def test_multi_event_email_commits_all_or_nothing(db, factory):
     assert factory.row("emails", email)["processing_status"] == "processing"
 
 
+# Validates: SEL-169
 def test_a_failure_late_in_the_write_loop_rolls_back_earlier_decisions(db, factory):
     """The second decision fails after the first has been inserted: nothing survives."""
     user = factory.user()
@@ -189,6 +194,7 @@ def test_noop_decisions_are_skipped_and_do_not_count(db, factory):
 # --- the band fence -------------------------------------------------------------
 
 
+# Validates: SEL-166
 def test_stale_fingerprint_returns_conflict_and_mutates_nothing(db, factory):
     user = factory.user()
     winner = _claimed_email(factory, user, worker="winner")
@@ -214,6 +220,7 @@ def test_a_band_changed_after_the_decision_is_refused(db, factory):
     assert db_events.get(db, user, event)["description"] is None
 
 
+# Validates: SEL-166
 def test_conflict_names_the_index_of_the_stale_decision(db, factory):
     user = factory.user()
     factory.event(user, start_datetime="2026-09-15T10:00:00.000000Z")
@@ -250,6 +257,7 @@ def test_two_emails_different_days_never_conflict(db, factory):
     assert _commit(db, b, [_create(b, "b", day="2031-03-04")], worker="b")["applied"] == 1
 
 
+# Validates: SEL-167
 def test_producer_and_commit_fingerprints_agree(db, factory):
     """One implementation both sides: the producer's value is what the commit accepts."""
     user = factory.user()
@@ -317,6 +325,7 @@ def test_apply_intent_applies_the_change_and_queues_calendar_work(db, factory):
     }
 
 
+# Validates: SEL-176
 def test_apply_intent_with_cancel_queues_a_cancellation_without_payload(db, factory):
     user = factory.user()
     email = _claimed_email(factory, user)
@@ -341,6 +350,7 @@ def test_apply_intent_on_a_new_lane_event_queues_no_calendar_work(db, factory):
     assert _work(db, event) == []
 
 
+# Validates: SEL-175
 def test_update_applies_only_the_fields_present(db, factory):
     user = factory.user()
     email = _claimed_email(factory, user)
@@ -355,6 +365,7 @@ def test_update_applies_only_the_fields_present(db, factory):
     assert row["title"] == "Standup"
 
 
+# Validates: SEL-230
 @pytest.mark.parametrize("declined", ["rejected", "cancelled"])
 def test_record_only_leaves_a_declined_event_untouched(db, factory, declined):
     user = factory.user()
@@ -371,6 +382,7 @@ def test_record_only_leaves_a_declined_event_untouched(db, factory, declined):
     assert _count(db, "SELECT count(*) FROM event_identity_hints WHERE event_id = ?", (event,)) == 1
 
 
+# Validates: SEL-177
 def test_record_only_requires_an_update_decision(db, factory):
     user = factory.user()
     email = _claimed_email(factory, user)
@@ -379,6 +391,7 @@ def test_record_only_requires_an_update_decision(db, factory):
         _commit(db, email, [decision])
 
 
+# Validates: SEL-177
 def test_an_update_of_another_users_event_is_refused(db, factory):
     user, other = factory.user(), factory.user()
     email = _claimed_email(factory, user)
@@ -394,6 +407,7 @@ def test_an_update_of_another_users_event_is_refused(db, factory):
 # --- fail-closed ----------------------------------------------------------------
 
 
+# Validates: SEL-172
 def test_a_decision_without_an_intent_is_refused(db, factory):
     user = factory.user()
     email = _claimed_email(factory, user)
@@ -403,6 +417,7 @@ def test_a_decision_without_an_intent_is_refused(db, factory):
     assert _proposals(db, event) == []
 
 
+# Validates: SEL-173
 def test_a_decision_without_a_review_status_is_refused(db, factory):
     user = factory.user()
     email = _claimed_email(factory, user)
@@ -420,6 +435,7 @@ def test_review_intent_requires_an_active_event(db, factory):
                                     fields={"review_status": "pending_review"}, source=_change_source(email))])
 
 
+# Validates: SEL-174
 def test_no_change_intent_cannot_carry_a_change_set(db, factory):
     user = factory.user()
     email = _claimed_email(factory, user)
@@ -429,6 +445,7 @@ def test_no_change_intent_cannot_carry_a_change_set(db, factory):
                                     fields={"review_status": "active"}, source=_change_source(email))])
 
 
+# Validates: SEL-174
 def test_apply_without_a_change_set_is_refused(db, factory):
     user = factory.user()
     email = _claimed_email(factory, user)
@@ -439,6 +456,7 @@ def test_apply_without_a_change_set_is_refused(db, factory):
                                             "change_set": _change_set(), "event_snapshot_before": {}})])
 
 
+# Validates: SEL-173
 @pytest.mark.parametrize("fields, message", [
     ({"review_status": "approved"}, "invalid extraction review status approved"),
     ({"review_status": "active", "calendar_action": "delete"}, "invalid extraction calendar action delete"),
@@ -451,6 +469,7 @@ def test_unknown_states_are_refused(db, factory, fields, message):
         _commit(db, email, [_update(db, user, email, event, intent="no_change", fields=fields)])
 
 
+# Validates: SEL-175
 def test_creating_an_active_event_queues_its_calendar_write(db, factory):
     user = factory.user()
     email = _claimed_email(factory, user)
@@ -458,6 +477,7 @@ def test_creating_an_active_event_queues_its_calendar_write(db, factory):
     assert [w["action"] for w in _work(db, event_id)] == ["upsert"]
 
 
+# Validates: SEL-179
 def test_create_defaults_and_naive_timestamps_are_utc(db, factory):
     user = factory.user()
     email = _claimed_email(factory, user)
@@ -488,6 +508,7 @@ def test_a_commit_announces_itself_after_commit_only(db, factory, monkeypatch):
 # --- sources --------------------------------------------------------------------
 
 
+# Validates: SEL-178
 def test_recommitting_an_email_upserts_its_source(db, factory):
     user = factory.user()
     event = _active_event(factory, user, review_status="pending_review")
@@ -502,6 +523,7 @@ def test_recommitting_an_email_upserts_its_source(db, factory):
     assert rows[0]["emails"]["id"] == email
 
 
+# Validates: SEL-178
 def test_google_calendar_sources_and_extra_sources(db, factory):
     user = factory.user()
     email = _claimed_email(factory, user)
@@ -522,6 +544,7 @@ def test_google_calendar_sources_and_extra_sources(db, factory):
 # --- identity hints -------------------------------------------------------------
 
 
+# Validates: SEL-143
 def test_commit_writes_identity_hints_in_same_transaction(db, factory):
     user = factory.user()
     email = _claimed_email(factory, user, thread_id="thread-c2")
@@ -540,6 +563,7 @@ def test_commit_writes_identity_hints_in_same_transaction(db, factory):
     assert [h["event_id"] for h in keyed[f"ical_uid|{value_hash}|"]] == [event_id]
 
 
+# Validates: SEL-166
 def test_hint_lookup_is_part_of_the_commit_fence(db, factory):
     user = factory.user()
     existing_email = factory.email(user, processing_status="processed")
@@ -568,6 +592,7 @@ def _calendar_entry(factory, user: str, **extra) -> str:
         "start_at": "2026-10-01T10:00:00.000000Z", **extra})
 
 
+# Validates: SEL-166
 def test_a_calendar_entry_hint_participates_in_the_fingerprint(db, factory):
     """A mirror sync that moves the matched entry between decision and commit is caught."""
     user = factory.user()
@@ -591,6 +616,7 @@ def test_a_calendar_entry_hint_participates_in_the_fingerprint(db, factory):
     assert _commit(db, email, [decision])["applied"] == 1
 
 
+# Validates: SEL-144
 def test_a_hint_must_name_exactly_one_entity(db, factory):
     user = factory.user()
     entry = _calendar_entry(factory, user)
@@ -602,6 +628,7 @@ def test_a_hint_must_name_exactly_one_entity(db, factory):
                 "kind": "ical_uid", "value_hash": new_id(), "recurrence_id": "", "strength": "authoritative"})
 
 
+# Validates: SEL-143
 def test_hint_upsert_is_idempotent_and_ical_sequence_only_moves_forward(db, factory):
     user = factory.user()
     event = _active_event(factory, user, review_status="pending_review")
@@ -641,6 +668,7 @@ def test_distinct_event_hints_coexist(db, factory):
     assert _count(db, "SELECT count(*) FROM event_identity_hints WHERE event_id = ?", (event_id,)) == 2
 
 
+# Validates: SEL-143
 @pytest.mark.parametrize("hint", [
     {"kind": "uid", "value_hash": "x", "strength": "supporting"},
     {"kind": "join_url", "value_hash": "x", "strength": "strong"},
@@ -659,6 +687,7 @@ def test_invalid_identity_hints_are_refused(db, factory, hint):
 # --- set_event_review_status ----------------------------------------------------
 
 
+# Validates: SEL-206, SEL-207
 def test_approve_enqueues_upsert_and_reject_does_not(db, factory):
     user = factory.user()
     approved = factory.event(user, title="approve me", location="Here")
@@ -678,6 +707,7 @@ def test_approve_enqueues_upsert_and_reject_does_not(db, factory):
     assert db_events.get(db, user, rejected)["review_status"] == "rejected"
 
 
+# Validates: SEL-209
 def test_approving_a_rejected_event_revives_it_explicitly(db, factory):
     user = factory.user()
     event = factory.event(user, review_status="rejected")
@@ -686,6 +716,7 @@ def test_approving_a_rejected_event_revives_it_explicitly(db, factory):
     assert [w["action"] for w in _work(db, event)] == ["upsert"]
 
 
+# Validates: SEL-208
 def test_review_status_is_owner_only_and_validated(db, factory):
     user, other = factory.user(), factory.user()
     event = factory.event(user)
@@ -725,6 +756,7 @@ def test_get_with_work_items_embeds_the_items(db, factory):
     assert set(row["calendar_work_items"][0]) == {"status", "action", "generation", "failure_code"}
 
 
+# Validates: SEL-156
 def test_by_provider_event_id_returns_the_oldest_even_when_declined(db, factory):
     user = factory.user()
     first = factory.event(user, review_status="rejected", google_calendar_event_id="g-1",
@@ -814,6 +846,7 @@ def test_a_booking_reopens_a_rejected_event_into_the_new_lane(db, factory):
     assert [(p["status"], p["kind"]) for p in _proposals(db, event)] == [("applied", "material_update")]
 
 
+# Validates: SEL-222, SEL-223
 @pytest.mark.parametrize("adopted_from_calendar", [False, True])
 def test_an_update_applies_to_a_selko_event_and_waits_on_a_calendar_one(db, factory, adopted_from_calendar):
     from selko.api.schemas.calendar import CalendarEvent, CalendarEventExtraction

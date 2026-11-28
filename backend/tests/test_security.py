@@ -45,6 +45,7 @@ class TestEmailExceptionSubclasses:
         with pytest.raises(EmailError):
             raise EmailError("some other error")
 
+    # Validates: SEL-013
     def test_fetch_emails_raises_no_integration(self, db, factory):
         """fetch_emails_for_user raises NoGmailIntegrationError without an active Gmail."""
         from selko.services.emails import fetch_emails_for_user
@@ -55,6 +56,7 @@ class TestEmailExceptionSubclasses:
         with pytest.raises(NoGmailIntegrationError, match="No Gmail integration"):
             fetch_emails_for_user(db, MagicMock(), user_id=user)
 
+    # Validates: SEL-013
     def test_fetch_emails_scopes_the_sync_request_to_its_owner(self, db, factory):
         """Manual sync must only ever bring forward its own integrations' polls."""
         from selko.db import email_sync
@@ -74,6 +76,7 @@ class TestEmailExceptionSubclasses:
         assert email_sync.get_sync_state(db, mine)["next_poll_at"] < later
         assert email_sync.get_sync_state(db, theirs)["next_poll_at"] == later
 
+    # Validates: SEL-013
     def test_fetch_emails_leaves_a_live_lease_alone(self, db, factory):
         from selko.db import email_sync
         from selko.services.emails import fetch_emails_for_user
@@ -146,6 +149,7 @@ class TestOAuthCallbackRateLimiting:
         # Should not raise for first request
         _check_callback_rate_limit(mock_request)
 
+    # Validates: SEL-434
     def test_rate_limiter_blocks_over_limit(self):
         """Requests over the limit should be blocked with 429."""
         from fastapi import HTTPException
@@ -169,6 +173,7 @@ class TestOAuthCallbackRateLimiting:
 
         assert exc_info.value.status_code == 429
 
+    # Validates: SEL-434
     def test_rate_limiter_separate_ips(self):
         """Different IPs should have separate rate limits."""
         from selko.api.routes.integrations import (
@@ -191,6 +196,7 @@ class TestOAuthCallbackRateLimiting:
         # Should not raise
         _check_callback_rate_limit(mock_request)
 
+    # Validates: SEL-434
     def test_rate_limiter_expires_old_entries(self):
         """Entries older than the window should be cleaned up."""
         from selko.api.routes.integrations import (

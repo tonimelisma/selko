@@ -150,6 +150,7 @@ EMAIL_METADATA = {
 class TestParseIcsAttachments:
     """Tests for parse_ics_attachments."""
 
+    # Validates: SEL-127
     def test_parse_single_vevent(self):
         attachments = [
             {"data": BASIC_ICS, "mime_type": "text/calendar", "filename": "invite.ics"},
@@ -180,6 +181,7 @@ class TestParseIcsAttachments:
         assert result.events[0].title == "Morning Standup"
         assert result.events[1].title == "Lunch Meeting"
 
+    # Validates: SEL-129
     def test_all_day_event(self):
         attachments = [
             {"data": ALL_DAY_ICS, "mime_type": "text/calendar", "filename": "holiday.ics"},
@@ -209,6 +211,7 @@ class TestParseIcsAttachments:
         assert result is not None
         assert result.events[0].all_day is False
 
+    # Validates: SEL-129
     def test_missing_dtend_defaults_to_one_hour(self):
         attachments = [
             {"data": NO_DTEND_ICS, "mime_type": "text/calendar", "filename": "quick.ics"},
@@ -243,6 +246,7 @@ class TestParseIcsAttachments:
         assert len(result.events) == 1
         assert result.events[0].title == "Team Meeting"
 
+    # Validates: SEL-128
     def test_malformed_ics_returns_none(self):
         attachments = [
             {"data": MALFORMED_ICS, "mime_type": "text/calendar", "filename": "bad.ics"},
@@ -361,6 +365,7 @@ class TestDetectInviteMethod:
     def test_no_ics_attachments_returns_none(self):
         assert detect_invite_method([]) is None
 
+    # Validates: SEL-130
     def test_invite_method_on_later_attachment_is_not_masked_by_earlier_publish(self):
         """Regression: a PUBLISH/no-METHOD attachment before a genuine invite
         attachment must not short-circuit the scan."""

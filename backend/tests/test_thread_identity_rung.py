@@ -43,6 +43,7 @@ def _thread_setup(existing_title: str, event_ids: list[str]):
     return hint, rows, events
 
 
+# Validates: SEL-151
 def test_a_thread_matches_its_event_across_a_date_change():
     """The reschedule case: new date, same thread, same event."""
     hint, rows, events = _thread_setup("Team Standup", ["event-1"])
@@ -55,6 +56,7 @@ def test_a_thread_matches_its_event_across_a_date_change():
     assert match.match_id == "event-1"
 
 
+# Validates: SEL-151
 def test_an_ambiguous_thread_decides_nothing():
     """Two events on one thread: the thread cannot say which was meant."""
     hint, rows, events = _thread_setup("Team Standup", ["event-1", "event-2"])
@@ -66,6 +68,7 @@ def test_an_ambiguous_thread_decides_nothing():
     assert match is None
 
 
+# Validates: SEL-151
 def test_a_shared_thread_does_not_merge_different_events():
     """A newsletter thread carries many happenings; they are not one event."""
     hint, rows, events = _thread_setup("Autumn Book Fair", ["event-1"])
@@ -77,6 +80,7 @@ def test_a_shared_thread_does_not_merge_different_events():
     assert match is None
 
 
+# Validates: SEL-151
 def test_a_cosmetic_title_edit_still_matches():
     assert _thread_update_is_plausible(
         {"title": "Team Standup (moved)"}, {"title": "Team Standup"}
@@ -84,6 +88,7 @@ def test_a_cosmetic_title_edit_still_matches():
     assert _thread_update_is_plausible({"title": "Team Standup."}, {"title": "team standup"})
 
 
+# Validates: SEL-151
 def test_an_empty_title_never_matches():
     """Absent evidence is not evidence of sameness."""
     assert not _thread_update_is_plausible({"title": ""}, {"title": "Team Standup"})

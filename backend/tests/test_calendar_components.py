@@ -2,6 +2,7 @@ from selko.services.ics_parser import parse_calendar_components
 from selko.services.outlook import parse_outlook_message
 
 
+# Validates: SEL-062
 def test_ics_components_preserve_method_identity_and_sequence() -> None:
     payload = b"""BEGIN:VCALENDAR
 METHOD:CANCEL
@@ -27,10 +28,12 @@ END:VCALENDAR
     assert components[0]["component_status"] == "CANCELLED"
 
 
+# Validates: SEL-062
 def test_malformed_ics_isolated_without_raising() -> None:
     assert parse_calendar_components([b"not-an-ics-file"]) == []
 
 
+# Validates: SEL-063
 def test_outlook_meeting_cancelled_without_associated_event_keeps_cancel_method() -> None:
     parsed = parse_outlook_message(
         {

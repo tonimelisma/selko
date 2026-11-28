@@ -11,6 +11,7 @@ from selko.config import get_environment, _parse_allowed_origins, Config
 class TestGetEnvironment:
     """Test environment detection."""
 
+    # Validates: SEL-667
     def test_default_development(self, monkeypatch):
         """Default to development if not specified."""
         monkeypatch.delenv("ENVIRONMENT", raising=False)
@@ -38,6 +39,7 @@ class TestGetEnvironment:
         assert "Invalid environment" in str(exc_info.value)
         assert "invalid" in str(exc_info.value)
 
+    # Validates: SEL-667
     def test_invalid_env_lists_valid(self):
         """Error message includes valid environments."""
         with pytest.raises(ValueError) as exc_info:
@@ -51,6 +53,7 @@ class TestGetEnvironment:
 class TestParseAllowedOrigins:
     """Test CORS allowed origins parsing."""
 
+    # Validates: SEL-669
     def test_defaults_when_env_not_set(self, monkeypatch):
         """Returns localhost defaults when ALLOWED_ORIGINS not set."""
         monkeypatch.delenv("ALLOWED_ORIGINS", raising=False)
@@ -89,6 +92,7 @@ class TestParseAllowedOrigins:
         assert "https://staging.example.com" in origins
         assert "https://prod.example.com" in origins
 
+    # Validates: SEL-669
     def test_trims_whitespace(self, monkeypatch):
         """Trims whitespace around origins."""
         monkeypatch.setenv(
@@ -99,6 +103,7 @@ class TestParseAllowedOrigins:
 
         assert origins == ["https://a.com", "https://b.com", "https://c.com"]
 
+    # Validates: SEL-669
     def test_ignores_empty_entries(self, monkeypatch):
         """Ignores empty entries from extra commas."""
         monkeypatch.setenv("ALLOWED_ORIGINS", "https://a.com,,https://b.com,")
@@ -218,6 +223,7 @@ class TestLoadConfigAllowedOrigins:
 class TestBackgroundProcessingDefaults:
     """Test safe environment-specific worker defaults."""
 
+    # Validates: SEL-668
     @pytest.mark.parametrize(
         ("environment", "expected"),
         [
@@ -241,6 +247,7 @@ class TestBackgroundProcessingDefaults:
 
         assert config.enable_background_processing is expected
 
+    # Validates: SEL-668
     def test_explicit_false_disables_production_workers(self, monkeypatch, tmp_path):
         """The environment flag remains an emergency production kill switch."""
         from selko import config as config_module
@@ -254,6 +261,7 @@ class TestBackgroundProcessingDefaults:
 
         assert config.enable_background_processing is False
 
+    # Validates: SEL-668
     def test_platform_env_overrides_dotenv_file(self, monkeypatch, tmp_path):
         """A Render setting must not be replaced by a checked-out env file."""
         from selko import config as config_module
@@ -373,6 +381,7 @@ class TestMemoryMonitorConfig:
         assert config.memory_log_interval_seconds == 300.0
         assert config.memory_tracemalloc is True
 
+    # Validates: SEL-662, SEL-663
     def test_defaults_without_env(self, monkeypatch):
         """Monitor defaults to 60s interval with tracemalloc off."""
         from selko.config import load_config
@@ -391,6 +400,7 @@ class TestMemoryMonitorConfig:
 class TestLlmDefaultsAndFallback:
     """Production LLM pairing defaults and provisional fallback fill-in."""
 
+    # Validates: SEL-102
     def test_resolve_provisional_gemini_to_qwen_flash(self):
         from selko.config import _resolve_provisional_fallback
 
@@ -405,6 +415,7 @@ class TestLlmDefaultsAndFallback:
         assert provider == "gemini"
         assert model == "gemini-3.5-flash-lite"
 
+    # Validates: SEL-102
     def test_resolve_provisional_respects_explicit(self):
         from selko.config import _resolve_provisional_fallback
 
@@ -480,6 +491,7 @@ class TestVisionFallback:
         assert _is_vision_model(None) is False
         assert _is_vision_model("unknown-model-xyz") is False
 
+    # Validates: SEL-102
     def test_load_config_default_pairing(self, monkeypatch):
         from selko.config import load_config
 
@@ -504,6 +516,7 @@ class TestVisionFallback:
         assert config.llm_fallback_provider == "qwen"
         assert config.llm_fallback_model == "qwen3.7-flash"
 
+    # Validates: SEL-101, SEL-741
     def test_load_config_fallback_none_disables_the_provisional_pairing(
         self, monkeypatch, caplog
     ):
@@ -531,6 +544,7 @@ class TestVisionFallback:
         assert config.llm_fallback_model is None
         assert "FALLBACK UNAVAILABLE" not in caplog.text
 
+    # Validates: SEL-101, SEL-741
     def test_create_llm_gateway_with_fallback_none_has_no_fallback_route(
         self, monkeypatch
     ):

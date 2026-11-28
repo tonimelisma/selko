@@ -66,6 +66,7 @@ async def _drain(worker):
             await task
 
 
+# Validates: SEL-052
 def test_a_hung_acquisition_executor_frees_its_slot(mock_config):
     """The regression. Before the bound, the second claim never came back."""
 
@@ -134,6 +135,7 @@ def test_a_timed_out_item_is_failed_not_abandoned(mock_config):
     asyncio.run(scenario())
 
 
+# Validates: SEL-052
 def test_a_hung_attachment_executor_frees_its_slot(mock_config):
     """The attachment executor is the identical twin and stalled the same way."""
 
@@ -164,6 +166,7 @@ def test_a_hung_attachment_executor_frees_its_slot(mock_config):
     asyncio.run(scenario())
 
 
+# Validates: SEL-052
 def test_executor_timeout_has_its_own_error_code():
     """`unknown` is the code for "we have no idea"; a stall is not that.
 
@@ -177,6 +180,7 @@ def test_executor_timeout_has_its_own_error_code():
     assert classification.auth_failure is False
 
 
+# Validates: SEL-052
 def test_the_bound_stays_below_the_lease(mock_config):
     """fail_item fences on (worker_id, lease). A bound that fires after the
     lease expired records nothing, and the row stalls again -- so the default

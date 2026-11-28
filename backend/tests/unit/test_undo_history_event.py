@@ -66,6 +66,7 @@ def _undo(db, event, user, *, force=False, live=None, diverged=None):
 
 
 class TestUndoHistoryEventCalendar:
+    # Validates: SEL-237
     def test_new_synced_queues_calendar_delete(self, db, factory):
         user = factory.user()
         event = _event(factory, user)
@@ -80,6 +81,7 @@ class TestUndoHistoryEventCalendar:
         assert item["force_overwrite"] is False
         assert factory.row("events", event)["review_status"] == "pending_review"
 
+    # Validates: SEL-238
     def test_diverged_without_force_raises(self, db, factory):
         user = factory.user()
         event = _event(factory, user)
@@ -103,6 +105,7 @@ class TestUndoHistoryEventCalendar:
         assert item["action"] == "cancel"
         assert item["force_overwrite"] is True
 
+    # Validates: SEL-236
     def test_applied_change_restores_calendar(self, db, factory):
         user = factory.user()
         event = _event(factory, user, title="New Title")
@@ -119,6 +122,7 @@ class TestUndoHistoryEventCalendar:
         assert item["desired_event"]["title"] == "Old Title"
         assert item["expected_provider_revision"] == "v1"
 
+    # Validates: SEL-239
     def test_gcal_404_clears_sync_on_change_undo(self, db, factory):
         user = factory.user()
         event = _event(factory, user)
@@ -130,6 +134,7 @@ class TestUndoHistoryEventCalendar:
         assert _work(db, event) == [], "no provider event left: nothing to write back"
         assert factory.row("events", event)["title"] == "Old Title"
 
+    # Validates: SEL-237
     def test_unsynced_local_only(self, db, factory):
         user = factory.user()
         event = _event(factory, user, google_calendar_event_id=None, synced_at=None,
@@ -143,6 +148,7 @@ class TestUndoHistoryEventCalendar:
         assert _work(db, event) == []
         assert factory.row("events", event)["review_status"] == "pending_review"
 
+    # Validates: SEL-242
     def test_synced_requires_user_id(self, db, factory):
         user = factory.user()
         event = _event(factory, user)
@@ -150,6 +156,7 @@ class TestUndoHistoryEventCalendar:
         with pytest.raises(EventsError, match="user_id is required"):
             undo_history_event(db, event)
 
+    # Validates: SEL-242
     def test_another_users_event_is_not_found(self, db, factory):
         owner, other = factory.user(), factory.user()
         event = _event(factory, owner, google_calendar_event_id=None, synced_at=None)

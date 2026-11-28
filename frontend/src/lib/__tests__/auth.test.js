@@ -47,6 +47,7 @@ describe('auth', () => {
 	});
 
 	describe('restoreSession', () => {
+		// Validates: SEL-503, SEL-725
 		it('on 200 keeps the access token in memory and returns the user', async () => {
 			mockFetch.mockResolvedValue(respond(200, tokenBody()));
 
@@ -62,6 +63,7 @@ describe('auth', () => {
 			expect(JSON.parse(init.body)).toEqual({ grant_type: 'refresh_token' });
 		});
 
+		// Validates: SEL-506
 		it('on 401 is signed out, not unavailable', async () => {
 			mockFetch.mockResolvedValue(respond(401, { detail: { code: 'INVALID_GRANT', message: 'Session expired' } }));
 
@@ -71,6 +73,7 @@ describe('auth', () => {
 			expect(auth.getAccessToken()).toBeNull();
 		});
 
+		// Validates: SEL-506
 		it('on a network failure reports Selko unavailable', async () => {
 			mockFetch.mockRejectedValue(new TypeError('Failed to fetch'));
 
@@ -79,6 +82,7 @@ describe('auth', () => {
 			expect(result).toEqual({ user: null, unavailable: true });
 		});
 
+		// Validates: SEL-506
 		it('on a server error reports Selko unavailable', async () => {
 			mockFetch.mockResolvedValue(respond(502));
 
@@ -87,6 +91,7 @@ describe('auth', () => {
 	});
 
 	describe('signIn / signUp', () => {
+		// Validates: SEL-515
 		it('signs in with the password grant and announces it', async () => {
 			const events = [];
 			auth.onAuthChange((event, user) => events.push([event, user?.id]));
@@ -104,6 +109,7 @@ describe('auth', () => {
 			expect(events).toEqual([['SIGNED_IN', 'u1']]);
 		});
 
+		// Validates: SEL-515
 		it('returns the server’s message for bad credentials', async () => {
 			mockFetch.mockResolvedValue(
 				respond(400, { detail: { code: 'INVALID_CREDENTIALS', message: 'Invalid login credentials' } })
@@ -116,6 +122,7 @@ describe('auth', () => {
 			expect(auth.getAccessToken()).toBeNull();
 		});
 
+		// Validates: SEL-518
 		it('signs up without signing in', async () => {
 			mockFetch.mockResolvedValue(
 				respond(201, { user: { id: 'u9', email: 'n@b.com', created_at: 'x' }, confirmation_required: false })
@@ -130,6 +137,7 @@ describe('auth', () => {
 	});
 
 	describe('refresh', () => {
+		// Validates: SEL-502
 		it('is single-flight: concurrent callers share one request', async () => {
 			let release;
 			mockFetch.mockImplementation(
@@ -148,6 +156,7 @@ describe('auth', () => {
 			expect(tokens).toEqual(['access-3', 'access-3', 'access-3']);
 		});
 
+		// Validates: SEL-504
 		it('renews a minute before the access token expires', async () => {
 			vi.useFakeTimers();
 			mockFetch.mockResolvedValueOnce(respond(200, tokenBody('access-a')));
@@ -162,6 +171,7 @@ describe('auth', () => {
 			expect(auth.getAccessToken()).toBe('access-b');
 		});
 
+		// Validates: SEL-505
 		it('a refused refresh signs the tab out', async () => {
 			mockFetch.mockResolvedValueOnce(respond(200, tokenBody()));
 			await auth.restoreSession();
@@ -174,6 +184,7 @@ describe('auth', () => {
 			expect(events).toEqual(['SIGNED_OUT']);
 		});
 
+		// Validates: SEL-505
 		it('an unreachable server keeps the session', async () => {
 			mockFetch.mockResolvedValueOnce(respond(200, tokenBody()));
 			await auth.restoreSession();
@@ -185,6 +196,7 @@ describe('auth', () => {
 	});
 
 	describe('signOut and other tabs', () => {
+		// Validates: SEL-507, SEL-508
 		it('posts the logout with the token, drops it and tells other tabs', async () => {
 			mockFetch.mockResolvedValueOnce(respond(200, tokenBody()));
 			await auth.restoreSession();
@@ -204,6 +216,7 @@ describe('auth', () => {
 			expect(heard).toEqual([{ type: 'SIGNED_OUT' }]);
 		});
 
+		// Validates: SEL-507
 		it('drops its token at once when another tab signs out', async () => {
 			mockFetch.mockResolvedValueOnce(respond(200, tokenBody()));
 			await auth.restoreSession();
@@ -218,6 +231,7 @@ describe('auth', () => {
 			expect(mockFetch).toHaveBeenCalledTimes(1);
 		});
 
+		// Validates: SEL-507
 		it('picks up the session when another tab signs in', async () => {
 			auth.onAuthChange(() => {});
 			mockFetch.mockResolvedValueOnce(respond(200, tokenBody('access-other')));
@@ -228,6 +242,7 @@ describe('auth', () => {
 			expect(JSON.parse(mockFetch.mock.calls[0][1].body)).toEqual({ grant_type: 'refresh_token' });
 		});
 
+		// Validates: SEL-508
 		it('clears the local session even when the logout request fails', async () => {
 			mockFetch.mockResolvedValueOnce(respond(200, tokenBody()));
 			await auth.restoreSession();

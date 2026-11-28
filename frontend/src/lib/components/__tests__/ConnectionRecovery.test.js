@@ -11,6 +11,7 @@ function renderBanner(integrations, onauthorize = vi.fn().mockResolvedValue(unde
 }
 
 describe('ConnectionRecovery', () => {
+	// Validates: SEL-556
 	it('shows nothing when every connection works', () => {
 		renderBanner([
 			{ id: '1', provider: 'gmail', status: 'active' },
@@ -21,6 +22,7 @@ describe('ConnectionRecovery', () => {
 		expect(screen.queryByRole('button')).not.toBeInTheDocument();
 	});
 
+	// Validates: SEL-557
 	it('names the Google account, not a calendar, when Google signed out beside a mail-only Outlook', async () => {
 		// Regression: production showed "Reconnect your calendar" with equal
 		// "Reconnect Outlook" and "Reconnect Google" buttons, although Gmail was
@@ -55,6 +57,7 @@ describe('ConnectionRecovery', () => {
 		expect(description.parentElement?.contains(button)).toBe(true);
 	});
 
+	// Validates: SEL-557
 	it('says only mail is affected when Gmail lapsed and the calendar works', () => {
 		renderBanner([
 			{ id: '1', provider: 'gmail', status: 'expired' },
@@ -65,6 +68,7 @@ describe('ConnectionRecovery', () => {
 		expect(screen.getByText(/can’t read new Gmail\./)).toBeInTheDocument();
 	});
 
+	// Validates: SEL-557
 	it('says only the calendar is affected when Google Calendar lapsed and Gmail works', () => {
 		renderBanner([
 			{ id: '1', provider: 'gmail', status: 'active' },
@@ -76,6 +80,7 @@ describe('ConnectionRecovery', () => {
 		expect(screen.getAllByRole('button')).toHaveLength(1);
 	});
 
+	// Validates: SEL-559
 	it('does not prompt for a lapsed Google Calendar while Outlook Calendar works', () => {
 		renderBanner([
 			{ id: '1', provider: 'outlook', status: 'active', scopes: ['Calendars.ReadWrite'] },
@@ -85,6 +90,7 @@ describe('ConnectionRecovery', () => {
 		expect(screen.queryByRole('button')).not.toBeInTheDocument();
 	});
 
+	// Validates: SEL-558
 	it('asks to reconnect Outlook when the Outlook sign-in lapsed', async () => {
 		const onauthorize = renderBanner([
 			{ id: '1', provider: 'outlook', status: 'expired', scopes: ['Mail.Read', 'Calendars.ReadWrite'] }
@@ -96,6 +102,7 @@ describe('ConnectionRecovery', () => {
 		expect(onauthorize).toHaveBeenCalledWith('outlook');
 	});
 
+	// Validates: SEL-558
 	it('offers both sign-ins only when both lapsed', () => {
 		renderBanner([
 			{ id: '1', provider: 'gmail', status: 'expired' },
@@ -109,6 +116,7 @@ describe('ConnectionRecovery', () => {
 		]);
 	});
 
+	// Validates: SEL-559
 	it('offers the Outlook calendar for a mail-only Outlook user', async () => {
 		const onauthorize = renderBanner([
 			{ id: '1', provider: 'outlook', status: 'active', scopes: ['Mail.Read'] }
@@ -120,6 +128,7 @@ describe('ConnectionRecovery', () => {
 		expect(onauthorize).toHaveBeenCalledWith('outlook');
 	});
 
+	// Validates: SEL-559
 	it('offers Google Calendar to a Gmail user without a calendar', () => {
 		renderBanner([{ id: '1', provider: 'gmail', status: 'active' }]);
 
@@ -127,6 +136,7 @@ describe('ConnectionRecovery', () => {
 		expect(screen.getByRole('button', { name: 'Connect Google Calendar' })).toBeInTheDocument();
 	});
 
+	// Validates: SEL-556
 	it('treats a calendar-scoped Outlook connection as complete', () => {
 		renderBanner([
 			{ id: '1', provider: 'outlook', status: 'active', scopes: ['Mail.Read', 'Calendars.ReadWrite'] }

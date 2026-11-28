@@ -57,6 +57,7 @@ def test_cancelled_entries_are_tombstoned_not_dropped():
     assert row["status"] == "cancelled"
 
 
+# Validates: SEL-373
 def test_selko_created_entries_are_distinguished_from_the_user_s_own():
     ours = entry_row(
         _entry(extendedProperties={"private": {"selko_event_id": "abc"}}),
@@ -94,6 +95,7 @@ def test_self_response_is_extracted_from_attendees():
 
 
 
+# Validates: SEL-371
 def test_the_window_is_bounded():
     """The rolling window is what bounds cost; assert it actually bounds."""
     start, end = rolling_window(datetime(2026, 8, 30, tzinfo=timezone.utc))
@@ -188,6 +190,7 @@ def test_entries_are_indexed_from_what_the_database_stores(db, factory):
     assert hints[0]["event_id"] is None
 
 
+# Validates: SEL-371
 def test_the_sync_token_is_saved_and_used_next_pass(db, factory):
     from selko.db import mirror as db_mirror
 
@@ -209,6 +212,7 @@ def test_the_sync_token_is_saved_and_used_next_pass(db, factory):
     assert state["consecutive_failures"] == 0
 
 
+# Validates: SEL-371
 def test_an_expired_sync_token_triggers_one_full_resync(db, factory):
     user_id, integration_id = _mirror_user(factory)
     _sync(db, user_id, integration_id,
@@ -222,6 +226,7 @@ def test_an_expired_sync_token_triggers_one_full_resync(db, factory):
     assert summary["entries"] == 1
 
 
+# Validates: SEL-372
 def test_a_second_pass_updates_the_entry_in_place(db, factory):
     user_id, integration_id = _mirror_user(factory)
     _sync(db, user_id, integration_id, _FakeAdapter([{"items": [_entry()], "nextSyncToken": "t"}]))
@@ -245,6 +250,7 @@ def _stored_entry(db, user_id, integration_id, provider_event_id, uid):
     return db_mirror.upsert_entries(db, user_id, [row])[0]
 
 
+# Validates: SEL-374
 def test_entries_mirrored_before_indexing_worked_are_repaired(db, factory):
     """Indexing must be a repair, not a side effect of writing.
 
@@ -292,6 +298,7 @@ def test_indexing_never_reads_another_users_entries(db, factory):
 
 
 
+# Validates: SEL-370
 def test_every_calendar_is_mirrored_not_only_the_write_target(db):
     """target_calendar_id is where Selko writes, not where invites arrive.
 
@@ -324,6 +331,7 @@ def test_every_calendar_is_mirrored_not_only_the_write_target(db):
     assert totals == {"calendars": 3, "entries": 3, "failed": 0, "arrived": []}
 
 
+# Validates: SEL-370
 def test_one_failing_calendar_does_not_stop_the_others(db):
     """A permission error on one subscription must not blind the rest."""
     from selko.services import calendar_mirror
@@ -348,6 +356,7 @@ def test_one_failing_calendar_does_not_stop_the_others(db):
     assert totals == {"calendars": 2, "entries": 4, "failed": 1, "arrived": []}
 
 
+# Validates: SEL-370
 def test_the_primary_alias_is_never_mirrored_alongside_its_real_id(db):
     """"primary" is an alias, and list_calendars also returns the real id.
 

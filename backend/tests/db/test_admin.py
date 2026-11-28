@@ -20,16 +20,19 @@ def data_dir(tmp_path, monkeypatch):
     runtime.close_database()
 
 
+# Validates: SEL-603, SEL-672
 def test_migrate_creates_the_database(data_dir):
     assert admin.main(["migrate"]) == 0
     assert (data_dir / "selko.db").exists()
 
 
+# Validates: SEL-471, SEL-673
 def test_seed_demo_is_refused_without_the_flag(data_dir, monkeypatch, capsys):
     monkeypatch.delenv("SELKO_ALLOW_DEMO_SEED", raising=False)
     assert admin.main(["seed-demo", "ops@example.test"]) == 2
 
 
+# Validates: SEL-470, SEL-471, SEL-603, SEL-673
 def test_seed_demo_then_delete_account(data_dir, monkeypatch, capsys):
     monkeypatch.setenv("SELKO_ALLOW_DEMO_SEED", "1")
     admin.main(["migrate"])

@@ -31,6 +31,7 @@ class TestCalendarEventDiverged:
         assert diverged is False
         assert fields == []
 
+    # Validates: SEL-377
     def test_title_change_diverged(self):
         snap = self._snapshot()
         live = self._snapshot(summary="Bike Fest EDITED")
@@ -47,6 +48,7 @@ class TestCalendarEventDiverged:
         assert diverged is True
         assert "start" in fields
 
+    # Validates: SEL-377
     def test_equivalent_offset_and_named_timezone_not_diverged(self):
         """Google's explicit UTC offset is equivalent to Selko's IANA zone."""
         snap = self._snapshot(
@@ -75,6 +77,7 @@ class TestCalendarEventDiverged:
         assert diverged is False
         assert fields == []
 
+    # Validates: SEL-377
     def test_footer_only_description_not_diverged(self):
         snap = self._snapshot(description=f"Fun day{SELKO_FOOTER}")
         # Live GCal sometimes reorders whitespace around footer
@@ -121,6 +124,7 @@ class TestAssertCalendarNotDiverged:
             assert_calendar_not_diverged(db, user_id, event_id, "gcal-1", force=True)
         live.assert_not_called()
 
+    # Validates: SEL-378
     def test_missing_snapshot_requires_force(self, db, synced):
         user_id, event_id = synced
         with patch(
@@ -152,6 +156,7 @@ class TestAssertCalendarNotDiverged:
             with pytest.raises(CalendarDivergedError):
                 assert_calendar_not_diverged(db, factory.user(), event_id, "gcal-1", force=False)
 
+    # Validates: SEL-378
     def test_matching_snapshot_ok(self, db, synced):
         user_id, event_id = synced
         snap = {

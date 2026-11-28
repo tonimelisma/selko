@@ -31,6 +31,7 @@ describe('apiFetch', () => {
 		vi.useRealTimers();
 	});
 
+	// Validates: SEL-500, SEL-726
 	it('sends the Bearer token, JSON body and query to the API', async () => {
 		mockFetch.mockResolvedValue(respond(200, { ok: 1 }));
 
@@ -47,6 +48,7 @@ describe('apiFetch', () => {
 		expect(result).toEqual({ data: { ok: 1 }, error: null, status: 200 });
 	});
 
+	// Validates: SEL-501
 	it('answers 401 with one refresh and one retry carrying the new token', async () => {
 		mockAuth.refresh.mockImplementation(async () => {
 			mockAuth.token = 'new-token';
@@ -65,6 +67,7 @@ describe('apiFetch', () => {
 		expect(result.error).toBeNull();
 	});
 
+	// Validates: SEL-501
 	it('retries only once: a second 401 is returned as the error', async () => {
 		mockAuth.refresh.mockResolvedValue('new-token');
 		mockFetch.mockResolvedValue(respond(401, { detail: 'Invalid or expired token' }));
@@ -76,6 +79,7 @@ describe('apiFetch', () => {
 		expect(result.error).toMatchObject({ status: 401, message: 'Invalid or expired token' });
 	});
 
+	// Validates: SEL-501
 	it('does not retry when the refresh fails', async () => {
 		mockAuth.refresh.mockResolvedValue(null);
 		mockFetch.mockResolvedValue(respond(401, { detail: 'Invalid or expired token' }));
@@ -86,6 +90,7 @@ describe('apiFetch', () => {
 		expect(result.error.status).toBe(401);
 	});
 
+	// Validates: SEL-502
 	it('concurrent 401s share the refresh the auth module single-flights', async () => {
 		// The real auth.refresh() returns one shared promise to concurrent callers.
 		let resolveRefresh;
@@ -107,6 +112,7 @@ describe('apiFetch', () => {
 		expect(mockFetch).toHaveBeenCalledTimes(6);
 	});
 
+	// Validates: SEL-509
 	it('times out a request that never answers', async () => {
 		vi.useFakeTimers();
 		mockFetch.mockImplementation(
@@ -127,6 +133,7 @@ describe('apiFetch', () => {
 		expect(result.error).toMatchObject({ status: 0, code: 'TIMEOUT', message: 'Request timed out. Please try again.' });
 	});
 
+	// Validates: SEL-509
 	it('reports a network failure without throwing', async () => {
 		mockFetch.mockRejectedValue(new TypeError('Failed to fetch'));
 
@@ -147,6 +154,7 @@ describe('apiFetch', () => {
 		expect(result.error).toMatchObject({ status: 401, message: 'Not authenticated' });
 	});
 
+	// Validates: SEL-510
 	it('parses the API error shapes', async () => {
 		mockFetch.mockResolvedValueOnce(respond(404, { detail: 'Event not found' }));
 		mockFetch.mockResolvedValueOnce(respond(400, { detail: { code: 'INVALID_CREDENTIALS', message: 'Invalid login credentials' } }));

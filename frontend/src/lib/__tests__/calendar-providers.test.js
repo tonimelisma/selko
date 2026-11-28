@@ -30,6 +30,7 @@ describe('outlookHasCalendarScope', () => {
 	});
 });
 
+// Validates: SEL-526
 describe('hasWritableCalendar', () => {
 	it('is true for active Google Calendar', () => {
 		expect(hasWritableCalendar([gcal])).toBe(true);

@@ -111,6 +111,7 @@ class TestComputeChangeSet:
 
 
 class TestGateChangeSet:
+    # Validates: SEL-161
     def test_drops_equivalent_datetime_hallucination(self):
         baseline = {"start_datetime": "2026-07-17T15:00:00-04:00", "title": "A"}
         raw = EventChangeSet(
@@ -162,6 +163,7 @@ class TestGateChangeSet:
         assert gated.kind == "noop"
         assert gated.changes == []
 
+    # Validates: SEL-161
     def test_drops_cosmetic_title_recruiter_case(self):
         """The real-world case behind rule 11: rewording + subtitle qualifier."""
         baseline = {"title": "Interview with Acme - Screening Call with Jane Doe"}
@@ -319,6 +321,7 @@ class TestResolveDescriptionAppend:
 class TestGateStaleEmailMaterialChanges:
     """Deterministic code-gate backstop for propose_event_update rule 10."""
 
+    # Validates: SEL-162
     def test_drops_material_fields_when_email_is_older(self):
         change_set = EventChangeSet(
             kind="material_update",
@@ -340,6 +343,7 @@ class TestGateStaleEmailMaterialChanges:
         assert {c.field for c in result.changes} == {"description"}
         assert result.kind == "enrichment"
 
+    # Validates: SEL-162
     def test_keeps_changes_when_email_is_newer(self):
         change_set = EventChangeSet(
             kind="material_update",

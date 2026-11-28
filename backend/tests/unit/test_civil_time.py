@@ -14,6 +14,7 @@ from selko.services.civil_time import (
 
 
 class TestLocalizeCivil:
+    # Validates: SEL-132
     def test_strips_utc_offset_and_attaches_user_tz(self):
         """Regression: LLM 07:00+00:00 means 7am local, not midnight Pacific."""
         aware = localize_civil("2026-09-13T07:00:00+00:00", "America/Los_Angeles")
@@ -34,6 +35,7 @@ class TestLocalizeCivil:
 
 
 class TestStorageAndGcal:
+    # Validates: SEL-132
     def test_storage_iso_civil_from_mislabeled_utc(self):
         iso = to_storage_iso(
             "2026-09-13T10:00:00+00:00",
@@ -44,6 +46,7 @@ class TestStorageAndGcal:
         assert iso.startswith("2026-09-13T10:00:00")
         assert "-07:00" in iso
 
+    # Validates: SEL-133
     def test_storage_iso_absolute_keeps_instant(self):
         iso = to_storage_iso(
             "2026-09-13T17:00:00+00:00",

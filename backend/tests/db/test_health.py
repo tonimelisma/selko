@@ -6,7 +6,7 @@ integration/test_integration_email_state_machine.py (health tests) and
 test_ingestion_runtime.py::test_health_snapshot_counts_1500_dead_letters_without_truncation.
 
 Every degrading counter is shown going red and then back to green on its own
-(CLAUDE.md, "Health signals must be able to return to green"). Each test has
+(docs/adr/0015-health-signals-return-to-green.md). Each test has
 its own fresh database, so the roll-up is decided only by the rows it makes.
 """
 
@@ -56,6 +56,7 @@ def _item(factory, integration_id, user_id, **overrides):
     return factory._insert("email_ingestion_items", fields)
 
 
+# Validates: SEL-641
 def test_empty_database_is_ok_with_every_key(db):
     result = _h(db)
     assert tuple(result) == health.HEALTH_KEYS
@@ -69,6 +70,7 @@ def test_empty_database_is_ok_with_every_key(db):
 # --- emails -----------------------------------------------------------------
 
 
+# Validates: SEL-642
 def test_stale_processing_email_degrades_and_recovers(db, factory, user):
     email = factory.email(user, processing_status="processing", attempts=1,
                           locked_by="dead-worker", locked_until=ts(-3600))
@@ -83,6 +85,7 @@ def test_stale_processing_email_degrades_and_recovers(db, factory, user):
     assert result["status"] == "ok"
 
 
+# Validates: SEL-645
 def test_health_counts_use_worker_claim_predicates(db, factory, user):
     factory.email(user, processing_status="pending", attempts=0, max_attempts=3)
     factory.email(user, processing_status="failed", attempts=3, max_attempts=3)
@@ -101,6 +104,7 @@ def test_health_counts_use_worker_claim_predicates(db, factory, user):
     assert result["stale_processing_emails"] == 0
 
 
+# Validates: SEL-644
 def test_terminal_failures_never_degrade(db, factory, user):
     """failed_emails is history: counted, but it must not pin the roll-up red."""
     for _ in range(3):
@@ -111,6 +115,7 @@ def test_terminal_failures_never_degrade(db, factory, user):
     assert result["status"] == "ok"
 
 
+# Validates: SEL-643
 def test_unclaimable_pending_degrades_and_recovers(db, factory, user):
     """The CHECK forbids a stored pending+exhausted row; only a broken invariant shows it.
 
@@ -136,6 +141,7 @@ def test_unclaimable_pending_degrades_and_recovers(db, factory, user):
 # --- sync runs, leases, polls ---------------------------------------------------
 
 
+# Validates: SEL-646
 def test_stale_sync_run_degrades_and_recovers(db, factory, user, quiet_integration):
     run = factory._insert("email_sync_runs", {"id": new_id(), "integration_id": quiet_integration,
                                               "user_id": user, "provider": "gmail",
@@ -161,6 +167,7 @@ def test_stale_sync_run_degrades_and_recovers(db, factory, user, quiet_integrati
     assert result["status"] == "ok"
 
 
+# Validates: SEL-647
 def test_overdue_poll_degrades_past_the_warning_and_recovers(db, factory, user, quiet_integration):
     _set(db, "email_sync_state", "integration_id", quiet_integration, next_poll_at=ts(-7200))
     result = _h(db, warning_seconds=3600)
@@ -177,6 +184,7 @@ def test_overdue_poll_degrades_past_the_warning_and_recovers(db, factory, user, 
     assert result["status"] == "ok"
 
 
+# Validates: SEL-647
 def test_health_ignores_expired_integration_poll_age(db, factory, user, quiet_integration):
     before = _h(db)
     _set(db, "integrations", "id", quiet_integration, status="expired")
@@ -188,6 +196,7 @@ def test_health_ignores_expired_integration_poll_age(db, factory, user, quiet_in
     assert after["integrations_due"] == 0
 
 
+# Validates: SEL-647
 def test_a_leased_due_integration_is_not_counted_due(db, factory, user, quiet_integration):
     _set(db, "email_sync_state", "integration_id", quiet_integration, next_poll_at=ts(-10),
          lease_owner="w", lease_expires_at=ts(300))
@@ -197,6 +206,7 @@ def test_a_leased_due_integration_is_not_counted_due(db, factory, user, quiet_in
 # --- dead letters ---------------------------------------------------------------
 
 
+# Validates: SEL-646
 def test_dead_letters_degrade_and_recover(db, factory, user, quiet_integration):
     item = _item(factory, quiet_integration, user, acquisition_status="dead_letter")
     email = factory.email(user, integration_id=quiet_integration, processing_status="processed")
@@ -217,6 +227,7 @@ def test_dead_letters_degrade_and_recover(db, factory, user, quiet_integration):
     assert result["status"] == "ok"
 
 
+# Validates: SEL-649
 def test_counts_1500_dead_letters_without_truncation(db, factory, user, quiet_integration):
     with db.write() as tx:
         for n in range(1500):
@@ -234,6 +245,7 @@ def test_counts_1500_dead_letters_without_truncation(db, factory, user, quiet_in
 # --- incidents ------------------------------------------------------------------
 
 
+# Validates: SEL-646
 def test_open_email_sync_incident_degrades_and_recovers(db, factory, user, quiet_integration):
     incident = factory._insert("operational_incidents", {
         "id": new_id(), "incident_key": f"email-sync:{quiet_integration}:stale_poll",
@@ -260,6 +272,7 @@ def test_open_email_sync_incident_degrades_and_recovers(db, factory, user, quiet
 
 
 class TestIngestionStallSignal:
+    # Validates: SEL-648
     def test_a_frozen_backlog_degrades_the_rollup(self, db, factory, user, quiet_integration):
         _item(factory, quiet_integration, user, created_at=ts(-19 * 86400))
         result = _h(db, warning_seconds=3600)
@@ -270,6 +283,7 @@ class TestIngestionStallSignal:
         assert _h(db, warning_seconds=10**9)["status"] == "ok"
         assert _h(db, warning_seconds=3600)["status"] == "degraded"
 
+    # Validates: SEL-648
     def test_an_in_flight_lease_means_draining_not_stalled(self, db, factory, user, quiet_integration):
         _item(factory, quiet_integration, user, created_at=ts(-19 * 86400))
         _item(factory, quiet_integration, user, acquisition_status="processing", attempts=1,
@@ -279,6 +293,7 @@ class TestIngestionStallSignal:
         assert result["items_stalled_seconds"] == 0
         assert result["status"] == "ok"
 
+    # Validates: SEL-648
     def test_it_returns_to_green_when_the_backlog_drains(self, db, factory, user, quiet_integration):
         item = _item(factory, quiet_integration, user, created_at=ts(-19 * 86400))
         assert _h(db)["items_stalled_seconds"] is not None
@@ -299,6 +314,7 @@ class TestIngestionStallSignal:
         _item(factory, quiet_integration, user, attempts=8, max_attempts=8, created_at=ts(-19 * 86400))
         assert _h(db)["items_stalled_seconds"] is None
 
+    # Validates: SEL-648
     def test_eligibility_time_is_next_retry_at_when_set(self, db, factory, user, quiet_integration):
         _item(factory, quiet_integration, user, acquisition_status="retry", attempts=1,
               created_at=ts(-19 * 86400), next_retry_at=ts(-100))

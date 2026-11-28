@@ -47,6 +47,7 @@ def _retire(db, user_id):
         return events.retire_pending_already_on_calendar(db, user_id, ARRIVED, MagicMock)
 
 
+# Validates: SEL-158
 def test_the_duplicate_leaves_new_and_history_says_why(db, factory, pending_supercuts):
     user, event, email = pending_supercuts
 

@@ -15,6 +15,7 @@ PACKAGE = Path(__file__).resolve().parents[1] / "selko"
 CONTENT_NAMES = {"subject", "title", "sender_email", "from_email", "snippet", "body", "body_text", "description", "location"}
 
 
+# Validates: SEL-701
 def test_importing_the_app_sends_selko_info_to_the_log():
     """The image runs `uvicorn selko.api.app:app`; uvicorn configures only its own
     loggers, so before this every selko.* INFO line was dropped in production."""
@@ -29,6 +30,7 @@ def test_importing_the_app_sends_selko_info_to_the_log():
     assert "probe-line" in result.stderr, result.stderr[-500:]
 
 
+# Validates: SEL-701
 def test_setup_logging_is_info_by_default():
     from selko.logging import setup_logging
 
@@ -55,6 +57,7 @@ def _content_in_log_calls(path: Path) -> list[str]:
     return found
 
 
+# Validates: SEL-700
 def test_no_info_or_debug_line_logs_email_content():
     found = []
     for path in sorted(PACKAGE.rglob("*.py")):
@@ -62,6 +65,7 @@ def test_no_info_or_debug_line_logs_email_content():
     assert not found, found
 
 
+# Validates: SEL-700
 def test_the_content_check_sees_an_interpolated_subject(tmp_path):
     module = tmp_path / "selko" / "m.py"
     module.parent.mkdir()

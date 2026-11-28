@@ -58,6 +58,7 @@ def _retire(db, user, arrived, matched_id=None, *, side_effect=None):
     return retired, compare, gateway_factory
 
 
+# Validates: SEL-158, SEL-376
 def test_the_supercuts_duplicate_leaves_new_when_its_calendar_entry_arrives(db, factory, supercuts):
     user, event, email = supercuts
 
@@ -75,6 +76,7 @@ def test_the_supercuts_duplicate_leaves_new_when_its_calendar_entry_arrives(db, 
     assert "Supercuts" in relabelled["processing_explanation"]
 
 
+# Validates: SEL-158, SEL-376
 def test_a_different_start_minute_costs_no_llm_call(db, factory, supercuts):
     user, event, _ = supercuts
     elsewhere = {**SUPERCUTS_ENTRY, "start_at": "2026-11-01T17:45:00+00:00"}
@@ -99,6 +101,7 @@ def test_a_different_event_at_the_same_minute_stays_in_new(db, factory, supercut
     assert factory.row("emails", email)["processing_outcome"] == "event_created"
 
 
+# Validates: SEL-158, SEL-376
 def test_selko_s_own_and_removed_entries_are_not_evidence(db, factory, supercuts):
     user, event, _ = supercuts
     arrived = [
@@ -116,6 +119,7 @@ def test_selko_s_own_and_removed_entries_are_not_evidence(db, factory, supercuts
     assert factory.row("events", event)["review_status"] == "pending_review"
 
 
+# Validates: SEL-158, SEL-376
 def test_an_event_the_user_approved_meanwhile_is_left_alone(db, factory, supercuts):
     """The retirement is a compare-and-set on pending_review."""
     user, event, email = supercuts

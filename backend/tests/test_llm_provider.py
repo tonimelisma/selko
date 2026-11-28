@@ -398,6 +398,7 @@ class TestCreateProvider:
         assert provider.thinking == "medium"
         assert provider.adaptive_thinking is True
 
+    # Validates: SEL-103
     def test_haiku_5_5_request_carries_effort_and_16k_ceiling(self):
         """The create_provider wiring must reach the request: adaptive thinking,
         an explicit low effort, and max_tokens raised to 16000."""
@@ -419,6 +420,7 @@ class TestCreateProvider:
         assert kwargs["output_config"] == {"effort": "low"}
         assert kwargs["max_tokens"] == 16000
 
+    # Validates: SEL-103
     def test_anthropic_client_leaves_retries_to_the_gateway(self):
         """SDK retries stacked on gateway retries multiplied each attempt."""
         with patch("anthropic.Anthropic") as client_cls:
@@ -426,6 +428,7 @@ class TestCreateProvider:
 
         assert client_cls.call_args.kwargs["max_retries"] == 0
 
+    # Validates: SEL-107
     def test_anthropic_refusal_carries_its_category(self):
         with patch("anthropic.Anthropic") as client_cls:
             provider = AnthropicProvider(
@@ -722,6 +725,7 @@ class TestOpenAIReasoningEffort:
 class TestAnthropicProviderPDFHandling:
     """Test that AnthropicProvider uses correct content types for PDFs vs images."""
 
+    # Validates: SEL-123
     def test_pdf_uses_document_type(self):
         """Regression: PDFs must use 'type': 'document', not 'type': 'image'."""
         mock_client = MagicMock()

@@ -1,5 +1,6 @@
 
 
+# Validates: SEL-651
 def test_health_publishes_an_absolute_process_start_time():
     """A duration cannot identify which process answered; an instant can.
 
@@ -19,6 +20,7 @@ def test_health_publishes_an_absolute_process_start_time():
     assert datetime.fromisoformat(started.isoformat()) == started
 
 
+# Validates: SEL-652
 def test_health_reports_server_error_rate():
     """/health must publish what the API has been answering, not just internals.
 
@@ -40,6 +42,7 @@ def test_health_reports_server_error_rate():
     assert snapshot["server_error_routes"] == {"/events/{event_id}/apply-change": 1}
 
 
+# Validates: SEL-652, SEL-702
 def test_request_metrics_records_route_templates_not_paths():
     """Content-free by construction: no identifiers may enter the counters."""
     from selko.services.request_metrics import RequestMetrics
@@ -52,6 +55,7 @@ def test_request_metrics_records_route_templates_not_paths():
     assert all("{" in route for route in routes), "a concrete path would leak an id"
 
 
+# Validates: SEL-661
 def test_transport_probe_reports_unavailable_for_a_database_that_cannot_answer(db, monkeypatch):
     """assert-health.sh asserts the egress transport to prove the worker data
     path is live. That assertion once read `pool is not None`, which is equally
@@ -73,6 +77,7 @@ def test_transport_probe_reports_unavailable_for_a_database_that_cannot_answer(d
     assert asyncio.run(_db_transport_state(db)) == "unavailable"
 
 
+# Validates: SEL-661
 def test_transport_probe_cannot_hang_the_health_route(db, monkeypatch):
     """The probe is bounded, or a wedged database takes the health check with it."""
     import asyncio
@@ -93,6 +98,7 @@ def test_transport_probe_cannot_hang_the_health_route(db, monkeypatch):
     assert asyncio.run(scenario()) == "unavailable"
 
 
+# Validates: SEL-654, SEL-704
 def test_pending_email_metrics_count_and_age(db, factory):
     """/health's queue gauges come from the database, content-free."""
     from datetime import datetime, timezone

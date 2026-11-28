@@ -70,6 +70,7 @@ def _work(db, event: str) -> list[dict]:
 # --- the deferred invariant -----------------------------------------------------
 
 
+# Validates: SEL-212
 def test_pending_proposal_requires_active_review_status(db, factory):
     user = factory.user()
     event = _event(factory, user, review_status="pending_review")
@@ -79,6 +80,7 @@ def test_pending_proposal_requires_active_review_status(db, factory):
     assert db.query_one("SELECT count(*) FROM event_change_proposals")[0] == 0, "rolled back"
 
 
+# Validates: SEL-212
 def test_the_invariant_is_checked_at_commit_not_per_statement(db, factory):
     """A transition may pass through an illegal state inside one transaction."""
     user = factory.user()
@@ -98,6 +100,7 @@ def test_the_invariant_is_checked_at_commit_not_per_statement(db, factory):
     assert db_events.get(db, user, event)["review_status"] == "active"
 
 
+# Validates: SEL-213
 def test_one_pending_proposal_per_event(db, factory):
     user = factory.user()
     event = _event(factory, user)
@@ -109,6 +112,7 @@ def test_one_pending_proposal_per_event(db, factory):
 # --- apply / reject / reopen ----------------------------------------------------
 
 
+# Validates: SEL-214, SEL-236
 def test_proposal_is_authoritative_and_apply_reject_reopen_are_atomic(db, factory):
     user = factory.user()
     event = _event(factory, user)
@@ -133,6 +137,7 @@ def test_proposal_is_authoritative_and_apply_reject_reopen_are_atomic(db, factor
     assert (row["resolution_reason"], row["resolved_at"]) == (None, None)
 
 
+# Validates: SEL-215
 def test_apply_a_cancellation_without_a_provider_event_is_terminal(db, factory):
     user = factory.user()
     event = _event(factory, user)
@@ -143,6 +148,7 @@ def test_apply_a_cancellation_without_a_provider_event_is_terminal(db, factory):
     assert _work(db, event) == []
 
 
+# Validates: SEL-215
 def test_apply_cancel_on_an_active_event_queues_a_cancellation(db, factory):
     user = factory.user()
     event = _event(factory, user, google_calendar_event_id="g-1")
@@ -152,6 +158,7 @@ def test_apply_cancel_on_an_active_event_queues_a_cancellation(db, factory):
     assert [(w["action"], w["desired_event"], w["provider_event_id"]) for w in work] == [("cancel", None, "g-1")]
 
 
+# Validates: SEL-220
 def test_apply_validates_after_locking_and_rolls_back(db, factory):
     user = factory.user()
     event = _event(factory, user)
@@ -164,6 +171,7 @@ def test_apply_validates_after_locking_and_rolls_back(db, factory):
     assert db_events.get(db, user, event)["title"] == "before"
 
 
+# Validates: SEL-218
 def test_transitions_refuse_what_is_not_owned_or_not_pending(db, factory):
     user, other = factory.user(), factory.user()
     event = _event(factory, user)
@@ -181,6 +189,7 @@ def test_transitions_refuse_what_is_not_owned_or_not_pending(db, factory):
         _reject(db, user, event, proposal)
 
 
+# Validates: SEL-216
 def test_reject_event_change_proposal_is_one_atomic_transition(db, factory):
     user = factory.user()
     event = _event(factory, user, title="after", location="Changed")
@@ -195,6 +204,7 @@ def test_reject_event_change_proposal_is_one_atomic_transition(db, factory):
         "active", "before", None, None)
 
 
+# Validates: SEL-220
 def test_reject_reason_is_validated(db, factory):
     user = factory.user()
     event = _event(factory, user)
@@ -204,6 +214,7 @@ def test_reject_reason_is_validated(db, factory):
     assert _status(factory, proposal) == "pending"
 
 
+# Validates: SEL-217
 def test_reject_deletes_an_unsynced_calendar_only_adopt(db, factory):
     user = factory.user()
     event = _event(factory, user, google_calendar_event_id="g-adopted")
@@ -215,6 +226,7 @@ def test_reject_deletes_an_unsynced_calendar_only_adopt(db, factory):
     assert db.query_one("SELECT count(*) FROM event_sources")[0] == 0
 
 
+# Validates: SEL-217
 @pytest.mark.parametrize("extra", [{}, {"google_calendar_event_id": "g", "synced_at": "2026-01-01T00:00:00.000000Z"}])
 def test_reject_delete_refuses_anything_but_a_calendar_only_adopt(db, factory, extra):
     user = factory.user()
@@ -225,6 +237,7 @@ def test_reject_delete_refuses_anything_but_a_calendar_only_adopt(db, factory, e
     assert db_events.get(db, user, event) is not None
 
 
+# Validates: SEL-236
 def test_undo_restores_snapshot(db, factory):
     """test_integration_events: undo of an applied update reopens it and restores the snapshot."""
     user = factory.user()
@@ -244,6 +257,7 @@ def test_undo_restores_snapshot(db, factory):
     assert _status(factory, proposal) == "pending"
 
 
+# Validates: SEL-240
 def test_redo_reapplies_a_reopened_proposal(db, factory):
     user = factory.user()
     event = _event(factory, user, title="Party")
@@ -267,6 +281,7 @@ def test_reopen_can_queue_compensating_calendar_work(db, factory):
     assert item["provider_event_id"] == "g-1"
 
 
+# Validates: SEL-241
 def test_reopen_refuses_a_proposal_that_is_not_applied(db, factory):
     user, other = factory.user(), factory.user()
     event = _event(factory, user)
@@ -280,6 +295,7 @@ def test_reopen_refuses_a_proposal_that_is_not_applied(db, factory):
 # --- the hash fence -------------------------------------------------------------
 
 
+# Validates: SEL-219
 def test_hash_round_trip_and_stale_hash(db, factory):
     user = factory.user()
     event = _event(factory, user)
@@ -306,6 +322,7 @@ def test_hash_round_trip_and_stale_hash(db, factory):
 # --- supersession through the real commit ---------------------------------------
 
 
+# Validates: SEL-213
 def test_new_proposal_supersedes_only_the_previous_pending_proposal(db, factory):
     user = factory.user()
     event = _event(factory, user, title="one")

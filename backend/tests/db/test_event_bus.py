@@ -34,6 +34,7 @@ def _discovered_item(db, factory) -> str:
     return row["id"]
 
 
+# Validates: SEL-632
 def test_a_discovered_item_wakes_the_acquisition_worker_after_commit(db, factory):
     async def scenario():
         await db.signals.start()
@@ -47,6 +48,7 @@ def test_a_discovered_item_wakes_the_acquisition_worker_after_commit(db, factory
     asyncio.run(scenario())
 
 
+# Validates: SEL-635
 def test_one_invalidation_per_resource_per_transaction(db, factory):
     """A 50-row update in one transaction sends one hint per (user, resource)."""
     user = factory.user()
@@ -67,6 +69,7 @@ def test_one_invalidation_per_resource_per_transaction(db, factory):
     assert len(email_hints) == 2, "one per transaction, never one per row"
 
 
+# Validates: SEL-633
 def test_missed_wakeup_costs_latency_not_work(db, factory, mock_config):
     """With the wake-up dropped, the claim loop's floor still claims the row."""
     config = replace(mock_config, email_worker_idle_base_seconds=0.05, email_worker_idle_max_seconds=0.05)

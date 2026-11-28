@@ -114,6 +114,7 @@ def _lease(item):
 
 
 class TestEnqueue:
+    # Validates: SEL-300
     def test_returns_the_postgres_shape(self, db, factory, user):
         event_id = factory.event(user, review_status="active")
         queued = cw.enqueue_calendar_work(db, user, event_id, "upsert", _desired())
@@ -139,6 +140,7 @@ class TestEnqueue:
         assert _event(db, event_id)["updated_at"] > before
         assert _event(db, event_id)["updated_at"] == item["created_at"]
 
+    # Validates: SEL-300
     def test_new_generation_supersedes_the_active_item(self, db, factory, user):
         event_id = factory.event(user, review_status="active")
         first = cw.enqueue_calendar_work(db, user, event_id, "upsert", _desired("first"))
@@ -149,6 +151,7 @@ class TestEnqueue:
         assert old["completed_at"] is not None
         assert [i["status"] for i in _items_for(db, event_id)] == ["superseded", "pending"]
 
+    # Validates: SEL-300
     def test_generation_counts_every_item_including_terminal_ones(self, db, factory, user):
         event_id = factory.event(user, review_status="active")
         with db.write() as tx:
@@ -161,6 +164,7 @@ class TestEnqueue:
         # A terminal item is not superseded.
         assert _item(db, "00000000-0000-0000-0000-0000000000a7")["status"] == "succeeded"
 
+    # Validates: SEL-302
     @pytest.mark.parametrize("declined", ["rejected", "cancelled"])
     def test_upsert_is_refused_for_a_declined_event(self, db, factory, user, declined):
         """The queue helper no longer resurrects; it fails closed."""
@@ -170,22 +174,26 @@ class TestEnqueue:
         assert _event(db, event_id)["review_status"] == declined
         assert _items_for(db, event_id) == []
 
+    # Validates: SEL-302
     @pytest.mark.parametrize("declined", ["rejected", "cancelled"])
     def test_cancel_is_allowed_for_a_declined_event(self, db, factory, user, declined):
         event_id = factory.event(user, review_status=declined)
         assert cw.enqueue_calendar_work(db, user, event_id, "cancel")["action"] == "cancel"
 
+    # Validates: SEL-301
     def test_queueing_does_not_change_the_review_decision(self, db, factory, user):
         event_id = factory.event(user, review_status="pending_review")
         cw.enqueue_calendar_work(db, user, event_id, "upsert", {"title": "Standup"})
         assert _event(db, event_id)["review_status"] == "pending_review"
         assert [i["action"] for i in _items_for(db, event_id)] == ["upsert"]
 
+    # Validates: SEL-303
     def test_invalid_action(self, db, factory, user):
         event_id = factory.event(user)
         with pytest.raises(InvalidArgument, match="invalid calendar work action delete"):
             cw.enqueue_calendar_work(db, user, event_id, "delete", {})
 
+    # Validates: SEL-303
     def test_upsert_requires_desired_event(self, db, factory, user):
         event_id = factory.event(user, review_status="active")
         with pytest.raises(InvalidArgument, match="upsert calendar work requires desired_event"):
@@ -199,6 +207,7 @@ class TestEnqueue:
             cw.enqueue_calendar_work(db, user, event_id, None)
         assert _item(db, first["id"])["status"] == "pending"
 
+    # Validates: SEL-304
     def test_not_owned(self, db, factory, user):
         other = factory.user()
         event_id = factory.event(other, review_status="active")
@@ -207,6 +216,7 @@ class TestEnqueue:
         with pytest.raises(NotOwned):
             cw.enqueue_calendar_work(db, user, "00000000-0000-0000-0000-00000000dead", "cancel")
 
+    # Validates: SEL-305
     def test_enqueue_wakes_the_calendar_workers_after_commit(self, db, factory, user):
         """02 §0.3: Postgres never sent event_approved; the port does."""
         sent = []
@@ -239,6 +249,7 @@ class TestEnqueue:
         cw.enqueue_calendar_work(db, user, event_id, "cancel")
         assert (f"user:{user}", "calendar_work_items") in published
 
+    # Validates: SEL-304
     def test_owner_check_trigger(self, db, factory, user):
         other = factory.user()
         event_id = factory.event(other)
@@ -259,6 +270,7 @@ class TestEnqueue:
 
 
 class TestClaim:
+    # Validates: SEL-321
     def test_enqueue_claim_complete_is_item_fenced(self, db, factory, user):
         event_id = factory.event(user, review_status="active", title="S2 event")
         queued = cw.enqueue_calendar_work(db, user, event_id, "upsert", _desired())
@@ -278,6 +290,7 @@ class TestClaim:
         assert (done["locked_by"], done["locked_until"]) == (None, None)
         assert done["completed_at"] is not None
 
+    # Validates: SEL-310
     def test_claim_sets_the_lease(self, db, factory, user):
         event_id = _approved(db, factory, user)
         before = _event(db, event_id)["updated_at"]
@@ -291,6 +304,7 @@ class TestClaim:
         assert event["updated_at"] > before
         assert _items_for(db, event_id)[0]["status"] == "processing"
 
+    # Validates: SEL-310
     @pytest.mark.parametrize("lease_seconds", [0, -5])
     def test_lease_is_at_least_one_second(self, db, factory, user, lease_seconds):
         _approved(db, factory, user)
@@ -301,16 +315,19 @@ class TestClaim:
     def test_nothing_to_claim(self, db):
         assert _claim(db) is None
 
+    # Validates: SEL-312
     def test_second_claim_gets_nothing(self, db, factory, user):
         _approved(db, factory, user)
         assert _claim(db, "worker-1") is not None
         assert _claim(db, "worker-2") is None
 
+    # Validates: SEL-310
     def test_oldest_first_and_every_worker_gets_a_different_event(self, db, factory, user):
         event_ids = [_approved(db, factory, user, title=f"Event {i}") for i in range(3)]
         claimed = [_claim(db, f"worker-{i}")[1]["id"] for i in range(3)]
         assert claimed == event_ids
 
+    # Validates: SEL-312
     def test_concurrent_claims_never_share_an_item(self, db, factory, user):
         event_ids = {_approved(db, factory, user, title=f"E{i}") for i in range(30)}
         claimed: list[str] = []
@@ -335,6 +352,7 @@ class TestClaim:
         assert len(set(claimed)) == 30
         assert {_item(db, i)["event_id"] for i in claimed} == event_ids
 
+    # Validates: SEL-313
     def test_excludes_users_without_an_active_calendar_integration(self, db, factory, user):
         with db.write() as tx:
             tx.execute("UPDATE integrations SET status = 'expired' WHERE user_id = ?", (user,))
@@ -346,6 +364,7 @@ class TestClaim:
         _approved(db, factory, lonely)
         assert _claim(db) is None
 
+    # Validates: SEL-310
     def test_respects_next_retry_at_and_the_attempt_budget(self, db, factory, user):
         event_id = _approved(db, factory, user)
         item_id = _items_for(db, event_id)[0]["id"]
@@ -359,6 +378,7 @@ class TestClaim:
         _set(db, "calendar_work_items", other_item, attempts=3)
         assert _claim(db) is None
 
+    # Validates: SEL-311
     def test_expired_processing_item_is_reclaimable(self, db, factory, user):
         event_id = _approved(db, factory, user)
         item, _ = _claim(db, "crashed-worker", 1)
@@ -376,6 +396,7 @@ class TestClaim:
         _claim(db, "alive", 300)
         assert _claim(db, "thief") is None
 
+    # Validates: SEL-311
     def test_an_expired_lease_with_no_budget_left_is_not_reclaimed(self, db, factory, user):
         _approved(db, factory, user)
         item, _ = _claim(db, "crashed", 1)
@@ -383,6 +404,7 @@ class TestClaim:
              locked_until=to_timestamp(utc_now() - timedelta(seconds=1)))
         assert _claim(db) is None
 
+    # Validates: SEL-311
     def test_pending_work_is_claimed_before_expired_leases(self, db, factory, user):
         expired_event = _approved(db, factory, user)
         expired, _ = _claim(db, "crashed", 1)
@@ -391,6 +413,7 @@ class TestClaim:
         assert _claim(db, "w1")[1]["id"] == fresh_event
         assert _claim(db, "w2")[1]["id"] == expired_event
 
+    # Validates: SEL-311
     def test_expired_leases_are_reclaimed_oldest_lease_first(self, db, factory, user):
         a = _approved(db, factory, user)
         b = _approved(db, factory, user)
@@ -401,6 +424,7 @@ class TestClaim:
         assert _claim(db, "r1")[1]["id"] == b
         assert _claim(db, "r2")[1]["id"] == a
 
+    # Validates: SEL-313
     def test_unwritable_items_never_starve_the_queue(self, db, factory, user):
         """Postgres scanned the whole queue; the batched port must too."""
         blocked_user = factory.user()
@@ -418,6 +442,7 @@ class TestClaim:
 
 
 class TestClaimRoutesByProvider:
+    # Validates: SEL-314
     def test_an_outlook_only_user_is_claimed_and_stamped_outlook(self, db, factory):
         user = factory.user()
         factory.integration(user, provider="outlook", scopes=OUTLOOK_CALENDAR_SCOPES)
@@ -425,6 +450,7 @@ class TestClaimRoutesByProvider:
         item, _ = _claim(db)
         assert item["provider"] == "outlook"
 
+    # Validates: SEL-343
     def test_a_mail_only_outlook_grant_is_never_claimed(self, db, factory):
         user = factory.user()
         factory.integration(user, provider="outlook", scopes=OUTLOOK_MAIL_ONLY)
@@ -436,12 +462,14 @@ class TestClaimRoutesByProvider:
         _set_scopes(db, user, "outlook", OUTLOOK_CALENDAR_SCOPES)
         assert _claim(db)[1]["id"] == event_id
 
+    # Validates: SEL-343
     def test_scope_match_is_case_insensitive_suffix(self, db, factory):
         user = factory.user()
         factory.integration(user, provider="outlook", scopes=["https://graph.microsoft.com/calendars.readwrite"])
         _approved(db, factory, user)
         assert _claim(db)[0]["provider"] == "outlook"
 
+    # Validates: SEL-341
     def test_the_target_calendar_chooses_the_provider(self, db, factory):
         user = factory.user()
         factory.integration(user, provider="google_calendar", scopes=["calendar"])
@@ -450,6 +478,7 @@ class TestClaimRoutesByProvider:
         _approved(db, factory, user)
         assert _claim(db)[0]["provider"] == "outlook"
 
+    # Validates: SEL-341
     def test_an_empty_target_is_unset(self, db, factory):
         user = factory.user()
         factory.integration(user, provider="google_calendar")
@@ -473,6 +502,7 @@ class TestClaimRoutesByProvider:
         _approved(db, factory, user, google_calendar_event_id="googleid123")
         assert _claim(db)[0]["provider"] == "google_calendar"
 
+    # Validates: SEL-341
     def test_an_event_already_in_outlook_stays_in_outlook(self, db, factory):
         user = factory.user()
         factory.integration(user, provider="google_calendar")
@@ -480,6 +510,7 @@ class TestClaimRoutesByProvider:
         _approved(db, factory, user, google_calendar_event_id="outlook:E1")
         assert _claim(db)[0]["provider"] == "outlook"
 
+    # Validates: SEL-313
     def test_an_open_circuit_excludes_only_its_provider(self, db, factory):
         user = factory.user()
         factory.integration(user, provider="outlook", scopes=OUTLOOK_CALENDAR_SCOPES)
@@ -488,6 +519,7 @@ class TestClaimRoutesByProvider:
         assert _claim(db, providers=[]) is None
         assert _claim(db, providers=["outlook"]) is not None
 
+    # Validates: SEL-314
     def test_a_stamped_provider_is_kept_on_reclaim(self, db, factory):
         user = factory.user()
         factory.integration(user, provider="google_calendar")
@@ -500,6 +532,7 @@ class TestClaimRoutesByProvider:
         assert _claim(db, providers=["outlook"]) is None
         assert _claim(db, providers=["google_calendar"])[0]["provider"] == "google_calendar"
 
+    # Validates: SEL-341
     def test_routing_helpers(self, db, factory):
         user = factory.user()
         event_id = factory.event(user)
@@ -525,6 +558,7 @@ class TestClaimRoutesByProvider:
 
 
 class TestFencedTransitions:
+    # Validates: SEL-320
     def test_stale_completion_after_supersede_is_fenced(self, db, factory, user):
         event_id = factory.event(user, review_status="pending_review", title="Race")
         first = cw.enqueue_calendar_work(db, user, event_id, "upsert", _desired("first"))
@@ -537,6 +571,7 @@ class TestFencedTransitions:
         assert (row["status"], row["action"], row["generation"]) == ("pending", "cancel", 2)
         assert _event(db, event_id)["google_calendar_event_id"] is None
 
+    # Validates: SEL-320
     def test_wrong_worker_or_generation_is_fenced_everywhere(self, db, factory, user):
         _approved(db, factory, user)
         item, _ = _claim(db, "w")
@@ -554,6 +589,7 @@ class TestFencedTransitions:
         assert cw.complete_calendar_work(db, item_id, "w", generation, "g") is True
         assert cw.complete_calendar_work(db, item_id, "w", generation, "g") is False  # not processing
 
+    # Validates: SEL-321
     def test_complete_without_an_id_keeps_the_existing_one(self, db, factory, user):
         event_id = _approved(db, factory, user, google_calendar_event_id="g-existing")
         item, _ = _claim(db, "w")
@@ -563,6 +599,7 @@ class TestFencedTransitions:
         assert done["provider_event_id"] == "g-existing"
         assert done["expected_provider_revision"] == "rev-9"
 
+    # Validates: SEL-323
     def test_fail_with_retry(self, db, factory, user):
         event_id = _approved(db, factory, user)
         item, _ = _claim(db, "worker-1")
@@ -581,6 +618,7 @@ class TestFencedTransitions:
         assert _event(db, event_id)["updated_at"] > before
         assert _claim(db) is None  # backing off
 
+    # Validates: SEL-324
     def test_exhausted_budget_fails_terminally(self, db, factory, user):
         _approved(db, factory, user)
         item, _ = _claim(db, "w")
@@ -594,6 +632,7 @@ class TestFencedTransitions:
         assert row["next_retry_at"] is None
         assert row["locked_by"] is None
 
+    # Validates: SEL-324
     def test_not_retryable_parks_as_blocked_without_backoff(self, db, factory, user):
         _approved(db, factory, user)
         item, _ = _claim(db, "w")
@@ -606,6 +645,7 @@ class TestFencedTransitions:
         assert row["next_retry_at"] is None
         assert row["attempts"] == 1
 
+    # Validates: SEL-323
     def test_failure_text_is_truncated(self, db, factory, user):
         _approved(db, factory, user)
         item, _ = _claim(db, "w")
@@ -613,6 +653,7 @@ class TestFencedTransitions:
         row = _item(db, item["id"])
         assert (len(row["failure_code"]), len(row["failure_detail"])) == (100, 500)
 
+    # Validates: SEL-323
     @pytest.mark.parametrize(
         ("attempts", "delay"),
         [(0, 60), (1, 60), (2, 120), (3, 240), (4, 480), (5, 960), (6, 1800), (7, 1800), (40, 1800)],
@@ -620,6 +661,7 @@ class TestFencedTransitions:
     def test_backoff_matches_postgres(self, attempts, delay):
         assert cw.retry_delay_seconds(attempts) == delay
 
+    # Validates: SEL-325
     def test_defer_releases_without_spending_an_attempt(self, db, factory, user):
         event_id = _approved(db, factory, user)
         item, _ = _claim(db, "worker-1")
@@ -635,6 +677,7 @@ class TestFencedTransitions:
         assert (row["locked_by"], row["locked_until"]) == (None, None)
         assert _event(db, event_id)["review_status"] == "active"
 
+    # Validates: SEL-325
     def test_defer_never_takes_attempts_below_zero_and_reads_naive_time_as_utc(self, db, factory, user):
         _approved(db, factory, user)
         item, _ = _claim(db, "w")
@@ -652,6 +695,7 @@ class TestFencedTransitions:
 
 
 class TestCancellation:
+    # Validates: SEL-322
     def test_cancel_claim_and_completion_are_worker_owned(self, db, factory, user):
         event_id = factory.event(
             user, title="Original title", review_status="active", google_calendar_event_id="google-c3-event"
@@ -675,6 +719,7 @@ class TestCancellation:
         )
         assert final["synced_at"] is None
 
+    # Validates: SEL-308, SEL-322
     def test_a_pending_review_event_becomes_active_then_cancelled(self, db, factory, user):
         event_id = factory.event(user, review_status="pending_review")
         cw.queue_event_cancellation(db, user, event_id)
@@ -683,6 +728,7 @@ class TestCancellation:
         cw.complete_calendar_work(db, *_lease(item), None)
         assert _event(db, event_id)["review_status"] == "cancelled"
 
+    # Validates: SEL-308
     def test_already_cancelled(self, db, factory, user):
         event_id = factory.event(user, review_status="cancelled")
         assert cw.queue_event_cancellation(db, user, event_id) == {
@@ -690,6 +736,7 @@ class TestCancellation:
         }
         assert _items_for(db, event_id) == []
 
+    # Validates: SEL-308
     def test_rejected_or_syncing_events_cannot_be_cancelled(self, db, factory, user):
         rejected = factory.event(user, review_status="rejected")
         with pytest.raises(InvalidArgument, match="cannot be cancelled in its current state"):
@@ -701,6 +748,7 @@ class TestCancellation:
         with pytest.raises(NotOwned):
             cw.queue_event_cancellation(db, factory.user(), syncing)
 
+    # Validates: SEL-320
     def test_stale_upsert_completion_cannot_reset_cancellation(self, db, factory, user):
         event_id = factory.event(user, review_status="active", google_calendar_event_id="google-race-event")
         cw.enqueue_calendar_work(db, user, event_id, "upsert", {"title": "Race event"})
@@ -715,6 +763,7 @@ class TestCancellation:
 
 
 class TestUndo:
+    # Validates: SEL-307
     def test_undo_with_calendar_work(self, db, factory, user):
         event_id = factory.event(user, review_status="active", google_calendar_event_id="g-1")
         result = cw.undo_event_and_enqueue_calendar_work(
@@ -725,6 +774,7 @@ class TestUndo:
         assert _item(db, result["work_item_id"])["desired_event"] == {"delete_remote": True}
         assert _event(db, event_id)["review_status"] == "pending_review"
 
+    # Validates: SEL-307
     def test_undo_without_calendar_work(self, db, factory, user):
         event_id = factory.event(user, review_status="active")
         assert cw.undo_event_and_enqueue_calendar_work(db, user, event_id) == {

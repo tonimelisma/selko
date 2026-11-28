@@ -8,6 +8,7 @@ from selko.services.event_identity import (
 from selko.services.events import CandidateWindow, _identity_key, _identity_match
 
 
+# Validates: SEL-139
 def test_ical_uid_is_authoritative_and_content_free():
     hint = canonical_ical_uid("  Meeting-42@Example.COM ", "2026-09-13T10:00:00Z")
     assert hint is not None
@@ -17,24 +18,28 @@ def test_ical_uid_is_authoritative_and_content_free():
     assert "Meeting-42" not in str(hint.as_payload())
 
 
+# Validates: SEL-140
 def test_provider_thread_is_namespaced_by_provider():
     assert canonical_provider_thread("gmail", "thread-1") != canonical_provider_thread(
         "outlook", "thread-1"
     )
 
 
+# Validates: SEL-140
 def test_join_url_removes_tracking_and_fragment_but_preserves_identity():
     first = canonical_join_url("HTTPS://Meet.Example/room/?utm_source=x&room=abc#details")
     second = canonical_join_url("https://meet.example/room?room=abc")
     assert first == second
 
 
+# Validates: SEL-140
 def test_management_url_preserves_opaque_query_identity():
     first = canonical_management_url("https://portal.example/manage?token=a")
     second = canonical_management_url("https://portal.example/manage?token=b")
     assert first != second
 
 
+# Validates: SEL-140
 def test_single_supporting_signal_is_not_promoted_to_authoritative():
     hints = build_hints(
         provider="gmail",
@@ -45,6 +50,7 @@ def test_single_supporting_signal_is_not_promoted_to_authoritative():
     assert all(hint.strength == "supporting" for hint in hints)
 
 
+# Validates: SEL-149
 def test_permanent_room_supporting_hint_cannot_merge_distinct_slots():
     hint = canonical_join_url("https://meet.example/permanent-room")
     assert hint is not None
@@ -69,6 +75,7 @@ def test_permanent_room_supporting_hint_cannot_merge_distinct_slots():
     assert result is None
 
 
+# Validates: SEL-148
 def test_authoritative_stale_sequence_is_audited_noop():
     hint = canonical_ical_uid("uid@example", "2026-09-13T10:00:00Z")
     assert hint is not None

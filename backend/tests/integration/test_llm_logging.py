@@ -57,6 +57,7 @@ class TestLLMLoggingService:
         row = service.client.query_one("SELECT * FROM llm_call_log WHERE id = ?", (log_id,))
         return service.client.schema.decode("llm_call_log", row)
 
+    # Validates: SEL-116, SEL-710
     def test_log_successful_call(self, logging_service, test_user_id):
         """Test logging a successful LLM call."""
         log_id = logging_service.log_success(
@@ -86,6 +87,7 @@ class TestLLMLoggingService:
         assert log["error_message"] is None
         assert log["estimated_cost_usd"] is not None
 
+    # Validates: SEL-116, SEL-710
     def test_log_failed_call(self, logging_service, test_user_id):
         """Test logging a failed LLM call."""
         log_id = logging_service.log_failure(
@@ -138,6 +140,7 @@ class TestLLMLoggingService:
             assert log_id is not None
 
 
+    # Validates: SEL-118, SEL-712
     def test_logging_handles_errors_gracefully(self, logging_service):
         """Test that logging errors don't crash the application."""
         # Try to log with invalid user_id (non-existent UUID)
@@ -199,6 +202,7 @@ class TestLLMLoggingOwnership:
     """Successor of the RLS tests: a user's log rows are read by user_id, and
     no client route exposes the log at all (05-verification.md §A.2 row 41)."""
 
+    # Validates: SEL-119, SEL-711
     def test_user_reads_own_logs_only(self, db, factory):
         from selko.db import ops
 
@@ -210,6 +214,7 @@ class TestLLMLoggingOwnership:
         assert ops.get_llm_call(db, alice, log_id)["id"] == log_id
         assert ops.get_llm_call(db, bob, log_id) is None
 
+    # Validates: SEL-119, SEL-711
     def test_no_client_route_reads_the_llm_log(self):
         from pathlib import Path
 

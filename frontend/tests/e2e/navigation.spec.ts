@@ -17,6 +17,7 @@ test.describe('Navigation', () => {
     await expect(page.getByText('Settings')).toBeVisible();
   });
 
+  // Validates: SEL-516
   test('unauthenticated user is redirected to login', async ({ browser }) => {
     const context = await browser.newContext();
     const page = await context.newPage();

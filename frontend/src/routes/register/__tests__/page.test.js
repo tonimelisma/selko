@@ -32,6 +32,7 @@ describe('Register Page', () => {
 		expect(screen.getByRole('link', { name: /log in/i })).toHaveAttribute('href', '/login');
 	});
 
+	// Validates: SEL-518
 	it('creates the account and sends the user to sign in', async () => {
 		const user = userEvent.setup();
 		mockSignUp.mockResolvedValue({
@@ -47,6 +48,7 @@ describe('Register Page', () => {
 		expect(screen.getByRole('link', { name: /sign in/i })).toHaveAttribute('href', '/login');
 	});
 
+	// Validates: SEL-518
 	it('asks the user to check their email when confirmation is required', async () => {
 		const user = userEvent.setup();
 		mockSignUp.mockResolvedValue({ data: { user: { id: 'u1' }, confirmation_required: true }, error: null });
@@ -70,6 +72,7 @@ describe('Register Page', () => {
 		expect(await screen.findByText('User already registered')).toBeInTheDocument();
 	});
 
+	// Validates: SEL-518
 	it('checks that the passwords match before calling the server', async () => {
 		const user = userEvent.setup();
 		render(RegisterPage);
@@ -79,6 +82,7 @@ describe('Register Page', () => {
 		expect(screen.getByText('Passwords do not match')).toBeInTheDocument();
 	});
 
+	// Validates: SEL-518
 	it('checks the minimum length before calling the server', async () => {
 		const user = userEvent.setup();
 		render(RegisterPage);

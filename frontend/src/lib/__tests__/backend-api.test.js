@@ -88,6 +88,7 @@ describe('Backend API Client', () => {
 			expect(result.error.status).toBe(400);
 		});
 
+		// Validates: SEL-542
 		it('sends force flag and preserves structured CALENDAR_DIVERGED details', async () => {
 			mockFetch.mockResolvedValue({
 				ok: false,

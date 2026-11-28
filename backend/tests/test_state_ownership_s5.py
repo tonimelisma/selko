@@ -62,6 +62,7 @@ def test_calendar_write_helpers_accept_only_typed_leases() -> None:
     assert ast.unparse(resolver.args.args[1].annotation) == "WorkItemLease"
 
 
+# Validates: SEL-330
 def test_calendar_worker_dispatches_every_write_with_the_claimed_lease() -> None:
     path = ROOT / "backend/selko/workers/pool.py"
     node = _function(path, "_process_event_sync")

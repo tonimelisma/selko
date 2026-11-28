@@ -189,6 +189,7 @@ def _service_wide(module: str, name: str) -> bool:
     )
 
 
+# Validates: SEL-440
 def test_every_function_touching_a_user_owned_table_takes_user_id(db):
     owned = _user_owned_tables(db)
     assert {"integrations", "emails", "events", "accounts"} <= owned, owned
@@ -210,6 +211,7 @@ def test_every_function_touching_a_user_owned_table_takes_user_id(db):
     assert not missing, "\n".join(missing)
 
 
+# Validates: SEL-440
 def test_the_allowlist_names_only_existing_functions():
     stale = []
     for entry in SERVICE_WIDE:
@@ -219,6 +221,7 @@ def test_the_allowlist_names_only_existing_functions():
     assert not stale, f"SERVICE_WIDE names functions that no longer exist: {stale}"
 
 
+# Validates: SEL-440
 def test_the_scan_can_fail(db):
     """A function reading a user-owned table without user_id is caught."""
     source = (

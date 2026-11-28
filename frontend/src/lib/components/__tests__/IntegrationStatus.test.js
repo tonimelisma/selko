@@ -24,6 +24,7 @@ describe('IntegrationStatus', () => {
 		expect(screen.getByText('Connect Google Account')).toBeInTheDocument();
 	});
 
+	// Validates: SEL-531
 	it('calls onconnect when connect button clicked in setup mode', async () => {
 		const user = userEvent.setup();
 		const mockConnect = vi.fn();

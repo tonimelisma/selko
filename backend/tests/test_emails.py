@@ -18,6 +18,7 @@ class TestParseGmailMessage:
         assert result["from_name"] == "John Doe"
         assert result["from_email"] == "john@example.com"
 
+    # Validates: SEL-074
     def test_quoted_name_with_comma(self):
         """Parse quoted name with comma."""
         msg = self._make_message(from_header='"Smith, John" <john@example.com>')
@@ -159,6 +160,7 @@ class TestParseGmailMessage:
         assert result["date_sent"] is not None
         assert "2026-01-05" in result["date_sent"]
 
+    # Validates: SEL-074
     def test_falls_back_to_gmail_internal_date(self):
         """When Date header is missing, use Gmail internalDate (epoch ms)."""
         msg = self._make_message()
@@ -239,6 +241,7 @@ def _make_message_with_calendar_part(
 class TestGmailCalendarInviteDetection:
     """Tests for Gmail invite-at-ingestion detection (WS6)."""
 
+    # Validates: SEL-073
     def test_method_request_in_content_type_header(self):
         msg = _make_message_with_calendar_part(content_type="text/calendar; method=REQUEST; charset=UTF-8")
         result = parse_gmail_message(msg)
@@ -254,6 +257,7 @@ class TestGmailCalendarInviteDetection:
 
         assert result["is_calendar_invite"] is True
 
+    # Validates: SEL-073
     def test_method_resolved_from_inline_body_when_header_absent(self):
         ics = "BEGIN:VCALENDAR\nMETHOD:CANCEL\nEND:VCALENDAR"
         msg = _make_message_with_calendar_part(content_type="text/calendar", inline_data=_b64url(ics))
@@ -263,6 +267,7 @@ class TestGmailCalendarInviteDetection:
         assert result["is_calendar_invite"] is True
         assert result["processing_status"] == "skipped"
 
+    # Validates: SEL-073
     def test_method_publish_is_not_an_invite(self):
         msg = _make_message_with_calendar_part(content_type="text/calendar; method=PUBLISH")
         result = parse_gmail_message(msg)

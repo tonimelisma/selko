@@ -136,6 +136,7 @@ class TestClaimIntegrationRecovery:
 
 
 class TestIntegrationRecoveriesOwnership:
+    # Validates: SEL-385
     def test_user_reads_own_recovery_only(self, db, factory):
         """Successor of the RLS test: the card's read is scoped by user_id."""
         alice, bob = factory.user(), factory.user()
@@ -144,6 +145,7 @@ class TestIntegrationRecoveriesOwnership:
         assert db_recovery.latest_recovery(db, alice)["status"] == "pending"
         assert db_recovery.latest_recovery(db, bob) is None
 
+    # Validates: SEL-385
     def test_no_client_route_writes_recoveries(self):
         """Recovery rows are written only by the reauthorization and the worker."""
         from selko.api.app import create_app

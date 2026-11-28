@@ -32,6 +32,7 @@ describe('Login Page', () => {
 		expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument();
 	});
 
+	// Validates: SEL-519
 	it('has a link to the registration page', () => {
 		render(LoginPage);
 
@@ -40,6 +41,7 @@ describe('Login Page', () => {
 		expect(registerLink).toHaveAttribute('href', '/register');
 	});
 
+	// Validates: SEL-519
 	it('links to the privacy policy', () => {
 		render(LoginPage);
 
@@ -82,6 +84,7 @@ describe('Login Page', () => {
 		expect(mockGoto).toHaveBeenCalledWith('/app');
 	});
 
+	// Validates: SEL-517
 	it('returns to the page that sent the user to sign in', async () => {
 		const user = userEvent.setup();
 		window.history.replaceState({}, '', '/login?next=' + encodeURIComponent('/app/events/e1?tab=source'));
@@ -96,6 +99,7 @@ describe('Login Page', () => {
 		window.history.replaceState({}, '', '/');
 	});
 
+	// Validates: SEL-517
 	it('ignores a next parameter that points off-site', async () => {
 		const user = userEvent.setup();
 		window.history.replaceState({}, '', '/login?next=' + encodeURIComponent('https://evil.example'));
@@ -110,6 +114,7 @@ describe('Login Page', () => {
 		window.history.replaceState({}, '', '/');
 	});
 
+	// Validates: SEL-515
 	it('displays error message on login failure', async () => {
 		const user = userEvent.setup();
 		mockSignInWithPassword.mockResolvedValue({
@@ -126,6 +131,7 @@ describe('Login Page', () => {
 		expect(await screen.findByText('Invalid login credentials')).toBeInTheDocument();
 	});
 
+	// Validates: SEL-515
 	it('does not redirect on login failure', async () => {
 		const user = userEvent.setup();
 		mockSignInWithPassword.mockResolvedValue({

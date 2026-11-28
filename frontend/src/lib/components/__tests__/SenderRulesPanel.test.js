@@ -89,6 +89,7 @@ describe('SenderRulesPanel', () => {
 		});
 	});
 
+	// Validates: SEL-552
 	it('creates a sender_email rule when input contains @', async () => {
 		const user = userEvent.setup();
 		mockFetchSenderRules.mockResolvedValue({ data: [], error: null });
@@ -123,6 +124,7 @@ describe('SenderRulesPanel', () => {
 		});
 	});
 
+	// Validates: SEL-552
 	it('creates a sender_domain rule when input does not contain @', async () => {
 		const user = userEvent.setup();
 		mockFetchSenderRules.mockResolvedValue({ data: [], error: null });
@@ -191,6 +193,7 @@ describe('SenderRulesPanel', () => {
 		});
 	});
 
+	// Validates: SEL-553
 	it('deletes rule after confirmation', async () => {
 		const user = userEvent.setup();
 		mockFetchSenderRules.mockResolvedValue({ data: [...mockRules], error: null });
@@ -245,6 +248,7 @@ describe('SenderRulesPanel', () => {
 		});
 	});
 
+	// Validates: SEL-553
 	it('serializes deletions so an earlier completion cannot clear a later error', async () => {
 		const user = userEvent.setup();
 		let resolveDelete;

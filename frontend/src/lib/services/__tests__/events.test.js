@@ -28,6 +28,7 @@ describe('events service', () => {
 	});
 
 	describe('fetchPendingEventsWithSources', () => {
+		// Validates: SEL-520
 		it('reads the review queue from GET /events/review', async () => {
 			const queue = [
 				{
@@ -85,6 +86,7 @@ describe('events service', () => {
 			expect(mockApiFetch).toHaveBeenCalledWith('/events/activity', { query: { limit: 10, offset: 20 } });
 		});
 
+		// Validates: SEL-540
 		it('clamps the page size to what the API accepts', async () => {
 			mockApiFetch.mockResolvedValue(ok({ items: [], total: 0 }));
 
@@ -93,6 +95,7 @@ describe('events service', () => {
 			expect(mockApiFetch).toHaveBeenCalledWith('/events/activity', { query: { limit: 500, offset: 0 } });
 		});
 
+		// Validates: SEL-540
 		it('pages through history without repeating rows', async () => {
 			const pages = [
 				{ items: [{ ...mockEvents[1], id: 'history-1' }, { ...mockEvents[1], id: 'history-2' }], total: 4 },
@@ -143,6 +146,7 @@ describe('events service', () => {
 	});
 
 	describe('updateEventStatus', () => {
+		// Validates: SEL-524
 		it('approves an event with POST /events/{id}/accept', async () => {
 			const decision = { event_id: 'event-1', review_status: 'active', work_item_id: 'w1', generation: 1 };
 			mockApiFetch.mockResolvedValue(ok(decision));
@@ -154,6 +158,7 @@ describe('events service', () => {
 			expect(result.error).toBeNull();
 		});
 
+		// Validates: SEL-524
 		it('rejects an event with POST /events/{id}/reject', async () => {
 			mockApiFetch.mockResolvedValue(ok({ event_id: 'event-1', review_status: 'rejected' }));
 
@@ -163,6 +168,7 @@ describe('events service', () => {
 			expect(result.error).toBeNull();
 		});
 
+		// Validates: SEL-524
 		it('refuses any other transition without calling the API', async () => {
 			const result = await updateEventStatus('event-1', 'synced');
 
@@ -181,6 +187,7 @@ describe('events service', () => {
 	});
 
 	describe('updateEvent', () => {
+		// Validates: SEL-536
 		it('PATCHes only the given fields and returns the full event', async () => {
 			const updated = { ...mockEvents[0], title: 'Updated', status: 'pending_review', event_sources: [] };
 			mockApiFetch.mockResolvedValue(ok(updated));
@@ -223,6 +230,7 @@ describe('events service', () => {
 		const changed = { review_status: 'active', event_change_proposals: [{ id: 'p1', status: 'pending' }] };
 		const decided = { review_status: 'active', event_change_proposals: [{ id: 'p2', status: 'applied' }] };
 
+		// Validates: SEL-521
 		it('classifies New, Changes and History events', () => {
 			expect(isNewReviewEvent(pending)).toBe(true);
 			expect(isChangeReviewEvent(changed)).toBe(true);

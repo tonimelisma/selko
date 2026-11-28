@@ -18,7 +18,7 @@ Web app
          - live updates: GET /live   (Server-Sent Events)
 ```
 
-The full route map is [`docs/api-client-endpoints.md`](../docs/api-client-endpoints.md).
+The full route map is [`docs/design/client-api.md`](../docs/design/client-api.md).
 
 ## Tech Stack
 

@@ -123,6 +123,7 @@ class TestOAuthIntegrations:
         calendar = get_oauth_credentials(db, mock_config, "google_calendar", user_id=user_id)
         assert gmail.token != calendar.token
 
+    # Validates: SEL-459
     def test_disconnect_removes_the_row_and_its_sync_state(self, db, factory, sample_oauth_credentials):
         user_id = factory.user()
         save_oauth_credentials(db, user_id, "gmail", sample_oauth_credentials)
@@ -139,6 +140,7 @@ class TestOAuthIntegrations:
 class TestNoTokenLeavesTheApi:
     """The integration responses a client can receive never name a token column."""
 
+    # Validates: SEL-460
     def test_integration_response_models_have_no_token_fields(self):
         from selko.api.schemas import integrations as schemas
 

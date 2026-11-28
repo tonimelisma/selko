@@ -30,6 +30,7 @@ def _clean_meter():
     reset_egress()
 
 
+# Validates: SEL-659
 def test_snapshot_attributes_bytes_by_destination_and_operation():
     record_egress(GRAPH, "POST /rest/v1/rpc/claim_due_email_sync", request_bytes=600, response_bytes=40)
     record_egress(GRAPH, "POST /rest/v1/rpc/claim_due_email_sync", request_bytes=600, response_bytes=40)
@@ -55,6 +56,7 @@ def test_graph_egress_never_uses_unknown_operation():
     assert all(row["operation"] != "unknown" for row in snapshot["top_operations"])
 
 
+# Validates: SEL-660
 def test_graph_request_requires_bounded_operation_at_construction():
     from selko.services.msgraph import request_json
 
@@ -83,6 +85,7 @@ def test_graph_request_requires_bounded_operation_at_construction():
 
 
 
+# Validates: SEL-659, SEL-703
 def test_counter_cardinality_is_bounded():
     """A future call site that passes something high-cardinality must not OOM us."""
     for index in range(MAX_TRACKED_OPERATIONS + 50):
@@ -98,6 +101,7 @@ def test_counter_cardinality_is_bounded():
     assert snapshot["total_calls"] == MAX_TRACKED_OPERATIONS + 50
 
 
+# Validates: SEL-659
 def test_projection_extrapolates_the_observed_rate():
     record_egress(GRAPH, "POST /rest/v1/rpc/noop", response_bytes=1_000)
 
@@ -108,6 +112,7 @@ def test_projection_extrapolates_the_observed_rate():
     assert snapshot["projected_bytes_per_30d"] > snapshot["total_bytes"]
     assert snapshot["bytes_per_hour"] > 0
 
+# Validates: SEL-660, SEL-703
 def test_llm_egress_records_request_and_response_bytes():
     """Inc 0: LLM payload must be metered — the previous blind spot."""
     from unittest.mock import MagicMock
@@ -141,6 +146,7 @@ def test_llm_egress_records_request_and_response_bytes():
     assert "fakeimagedata" not in ops[0]
 
 
+# Validates: SEL-660
 def test_llm_validated_call_records_egress():
     from unittest.mock import MagicMock
 

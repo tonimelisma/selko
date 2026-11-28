@@ -108,6 +108,7 @@ def test_zombie_generation_after_reclaim_writes_nothing(db, factory):
     assert _count(db, "SELECT count(*) FROM events WHERE title = 'zombie'") == 0
 
 
+# Validates: SEL-170
 async def test_two_emails_same_day_produce_one_event(db, factory):
     user = factory.user()
     first = _claim(db, factory, user, "same-day-a")
@@ -181,6 +182,7 @@ def test_conflict_recomputed_fingerprint_matches_winner(db, factory):
     assert _count(db, "SELECT count(*) FROM event_sources WHERE event_id = ?", (event_id,)) == 2
 
 
+# Validates: SEL-167
 @pytest.mark.parametrize("touched_between", [False, True])
 def test_python_and_sql_fingerprints_agree(db, factory, touched_between):
     """The decision-time and commit-time fingerprints are one function over the same rows.

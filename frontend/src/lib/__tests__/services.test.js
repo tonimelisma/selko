@@ -52,6 +52,7 @@ describe('Attachment Service', () => {
 			vi.restoreAllMocks();
 		});
 
+		// Validates: SEL-537
 		it('fetches the bytes with the Bearer client and saves them under the filename', async () => {
 			const blob = new Blob(['%PDF']);
 			mockApiFetch.mockResolvedValue(ok(blob));
@@ -75,6 +76,7 @@ describe('Attachment Service', () => {
 			expect(clicked).toBeNull();
 		});
 
+		// Validates: SEL-537
 		it('only offers stored files for download', async () => {
 			const { isDownloadable } = await import('../services/attachments.js');
 			expect(isDownloadable({ ingestion_status: 'stored' })).toBe(true);
@@ -106,6 +108,7 @@ describe('Calendar Settings Service', () => {
 	});
 
 	describe('updateCalendarSettings', () => {
+		// Validates: SEL-550
 		it('PATCHes only the given fields, without user_id or updated_at', async () => {
 			const saved = { user_id: 'u1', target_calendar_id: 'outlook:abc' };
 			mockApiFetch.mockResolvedValue(ok({ settings: saved }));
@@ -217,6 +220,7 @@ describe('Sender Rules Service', () => {
 });
 
 describe('Email Folders Service', () => {
+	// Validates: SEL-551
 	it('lists folders through GET /integrations/{provider}/folders', async () => {
 		const folders = [{ id: 'f1', provider: 'gmail', name: 'Receipts', is_system: false }];
 		mockApiFetch.mockResolvedValue(ok(folders));

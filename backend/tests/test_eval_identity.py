@@ -109,6 +109,7 @@ class TestCanonicalIdentity:
 
 
 class TestFixtureInputHash:
+    # Validates: SEL-689
     def test_attachment_byte_change_invalidates(self, tmp_path):
         att = tmp_path / "flyer.png"
         att.write_bytes(b"v1")
@@ -127,6 +128,7 @@ class TestFixtureInputHash:
         h2 = compute_fixture_input_hash(fixture2, attachments_dir=tmp_path)
         assert h1 == h2
 
+    # Validates: SEL-689
     def test_expected_change_creates_new_score_key(self, tmp_path):
         fixture = _sample_fixture()
         inf = build_inference_identity(
@@ -161,6 +163,7 @@ class TestOperationIsolation:
         compare_h = compute_prompt_contract_hash("compare")
         assert extract_h != compare_h
 
+    # Validates: SEL-689
     def test_thinking_affects_identity(self, tmp_path):
         fixture = _sample_fixture()
         low = build_inference_identity(
@@ -184,6 +187,7 @@ class TestOperationIsolation:
 
 
 class TestArtifactStoreImmutability:
+    # Validates: SEL-690
     def test_complete_artifact_not_overwritten(self, tmp_path):
         store = ArtifactStore(root=tmp_path)
         fixture = _sample_fixture()
@@ -227,6 +231,7 @@ class TestArtifactStoreImmutability:
         files = list((tmp_path / "inference" / identity.inference_key[:2]).glob(f"{identity.inference_key}.json"))
         assert len(files) == 1
 
+    # Validates: SEL-690
     def test_cache_miss_lease_prevents_duplicate_process_calls(self, tmp_path):
         store = ArtifactStore(root=tmp_path)
         identity = build_inference_identity(
@@ -268,6 +273,7 @@ class TestArtifactStoreImmutability:
         assert call_log.read_text().splitlines() == ["provider-call"]
         assert store.has_inference(identity.inference_key)
 
+    # Validates: SEL-690
     def test_replicate_does_not_overwrite_canonical(self, tmp_path):
         store = ArtifactStore(root=tmp_path)
         fixture = _sample_fixture()
@@ -387,6 +393,7 @@ class TestPlanAndShouldRun:
 
 
 class TestScorerIdentity:
+    # Validates: SEL-691
     def test_extract_hash_includes_shared_helpers(self, monkeypatch):
         from tests.eval import identity as identity_module
         from tests.eval import run_eval
@@ -404,6 +411,7 @@ class TestScorerIdentity:
         monkeypatch.setattr(identity_module.inspect, "getsource", changed_getsource)
         assert compute_scorer_hash("extract") != baseline
 
+    # Validates: SEL-691
     def test_comment_and_whitespace_do_not_invalidate_prompt(self, monkeypatch):
         from tests.eval import identity as identity_module
         from tests.eval.identity import compute_prompt_contract_hash

@@ -40,6 +40,7 @@ def _hold_in_another_process(data_dir, ready_file):
     raise RuntimeError("the holder never took the lock")
 
 
+# Validates: SEL-606
 def test_a_second_owner_is_refused_and_named(tmp_path):
     first = datalock.acquire(tmp_path, "selko.api")
     try:
@@ -51,6 +52,7 @@ def test_a_second_owner_is_refused_and_named(tmp_path):
     datalock.release(again)
 
 
+# Validates: SEL-607
 def test_another_process_holds_it_until_it_dies(tmp_path):
     holder = _hold_in_another_process(tmp_path, tmp_path / "ready")
     try:
@@ -64,6 +66,7 @@ def test_another_process_holds_it_until_it_dies(tmp_path):
     datalock.release(handle)
 
 
+# Validates: SEL-606
 def test_a_server_refuses_before_touching_the_database(tmp_path):
     holder = datalock.acquire(tmp_path, "selko.worker_app")
     try:
@@ -74,6 +77,7 @@ def test_a_server_refuses_before_touching_the_database(tmp_path):
         datalock.release(holder)
 
 
+# Validates: SEL-605, SEL-608
 def test_the_server_holds_it_until_close_and_operator_commands_still_open(tmp_path):
     runtime.open_database(tmp_path, owner="selko.api")
     with pytest.raises(datalock.DataDirLocked):

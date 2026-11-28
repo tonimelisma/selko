@@ -77,6 +77,7 @@ def _route(db, factory, spy, *, from_users_calendar, kind="material_update", rev
     return counts, spy.decisions, event
 
 
+# Validates: SEL-222
 def test_an_update_to_a_selko_created_event_applies_without_approval(db, factory, spy_commit):
     counts, decisions, event = _route(db, factory, spy_commit, from_users_calendar=False)
 
@@ -97,6 +98,7 @@ def test_an_update_to_a_selko_created_event_applies_without_approval(db, factory
     assert [p["status"] for p in proposals] == ["applied"]
 
 
+# Validates: SEL-223
 def test_an_update_to_an_event_from_the_users_calendar_waits_for_review(db, factory, spy_commit):
     _, decisions, event = _route(db, factory, spy_commit, from_users_calendar=True)
 
@@ -109,6 +111,7 @@ def test_an_update_to_an_event_from_the_users_calendar_waits_for_review(db, fact
     assert [p["status"] for p in proposals] == ["pending"]
 
 
+# Validates: SEL-224
 def test_a_cancellation_reading_of_a_selko_event_still_waits_for_review(db, factory, spy_commit):
     """An upsert cannot remove an event; organizer cancellations take their own path."""
     _, decisions, _ = _route(db, factory, spy_commit, from_users_calendar=False, kind="cancellation")
@@ -116,6 +119,7 @@ def test_a_cancellation_reading_of_a_selko_event_still_waits_for_review(db, fact
     assert decisions[0]["intent"] == "review"
 
 
+# Validates: SEL-226
 def test_an_unapproved_event_absorbs_the_update_and_stays_in_new(db, factory, spy_commit):
     with patch("selko.services.events._is_from_users_calendar",
                wraps=_is_from_users_calendar) as provenance:
@@ -132,6 +136,7 @@ def test_an_unapproved_event_absorbs_the_update_and_stays_in_new(db, factory, sp
     assert db.query("SELECT 1 FROM calendar_work_items WHERE event_id = ?", (event,)) == []
 
 
+# Validates: SEL-225
 @pytest.mark.parametrize("adopted, expected", [(True, True), (False, False)])
 def test_provenance_reads_google_calendar_sources(db, factory, adopted, expected):
     user = factory.user()
@@ -151,6 +156,7 @@ def test_provenance_is_read_per_event(db, factory):
     assert _is_from_users_calendar(db, created) is False
 
 
+# Validates: SEL-225
 def test_a_failed_provenance_lookup_keeps_the_change_for_review(tmp_path):
     # A database file with no schema: every read fails, as a broken one would.
     broken = Database(tmp_path / "unmigrated.db")
@@ -197,6 +203,7 @@ def _season_route(db, factory, spy, email_start, email_end, change_start):
     return spy.decisions[0]
 
 
+# Validates: SEL-163
 def test_moving_the_start_of_a_season_span_does_not_apply_a_two_month_timed_event(
     db, factory, spy_commit
 ):
@@ -217,6 +224,7 @@ def test_moving_the_start_of_a_season_span_does_not_apply_a_two_month_timed_even
     assert "end_datetime" in changed, "History and undo see the end change too"
 
 
+# Validates: SEL-163
 def test_an_email_that_itself_states_a_multi_day_timed_event_is_left_alone(db, factory, spy_commit):
     start = datetime(_YEAR, 11, 20, 9, 0)
     decision = _season_route(

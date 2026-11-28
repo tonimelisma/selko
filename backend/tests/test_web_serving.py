@@ -19,6 +19,7 @@ def client(tmp_path, monkeypatch):
     return TestClient(create_app())
 
 
+# Validates: SEL-585, SEL-601
 @pytest.mark.parametrize("path", ["/", "/login", "/register", "/privacy", "/app", "/app/events/123"])
 def test_page_paths_get_the_app_shell_uncached(client, path):
     response = client.get(path)
@@ -26,15 +27,18 @@ def test_page_paths_get_the_app_shell_uncached(client, path):
     assert response.headers["cache-control"] == "no-cache"
 
 
+# Validates: SEL-586, SEL-602
 def test_hashed_assets_are_cached_for_good(client):
     response = client.get("/_app/immutable/a.js")
     assert response.text == "js" and "immutable" in response.headers["cache-control"]
 
 
+# Validates: SEL-587, SEL-602
 @pytest.mark.parametrize("path", ["/_app/../../secret.txt", "/app/%2e%2e/%2e%2e/secret.txt", "/_app/..%2f..%2fsecret.txt"])
 def test_nothing_outside_the_web_folder_is_served(client, path):
     assert "secret" not in client.get(path).text
 
 
+# Validates: SEL-588, SEL-601
 def test_api_paths_are_not_swallowed(client):
     assert client.get("/events/review").status_code == 401  # the API answers, not the shell

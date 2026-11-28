@@ -34,6 +34,7 @@ const FORBIDDEN = [
 	{ name: 'VITE_SUPABASE_* env', pattern: /VITE_SUPABASE_/ }
 ];
 
+// Validates: SEL-511
 describe('no Supabase in the web app', () => {
 	const files = sourceFiles(SRC);
 

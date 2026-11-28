@@ -1,6 +1,7 @@
 from selko.services.resolution_metrics import ResolutionMetrics
 
 
+# Validates: SEL-654
 def test_resolution_metrics_snapshot_is_content_free():
     metrics = ResolutionMetrics()
     metrics.record_conflict()

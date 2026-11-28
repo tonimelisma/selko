@@ -59,6 +59,7 @@ def _gmail_message(*, plain: str | None, html: str | None) -> dict:
 
 
 class TestStubPlainPart:
+    # Validates: SEL-070
     def test_html_body_replaces_a_placeholder_plain_part(self):
         """The exact production failure: a one-word plain part beside real HTML."""
         msg = _gmail_message(plain="Ticketmaster\r\n", html=_MONSTER_JAM_HTML)
@@ -76,6 +77,7 @@ class TestStubPlainPart:
 
         assert "Monster Jam" in parse_gmail_message(msg)["body_text"]
 
+    # Validates: SEL-070
     def test_real_plain_text_body_is_left_alone(self):
         """A genuine plain-text email must not be replaced by HTML chrome."""
         plain = (
@@ -86,6 +88,7 @@ class TestStubPlainPart:
 
         assert parse_gmail_message(msg)["body_text"] == plain
 
+    # Validates: SEL-070
     def test_short_but_genuine_plain_body_survives(self):
         """Terse is not the same as placeholder; there is no length floor."""
         msg = _gmail_message(plain="Lunch at 1?", html=None)
@@ -94,6 +97,7 @@ class TestStubPlainPart:
 
 
 class TestLinkPreservation:
+    # Validates: SEL-071
     def test_href_targets_survive_conversion(self):
         """body_text feeds build_hints(); dropping hrefs would disable
         join/management identity matching (PRs #374/#375)."""
@@ -110,6 +114,7 @@ class TestLinkPreservation:
 
         assert any("ticketmaster.com/event/1A006FC0/manage" in u for u in extract_urls(body))
 
+    # Validates: SEL-071
     def test_non_navigable_hrefs_are_not_emitted(self):
         text = html_to_text('<a href="mailto:x@y.com">Mail</a><a href="cid:img1">Img</a>')
 
@@ -118,6 +123,7 @@ class TestLinkPreservation:
 
 
 class TestHtmlToText:
+    # Validates: SEL-071
     def test_script_and_style_content_is_dropped(self):
         text = html_to_text(
             "<style>.a{color:red}</style><script>alert(1)</script><p>Real text</p>"
@@ -127,6 +133,7 @@ class TestHtmlToText:
         assert "alert(1)" not in text
         assert "Real text" in text
 
+    # Validates: SEL-071
     def test_entities_are_unescaped(self):
         assert "Tom & Jerry" in html_to_text("<p>Tom &amp; Jerry</p>")
 
@@ -186,6 +193,7 @@ class TestOutlookHtmlFallback:
 
         assert parse_outlook_message(msg)["body_text"] == "Booking confirmed for 3pm."
 
+    # Validates: SEL-072
     def test_html_content_is_rendered_rather_than_dropped(self):
         from selko.services.outlook import parse_outlook_message
 

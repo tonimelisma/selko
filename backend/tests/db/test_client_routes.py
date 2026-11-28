@@ -69,6 +69,7 @@ def factory_id():
 # --- behaviour ----------------------------------------------------------------
 
 
+# Validates: SEL-200, SEL-520, SEL-521
 def test_review_queue_lists_new_events_with_their_sources(api, world):
     rows = api.get("/events/review", headers=world["a_h"]).json()
     assert [r["id"] for r in rows] == [world["pending"]]  # the active one has no pending change
@@ -78,6 +79,7 @@ def test_review_queue_lists_new_events_with_their_sources(api, world):
     assert row["calendar_work_items"] == [] and row["event_change_proposals"] == []
 
 
+# Validates: SEL-200, SEL-520
 def test_review_queue_is_bounded_soonest_first_and_says_how_many_wait(api, world, factory):
     later = [factory.event(world["a"], review_status="pending_review", start_datetime=f"2031-01-{d:02d}T10:00:00.000000Z")
              for d in range(1, 6)]
@@ -90,6 +92,7 @@ def test_review_queue_is_bounded_soonest_first_and_says_how_many_wait(api, world
     assert api.get("/events/review?limit=501", headers=world["a_h"]).status_code == 422
 
 
+# Validates: SEL-092, SEL-545
 def test_email_history_orders_from_the_covering_index_not_the_rows(db, factory):
     """Ordering whole rows read every email body of the user on each page."""
     from selko.db import client as data
@@ -110,12 +113,14 @@ def test_email_history_orders_from_the_covering_index_not_the_rows(db, factory):
     assert "COVERING INDEX idx_emails_history_order" in plan, plan
 
 
+# Validates: SEL-201, SEL-540
 def test_activity_pages_decided_events(api, world):
     page = api.get("/events/activity?limit=1", headers=world["a_h"]).json()
     assert page["total"] == 1 and [i["id"] for i in page["items"]] == [world["active"]]
     assert api.get("/events/activity?limit=0", headers=world["a_h"]).status_code == 422
 
 
+# Validates: SEL-210, SEL-536
 def test_editing_an_event_returns_it_whole(api, world):
     edited = api.patch(f"/events/{world['pending']}", json={"title": "  Concert  "}, headers=world["a_h"])
     assert edited.status_code == 200
@@ -125,6 +130,7 @@ def test_editing_an_event_returns_it_whole(api, world):
     assert api.patch(f"/events/{world['pending']}", json={}, headers=world["a_h"]).status_code == 422
 
 
+# Validates: SEL-206, SEL-207, SEL-306
 def test_accept_and_reject(api, world, db):
     accepted = api.post(f"/events/{world['pending']}/accept", headers=world["a_h"])
     assert accepted.status_code == 200, accepted.text
@@ -134,6 +140,7 @@ def test_accept_and_reject(api, world, db):
     assert rejected.status_code == 200 and rejected.json()["review_status"] == "rejected"
 
 
+# Validates: SEL-538, SEL-723
 def test_email_history_and_details(api, world):
     history = api.get("/emails/history", headers=world["a_h"]).json()
     assert history["total"] == 1
@@ -146,6 +153,7 @@ def test_email_history_and_details(api, world):
     assert [a["filename"] for a in attachments] == ["ticket.pdf"] and "storage_path" not in attachments[0]
 
 
+# Validates: SEL-083, SEL-537
 def test_attachment_download_streams_the_stored_file(api, world, db):
     folder = runtime.attachments_dir() / world["a"]
     folder.mkdir(parents=True)
@@ -156,17 +164,20 @@ def test_attachment_download_streams_the_stored_file(api, world, db):
     assert "ticket.pdf" in response.headers["content-disposition"]
 
 
+# Validates: SEL-083, SEL-721
 def test_attachment_path_cannot_escape_the_attachments_folder(api, world, db):
     with db.write() as tx:
         tx.execute("UPDATE attachments SET storage_path = '../selko.db' WHERE id = ?", (world["attachment"],))
     assert api.get(f"/attachments/{world['attachment']}/content", headers=world["a_h"]).status_code == 404
 
 
+# Validates: SEL-460, SEL-724
 def test_integrations_never_carry_tokens(api, world):
     rows = api.get("/integrations", headers=world["a_h"]).json()
     assert len(rows) == 1 and not ({"access_token", "refresh_token"} & set(rows[0]))
 
 
+# Validates: SEL-552
 def test_sender_rules_crud_and_duplicates(api, world):
     created = api.post("/sender-rules", json={"sender_domain": "spam.test", "action": "ignore"}, headers=world["a_h"])
     assert created.status_code == 201 and created.json()["user_id"] == world["a"]
@@ -177,6 +188,7 @@ def test_sender_rules_crud_and_duplicates(api, world):
     assert api.delete(f"/sender-rules/{created.json()['id']}", headers=world["a_h"]).status_code == 204
 
 
+# Validates: SEL-390, SEL-550
 def test_calendar_settings_merge_and_validate(api, world):
     assert api.get("/settings/calendar", headers=world["a_h"]).json() == {"settings": None}
     saved = api.patch("/settings/calendar", json={"timezone": "Europe/Helsinki"}, headers=world["a_h"])
@@ -187,6 +199,7 @@ def test_calendar_settings_merge_and_validate(api, world):
     assert bad.status_code == 422
 
 
+# Validates: SEL-442
 def test_every_route_needs_a_token(api):
     for route in client_routes.router.routes:
         method = sorted(route.methods)[0]
@@ -221,6 +234,7 @@ CASES = {
 }
 
 
+# Validates: SEL-203, SEL-441, SEL-459, SEL-720
 def test_every_route_refuses_another_users_ids(api, world, db):
     before = {t: db.query_one(f"SELECT count(*) FROM {t}")[0] for t in
               ("events", "integrations", "sender_rules", "calendar_work_items", "attachments")}

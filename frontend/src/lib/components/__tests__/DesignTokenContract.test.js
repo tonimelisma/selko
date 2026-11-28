@@ -18,7 +18,9 @@ function contrast(foreground, background) {
 	return (values[0] + 0.05) / (values[1] + 0.05);
 }
 
+// Validates: SEL-571
 describe('canonical design token contract', () => {
+	// Validates: SEL-570
 	it('keeps web semantic tokens synchronized with the manifest', () => {
 		for (const mode of ['light', 'dark']) {
 			for (const value of Object.values(tokens.color[mode])) {
@@ -85,6 +87,7 @@ describe('canonical design token contract', () => {
 		expect(ec).toContain('class="flex gap-3');
 		expect(cc).toContain('class="peer-action-wrap');
 	});
+	// Validates: SEL-577
 	it('no peer button declares white-space normal', async () => {
 		const { readFileSync: rf } = await import('node:fs');
 		const css2 = rf(resolve(root, 'frontend/src/app.css'), 'utf8');

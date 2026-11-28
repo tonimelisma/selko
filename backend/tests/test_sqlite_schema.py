@@ -25,6 +25,7 @@ def _actual_domains(db) -> dict[tuple[str, str], set[str]]:
     return actual
 
 
+# Validates: SEL-623
 def test_check_constraint_domains_are_pinned(db):
     actual = _actual_domains(db)
 
@@ -54,6 +55,7 @@ def _strings(tree: ast.AST):
             yield "".join(v.value for v in node.values if isinstance(v, ast.Constant))
 
 
+# Validates: SEL-623
 def test_status_literals_in_python_are_permitted():
     allowed: dict[str, set[str]] = {}
     for (_, column), values in EXPECTED_CHECK_DOMAINS.items():

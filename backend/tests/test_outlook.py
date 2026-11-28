@@ -23,6 +23,7 @@ def _response(payload, status_code=200):
 
 
 class TestParseOutlookMessage:
+    # Validates: SEL-072
     def test_maps_message_fields_and_plain_text_body(self):
         message = {
             "id": "outlook-message-1",
@@ -61,6 +62,7 @@ class TestParseOutlookMessage:
         }
         assert "body_html" not in result
 
+    # Validates: SEL-072
     def test_omits_empty_recipients_and_never_stores_markup(self):
         """An HTML body is rendered to text, never stored as markup.
 
@@ -85,6 +87,7 @@ class TestParseOutlookMessage:
         assert result["body_text"] == "HTML"
         assert "<p>" not in result["body_text"]
 
+    # Validates: SEL-073
     def test_flags_event_message_request_as_calendar_invite(self):
         result = parse_outlook_message(
             {
@@ -131,6 +134,7 @@ class TestOutlookLabels:
 
 
 class TestFetchMessageChanges:
+    # Validates: SEL-027
     @patch("selko.services.msgraph.requests.get")
     def test_follows_next_link_and_returns_delta_link(self, mock_get):
         mock_get.side_effect = [
@@ -153,6 +157,7 @@ class TestFetchMessageChanges:
         assert cursor == "https://graph.example/delta?$deltatoken=2"
         assert mock_get.call_args_list[0].kwargs["headers"]["Prefer"] == "odata.maxpagesize=50"
 
+    # Validates: SEL-028
     @patch("selko.services.msgraph.requests.get")
     def test_410_returns_resync_sentinel(self, mock_get):
         mock_get.return_value = _response({}, status_code=410)

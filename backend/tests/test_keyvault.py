@@ -68,10 +68,12 @@ def vault(monkeypatch):
 
 
 class TestCredentialSelection:
+    # Validates: SEL-749
     def test_off_disables_even_with_a_client_secret(self):
         env = {**APP, "SELKO_KEYVAULT_AUTH": "off", "AZURE_CLIENT_SECRET": "s"}
         assert keyvault.make_credential(env.get) == (None, "off")
 
+    # Validates: SEL-752
     @pytest.mark.parametrize("secret_name", keyvault.CLIENT_SECRET_NAMES)
     def test_a_client_secret_signs_in_as_the_configured_app(self, secret_name):
         credential, label = keyvault.make_credential({**APP, secret_name: "s"}.get)
@@ -80,6 +82,7 @@ class TestCredentialSelection:
         assert credential._client_id == APP["AZURE_CLIENT_ID"]
         assert credential._tenant_id == APP["AZURE_TENANT_ID"]
 
+    # Validates: SEL-752
     @pytest.mark.parametrize("env", [
         {"AZURE_CLIENT_SECRET": "s"},
         {"AZURE_CLIENT_SECRET": "s", "AZURE_TENANT_ID": "t"},
@@ -97,6 +100,7 @@ class TestCredentialSelection:
         assert not re.search(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", source)
         assert ".vault.azure.net" not in source
 
+    # Validates: SEL-751
     def test_gce_uses_workload_identity_with_the_metadata_token(self, monkeypatch):
         credential, label = keyvault.make_credential({**APP, "SELKO_KEYVAULT_AUTH": "gce"}.get)
         assert isinstance(credential, ClientAssertionCredential)
@@ -138,11 +142,13 @@ class TestCredentialSelection:
     def test_without_az_nothing_is_fetched(self, tmp_path):
         assert keyvault.make_credential({"PATH": str(tmp_path)}.get) == (None, "no-az")
 
+    # Validates: SEL-749
     def test_unknown_auth_value_fetches_nothing(self):
         assert keyvault.make_credential({"SELKO_KEYVAULT_AUTH": "gcp"}.get) == (None, "unknown")
 
 
 class TestFetch:
+    # Validates: SEL-746
     def test_missing_names_honours_aliases(self):
         values = {"SELKO_ANTHROPIC_API_KEY": "x", "MODEL_API_KEY": "y", "ZHIPU_API_KEY": "z",
                   "OPENAI_API_KEY": ""}
@@ -152,6 +158,7 @@ class TestFetch:
         assert "ZAI_API_KEY" not in missing
         assert "OPENAI_API_KEY" in missing  # empty counts as unset
 
+    # Validates: SEL-748
     def test_fetches_each_name_from_its_vault_once(self, vault):
         names = list(keyvault.SECRETS)
         got = keyvault.fetch_missing(names, URLS.get)
@@ -163,6 +170,7 @@ class TestFetch:
         assert keyvault.fetch_missing(names, URLS.get) == got
         assert vault.reads == []  # cached for the process
 
+    # Validates: SEL-747
     def test_a_missing_secret_does_not_block_the_rest(self, vault):
         del vault.vaults[keyvault.DEV_VAULT]["tinker-api-key"]
         got = keyvault.fetch_missing(["TINKER_API_KEY", "OPENAI_API_KEY", "GEMINI_API_KEY"], URLS.get)
@@ -186,11 +194,13 @@ class TestFetch:
         keyvault.fetch_missing(list(keyvault.SECRETS), URLS.get)
         assert sum(1 for v, _ in vault.reads if v == keyvault.HOSTS_VAULT) == 1
 
+    # Validates: SEL-752
     def test_a_vault_without_a_url_is_not_read(self, vault):
         got = keyvault.fetch_missing(list(keyvault.SECRETS), {"SELKO_KEYVAULT_URL": DEV_URL}.get)
         assert set(got) == {n for n, (v, _) in keyvault.SECRETS.items() if v == keyvault.DEV_VAULT}
         assert all(v == keyvault.DEV_VAULT for v, _ in vault.reads)
 
+    # Validates: SEL-747
     def test_no_credential_fetches_nothing(self, monkeypatch):
         monkeypatch.setattr(keyvault, "make_credential", lambda getenv: (None, "no-az"))
         assert keyvault.fetch_missing(list(keyvault.SECRETS), URLS.get) == {}
@@ -207,6 +217,7 @@ class TestLoadConfigUsesTheVault:
         for name in list(keyvault.SECRETS) + [a for v in keyvault.ALIASES.values() for a in v]:
             monkeypatch.delenv(name, raising=False)
 
+    # Validates: SEL-745
     def test_vault_values_reach_the_config(self, monkeypatch, tmp_path, vault):
         self._env(monkeypatch, tmp_path)
         config = config_module.load_config()
@@ -216,6 +227,7 @@ class TestLoadConfigUsesTheVault:
         assert config.google_client_secret == "hosts:selko-google-client-secret"
         assert config.microsoft_client_id == "hosts:selko-microsoft-client-id"
 
+    # Validates: SEL-746
     def test_a_set_variable_wins_and_is_not_fetched(self, monkeypatch, tmp_path, vault):
         self._env(monkeypatch, tmp_path)
         monkeypatch.setenv("ANTHROPIC_API_KEY", "from-env")
@@ -233,6 +245,7 @@ class TestLoadConfigUsesTheVault:
         monkeypatch.setenv("SELKO_ANTHROPIC_API_KEY", "alias")
         assert config_module.load_config().anthropic_api_key == "alias"
 
+    # Validates: SEL-749
     def test_the_suite_runs_with_the_vault_off(self, request):
         import os
 

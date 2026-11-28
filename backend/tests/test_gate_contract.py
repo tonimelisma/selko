@@ -325,6 +325,7 @@ def _matches(path: str, patterns: list[str]) -> bool:
     return any(path == p or fnmatch.fnmatch(path, p) for p in patterns)
 
 
+# Validates: SEL-687
 def test_the_release_never_skips_a_change_to_what_the_image_is_built_from():
     """On main, CI pushes an image to release for every file the image is built from.
 
@@ -340,6 +341,7 @@ def test_the_release_never_skips_a_change_to_what_the_image_is_built_from():
     assert not missed, missed
 
 
+# Validates: SEL-687
 def test_the_release_skips_what_the_image_is_not_built_from():
     """A merge that changes nothing in the image releases nothing.
 
@@ -361,6 +363,7 @@ def test_the_release_skips_what_the_image_is_not_built_from():
     assert not _matches(".verify/ledger/x.jsonl", release)
 
 
+# Validates: SEL-687
 def test_every_pr_that_touches_the_image_or_its_check_runs_the_image_check():
     """The image check runs for every image-lane input and everything that releases."""
     import tomllib

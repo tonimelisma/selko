@@ -5,6 +5,7 @@ import tomllib
 BACKEND_DIR = Path(__file__).parents[1]
 
 
+# Validates: SEL-681
 def test_backend_readme_is_package_local() -> None:
     metadata = tomllib.loads((BACKEND_DIR / "pyproject.toml").read_text())
     readme = metadata["project"]["readme"]

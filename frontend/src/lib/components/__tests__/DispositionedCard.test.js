@@ -32,6 +32,7 @@ describe('DispositionedCard', () => {
 		expect(removeEventListener).toHaveBeenCalledWith('change', expect.any(Function));
 	});
 
+	// Validates: SEL-532
 	it('focuses the next card after a disposition', async () => {
 		vi.useFakeTimers();
 		render(DispositionedCard, { event: { id: 'event-1' }, kind: 'reject' });

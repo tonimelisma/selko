@@ -13,6 +13,7 @@ async function settle(page: import('@playwright/test').Page) {
 
 const viewportWidths = [375, 768, 800, 900, 1000, 1024, 1040, 1100, 1280, 1440];
 
+// Validates: SEL-576
 test.describe('Responsive layout - no horizontal overflow', () => {
   for (const width of viewportWidths) {
     test(`login page has no horizontal overflow at ${width}px`, async ({ browser }) => {
@@ -31,6 +32,7 @@ test.describe('Responsive layout - no horizontal overflow', () => {
   }
 });
 
+// Validates: SEL-576
 test.describe('Responsive layout - app pages', () => {
   for (const width of viewportWidths) {
     test(`app page has no horizontal overflow at ${width}px`, async ({ page }) => {

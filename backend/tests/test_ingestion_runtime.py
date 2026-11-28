@@ -19,6 +19,7 @@ from selko.workers.ingestion_runtime import IngestionRuntime, build_notifier
 from selko.services.email_ingestion import SyncClaim
 
 
+# Validates: SEL-098
 def test_idle_backoff_grows_geometrically_and_is_capped(db, mock_config):
     """A flat retry made idle deployments issue a request per worker per second."""
     config = replace(
@@ -33,6 +34,7 @@ def test_idle_backoff_grows_geometrically_and_is_capped(db, mock_config):
     assert worker.idle_backoff(100) == 30.0
 
 
+# Validates: SEL-098
 def test_idle_backoff_survives_an_indefinitely_idle_queue(db, mock_config):
     """Regression: the attachment loop died after ~8.5 hours of an empty queue.
 
@@ -68,6 +70,7 @@ def test_idle_backoff_handles_a_ceiling_equal_to_base(db, mock_config):
     assert worker.idle_backoff(100_000) == 5.0
 
 
+# Validates: SEL-098
 def test_idle_backoff_resets_after_work_is_found(db, mock_config):
     """Backoff must not persist once the queue is busy again."""
     config = replace(
@@ -98,6 +101,7 @@ def test_idle_backoff_resets_after_work_is_found(db, mock_config):
     assert waits[3] == 1
 
 
+# Validates: SEL-097
 def test_runtime_spawns_configured_workers_and_stops_cleanly(db, mock_config):
     """Coordinator, acquisition, attachment, plus the health floor.
 
@@ -244,6 +248,7 @@ def test_lifespan_recovers_stale_integration_recoveries_on_startup(tmp_path, moc
     assert (email["processing_status"], email["locked_by"]) == ("pending", None)
 
 
+# Validates: SEL-097
 def test_lifespan_starts_nothing_when_background_processing_is_off(tmp_path, mock_config):
     """Local servers, tests and CI must never poll providers or spend quota."""
     config = _lifespan_config(mock_config, enable_background_processing=False, data_dir=str(tmp_path))
@@ -299,6 +304,7 @@ def _supervision_config(mock_config):
     )
 
 
+# Validates: SEL-097
 def test_claim_that_raises_once_leaves_loop_running_and_second_claim_attempted(db, mock_config):
     """The proof, inverted: one transient claim failure must not kill the loop.
 
@@ -327,6 +333,7 @@ def test_claim_that_raises_once_leaves_loop_running_and_second_claim_attempted(d
     assert attempts["count"] >= 2, "loop died after the first failure; expected a second attempt"
 
 
+# Validates: SEL-097
 def test_killed_task_is_respawned_by_watchdog_within_one_tick(db, mock_config):
     """A task that exits mid-flight (done before stop) must be respawned."""
     config = _supervision_config(mock_config)
@@ -567,6 +574,7 @@ def test_health_snapshot_counts_1500_dead_letters_without_truncation(db, factory
     assert snap["items_dead_letter"] == 1500
 
 
+# Validates: SEL-099
 def test_sync_run_emits_one_structured_counter_line_per_run(db, mock_config, caplog):
     """One ``ingestion_sync_run`` log line per completed sync run with the
     stable key/value shape — Render log search answers 'is ingestion moving'
@@ -608,6 +616,7 @@ def test_sync_run_emits_one_structured_counter_line_per_run(db, mock_config, cap
     assert "error_code=" in msg
 
 
+# Validates: SEL-099
 def test_sync_run_log_line_records_error_code_on_failure(db, mock_config, caplog):
     import logging as _logging
     config = _supervision_config(mock_config)

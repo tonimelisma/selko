@@ -19,6 +19,7 @@ from selko.services.outlook import (
 )
 
 
+# Validates: SEL-020
 def test_initial_gmail_query_is_bounded_and_excludes_arbitrary_user_labels():
     query = build_initial_sync_query(["Lists/Promotions", 'Deals "VIP"'])
 
@@ -28,6 +29,7 @@ def test_initial_gmail_query_is_bounded_and_excludes_arbitrary_user_labels():
     assert '-label:"Deals \\"VIP\\""' in query
 
 
+# Validates: SEL-021
 def test_gmail_history_drains_every_page_and_deduplicates_message_ids():
     client = MagicMock()
     history = client.users.return_value.history.return_value
@@ -58,6 +60,7 @@ def test_gmail_history_drains_every_page_and_deduplicates_message_ids():
 
 
 
+# Validates: SEL-026
 def test_outlook_folder_paths_include_nested_parent_context():
     folders = normalize_mail_folders([
         {"id": "root", "displayName": "Projects"},
@@ -67,6 +70,7 @@ def test_outlook_folder_paths_include_nested_parent_context():
     assert next(folder for folder in folders if folder["id"] == "child")["full_path"] == "Projects/School"
 
 
+# Validates: SEL-026
 def test_outlook_folder_discovery_uses_immutable_ids_and_does_not_traverse_forbidden_trees():
     aliases = {
         "inbox": "immutable-inbox",
@@ -106,6 +110,7 @@ def test_outlook_folder_discovery_uses_immutable_ids_and_does_not_traverse_forbi
     assert next(folder for folder in folders if folder["id"] == "immutable-inbox")["wellKnownName"] == "inbox"
 
 
+# Validates: SEL-026
 def test_outlook_conversation_history_is_never_discovered_or_traversed():
     aliases = {"conversationhistory": "conversation-history-id"}
     child_requests = []
@@ -149,6 +154,7 @@ def _inbox() -> dict:
     }
 
 
+# Validates: SEL-040
 def test_upsert_does_not_classify_eligible_system_folders_and_preserves_scan_metadata(db, factory):
     user, integration_id = _folder_integration(factory)
     gateway = MagicMock()
@@ -170,6 +176,7 @@ def test_upsert_does_not_classify_eligible_system_folders_and_preserves_scan_met
     gateway.for_user.assert_not_called()
 
 
+# Validates: SEL-040
 def test_upsert_normalizes_stale_system_folder_exclusion(db, factory):
     user, integration_id = _folder_integration(factory)
     # A row saved before system-folder recognition: excluded by a user override.
@@ -189,6 +196,7 @@ def test_upsert_normalizes_stale_system_folder_exclusion(db, factory):
     assert row["user_override"] is False
 
 
+# Validates: SEL-041
 def test_a_rediscovered_folder_keeps_its_cursor_and_user_override(db, factory):
     user, integration_id = _folder_integration(factory)
     label = {"id": "label-1", "name": "School", "full_path": "School", "kind": "folder"}
@@ -209,6 +217,7 @@ def test_a_rediscovered_folder_keeps_its_cursor_and_user_override(db, factory):
     assert again["sync_cursor"] == "delta-1"
 
 
+# Validates: SEL-042
 def test_folder_classifier_uses_only_folder_metadata_and_preserves_structured_reason():
     gateway = MagicMock()
     gateway.for_user.return_value = gateway
@@ -231,6 +240,7 @@ def test_folder_classifier_uses_only_folder_metadata_and_preserves_structured_re
     assert "Email Body" not in prompt
 
 
+# Validates: SEL-090
 def test_successful_completion_clears_stale_processing_error_atomically(db, factory):
     import asyncio
 

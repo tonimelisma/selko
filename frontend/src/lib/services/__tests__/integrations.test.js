@@ -49,6 +49,7 @@ describe('integrations service', () => {
 	});
 
 	describe('disconnectIntegrations', () => {
+		// Validates: SEL-548
 		it('deletes the given ids in one request', async () => {
 			mockApiFetch.mockResolvedValue({ data: { deleted: 2 }, error: null, status: 200 });
 

@@ -120,6 +120,7 @@ class TestRecoveryPerProvider:
             "SELECT provider, status FROM integration_recoveries WHERE user_id = ?", (user_id,))
         assert [tuple(r) for r in rows] == [("outlook", "pending")]
 
+    # Validates: SEL-383
     async def test_reconnecting_requeues_parked_items_for_that_provider_only(self, db, factory, user_id):
         """The recovery used to tag parked items and leave them parked forever."""
         _connect(db, user_id, "google_calendar", ["calendar"])

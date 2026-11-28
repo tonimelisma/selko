@@ -39,6 +39,7 @@ def _login(client, email="sam@example.test", password="secret-pw"):
     return client.post("/auth/token", json={"grant_type": "password", "email": email, "password": password})
 
 
+# Validates: SEL-400, SEL-410, SEL-414, SEL-420, SEL-725
 def test_sign_up_then_sign_in(client):
     created = _signup(client)
     assert created.status_code == 201, created.text
@@ -54,6 +55,7 @@ def test_sign_up_then_sign_in(client):
     assert me.status_code == 200 and me.json()["email"] == "sam@example.test"
 
 
+# Validates: SEL-421, SEL-425, SEL-725
 def test_refresh_comes_from_the_cookie_only(client):
     _signup(client)
     _login(client)
@@ -65,6 +67,7 @@ def test_refresh_comes_from_the_cookie_only(client):
     assert refused.status_code == 401
 
 
+# Validates: SEL-404
 def test_wrong_password_is_400_with_gotrue_wording(client):
     _signup(client)
     login = _login(client, password="wrong-pw")
@@ -73,12 +76,14 @@ def test_wrong_password_is_400_with_gotrue_wording(client):
     assert "set-cookie" not in login.headers
 
 
+# Validates: SEL-427
 @pytest.mark.parametrize("headers", [{"Origin": "https://evil.test"}, {"Origin": ""}])
 def test_cookie_endpoints_refuse_other_origins(client, headers):
     assert client.post("/auth/signup", json={"email": "a@b.test", "password": "secret-pw"}, headers=headers).status_code == 403
     assert client.post("/auth/token", json={"grant_type": "refresh_token"}, headers=headers).status_code == 403
 
 
+# Validates: SEL-427
 @pytest.mark.parametrize("content_type", ["application/x-www-form-urlencoded", "text/plain"])
 def test_cookie_endpoints_refuse_bodies_a_form_can_send(client, content_type):
     """A cross-site form (or no-preflight fetch) cannot reach the cookie endpoints, even with a JSON body."""
@@ -92,6 +97,7 @@ def test_cookie_endpoints_refuse_bodies_a_form_can_send(client, content_type):
     assert "set-cookie" not in response.headers
 
 
+# Validates: SEL-426
 def test_logout_revokes_and_clears_the_cookie(client):
     _signup(client)
     access = _login(client).json()["access_token"]
@@ -102,6 +108,7 @@ def test_logout_revokes_and_clears_the_cookie(client):
     assert client.post("/auth/token", json={"grant_type": "refresh_token"}).status_code == 401
 
 
+# Validates: SEL-426
 def test_logout_with_only_the_cookie_still_signs_out(client):
     _signup(client)
     _login(client)
@@ -110,17 +117,20 @@ def test_logout_with_only_the_cookie_still_signs_out(client):
     assert client.post("/auth/token", json={"grant_type": "refresh_token"}).status_code == 401
 
 
+# Validates: SEL-414
 def test_user_endpoint_needs_a_valid_token(client):
     assert client.get("/auth/user").status_code == 401
     assert client.get("/auth/user", headers={"Authorization": "Bearer nonsense"}).status_code == 401
 
 
+# Validates: SEL-430
 def test_password_sign_in_is_rate_limited(client):
     _signup(client)
     codes = [_login(client, password="wrong-pw").status_code for _ in range(11)]
     assert codes[:10] == [400] * 10 and codes[10] == 429
 
 
+# Validates: SEL-431
 def test_refresh_is_not_held_to_the_password_rate(client):
     """Refreshes share the route but not the 10/minute sign-in budget."""
     _signup(client)
@@ -132,6 +142,7 @@ def test_refresh_is_not_held_to_the_password_rate(client):
     assert _login(client).status_code == 429  # the password budget is spent
 
 
+# Validates: SEL-431
 def test_the_route_still_caps_refreshes(client):
     _signup(client)
     _login(client)

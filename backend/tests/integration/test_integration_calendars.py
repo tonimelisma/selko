@@ -90,6 +90,7 @@ class TestCalendarSync:
         assert updated_event["google_calendar_event_id"] is None
         assert updated_event["synced_at"] is None
 
+    # Validates: SEL-335
     def test_sync_creates_log_entry(self, db, factory, user_id):
         """Test that sync operation creates an audit log entry."""
         event_id = factory.event(
@@ -146,6 +147,7 @@ class TestCalendarSync:
             mock_service.events.return_value.update.assert_called_once()
         assert [r["action"] for r in _sync_log(db, event_id)] == ["updated"]
 
+    # Validates: SEL-332
     def test_sync_recreates_deleted_google_event(self, db, factory, user_id):
         """Test that sync recreates a Google Calendar event if it was deleted."""
         from googleapiclient.errors import HttpError
@@ -272,6 +274,7 @@ class TestCancelCalendarEvent:
             body = mock_service.events.return_value.update.call_args.kwargs["body"]
             assert body["summary"] == "CANCELLED: Synced Meeting"
 
+    # Validates: SEL-334
     def test_cancel_handles_already_deleted_google_event(self, db, factory, user_id):
         """Test that cancelling handles case where Google event was already deleted."""
         from googleapiclient.errors import HttpError

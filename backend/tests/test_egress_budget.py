@@ -15,6 +15,7 @@ from selko.workers.ingestion_runtime import IngestionRuntime
 from selko.workers.ingestion_runtime import _exception_code
 
 
+# Validates: SEL-634
 def test_idle_runtime_stays_under_health_database_call_budget(mock_config):
     async def parked(worker):
         await worker.stop_event.wait()
@@ -53,6 +54,7 @@ def test_idle_runtime_stays_under_health_database_call_budget(mock_config):
     asyncio.run(scenario())
 
 
+# Validates: SEL-634
 def test_idle_health_floor_costs_one_evaluation_per_interval_and_no_more(mock_config):
     """The ceiling, asserted rather than assumed.
 

@@ -133,6 +133,7 @@ class TestHealthEndpoints:
         yield db
         runtime.use_database(None)
 
+    # Validates: SEL-650
     def test_health_ok(self, test_client, health_db):
         resp = test_client.get("/health")
         assert resp.status_code == 200
@@ -140,12 +141,14 @@ class TestHealthEndpoints:
         assert body["status"] == "ok"
         assert body["resolution"]["pending_emails"] == 0
 
+    # Validates: SEL-651
     def test_health_publishes_build_sha(self, test_client, mock_config, health_db):
         mock_config.build_sha = "abc123"
         resp = test_client.get("/health")
         assert resp.status_code == 200
         assert resp.json()["build_sha"] == "abc123"
 
+    # Validates: SEL-653
     def test_health_publishes_this_process_memory(self, test_client, health_db):
         memory = test_client.get("/health").json()["memory"]
         # The suite runs on Linux: /proc is there, so these are real numbers.
@@ -158,6 +161,7 @@ class TestHealthEndpoints:
         assert memory["threads"] >= 1
         assert 1 <= memory["reader_connections"] <= connection.READER_POOL_SIZE  # the request itself read
 
+    # Validates: SEL-653
     def test_memory_snapshot_reads_proc_and_cgroup_and_reports_absence_as_none(self, tmp_path):
         from selko.api.routes.health import memory_snapshot
 
@@ -188,16 +192,19 @@ class TestHealthEndpoints:
         (v1 / "memory" / "memory.limit_in_bytes").write_text("9223372036854771712\n")  # v1's "no limit"
         assert memory_snapshot(str(status_file), str(v1))["cgroup_limit_bytes"] is None
 
+    # Validates: SEL-650
     def test_health_degraded_when_work_state_reports_degraded(self, test_client, health_db, factory):
         factory.email(factory.user(), processing_status="processing")  # no lease: stale
         resp = test_client.get("/health")
         assert resp.status_code == 200
         assert resp.json()["status"] == "degraded"
 
+    # Validates: SEL-654
     def test_health_counts_pending_email(self, test_client, health_db, factory):
         factory.email(factory.user(), processing_status="pending")
         assert test_client.get("/health").json()["resolution"]["pending_emails"] == 1
 
+    # Validates: SEL-650
     def test_health_degrades_when_work_state_unreachable(self, test_client):
         """No database open: degraded, never a 500."""
         from selko.db import runtime
@@ -207,11 +214,13 @@ class TestHealthEndpoints:
         assert resp.status_code == 200
         assert resp.json()["status"] == "degraded"
 
+    # Validates: SEL-655
     def test_health_db_connected(self, test_client, health_db):
         resp = test_client.get("/health/db")
         assert resp.status_code == 200
         assert resp.json()["database"] == "connected"
 
+    # Validates: SEL-655
     def test_health_db_failure(self, test_client):
         """No database to answer: 503."""
         from selko.db import runtime
@@ -220,6 +229,7 @@ class TestHealthEndpoints:
         resp = test_client.get("/health/db")
         assert resp.status_code == 503
 
+    # Validates: SEL-656, SEL-657
     def test_health_ingestion_when_background_processing_is_off(self, test_client, health_db, factory):
         """Runtime is None: report the disabled state, never "down", and still
         report the work-state roll-up, which describes the DATABASE, not this
@@ -238,6 +248,7 @@ class TestHealthEndpoints:
         assert body["listener"]["kind"] == "in_process"
         assert set(body["listener"]) == {"kind", "bound", "signals_sent", "last_signal_at"}
 
+    # Validates: SEL-657
     def test_health_ingestion_degrades_on_lost_work_even_with_workers_off(
         self, test_client, health_db, factory
     ):
@@ -248,6 +259,7 @@ class TestHealthEndpoints:
         assert body["status"] == "degraded"
         assert body["stale_processing_emails"] == 1
 
+    # Validates: SEL-644
     def test_health_ingestion_does_not_degrade_on_terminal_failures(self, test_client, health_db, factory):
         """failed_emails is history, not a current degradation.
 
@@ -262,6 +274,7 @@ class TestHealthEndpoints:
         assert body["status"] == "ok", body
         assert body["failed_emails"] == 3, "the count must still be reported"
 
+    # Validates: SEL-656
     def test_health_ingestion_reports_runtime_snapshot(self, test_client, health_db):
         """The route surfaces IngestionRuntime.health_snapshot()."""
         snapshot = {
@@ -303,6 +316,7 @@ class TestHealthEndpoints:
         assert body["items_pending"] == 17
         assert body["listener"]["kind"] == "in_process"
 
+    # Validates: SEL-658
     def test_health_ingestion_degrades_when_snapshot_raises(self, test_client, health_db):
         """A snapshot failure must not 500 — degrade to a safe payload."""
         runtime = MagicMock()
@@ -315,6 +329,7 @@ class TestHealthEndpoints:
         assert body["status"] == "degraded"
         assert body["background_processing_enabled"] is True
 
+    # Validates: SEL-661
     def test_health_egress_reports_the_sqlite_transport(self, test_client, health_db, factory):
         factory.integration(factory.user(), "gmail")
         body = test_client.get("/health/egress").json()
@@ -330,6 +345,7 @@ class TestHealthEndpoints:
 class TestAuthValidation:
     """Tests for authentication enforcement on protected endpoints."""
 
+    # Validates: SEL-442
     def test_no_auth_header_returns_401(self, unauthed_app):
         """Missing Authorization header -> 401."""
         client = TestClient(unauthed_app, raise_server_exceptions=False)
@@ -346,6 +362,7 @@ class TestAuthValidation:
         )
         assert resp.status_code == 401
 
+    # Validates: SEL-442
     def test_invalid_token_returns_401(self, unauthed_app):
         """Valid Bearer format but fake token -> 401 from Supabase validation."""
         client = TestClient(unauthed_app, raise_server_exceptions=False)
@@ -362,6 +379,7 @@ class TestAuthValidation:
         resp = client.post("/events/00000000-0000-0000-0000-000000000001/sync")
         assert resp.status_code == 401
 
+    # Validates: SEL-442
     def test_integrations_google_auth_requires_auth(self, unauthed_app):
         """Google OAuth initiation requires auth."""
         client = TestClient(unauthed_app, raise_server_exceptions=False)
@@ -395,6 +413,7 @@ class TestCORSHeaders:
         )
         assert resp.headers.get("access-control-allow-origin") == "http://localhost:5173"
 
+    # Validates: SEL-428
     def test_disallowed_origin(self, test_client):
         resp = test_client.get(
             "/health",
@@ -402,6 +421,7 @@ class TestCORSHeaders:
         )
         assert "access-control-allow-origin" not in resp.headers
 
+    # Validates: SEL-428
     def test_preflight(self, test_client):
         resp = test_client.options(
             "/emails/sync",
@@ -459,6 +479,7 @@ class TestReprocessEmail:
     """S1: reprocess refuses a row with a live processing lease instead of
     silently returning no rows; everything runs on the real database."""
 
+    # Validates: SEL-091
     def test_reprocess_resets_the_users_email_to_pending(self, db_client, factory):
         client, user_id = db_client
         email_id = factory.email(user_id, processing_status="failed", processing_error="boom",
@@ -472,6 +493,7 @@ class TestReprocessEmail:
         row = factory.row("emails", email_id)
         assert (row["processing_status"], row["attempts"], row["dead_letter_reason"]) == ("pending", 0, None)
 
+    # Validates: SEL-091
     def test_actively_leased_email_returns_409(self, db_client, factory):
         client, user_id = db_client
         email_id = factory.email(user_id, processing_status="processing", locked_by="worker-1",
@@ -483,6 +505,7 @@ class TestReprocessEmail:
         assert "already pending or being processed" in resp.json()["detail"]["detail"]
         assert factory.row("emails", email_id)["locked_by"] == "worker-1"
 
+    # Validates: SEL-091
     def test_another_users_email_is_not_reprocessed(self, db_client, factory):
         client, _user_id = db_client
         other = factory.user()
@@ -513,6 +536,7 @@ class TestNotFoundResponses:
         resp = client.post("/emails/00000000-0000-4000-8000-000000000001/process")
         assert resp.status_code == 404
 
+    # Validates: SEL-441
     def test_another_users_email_is_not_found(self, db_client, factory):
         client, _user_id = db_client
         email_id = factory.email(factory.user())
@@ -588,6 +612,7 @@ class TestServiceRoleOAuthRoutes:
 class TestOAuthCallback:
     """Tests for the Google OAuth callback endpoint."""
 
+    # Validates: SEL-451
     def test_callback_invalid_state(self, test_client):
         """Invalid state redirects to frontend with oauth=error."""
         from selko.services.integrations import OAuthStateError
@@ -604,6 +629,7 @@ class TestOAuthCallback:
         assert resp.status_code == 302
         assert "oauth=error" in resp.headers["location"]
 
+    # Validates: SEL-451
     def test_callback_expired_state(self, test_client):
         """Expired state redirects to frontend with oauth=error."""
         from selko.services.integrations import OAuthStateError
@@ -713,6 +739,7 @@ class TestOAuthCallback:
             )
         return resp, profile
 
+    # Validates: SEL-393, SEL-454
     def test_one_consent_connects_gmail_and_calendar(self, test_client, callback_db, factory):
         """Both rows get the same token, so they can never expire apart."""
         from selko.services.integrations import CALENDAR_SCOPES, GMAIL_SCOPES
@@ -731,6 +758,7 @@ class TestOAuthCallback:
         )
         assert settings["timezone"] == "Europe/Helsinki", "calendar timezone auto-detected"
 
+    # Validates: SEL-454
     def test_an_unticked_product_is_not_connected(self, test_client, callback_db, factory):
         """Google lets the user untick a scope; that product gets no row."""
         from selko.services.integrations import CALENDAR_SCOPES
@@ -742,6 +770,7 @@ class TestOAuthCallback:
         assert set(self._rows(callback_db, user)) == {"google_calendar"}
         profile.assert_not_called()
 
+    # Validates: SEL-454
     def test_a_consent_granting_nothing_connects_nothing(self, test_client, callback_db, factory):
         user = factory.user()
         resp, _ = self._combined_callback(test_client, user, ["openid"])
@@ -749,6 +778,7 @@ class TestOAuthCallback:
         assert "oauth=error" in resp.headers["location"]
         assert self._rows(callback_db, user) == {}
 
+    # Validates: SEL-455
     def test_microsoft_callback_stores_outlook_tokens(self, test_client, callback_db, factory):
         user = factory.user()
         with (
@@ -818,18 +848,21 @@ class TestEmailFolderRoutes:
         )
         return {"alice": alice, "bob": bob, "integration": gmail, **ids}
 
+    # Validates: SEL-045
     def test_list_shows_the_users_non_system_folders_by_path(self, test_client, folders):
         resp = test_client.get("/integrations/gmail/folders")
         assert resp.status_code == 200
         assert [f["name"] for f in resp.json()] == ["Archive", "Work"]
         assert "sync_cursor" not in resp.json()[0], "provider state stays server-side"
 
+    # Validates: SEL-045
     def test_list_is_empty_for_another_user(self, test_client, folders):
         test_client.app.dependency_overrides[get_current_user] = lambda: CurrentUser(
             id=folders["bob"], email=None, token="t"
         )
         assert test_client.get("/integrations/gmail/folders").json() == []
 
+    # Validates: SEL-045
     def test_enabling_a_folder_persists_and_requests_a_poll(self, test_client, folders, db):
         with db.write() as tx:
             later = tx.ts(3600)
@@ -844,6 +877,7 @@ class TestEmailFolderRoutes:
         )[0]
         assert due < later, "the integration is due now, not in an hour"
 
+    # Validates: SEL-045
     def test_system_and_foreign_folders_are_not_found(self, test_client, folders):
         assert test_client.patch(
             f"/integrations/gmail/folders/{folders['INBOX']}", json={"is_included": True}
@@ -859,6 +893,7 @@ class TestEmailFolderRoutes:
 class TestGoogleConnectIsOneConsent:
     """Google connects through one combined consent, at one path."""
 
+    # Validates: SEL-453
     def test_google_auth_starts_the_combined_flow(self, test_client):
         with patch(
             "selko.api.routes.integrations.initiate_oauth_flow",
@@ -899,6 +934,7 @@ class TestRedirectURIValidation:
             )
         assert resp.status_code == 302
 
+    # Validates: SEL-457
     def test_invalid_redirect_uri_returns_400(self, test_client):
         """Disallowed redirect URI returns 400."""
         resp = test_client.get(
@@ -922,6 +958,7 @@ class TestRedirectURIValidation:
         assert resp.status_code == 200
         assert resp.json()["auth_url"] == "https://accounts.google.com/o/oauth2"
 
+    # Validates: SEL-457
     def test_default_redirect_uses_configured_api_host(
         self, test_client, mock_config
     ):
@@ -942,6 +979,7 @@ class TestRedirectURIValidation:
             "https://custom-api.example.com/integrations/google/callback"
         )
 
+    # Validates: SEL-457
     def test_production_redirect_host_allowed(self, test_client):
         """Custom production API host is an allowed OAuth callback."""
         with patch(

@@ -70,6 +70,7 @@ def synced(db, factory, user) -> str:
 # --- the ensure_email_sync_state trigger (18) -------------------------------
 
 
+# Validates: SEL-001
 def test_newly_connected_integration_becomes_pollable(db, factory, user):
     integration_id = factory.integration(user)
     state = _state(db, integration_id)
@@ -81,11 +82,13 @@ def test_newly_connected_integration_becomes_pollable(db, factory, user):
     assert claim is not None and claim["integration_id"] == integration_id
 
 
+# Validates: SEL-002
 def test_non_email_providers_get_no_sync_state(db, factory, user):
     integration_id = factory.integration(user, provider="google_calendar")
     assert es.get_sync_state(db, integration_id) is None
 
 
+# Validates: SEL-001
 def test_reconnecting_clears_backoff_but_respects_a_live_lease(db, synced):
     _set(db, "email_sync_state", "integration_id", synced, consecutive_failures=5, next_poll_at=_ts(1800))
     _set(db, "integrations", "id", synced, status="expired")
@@ -103,6 +106,7 @@ def test_reconnecting_clears_backoff_but_respects_a_live_lease(db, synced):
 # --- claims (8, 9) -----------------------------------------------------------
 
 
+# Validates: SEL-006
 def test_only_one_worker_owns_an_integration_and_expired_leases_return(db, synced):
     owned = es.claim_due_email_sync(db, "worker-a", 900)
     assert owned is not None and owned["integration_id"] == synced
@@ -114,6 +118,7 @@ def test_only_one_worker_owns_an_integration_and_expired_leases_return(db, synce
     assert reclaimed is not None and reclaimed["integration_id"] == synced
 
 
+# Validates: SEL-004
 def test_claim_returns_the_stored_lease_and_a_running_run(db, synced, user):
     claim = es.claim_due_email_sync(db, "worker-a", 900)
     assert set(claim) == {"integration_id", "user_id", "provider", "run_id", "run_kind",
@@ -128,6 +133,7 @@ def test_claim_returns_the_stored_lease_and_a_running_run(db, synced, user):
     assert run["user_id"] == user and run["provider"] == "gmail"
 
 
+# Validates: SEL-003
 def test_claim_skips_inactive_and_not_yet_due(db, factory, user):
     expired = factory.integration(user, status="active")
     _set(db, "integrations", "id", expired, status="expired")
@@ -138,6 +144,7 @@ def test_claim_skips_inactive_and_not_yet_due(db, factory, user):
     assert es.claim_due_email_sync(db, "w", 900) is None
 
 
+# Validates: SEL-003
 def test_claim_orders_by_next_poll_then_never_succeeded_first(db, factory):
     a, b, c = (factory.integration(factory.user()) for _ in range(3))
     same = _ts(-100)
@@ -149,6 +156,7 @@ def test_claim_orders_by_next_poll_then_never_succeeded_first(db, factory):
     assert es.claim_due_email_sync(db, "w", 900) is None
 
 
+# Validates: SEL-004
 def test_incremental_kind_after_a_success(db, synced):
     first = es.claim_due_email_sync(db, "w", 900)
     assert es.complete_email_sync(db, synced, first["run_id"], "w", first["lease_generation"], 300)
@@ -156,11 +164,13 @@ def test_incremental_kind_after_a_success(db, synced):
     assert es.claim_due_email_sync(db, "w", 900)["run_kind"] == "incremental"
 
 
+# Validates: SEL-004
 def test_lease_seconds_floor_is_one(db, synced):
     claim = es.claim_due_email_sync(db, "w", 0)
     assert claim["lease_expires_at"] > _ts()
 
 
+# Validates: SEL-005
 def test_next_sync_claim_abandons_previous_expired_run(db, synced):
     _set(db, "email_sync_state", "integration_id", synced,
          next_poll_at=_ts(-60), lease_owner="dead-worker", lease_expires_at=_ts(-1))
@@ -173,6 +183,7 @@ def test_next_sync_claim_abandons_previous_expired_run(db, synced):
     assert _run(db, second["run_id"])["status"] == "running"
 
 
+# Validates: SEL-005
 def test_one_running_run_per_integration_is_a_database_invariant(db, synced, user):
     def insert():
         with db.write() as tx:
@@ -187,6 +198,7 @@ def test_one_running_run_per_integration_is_a_database_invariant(db, synced, use
         insert()
 
 
+# Validates: SEL-011
 def test_reconciliation_claim_kinds(db, synced):
     # Due for a normal poll: not a reconciliation candidate (next_poll_at must be in the future).
     assert es.claim_due_email_reconciliation(db, "w", 900) is None
@@ -205,6 +217,7 @@ def test_reconciliation_claim_kinds(db, synced):
     assert es.claim_due_email_reconciliation(db, "w", 900)["run_kind"] == "weekly_reconcile"
 
 
+# Validates: SEL-011
 def test_reconciliation_orders_never_reconciled_first(db, factory):
     a, b = factory.integration(factory.user()), factory.integration(factory.user())
     _set(db, "email_sync_state", "integration_id", a, next_poll_at=_ts(100), last_reconciled_at=_ts(-3 * 86400))
@@ -213,6 +226,7 @@ def test_reconciliation_orders_never_reconciled_first(db, factory):
     assert es.claim_due_email_reconciliation(db, "w", 900)["integration_id"] == a
 
 
+# Validates: SEL-006
 def test_concurrent_claims_never_share_an_integration(db, factory):
     ids = [factory.integration(factory.user()) for _ in range(6)]
     for integration_id in ids:
@@ -239,6 +253,7 @@ def test_concurrent_claims_never_share_an_integration(db, factory):
 # --- heartbeat / complete / fail (10-12) ------------------------------------
 
 
+# Validates: SEL-007, SEL-008
 def test_heartbeat_and_completion_require_matching_ownership(db, synced):
     claim = es.claim_due_email_sync(db, "worker-a", 900)
     gen = claim["lease_generation"]
@@ -255,6 +270,7 @@ def test_heartbeat_and_completion_require_matching_ownership(db, synced):
     assert _run(db, claim["run_id"])["status"] == "completed"
 
 
+# Validates: SEL-007
 def test_heartbeat_refuses_an_expired_lease(db, synced):
     claim = es.claim_due_email_sync(db, "w", 900)
     _set(db, "email_sync_state", "integration_id", synced, lease_expires_at=_ts(-1))
@@ -262,6 +278,7 @@ def test_heartbeat_refuses_an_expired_lease(db, synced):
     assert es.complete_email_sync(db, synced, claim["run_id"], "w", claim["lease_generation"]) is False
 
 
+# Validates: SEL-007
 def test_stale_sync_generation_cannot_complete_new_run(db, synced):
     first = es.claim_due_email_sync(db, "worker-a", 1)
     _set(db, "email_sync_state", "integration_id", synced, lease_expires_at=_ts(-1), next_poll_at=_ts(-60))
@@ -275,6 +292,7 @@ def test_stale_sync_generation_cannot_complete_new_run(db, synced):
     assert _run(db, second["run_id"])["status"] == "running"
 
 
+# Validates: SEL-009
 def test_failure_backoff_grows_and_stays_capped(db, synced):
     delays = []
     for _ in range(4):
@@ -291,6 +309,7 @@ def test_failure_backoff_grows_and_stays_capped(db, synced):
     assert [round(d / 60) for d in delays] == [1, 2, 4, 5]
 
 
+# Validates: SEL-009
 def test_fail_records_truncated_codes_and_releases_the_lease(db, synced):
     claim = es.claim_due_email_sync(db, "w", 900)
     assert es.fail_email_sync(db, synced, claim["run_id"], "w", claim["lease_generation"],
@@ -302,6 +321,7 @@ def test_fail_records_truncated_codes_and_releases_the_lease(db, synced):
     assert state["lease_owner"] is None and state["last_error_code"] == "c" * 100
 
 
+# Validates: SEL-010
 def test_auth_failure_expires_the_integration_and_sends_a_live_hint(db, synced, user):
     claim = es.claim_due_email_sync(db, "w", 900)
     recorder = _Recorder()
@@ -316,6 +336,7 @@ def test_auth_failure_expires_the_integration_and_sends_a_live_hint(db, synced, 
     assert es.claim_due_email_sync(db, "w", 900) is None
 
 
+# Validates: SEL-010
 def test_non_auth_failure_leaves_the_integration_active(db, synced):
     claim = es.claim_due_email_sync(db, "w", 900)
     es.fail_email_sync(db, synced, claim["run_id"], "w", claim["lease_generation"], "transient")
@@ -331,6 +352,7 @@ def _items(db, integration_id):
     return [db.schema.decode("email_ingestion_items", r) for r in rows]
 
 
+# Validates: SEL-034
 def test_discovery_page_write_records_run_counters(db, synced):
     claim = es.claim_due_email_sync(db, "worker-a", 900)
     result = es.upsert_discovered_email_items(
@@ -351,6 +373,7 @@ def test_discovery_page_write_records_run_counters(db, synced):
     assert [i["provider_message_id"] for i in _items(db, synced)] == ["m1", "m2"]
 
 
+# Validates: SEL-032
 def test_new_items_are_pending_with_the_transaction_time(db, synced, user):
     claim = es.claim_due_email_sync(db, "w", 900)
     es.upsert_discovered_email_items(db, synced, claim["run_id"], [
@@ -365,6 +388,7 @@ def test_new_items_are_pending_with_the_transaction_time(db, synced, user):
     assert len(item["created_at"]) == 27
 
 
+# Validates: SEL-032
 def test_identity_upsert_unions_folders_and_protects_completed_items(db, synced):
     claim = es.claim_due_email_sync(db, "worker-a", 900)
     run = claim["run_id"]
@@ -383,6 +407,7 @@ def test_identity_upsert_unions_folders_and_protects_completed_items(db, synced)
     assert sorted(after["provider_folder_ids"]) == ["ARCHIVE", "INBOX"]
 
 
+# Validates: SEL-032
 def test_rediscovery_requeues_retry_but_not_processing_or_dead_letter(db, synced):
     claim = es.claim_due_email_sync(db, "w", 900)
     es.upsert_discovered_email_items(db, synced, claim["run_id"], [
@@ -403,6 +428,7 @@ def test_rediscovery_requeues_retry_but_not_processing_or_dead_letter(db, synced
     }
 
 
+# Validates: SEL-034
 def test_discovery_emits_one_item_pending_signal_per_commit(db, synced):
     claim = es.claim_due_email_sync(db, "w", 900)
     recorder = _Recorder()
@@ -413,6 +439,7 @@ def test_discovery_emits_one_item_pending_signal_per_commit(db, synced):
     assert recorder.calls == ["item_pending"]
 
 
+# Validates: SEL-034
 def test_cursor_advances_only_when_discovery_supplies_one(db, synced):
     _set(db, "integrations", "id", synced, sync_cursor="history-999")
     claim = es.claim_due_email_sync(db, "worker-a", 900)
@@ -425,6 +452,7 @@ def test_cursor_advances_only_when_discovery_supplies_one(db, synced):
     assert row["sync_cursor"] == "history-1000" and row["last_sync_at"] is not None
 
 
+# Validates: SEL-027
 def test_folder_cursor_goes_to_the_folder_of_this_integration_only(db, factory, synced, user):
     (folder,) = es.upsert_folders(db, synced, [_folder_row(user, synced, "inbox-id")])
     other = factory.integration(factory.user(), provider="outlook")
@@ -437,6 +465,7 @@ def test_folder_cursor_goes_to_the_folder_of_this_integration_only(db, factory, 
     assert es.folders_for_integration(db, synced)[0]["sync_cursor"] == "delta-1"
 
 
+# Validates: SEL-034
 def test_counters_only_move_on_a_running_run(db, synced):
     claim = es.claim_due_email_sync(db, "w", 900)
     es.complete_email_sync(db, synced, claim["run_id"], "w", claim["lease_generation"])
@@ -450,6 +479,7 @@ def test_unknown_integration_raises_not_found(db):
         es.upsert_discovered_email_items(db, codec.new_id(), codec.new_id(), [])
 
 
+# Validates: SEL-033
 def test_duplicate_identity_in_one_page_fails_the_page_as_postgres_did(db, synced):
     claim = es.claim_due_email_sync(db, "w", 900)
     with pytest.raises(errors.DbError):
@@ -482,6 +512,7 @@ def _item(db, integration_id, user_id, **fields) -> str:
     return item_id
 
 
+# Validates: SEL-050
 def test_claim_item_oldest_first_and_leases_it(db, synced, user):
     newer = _item(db, synced, user, created_at=_ts(-10))
     older = _item(db, synced, user, created_at=_ts(-100))
@@ -495,6 +526,7 @@ def test_claim_item_oldest_first_and_leases_it(db, synced, user):
     assert es.claim_email_ingestion_item(db, "w", 900) is None
 
 
+# Validates: SEL-050
 def test_a_row_serving_its_retry_backoff_is_not_claimable(db, synced, user):
     waiting = _item(db, synced, user, acquisition_status="retry", attempts=1,
                     created_at=_ts(-19 * 86400), next_retry_at=_ts(600))
@@ -503,6 +535,7 @@ def test_a_row_serving_its_retry_backoff_is_not_claimable(db, synced, user):
     assert es.claim_email_ingestion_item(db, "w")["id"] == waiting
 
 
+# Validates: SEL-050
 def test_claim_item_respects_attempts_live_leases_and_terminal_states(db, synced, user):
     _item(db, synced, user, attempts=8, max_attempts=8)
     _item(db, synced, user, acquisition_status="processing", attempts=1, lease_owner="o", lease_expires_at=_ts(900))
@@ -515,6 +548,7 @@ def test_claim_item_respects_attempts_live_leases_and_terminal_states(db, synced
     assert reclaimed["id"] == expired and reclaimed["attempts"] == 2 and reclaimed["lease_owner"] == "w"
 
 
+# Validates: SEL-050
 def test_concurrent_item_claims_never_share_a_row(db, synced, user):
     ids = {_item(db, synced, user) for _ in range(20)}
     claimed: list[str] = []
@@ -533,6 +567,7 @@ def test_concurrent_item_claims_never_share_a_row(db, synced, user):
     assert len(claimed) == len(ids) and set(claimed) == ids
 
 
+# Validates: SEL-053
 def test_complete_item_is_fenced_on_owner_and_status(db, factory, synced, user):
     item_id = _item(db, synced, user)
     email_id = factory.email(user)
@@ -546,6 +581,7 @@ def test_complete_item_is_fenced_on_owner_and_status(db, factory, synced, user):
     assert es.complete_email_ingestion_item(db, item_id, "w", email_id) is False
 
 
+# Validates: SEL-055
 def test_no_acquisition_failure_is_terminal_on_first_attempt(db, factory, synced, user):
     item_id = _item(db, synced, user)
     es.claim_email_ingestion_item(db, "w")
@@ -567,6 +603,7 @@ def test_permanent_error_is_terminal_on_first_attempt(db, factory, synced, user)
     assert row["last_error_code"] == "e" * 100
 
 
+# Validates: SEL-055
 def test_exhausted_attempts_dead_letter_and_backoff_is_capped(db, factory, synced, user):
     item_id = _item(db, synced, user, attempts=6, max_attempts=8, lease_owner="w")
     assert es.fail_email_ingestion_item(db, item_id, "w", "x", 60, 1800)
@@ -587,6 +624,7 @@ def test_zero_attempts_backoff_rounds_half_to_even_like_postgres(db, factory, sy
     assert row["acquisition_status"] == "retry" and before <= row["next_retry_at"] <= _ts()
 
 
+# Validates: SEL-053
 def test_remove_item_is_fenced_on_owner(db, factory, synced, user):
     item_id = _item(db, synced, user)
     es.claim_email_ingestion_item(db, "w")
@@ -616,6 +654,7 @@ def test_dead_letter_integration_ids(db, factory, synced, user):
 # --- request_email_sync_now (17) -------------------------------------------
 
 
+# Validates: SEL-012
 def test_request_sync_now_respects_lease_and_owner(db, factory, synced, user):
     _set(db, "email_sync_state", "integration_id", synced, next_poll_at=_ts(600))
     stranger = factory.user()
@@ -665,6 +704,7 @@ def _folder_row(user_id, integration_id, provider_folder_id, **extra) -> dict[st
     return row
 
 
+# Validates: SEL-041
 def test_upsert_folders_inserts_then_updates_in_place(db, synced, user):
     first = es.upsert_folders(db, synced, [_folder_row(user, synced, "L1"), _folder_row(user, synced, "L2")])
     assert [f["provider_folder_id"] for f in first] == ["L1", "L2"]
@@ -712,6 +752,7 @@ def test_folder_reads_and_delete(db, factory, synced, user):
     assert len(es.folders_for_integration(db, synced)) == 2
 
 
+# Validates: SEL-044
 def test_set_email_folder_preference(db, factory, synced, user):
     folders = es.upsert_folders(db, synced, [
         _folder_row(user, synced, "L", sync_cursor="cur"),

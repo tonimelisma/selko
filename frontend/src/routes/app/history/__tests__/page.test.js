@@ -99,6 +99,7 @@ describe('History Page', () => {
 		});
 	});
 
+	// Validates: SEL-541
 	it('shows cancellation status without an undo action', async () => {
 		const now = new Date();
 		mockFetchActivityEvents.mockResolvedValue({
@@ -123,6 +124,7 @@ describe('History Page', () => {
 		expect(screen.queryByRole('button', { name: 'Undo' })).not.toBeInTheDocument();
 	});
 
+	// Validates: SEL-541
 	it('shows undo button for synced events', async () => {
 		const now = new Date();
 		mockFetchActivityEvents.mockResolvedValue({
@@ -146,6 +148,7 @@ describe('History Page', () => {
 		});
 	});
 
+	// Validates: SEL-541
 	it('shows retry button for failed syncs', async () => {
 		const now = new Date();
 		mockFetchActivityEvents.mockResolvedValue({
@@ -169,6 +172,7 @@ describe('History Page', () => {
 		});
 	});
 
+	// Validates: SEL-543
 	it('polls a retried sync until the worker reports synced', async () => {
 		const user = userEvent.setup();
 		const now = new Date();
@@ -201,6 +205,7 @@ describe('History Page', () => {
 		});
 	});
 
+	// Validates: SEL-543
 	it('keeps observing a retried sync through the worker backoff window', async () => {
 		vi.useFakeTimers();
 		const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
@@ -243,6 +248,7 @@ describe('History Page', () => {
 		await vi.waitFor(() => expect(screen.getByText('Undo')).toBeInTheDocument());
 	});
 
+	// Validates: SEL-543
 	it('restores Retry when the worker-owned retry fails again', async () => {
 		vi.useFakeTimers();
 		const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
@@ -309,6 +315,7 @@ describe('History Page', () => {
 		expect(mockUndoHistoryEvent).toHaveBeenCalledWith('evt-1', {});
 	});
 
+	// Validates: SEL-540
 	it('shows Load More button when more events available', async () => {
 		const now = new Date();
 		const events = Array.from({ length: 20 }, (_, i) => ({
@@ -422,6 +429,7 @@ describe('History Page', () => {
 		});
 	});
 
+	// Validates: SEL-542
 	it('shows Force Undo when calendar diverged', async () => {
 		const user = userEvent.setup();
 		const now = new Date();
@@ -559,6 +567,7 @@ describe('History Page', () => {
 		});
 	});
 
+	// Validates: SEL-544
 	it('polls a reprocessed email until it reaches processed', async () => {
 		const user = userEvent.setup();
 		mockFetchEmailHistory.mockResolvedValueOnce({
@@ -606,6 +615,7 @@ describe('History Page', () => {
 		});
 	});
 
+	// Validates: SEL-544
 	it('prevents repeated reprocess clicks while the current attempt is pending', async () => {
 		const user = userEvent.setup();
 		mockFetchEmailHistory.mockResolvedValue({
@@ -644,6 +654,7 @@ describe('History Page', () => {
 		});
 	});
 
+	// Validates: SEL-544
 	it('stops polling at the bounded timeout', async () => {
 		vi.useFakeTimers();
 		const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });

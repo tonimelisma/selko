@@ -67,6 +67,7 @@ def test_upsert_stores_the_entry_and_returns_what_indexing_needs(db, owner):
     assert row["user_id"] == user
 
 
+# Validates: SEL-372
 def test_upsert_updates_in_place_on_the_provider_key(db, owner):
     user, integration = owner
     first = mirror.upsert_entries(db, user, _rows(user, integration, _google("evt-1")))[0]
@@ -80,6 +81,7 @@ def test_upsert_updates_in_place_on_the_provider_key(db, owner):
     assert db.query_one("SELECT count(*) FROM calendar_entries")[0] == 1
 
 
+# Validates: SEL-372
 def test_same_provider_id_in_another_calendar_is_another_entry(db, owner):
     user, integration = owner
     mirror.upsert_entries(db, user, _rows(user, integration, _google("evt-1")))
@@ -87,6 +89,7 @@ def test_same_provider_id_in_another_calendar_is_another_entry(db, owner):
     assert db.query_one("SELECT count(*) FROM calendar_entries")[0] == 2
 
 
+# Validates: SEL-372
 def test_cancelled_entries_are_tombstoned(db, owner):
     user, integration = owner
     stored = mirror.upsert_entries(db, user, _rows(user, integration, _google("evt-1", status="cancelled")))[0]
@@ -102,6 +105,7 @@ def test_all_day_entries_store_midnight_utc(db, owner):
     assert tuple(row) == ("2026-12-24T00:00:00.000000Z", 1)
 
 
+# Validates: SEL-375
 def test_upsert_refuses_another_users_integration(db, factory, owner):
     user, integration = owner
     other = factory.user()
@@ -126,6 +130,7 @@ def test_upsert_refuses_unknown_columns(db, owner):
 # --- identity hints -----------------------------------------------------------
 
 
+# Validates: SEL-374
 def test_mirrored_entries_are_indexed_by_uid_and_join_url(db, owner):
     user, integration = owner
     stored = mirror.upsert_entries(db, user, _rows(user, integration, _google("evt-1", hangoutLink="https://meet.google.com/abc-defg-hij")))
@@ -244,6 +249,7 @@ def test_an_incremental_pass_updates_and_clears_the_full_resync_time(db, owner):
     assert row["lease_owner"] == "w1", "columns the service did not send are kept"
 
 
+# Validates: SEL-375
 def test_save_state_refuses_another_users_integration(db, factory, owner):
     _, integration = owner
     with pytest.raises(NotOwned):

@@ -92,6 +92,7 @@ describe('live-updates SSE client', () => {
 		vi.restoreAllMocks();
 	});
 
+	// Validates: SEL-562, SEL-726
 	it('opens GET /live with the Bearer token (no token in the URL)', async () => {
 		await live.start('u1');
 		await flush();
@@ -103,6 +104,7 @@ describe('live-updates SSE client', () => {
 		expect(live.getStatus()).toBe('connecting');
 	});
 
+	// Validates: SEL-563
 	it('catches up every subscribed resource on ready', async () => {
 		const events = vi.fn();
 		const emails = vi.fn();
@@ -120,6 +122,7 @@ describe('live-updates SSE client', () => {
 		expect(emails).toHaveBeenCalledWith(expect.objectContaining({ resource: 'emails', operation: 'CATCHUP' }));
 	});
 
+	// Validates: SEL-563
 	it('hands an invalidate frame to its resource’s handler, debounced', async () => {
 		const events = vi.fn();
 		live.subscribe('events', events);
@@ -138,6 +141,7 @@ describe('live-updates SSE client', () => {
 		expect(events).toHaveBeenCalledWith(expect.objectContaining({ resource: 'events', operation: 'DELETE' }));
 	});
 
+	// Validates: SEL-563
 	it('ignores resources outside the allowlist and heartbeat comments', async () => {
 		const session = vi.fn();
 		live.subscribe('session', session);
@@ -150,6 +154,7 @@ describe('live-updates SSE client', () => {
 		expect(session).not.toHaveBeenCalled();
 	});
 
+	// Validates: SEL-564
 	it('reconnects with a doubling backoff when the stream ends', async () => {
 		await live.start('u1');
 		await flush();
@@ -172,6 +177,7 @@ describe('live-updates SSE client', () => {
 		expect(live.getRejoinAttempts()).toBe(2);
 	});
 
+	// Validates: SEL-564
 	it('reconnects after a network error and resets the backoff on ready', async () => {
 		mockFetch.mockRejectedValueOnce(new TypeError('Failed to fetch'));
 		await live.start('u1');
@@ -186,6 +192,7 @@ describe('live-updates SSE client', () => {
 		expect(live.getRejoinAttempts()).toBe(0);
 	});
 
+	// Validates: SEL-564
 	it('caps the backoff at 60 s', async () => {
 		const times = [];
 		mockFetch.mockImplementation(async () => {
@@ -212,6 +219,7 @@ describe('live-updates SSE client', () => {
 		expect(live.getStatus()).toBe('disconnected');
 	});
 
+	// Validates: SEL-565
 	it('stops for good when the session is revoked', async () => {
 		await live.start('u1');
 		await flush();
@@ -224,6 +232,7 @@ describe('live-updates SSE client', () => {
 		expect(live.getStatus()).toBe('disconnected');
 	});
 
+	// Validates: SEL-565
 	it('reconnects when the server asks for re-auth', async () => {
 		await live.start('u1');
 		await flush();
@@ -235,6 +244,7 @@ describe('live-updates SSE client', () => {
 		expect(mockFetch).toHaveBeenCalledTimes(2);
 	});
 
+	// Validates: SEL-564
 	it('reconnects after 60 s of silence', async () => {
 		await live.start('u1');
 		await flush();
@@ -248,6 +258,7 @@ describe('live-updates SSE client', () => {
 		expect(mockFetch).toHaveBeenCalledTimes(2);
 	});
 
+	// Validates: SEL-565
 	it('on 401 refreshes the token, then reconnects with the new one', async () => {
 		mockFetch.mockResolvedValueOnce({ ok: false, status: 401, body: null });
 		mockAuth.refresh.mockImplementation(async () => {
@@ -264,6 +275,7 @@ describe('live-updates SSE client', () => {
 		expect(mockFetch.mock.calls[1][1].headers.Authorization).toBe('Bearer token-2');
 	});
 
+	// Validates: SEL-565
 	it('on 401 with a failed refresh stops', async () => {
 		mockFetch.mockResolvedValueOnce({ ok: false, status: 401, body: null });
 
@@ -275,6 +287,7 @@ describe('live-updates SSE client', () => {
 		expect(live.getStatus()).toBe('disconnected');
 	});
 
+	// Validates: SEL-564
 	it('backs off on 429 (too many streams)', async () => {
 		mockFetch.mockResolvedValueOnce({ ok: false, status: 429, body: null });
 
@@ -308,6 +321,7 @@ describe('live-updates SSE client', () => {
 		expect(mockFetch).not.toHaveBeenCalled();
 	});
 
+	// Validates: SEL-562
 	it('start is idempotent for the same user', async () => {
 		await live.start('u1');
 		await live.start('u1');

@@ -27,6 +27,7 @@ def _llm_row(**extra):
 
 
 class TestLlmCallLog:
+    # Validates: SEL-674
     def test_log_successful_call(self, db, factory):
         user = factory.user()
         log_id = ops.log_llm_call(db, user, _llm_row())
@@ -69,6 +70,7 @@ class TestLlmCallLog:
         user = factory.user()
         assert ops.log_llm_call(db, user, _llm_row(operation_type=op))
 
+    # Validates: SEL-674
     def test_started_at_defaults_to_now(self, db, factory):
         user = factory.user()
         row = _llm_row()
@@ -76,14 +78,17 @@ class TestLlmCallLog:
         log = ops.get_llm_call(db, user, ops.log_llm_call(db, user, row))
         assert log["started_at"] == log["created_at"]
 
+    # Validates: SEL-674
     def test_unknown_user_is_refused(self, db):
         with pytest.raises(errors.ForeignKeyViolation):
             ops.log_llm_call(db, "00000000-0000-0000-0000-000000000000", _llm_row())
 
+    # Validates: SEL-621
     def test_unknown_column_is_refused(self, db, factory):
         with pytest.raises(errors.InvalidArgument):
             ops.log_llm_call(db, factory.user(), _llm_row(id="x"))
 
+    # Validates: SEL-674
     def test_another_users_log_is_not_visible(self, db, factory):
         owner, other = factory.user(), factory.user()
         log_id = ops.log_llm_call(db, owner, _llm_row())
@@ -91,6 +96,7 @@ class TestLlmCallLog:
 
 
 class TestGraphLedger:
+    # Validates: SEL-096, SEL-675
     def test_failure_is_recorded_with_redacted_operation_and_run(self, db, factory):
         user = factory.user()
         integration = factory.integration(user, provider="outlook")
@@ -129,6 +135,7 @@ class TestGraphLedger:
                                db.query_one("SELECT * FROM graph_api_failures WHERE id = ?", (failure_id,)))
         assert row["attempt"] == 1 and row["will_retry"] is False
 
+    # Validates: SEL-675
     def test_invalid_surface_is_refused(self, db):
         with pytest.raises(errors.CheckViolation):
             ops.record_graph_failure(db, {
@@ -142,6 +149,7 @@ class TestIncidents:
             db, incident_key=f"email-sync:{integration}:stale_poll", integration_id=integration,
             user_id=user, incident_type="stale_poll", severity=severity, safe_summary=summary)
 
+    # Validates: SEL-676
     def test_raise_creates_then_refreshes_an_open_incident(self, db, factory):
         user = factory.user()
         integration = factory.integration(user)
@@ -161,6 +169,7 @@ class TestIncidents:
         # Still open: the opened notification is not sent again.
         assert refreshed["opened_notification_sent_at"] == "2026-11-25T10:00:00.000000Z"
 
+    # Validates: SEL-676
     def test_a_resolved_incident_reopens_with_cleared_notifications(self, db, factory):
         user = factory.user()
         integration = factory.integration(user)
@@ -175,6 +184,7 @@ class TestIncidents:
         assert reopened["opened_notification_sent_at"] is None
         assert reopened["resolved_notification_sent_at"] is None
 
+    # Validates: SEL-621
     def test_open_incident_get_and_duplicate(self, db, factory):
         user = factory.user()
         integration = factory.integration(user)

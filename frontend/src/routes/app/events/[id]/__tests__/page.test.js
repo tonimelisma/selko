@@ -132,6 +132,7 @@ describe('Event Detail Page', () => {
 		expect(document.querySelector('.loading.loading-spinner')).toBeTruthy();
 	});
 
+	// Validates: SEL-535
 	it('displays event title in form', async () => {
 		render(EventDetailPage);
 
@@ -151,6 +152,7 @@ describe('Event Detail Page', () => {
 		});
 	});
 
+	// Validates: SEL-535
 	it('shows source email info', async () => {
 		render(EventDetailPage);
 
@@ -161,6 +163,7 @@ describe('Event Detail Page', () => {
 		});
 	});
 
+	// Validates: SEL-537
 	it('offers stored attachments for download and lists the rest as names', async () => {
 		mockFetchAttachments.mockResolvedValue({
 			data: [
@@ -182,6 +185,7 @@ describe('Event Detail Page', () => {
 		);
 	});
 
+	// Validates: SEL-535
 	it('shows error when event not found', async () => {
 		mockGetEvent.mockResolvedValue({
 			data: null,
@@ -207,6 +211,7 @@ describe('Event Detail Page', () => {
 		});
 	});
 
+	// Validates: SEL-526
 	it('keeps editing and rejection available but disables acceptance when calendar expired', async () => {
 		mockFetchIntegrations.mockResolvedValue({
 			data: [

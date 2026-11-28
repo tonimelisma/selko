@@ -5,12 +5,14 @@ import { render, screen } from '@testing-library/svelte';
 const { default: PrivacyPage } = await import('../+page.svelte');
 
 describe('Privacy Policy Page', () => {
+	// Validates: SEL-735
 	it('renders without a signed-in user', () => {
 		render(PrivacyPage);
 
 		expect(screen.getByRole('heading', { level: 1, name: /privacy policy/i })).toBeInTheDocument();
 	});
 
+	// Validates: SEL-738
 	it('carries the Google Limited Use disclosure', () => {
 		render(PrivacyPage);
 
@@ -21,6 +23,7 @@ describe('Privacy Policy Page', () => {
 		).toHaveAttribute('href', 'https://developers.google.com/terms/api-services-user-data-policy');
 	});
 
+	// Validates: SEL-736
 	it('names every service provider that handles user data', () => {
 		render(PrivacyPage);
 
@@ -29,6 +32,7 @@ describe('Privacy Policy Page', () => {
 		}
 	});
 
+	// Validates: SEL-736
 	it('names no provider Selko no longer uses', () => {
 		const { container } = render(PrivacyPage);
 
@@ -38,6 +42,7 @@ describe('Privacy Policy Page', () => {
 		}
 	});
 
+	// Validates: SEL-737
 	it('names no AI provider besides Anthropic', () => {
 		const { container } = render(PrivacyPage);
 
@@ -46,6 +51,7 @@ describe('Privacy Policy Page', () => {
 		expect(container.textContent).not.toMatch(/gemini|qwen|openai|alibaba/i);
 	});
 
+	// Validates: SEL-739
 	it('gives a way to request deletion', () => {
 		render(PrivacyPage);
 

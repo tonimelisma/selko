@@ -12,6 +12,7 @@ def ts(delta_seconds: float = 0) -> str:
     return codec.to_timestamp(datetime.now(timezone.utc) + timedelta(seconds=delta_seconds))
 
 
+# Validates: SEL-630
 def test_every_lease_is_released(db, factory):
     user = factory.user()
     integration = factory.integration(user)
@@ -77,5 +78,6 @@ def test_every_lease_is_released(db, factory):
     assert all(v == 0 for v in reset_leases_at_startup(db).values())
 
 
+# Validates: SEL-630
 def test_reset_on_an_empty_database(db):
     assert all(v == 0 for v in reset_leases_at_startup(db).values())

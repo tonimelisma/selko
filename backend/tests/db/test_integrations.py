@@ -103,6 +103,7 @@ def test_reactivating_mail_resumes_its_sync_state(db, factory):
     assert tuple(state) == (0, None)
 
 
+# Validates: SEL-456
 def test_update_tokens_without_refresh_token_keeps_it(db, factory):
     user = factory.user()
     factory.integration(user, "gmail", status="expired", refresh_token="keep-me")
@@ -144,6 +145,7 @@ def test_update_tokens_scopes_by_user(db, factory):
     assert dbi.get_integration(db, alice, "gmail")["access_token"] == "test-access-token"
 
 
+# Validates: SEL-459
 def test_delete_integration_cascades_and_scopes_by_user(db, factory):
     alice, bob = factory.user(), factory.user()
     iid = factory.integration(alice, "gmail")
@@ -157,6 +159,7 @@ def test_delete_integration_cascades_and_scopes_by_user(db, factory):
 # --- oauth_states -------------------------------------------------------------
 
 
+# Validates: SEL-451
 def test_oauth_state_is_consumed_once(db, factory):
     user = factory.user()
     dbi.save_oauth_state(db, user, "state-1", "gmail", "https://app/cb", code_verifier="v")
@@ -169,6 +172,7 @@ def test_oauth_state_is_consumed_once(db, factory):
     assert dbi.consume_oauth_state(db, "state-1") is None, "a state is single-use"
 
 
+# Validates: SEL-450
 def test_oauth_state_expires_after_ten_minutes(db, factory):
     user = factory.user()
     dbi.save_oauth_state(db, user, "s", "gmail", "u")
@@ -219,6 +223,7 @@ def test_update_and_get_settings(db, factory):
     assert row["all_day_display_mode"] == "all_day"
 
 
+# Validates: SEL-390
 def test_settings_upsert_is_idempotent_and_keeps_unsent_columns(db, factory):
     user = factory.user()
     dbi.upsert_calendar_settings(db, user, {"timezone": "Europe/Helsinki"})
@@ -252,6 +257,7 @@ def test_custom_all_day_times_are_stored_as_postgres_time_text(db, factory):
     }
 
 
+# Validates: SEL-390
 def test_custom_all_day_window_must_be_ordered(db, factory):
     user = factory.user()
     with pytest.raises(CheckViolation):

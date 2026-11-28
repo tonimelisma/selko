@@ -47,6 +47,7 @@ def _tables(conn: sqlite3.Connection) -> set[str]:
 # --- schema -----------------------------------------------------------------
 
 
+# Validates: SEL-624
 def test_initial_schema_creates_every_table(tmp_path):
     path = tmp_path / "selko.db"
     applied = migrate(path)
@@ -58,6 +59,7 @@ def test_initial_schema_creates_every_table(tmp_path):
     assert current_version(conn) == len(applied)
 
 
+# Validates: SEL-619
 def test_every_table_is_strict(tmp_path):
     path = tmp_path / "selko.db"
     migrate(path)
@@ -66,6 +68,7 @@ def test_every_table_is_strict(tmp_path):
         assert sql.rstrip().endswith("STRICT"), name
 
 
+# Validates: SEL-621
 def test_check_domains_hold(db):
     """The Postgres CHECK domains survive: an unknown processing_status is refused."""
     with pytest.raises(CheckViolation, match="emails_processing_status_check"):
@@ -83,6 +86,7 @@ def test_check_domains_hold(db):
             )
 
 
+# Validates: SEL-621
 def test_foreign_keys_are_enforced(db):
     with pytest.raises(ForeignKeyViolation):
         with db.transaction() as tx:
@@ -99,12 +103,14 @@ def _write(dir_: Path, name: str, sql: str) -> None:
     (dir_ / name).write_text(sql, encoding="utf-8")
 
 
+# Validates: SEL-624
 def test_migrate_is_idempotent(tmp_path):
     path = tmp_path / "selko.db"
     migrate(path)
     assert migrate(path) == []
 
 
+# Validates: SEL-625
 def test_pending_migration_is_applied_after_a_backup(tmp_path):
     mdir = tmp_path / "m"
     mdir.mkdir()
@@ -125,6 +131,7 @@ def test_pending_migration_is_applied_after_a_backup(tmp_path):
     assert [r[1] for r in copy.execute("PRAGMA table_info(t)")] == ["x"]
 
 
+# Validates: SEL-625
 def test_only_the_newest_backups_are_kept(tmp_path):
     """Each migration copies the whole database (~300 MB in production); old copies go."""
     from selko.db.migrate import BACKUPS_KEPT
@@ -150,6 +157,7 @@ def test_only_the_newest_backups_are_kept(tmp_path):
     assert "c6" not in [r[1] for r in copy.execute("PRAGMA table_info(t)")]
 
 
+# Validates: SEL-626
 def test_a_failed_migration_removes_no_backup(tmp_path):
     mdir = tmp_path / "m"
     mdir.mkdir()
@@ -166,6 +174,7 @@ def test_a_failed_migration_removes_no_backup(tmp_path):
     assert sorted(p.name for p in (path.parent / "backups").iterdir()) == ["pre-0002.db", "pre-0003.db", "pre-0004.db"]
 
 
+# Validates: SEL-626
 def test_failing_migration_rolls_back_whole(tmp_path):
     mdir = tmp_path / "m"
     mdir.mkdir()
@@ -180,6 +189,7 @@ def test_failing_migration_rolls_back_whole(tmp_path):
     assert current_version(conn) == 1
 
 
+# Validates: SEL-626
 def test_foreign_key_violation_is_never_committed(tmp_path):
     mdir = tmp_path / "m"
     mdir.mkdir()
@@ -196,6 +206,7 @@ def test_foreign_key_violation_is_never_committed(tmp_path):
     assert "c" not in _tables(sqlite3.connect(path))
 
 
+# Validates: SEL-627
 def test_changed_applied_migration_is_refused(tmp_path):
     mdir = tmp_path / "m"
     mdir.mkdir()
@@ -207,6 +218,7 @@ def test_changed_applied_migration_is_refused(tmp_path):
         migrate(path, mdir)
 
 
+# Validates: SEL-627
 def test_database_newer_than_the_build_is_refused(tmp_path):
     mdir = tmp_path / "m"
     mdir.mkdir()
@@ -219,6 +231,7 @@ def test_database_newer_than_the_build_is_refused(tmp_path):
         migrate(path, mdir)
 
 
+# Validates: SEL-628
 def test_shipped_migrations_are_numbered_without_gaps():
     assert [m.version for m in available(MIGRATIONS_DIR)] == list(range(1, len(available()) + 1))
 
@@ -226,6 +239,7 @@ def test_shipped_migrations_are_numbered_without_gaps():
 # --- single writer ----------------------------------------------------------
 
 
+# Validates: SEL-609
 def test_writes_never_interleave(db):
     """Concurrent claimers each get a different row: what SKIP LOCKED gave Postgres."""
     with db.transaction() as tx:
@@ -256,6 +270,7 @@ def test_writes_never_interleave(db):
     assert sorted(claimed) == list(range(1, 201))
 
 
+# Validates: SEL-610
 def test_after_commit_runs_only_on_commit(db):
     fired: list[str] = []
     with db.transaction() as tx:
@@ -267,6 +282,7 @@ def test_after_commit_runs_only_on_commit(db):
     assert fired == ["committed"]
 
 
+# Validates: SEL-610
 def test_rollback_discards_writes(db):
     with pytest.raises(RuntimeError):
         with db.transaction() as tx:
@@ -278,12 +294,14 @@ def test_rollback_discards_writes(db):
     assert db.query_one("SELECT count(*) FROM accounts")[0] == 0
 
 
+# Validates: SEL-615
 def test_readers_cannot_write(db):
     with pytest.raises(sqlite3.OperationalError):
         with db.reading() as conn:
             conn.execute("DELETE FROM accounts")
 
 
+# Validates: SEL-616
 def test_run_moves_work_off_the_event_loop(db):
     async def go():
         return await db.run(lambda: threading.current_thread() is threading.main_thread())
@@ -294,6 +312,7 @@ def test_run_moves_work_off_the_event_loop(db):
 # --- codec ------------------------------------------------------------------
 
 
+# Validates: SEL-617
 def test_timestamp_text_orders_like_time():
     base = datetime(2026, 11, 25, 7, 0, tzinfo=timezone.utc)
     moments = [base + timedelta(microseconds=n) for n in (0, 1, 999_999)] + [
@@ -304,6 +323,7 @@ def test_timestamp_text_orders_like_time():
     assert all(len(t) == 27 and t.endswith("Z") for t in texts)
 
 
+# Validates: SEL-617
 def test_timestamp_round_trips_and_refuses_naive():
     moment = datetime(2026, 3, 8, 10, 30, 1, 123456, tzinfo=timezone(timedelta(hours=-7)))
     assert codec.parse_timestamp(codec.to_timestamp(moment)) == moment
@@ -311,10 +331,12 @@ def test_timestamp_round_trips_and_refuses_naive():
         codec.to_timestamp(datetime(2026, 1, 1))
 
 
+# Validates: SEL-618
 def test_json_is_canonical():
     assert codec.to_json({"b": 1, "a": [1, "ä"]}) == codec.to_json({"a": [1, "ä"], "b": 1}) == '{"a":[1,"ä"],"b":1}'
 
 
+# Validates: SEL-618
 def test_schema_decodes_booleans_and_json(db):
     assert "is_spam" in db.schema.bool_columns["emails"]
     assert "processing_result" in db.schema.json_columns["emails"]
@@ -329,6 +351,7 @@ def test_schema_decodes_booleans_and_json(db):
 # --- event bus --------------------------------------------------------------
 
 
+# Validates: SEL-635
 def test_bus_delivers_after_commit_from_a_worker_thread(db):
     from selko.db.bus import Bus
 
@@ -347,6 +370,7 @@ def test_bus_delivers_after_commit_from_a_worker_thread(db):
     assert asyncio.run(go()) == {"resource": "events"}
 
 
+# Validates: SEL-636
 def test_bus_drops_oldest_for_a_slow_subscriber_and_marks_it_lagged():
     from selko.db.bus import Bus
 
@@ -362,6 +386,7 @@ def test_bus_drops_oldest_for_a_slow_subscriber_and_marks_it_lagged():
     assert asyncio.run(go()) == ([3, 4], True)
 
 
+# Validates: SEL-636
 def test_bus_unsubscribe_stops_delivery():
     from selko.db.bus import Bus
 
@@ -400,6 +425,7 @@ def _columns(db, table):
     return {r[1]: r for r in db.query(f"PRAGMA table_info({table})")}
 
 
+# Validates: SEL-612
 def test_now_is_strictly_increasing(db):
     stamps = []
     for _ in range(50):
@@ -408,6 +434,7 @@ def test_now_is_strictly_increasing(db):
     assert stamps == sorted(stamps) and len(set(stamps)) == len(stamps)
 
 
+# Validates: SEL-611
 def test_trigger_functions_exist_only_inside_a_write(db, tmp_path):
     """A connection without the data layer's functions cannot write a triggered table."""
     with db.write() as tx:
@@ -417,6 +444,7 @@ def test_trigger_functions_exist_only_inside_a_write(db, tmp_path):
         other.execute("UPDATE users SET email = 'x@example.test' WHERE id = ?", (USER,))
 
 
+# Validates: SEL-612
 def test_updated_at_is_the_transaction_time(db):
     with db.write() as tx:
         _user(tx)
@@ -426,6 +454,7 @@ def test_updated_at_is_the_transaction_time(db):
     assert db.query_one("SELECT updated_at FROM users WHERE id = ?", (USER,))[0] == expected
 
 
+# Validates: SEL-635
 def test_live_hints_are_deduplicated_and_sent_after_commit(db):
     from selko.db.bus import Bus
 
@@ -449,6 +478,7 @@ def test_live_hints_are_deduplicated_and_sent_after_commit(db):
     assert [(m["resource"], m["operation"]) for m in messages] == [("events", "INSERT")]
 
 
+# Validates: SEL-632
 def test_rolled_back_write_sends_nothing(db):
     from selko.db.bus import WorkSignals
 
@@ -475,6 +505,7 @@ def test_rolled_back_write_sends_nothing(db):
     assert asyncio.run(go()) is False
 
 
+# Validates: SEL-632
 def test_pending_email_wakes_the_email_worker(db):
     from selko.db.bus import WorkSignals
 
@@ -514,6 +545,7 @@ def test_gmail_labels_set_the_flags(db):
     assert tuple(row) == (0, 0, 1)
 
 
+# Validates: SEL-622
 def test_calendar_work_item_must_belong_to_the_event_owner(db):
     with db.write() as tx:
         _user(tx)
@@ -539,6 +571,7 @@ def test_active_integration_gets_a_sync_state(db):
     assert row[0] == now and row[1] < now
 
 
+# Validates: SEL-622
 def test_pending_proposal_requires_an_active_event(db):
     """The deferred invariant: checked at commit, so the order of writes inside does not matter."""
     event = "00000000-0000-0000-0000-00000000e001"
@@ -563,6 +596,7 @@ def test_pending_proposal_requires_an_active_event(db):
         tx.execute("UPDATE events SET review_status = 'active' WHERE id = ?", (event,))
 
 
+# Validates: SEL-617
 def test_every_timestamp_default_writes_the_codec_format(db):
     """Text-compared leases misorder silently if any writer uses another format (risk E-2)."""
     import re
@@ -578,6 +612,7 @@ def test_every_timestamp_default_writes_the_codec_format(db):
     assert checked >= 40
 
 
+# Validates: SEL-613
 def test_readers_are_pooled_with_a_small_cache_whatever_the_thread_count(db):
     """One reader per thread with a 32 MB cache each grew a 400 MB database's
     process from 93 to 301 MiB under load; the pool bounds it."""
@@ -603,6 +638,7 @@ def test_readers_are_pooled_with_a_small_cache_whatever_the_thread_count(db):
         assert conn.execute("PRAGMA query_only").fetchone()[0] == 1
 
 
+# Validates: SEL-614
 def test_a_reader_waits_for_a_free_connection_rather_than_opening_another(db):
     import threading
 

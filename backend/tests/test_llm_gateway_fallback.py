@@ -59,6 +59,7 @@ def mock_logging_service():
 class TestCallValidatedRouting:
     """Failure routing table from WS3 spec."""
 
+    # Validates: SEL-104
     def test_primary_transient_transient_then_success_no_fallback(self):
         primary = _make_provider(
             "primary",
@@ -88,6 +89,7 @@ class TestCallValidatedRouting:
         assert primary.generate.call_count == 3
         assert fallback.generate.call_count == 0
 
+    # Validates: SEL-104
     def test_primary_transient_three_times_then_fallback(self):
         primary = _make_provider(
             "primary",
@@ -117,6 +119,7 @@ class TestCallValidatedRouting:
         assert primary.generate.call_count == 3
         assert fallback.generate.call_count == 1
 
+    # Validates: SEL-105
     @pytest.mark.parametrize(
         "bad_response",
         [
@@ -193,6 +196,7 @@ class TestCallValidatedRouting:
         assert primary.generate.call_count == 1
         assert fallback.generate.call_count == 0
 
+    # Validates: SEL-106
     def test_primary_permanent_no_retry_no_fallback(self):
         primary = _make_provider(
             "primary", "p-model", [Exception("Invalid API key")]
@@ -210,6 +214,7 @@ class TestCallValidatedRouting:
         assert primary.generate.call_count == 1
         assert fallback.generate.call_count == 0
 
+    # Validates: SEL-104
     def test_fallback_transient_then_success_at_most_two(self):
         primary = _make_provider(
             "primary", "p-model", [LLMResponse(text="", prompt_tokens=0, completion_tokens=0)]
@@ -303,6 +308,7 @@ class TestCallValidatedRouting:
         assert primary.generate.call_count == 1
         assert fallback.generate.call_count == 0
 
+    # Validates: SEL-105, SEL-116
     def test_http_success_invalid_logged_as_failure(
         self, mock_logging_service
     ):
@@ -343,6 +349,7 @@ class TestRefusalRouting:
     def _refusal(self) -> LLMResponse:
         return LLMResponse(text="", finish_reason="refusal", refusal_category="general_harms")
 
+    # Validates: SEL-107
     def test_refusal_is_not_retried_on_the_same_model(self):
         primary = _make_provider("anthropic", "claude-haiku-5-5", [self._refusal()])
         gateway = LLMGateway(primary, primary_max_attempts=3)
@@ -360,6 +367,7 @@ class TestRefusalRouting:
         assert primary.generate.call_count == 1
         sleep.assert_not_called()
 
+    # Validates: SEL-107
     def test_refusal_goes_to_a_configured_fallback(self):
         primary = _make_provider("anthropic", "claude-haiku-5-5", [self._refusal()])
         fallback = _make_provider("fallback", "f-model", [_ok_payload()])

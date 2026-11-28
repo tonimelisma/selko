@@ -18,6 +18,7 @@ from selko.services.event_identity import (
 )
 
 
+# Validates: SEL-142
 def test_calendar_event_yields_its_ical_uid_as_authoritative():
     hints = hints_from_calendar_event(
         {"iCalUID": "loop-1@example.com", "hangoutLink": "https://meet.example.com/abc"}
@@ -27,18 +28,21 @@ def test_calendar_event_yields_its_ical_uid_as_authoritative():
     assert kinds["join_url"] == "supporting"
 
 
+# Validates: SEL-153
 def test_matching_uid_proves_the_user_already_has_the_event():
     calendar = hints_from_calendar_event({"iCalUID": "invite-9@example.com"})
     incoming = [canonical_ical_uid("invite-9@example.com")]
     assert match_by_identity(incoming, calendar) is not None
 
 
+# Validates: SEL-153
 def test_a_different_uid_is_not_a_match():
     calendar = hints_from_calendar_event({"iCalUID": "invite-9@example.com"})
     incoming = [canonical_ical_uid("invite-10@example.com")]
     assert match_by_identity(incoming, calendar) is None
 
 
+# Validates: SEL-149, SEL-153
 def test_a_shared_join_url_alone_never_merges_two_events():
     """The interview-loop regression, stated as a test.
 
@@ -55,6 +59,7 @@ def test_a_shared_join_url_alone_never_merges_two_events():
     assert match_by_identity(incoming, calendar) is None
 
 
+# Validates: SEL-142, SEL-153
 def test_recurring_occurrence_is_distinguished_by_its_original_start():
     """Same series UID, different occurrence: must not match the wrong instance."""
     september = hints_from_calendar_event({
@@ -72,6 +77,7 @@ def test_recurring_occurrence_is_distinguished_by_its_original_start():
     assert match_by_identity(september_incoming, september) is not None
 
 
+# Validates: SEL-142
 def test_conference_entry_point_supplies_the_join_url():
     hints = hints_from_calendar_event({
         "iCalUID": "conf@example.com",

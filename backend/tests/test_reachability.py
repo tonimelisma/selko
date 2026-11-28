@@ -98,6 +98,7 @@ def _reachable(graph: dict[str, set[str]]) -> set[str]:
     return reachable
 
 
+# Validates: SEL-678
 def test_every_worker_and_service_module_is_reachable() -> None:
     """Every service, worker and data-layer module must be importable at runtime.
 

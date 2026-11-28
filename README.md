@@ -84,22 +84,22 @@ flowchart LR
     B --> C["Multimodal AI extraction"]
     C --> D["New and changed event suggestions"]
     D --> E["Review, edit, or apply a trusted-sender rule"]
-    E --> F["Google Calendar"]
+    E --> F["Google or Outlook Calendar"]
     E --> G["Activity History and Undo"]
 ```
 
-Selko uses an eval-backed primary/fallback model route rather than depending on
-one model or one provider. The current default pair is Gemini
-`gemini-3.5-flash-lite` with Qwen `qwen3.7-flash` fallback; the provider
-registry also supports Anthropic and OpenAI models.
+Selko's LLM gateway supports several providers, chosen by evals. Production runs
+one model, Anthropic `claude-haiku-5-5`, with no fallback provider, so the
+privacy policy names exactly one AI provider
+([ADR 0009](docs/adr/0009-llm-centric-extraction-one-model.md)).
 
 ## Product status
 
-The end-to-end Email → Review → Google Calendar journey is in production.
-Current work is focused on recovery and immediacy: automatically catching up
-after an OAuth reconnection and delivering live cross-client updates without a
-manual refresh (the `/live` stream). The remaining OAuth reconnect work is tracked in
-[OAuth reconnect catch-up](docs/specs/oauth-reconnect-catch-up.md).
+The end-to-end Email → Review → Calendar journey (Google Calendar or Outlook
+Calendar) is in production at `https://api.selkoapp.com`, with automatic
+catch-up after an OAuth reconnection and live updates over the `/live` stream.
+What Selko does today is in [docs/requirements/](docs/requirements/); open work
+is tracked in GitHub issues.
 
 ## Architecture
 
@@ -128,10 +128,10 @@ built and checked by `.github/workflows/image.yml`.
 - **Web:** SvelteKit 2, Svelte 5, DaisyUI
 - **Backend:** Python, FastAPI, Pydantic
 - **Data:** SQLite (WAL, one writer), files on disk
-- **AI:** multimodal, multi-provider LLM gateway with validated fallback
+- **AI:** multimodal, multi-provider LLM gateway; production runs one Anthropic model
 - **Tooling:** `uv`, npm, Docker (the image)
 
-See [PRD_ARCH.md](PRD_ARCH.md) for product requirements and architecture.
+See [docs/architecture.md](docs/architecture.md) for the architecture and [docs/index.md](docs/index.md) for every doc.
 
 ## Local development
 
@@ -191,20 +191,21 @@ npm run check
 ```
 
 Platform-specific commands and required visual verification are documented in
-[AGENTS.md](AGENTS.md) and [docs/testing-guide.md](docs/testing-guide.md).
+[CLAUDE.md](CLAUDE.md) and [docs/design/testing.md](docs/design/testing.md).
 
 ## Documentation
 
 | Document | Purpose |
 |---|---|
-| [PRD_ARCH.md](PRD_ARCH.md) | Product requirements and architecture |
-| [docs/database-schema.md](docs/database-schema.md) | Database reference |
-| [docs/api-client-endpoints.md](docs/api-client-endpoints.md) | The API the web app uses |
-| [docs/job-queue.md](docs/job-queue.md) | Background-worker architecture |
-| [docs/gmail-integration.md](docs/gmail-integration.md) | Gmail ingestion |
-| [docs/llm-integration.md](docs/llm-integration.md) | Model routing and extraction |
-| [docs/evals-process.md](docs/evals-process.md) | Regression eval workflow |
-| [docs/specs/README.md](docs/specs/README.md) | Planned and in-progress implementation specs |
+| [docs/index.md](docs/index.md) | Map of every doc |
+| [docs/requirements/](docs/requirements/) | What Selko does today, with the tests that prove it |
+| [docs/architecture.md](docs/architecture.md) | How it is built, and why |
+| [docs/adr/](docs/adr/) | Decisions |
+| [docs/design/database-schema.md](docs/design/database-schema.md) | Database reference |
+| [docs/design/client-api.md](docs/design/client-api.md) | The API the web app uses |
+| [docs/design/workers.md](docs/design/workers.md) | Background-worker architecture |
+| [docs/design/llm.md](docs/design/llm.md) | Model routing and extraction |
+| [docs/design/evals.md](docs/design/evals.md) | Regression eval workflow |
 
 ## License
 

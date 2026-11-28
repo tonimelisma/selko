@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event';
 import LabeledSwitch from '../LabeledSwitch.svelte';
 
 describe('LabeledSwitch', () => {
+	// Validates: SEL-574
 	it('communicates state with text, position, check, and switch semantics', async () => {
 		const user = userEvent.setup();
 		const onchange = vi.fn();
@@ -20,6 +21,7 @@ describe('LabeledSwitch', () => {
 		expect(onchange).toHaveBeenCalledWith(false);
 	});
 
+	// Validates: SEL-574
 	it('does not activate while disabled', async () => {
 		const user = userEvent.setup();
 		const onchange = vi.fn();

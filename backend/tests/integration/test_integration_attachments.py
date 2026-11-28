@@ -43,6 +43,7 @@ SAMPLE = b"This is sample attachment content for testing purposes."
 
 @pytest.mark.integration
 class TestAttachmentStorage:
+    # Validates: SEL-081
     def test_upload_to_storage(self, store, owned_email):
         user, _ = owned_email
         path = upload_to_storage(store, user, "test_document.txt", SAMPLE, "text/plain")

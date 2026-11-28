@@ -83,6 +83,7 @@ describe('Review Queue (App Page)', () => {
 		expect(document.querySelector('.loading.loading-spinner')).toBeTruthy();
 	});
 
+	// Validates: SEL-531
 	it('shows setup mode when integrations not connected', async () => {
 		mockFetchIntegrations.mockResolvedValue({
 			data: [],
@@ -134,6 +135,7 @@ describe('Review Queue (App Page)', () => {
 		});
 	});
 
+	// Validates: SEL-526
 	it('keeps suggestions readable and disables acceptance when calendar OAuth is expired', async () => {
 		mockFetchIntegrations.mockResolvedValue({
 			data: [
@@ -256,6 +258,7 @@ describe('Review Queue (App Page)', () => {
 		expect(mockFetchPendingEventsWithSources).toHaveBeenCalledTimes(1);
 	});
 
+	// Validates: SEL-566
 	it('coalesces event and event-source invalidations into one list refresh', async () => {
 		mockFetchIntegrations.mockResolvedValue({
 			data: [
@@ -278,6 +281,7 @@ describe('Review Queue (App Page)', () => {
 		vi.useRealTimers();
 	});
 
+	// Validates: SEL-530
 	it('shows error when integration fetch fails', async () => {
 		mockFetchIntegrations.mockResolvedValue({
 			data: [],
@@ -381,6 +385,7 @@ describe('Review Queue (App Page)', () => {
 		});
 	});
 
+	// Validates: SEL-526
 	it('pauses acceptance and offers an Outlook reconnect when Outlook lacks calendar scope', async () => {
 		const user = userEvent.setup();
 		mockInitiateOutlookAuth.mockResolvedValue(undefined);
@@ -462,6 +467,7 @@ describe('Review Queue (App Page)', () => {
 		});
 	});
 
+	// Validates: SEL-523
 	it('keeps a sender group in place when its earliest event is rejected', async () => {
 		const user = userEvent.setup();
 		mockFetchIntegrations.mockResolvedValue({
@@ -571,6 +577,7 @@ describe('Review Queue (App Page)', () => {
 		});
 	});
 
+	// Validates: SEL-527
 	it('creates ignore sender rule and rejects events', async () => {
 		const user = userEvent.setup();
 
@@ -623,6 +630,7 @@ describe('Review Queue (App Page)', () => {
 		});
 	});
 
+	// Validates: SEL-527
 	it('does not call the ignore rpc for pseudo (non-email) senders', async () => {
 		const user = userEvent.setup();
 
@@ -661,6 +669,7 @@ describe('Review Queue (App Page)', () => {
 		expect(mockIgnoreSenderRetroactive).not.toHaveBeenCalled();
 	});
 
+	// Validates: SEL-528
 	it('creates auto-approve sender rule and approves events', async () => {
 		const user = userEvent.setup();
 
@@ -712,6 +721,7 @@ describe('Review Queue (App Page)', () => {
 		});
 	});
 
+	// Validates: SEL-524
 	it('optimistically removes event from queue while approve is in flight', async () => {
 		const user = userEvent.setup();
 
@@ -769,6 +779,7 @@ describe('Review Queue (App Page)', () => {
 		resolveUpdate({ data: null, error: null });
 	});
 
+	// Validates: SEL-525
 	it('shows undo toast after reject and restores event on undo', async () => {
 		const user = userEvent.setup();
 
@@ -831,6 +842,7 @@ describe('Review Queue (App Page)', () => {
 		});
 	});
 
+	// Validates: SEL-525
 	it('shows count and batches multiple rejects into one undo toast', async () => {
 		const user = userEvent.setup();
 

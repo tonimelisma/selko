@@ -128,6 +128,7 @@ class TestQuotaService:
         quota_service.check_and_increment(alice, "llm_calls", 10)
         assert quota_service.check_and_increment(bob, "llm_calls").current_count == 1
 
+    # Validates: SEL-113
     def test_check_and_increment_error_fails_open(self, quota_service, factory, db):
         user = factory.user()
         _break_quota_tables(db)
@@ -138,6 +139,7 @@ class TestQuotaService:
 
 
 
+    # Validates: SEL-112
     def test_set_user_limit_success(self, quota_service, factory, db):
         user = factory.user()
         quota_service.set_user_limit(user, "llm_calls", 500)
@@ -146,6 +148,7 @@ class TestQuotaService:
         quota_service.set_user_limit(user, "llm_calls", 600)
         assert quota_service.check_and_increment(user, "llm_calls").limit == 600
 
+    # Validates: SEL-112
     def test_set_user_limit_exceeds_max(self, quota_service, factory):
         with pytest.raises(ValueError, match="exceeds maximum"):
             quota_service.set_user_limit(factory.user(), "llm_calls", 2000)

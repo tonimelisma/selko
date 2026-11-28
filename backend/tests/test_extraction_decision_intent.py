@@ -44,6 +44,7 @@ def _literal_keys(node: ast.Dict) -> dict[str, ast.expr]:
     }
 
 
+# Validates: SEL-181
 def test_every_extraction_decision_states_an_intent() -> None:
     decisions = _decision_dicts()
     assert decisions, "expected save_extracted_events to build decisions"
@@ -59,6 +60,7 @@ def test_every_extraction_decision_states_an_intent() -> None:
         )
 
 
+# Validates: SEL-181
 def test_decisions_that_change_an_event_state_their_review_status() -> None:
     """Only record_only may omit review_status; nothing else has a default."""
     for decision in _decision_dicts():

@@ -12,6 +12,7 @@ const baseEvent = {
 };
 
 describe('ChangeCard', () => {
+	// Validates: SEL-529
 	it('shows field-level proposal details when an active proposal exists', () => {
 		render(ChangeCard, {
 			props: {
@@ -34,6 +35,7 @@ describe('ChangeCard', () => {
 		expect(screen.queryByRole('alert')).not.toBeInTheDocument();
 	});
 
+	// Validates: SEL-529
 	it('fails closed when an active event has no proposal', async () => {
 		const user = userEvent.setup();
 		const onapprove = vi.fn();

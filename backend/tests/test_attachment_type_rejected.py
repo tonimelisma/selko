@@ -48,6 +48,7 @@ def test_every_type_the_worker_accepts_is_stored(store, mime):
     assert (attachments_dir() / path).is_file()
 
 
+# Validates: SEL-078
 @pytest.mark.parametrize("mime", ["application/zip", "application/octet-stream", "video/mp4"])
 def test_the_store_refuses_a_type_outside_the_accept_set(store, mime):
     """The matcher itself can fail: a type outside the set is refused, nothing is written."""
@@ -56,6 +57,7 @@ def test_the_store_refuses_a_type_outside_the_accept_set(store, mime):
     assert not any(p.is_file() for p in attachments_dir().rglob("*"))
 
 
+# Validates: SEL-079
 def test_a_failed_write_stays_retryable(store, monkeypatch):
     """A disk failure is not a property of the type, so it must not be terminal."""
     import selko.services.attachments as attachments
@@ -77,6 +79,7 @@ def test_a_refusal_is_classified_terminal_with_its_own_code():
     assert classification.auth_failure is False
 
 
+# Validates: SEL-078
 def test_a_refused_attachment_is_marked_unsupported_not_retried(db, mock_config):
     """The regression. Before this, the row retried to dead_letter."""
 
@@ -106,6 +109,7 @@ def test_a_refused_attachment_is_marked_unsupported_not_retried(db, mock_config)
     asyncio.run(scenario())
 
 
+# Validates: SEL-079
 def test_an_ordinary_failure_still_retries(db, mock_config):
     """Guard the guard: the change must not make every failure terminal."""
 
@@ -128,6 +132,7 @@ def test_an_ordinary_failure_still_retries(db, mock_config):
     asyncio.run(scenario())
 
 
+# Validates: SEL-078
 def test_the_worker_and_the_store_share_one_accept_set():
     """Two allowlists drifted once (the bucket vs the worker); now there is one."""
     from selko.workers import email_ingestion

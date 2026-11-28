@@ -94,6 +94,7 @@ class TestLLMGatewayCall:
         assert response == mock_response
         mock_provider.generate.assert_called_once()
 
+    # Validates: SEL-110
     def test_call_with_quota_check(self, mock_provider, mock_quota_service):
         """Test that quota is checked before making call."""
         mock_response = LLMResponse(text="ok", prompt_tokens=10, completion_tokens=5)
@@ -116,6 +117,7 @@ class TestLLMGatewayCall:
             "user-123", "llm_calls"
         )
 
+    # Validates: SEL-110
     def test_call_quota_exceeded(self, mock_provider, mock_quota_service):
         """Test QuotaExceededError when quota is exceeded."""
         # Configure quota service to deny the call
@@ -136,6 +138,7 @@ class TestLLMGatewayCall:
         assert exc_info.value.current_count == 100
         assert exc_info.value.limit == 100
 
+    # Validates: SEL-116
     def test_call_logs_success(self, mock_provider, mock_logging_service):
         """Test that successful calls are logged."""
         mock_response = LLMResponse(text="test response", prompt_tokens=100, completion_tokens=50)
@@ -244,6 +247,7 @@ class TestLLMGatewayPromptLogging:
 
         assert result == "part1part2part3"
 
+    # Validates: SEL-117
     def test_build_prompt_with_attachments(self, mock_provider):
         """Test that attachments are noted in logging."""
         gateway = LLMGateway(mock_provider)
@@ -291,6 +295,7 @@ class TestErrorClassification:
 class TestVisionAwareRouting:
     """Ensure attachments are never sent to text-only primary."""
 
+    # Validates: SEL-108
     def test_text_only_primary_with_vision_fallback_routes_to_fallback(self):
         from selko.services.llm_gateway import LLMGateway
         from selko.services.llm_provider import ImageContent
@@ -352,6 +357,7 @@ class TestVisionAwareRouting:
         assert len(routes) == 1
         assert routes[0].provider == primary
 
+    # Validates: SEL-108
     def test_no_attachments_always_uses_primary(self):
         from selko.services.llm_gateway import LLMGateway
 

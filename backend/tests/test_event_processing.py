@@ -127,6 +127,7 @@ class TestExtractCalendarEvents:
         assert prompt == _build_prompt()
         assert "Daily Brief" not in prompt
 
+    # Validates: SEL-121
     def test_email_message_puts_attachments_before_the_email_text(self):
         from selko.services.event_processing import (
             _build_content_parts,
@@ -560,6 +561,7 @@ class TestCompareEvents:
 
         assert result is None
 
+    # Validates: SEL-155
     def test_returns_none_for_unknown_event_id(self, mock_provider):
         """Test that unknown event ID from LLM returns None."""
         mock_provider.generate.return_value = LLMResponse(
@@ -598,6 +600,7 @@ class TestCompareEvents:
 
         assert "api error" in str(exc_info.value).lower()
 
+    # Validates: SEL-137
     def test_every_time_is_rendered_in_the_users_local_zone(self, mock_provider):
         """Production shapes: the extracted event is local, stored rows are UTC.
 
@@ -748,6 +751,7 @@ class TestGenerateSourceAttribution:
 class TestBuildContentPartsPerTypeLimits:
     """Test per-type attachment size limits in _build_content_parts."""
 
+    # Validates: SEL-123
     def test_pdf_uses_page_limit_not_byte_limit(self):
         """PDFs use page-based limits, so large PDFs pass byte-size check."""
         from selko.services.event_processing import _build_content_parts
@@ -768,6 +772,7 @@ class TestBuildContentPartsPerTypeLimits:
 
         assert len(parts) == 3
 
+    # Validates: SEL-123
     def test_image_limit_skips_oversized(self):
         """Test that an 11MB image is skipped with 10MB limit."""
         from selko.services.event_processing import _build_content_parts
@@ -820,6 +825,7 @@ class TestBuildContentPartsPerTypeLimits:
         assert len(parts) == 3
 
 
+# Validates: SEL-122
 def test_text_attachments_reach_the_anthropic_request():
     """Regression: a .txt agenda was wrapped as an image and silently dropped.
 
@@ -862,6 +868,7 @@ def test_text_attachments_reach_the_anthropic_request():
     assert "<email_body>\nDetails in attachment." in texts[-1], "the email body stays last"
 
 
+# Validates: SEL-122
 def test_oversized_text_attachment_is_truncated_not_dropped():
     from selko.services.event_processing import (
         MAX_TEXT_ATTACHMENT_CHARS,

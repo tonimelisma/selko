@@ -427,12 +427,14 @@ def _config(max_size: int = 10 * 1024 * 1024):
 class TestFileStore:
     """Attachments on disk: atomic writes, paths that cannot escape, delete."""
 
+    # Validates: SEL-081
     def test_write_is_atomic_and_leaves_no_temp_file(self, store):
         write_attachment_file("user-1/abc_file.txt", b"hello")
         files = sorted(p.name for p in (attachments_dir() / "user-1").iterdir())
         assert files == ["abc_file.txt"]
         assert read_attachment_file("user-1/abc_file.txt") == b"hello"
 
+    # Validates: SEL-081
     def test_a_failed_write_leaves_no_partial_file(self, store, monkeypatch):
         import os
 
@@ -444,6 +446,7 @@ class TestFileStore:
             write_attachment_file("user-1/abc_file.txt", b"hello")
         assert not any(p.is_file() for p in attachments_dir().rglob("*"))
 
+    # Validates: SEL-082, SEL-721
     @pytest.mark.parametrize(
         "path", ["../escape.txt", "user-1/../../escape.txt", "/etc/passwd", "", "user/../.."],
     )
@@ -453,6 +456,7 @@ class TestFileStore:
         with pytest.raises(AttachmentError):
             read_attachment_file(path)
 
+    # Validates: SEL-082, SEL-721
     def test_a_filename_cannot_steer_the_path(self, store):
         path = upload_to_storage(store, "user-1", "../../../etc/passwd", b"x", "text/plain")
         assert path.startswith("user-1/")

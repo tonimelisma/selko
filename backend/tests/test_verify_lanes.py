@@ -64,6 +64,7 @@ def probe_file(request):
     probe.unlink(missing_ok=True)
 
 
+# Validates: SEL-682
 def test_unchanged_inputs_are_reused_and_changed_inputs_re_execute(probe_file, tmp_path):
     lanes = _write_lanes(tmp_path, probe_file, "true")
 
@@ -78,6 +79,7 @@ def test_unchanged_inputs_are_reused_and_changed_inputs_re_execute(probe_file, t
     assert "reused" not in third.stdout.splitlines()[0], third.stdout
 
 
+# Validates: SEL-682
 def test_reverting_an_edit_restores_the_cached_result(probe_file, tmp_path):
     lanes = _write_lanes(tmp_path, probe_file, "true")
     _run(lanes, tmp_path)
@@ -92,6 +94,7 @@ def test_reverting_an_edit_restores_the_cached_result(probe_file, tmp_path):
     assert "reused" in reverted.stdout.splitlines()[0], reverted.stdout
 
 
+# Validates: SEL-683
 def test_a_failing_lane_is_never_cached_as_passing(probe_file, tmp_path):
     lanes = _write_lanes(tmp_path, probe_file, "exit 3")
 
@@ -110,6 +113,7 @@ def _ledger(tmp_path):
     return files, [json.loads(line) for f in files for line in f.read_text().splitlines() if line.strip()]
 
 
+# Validates: SEL-685
 def test_every_execution_is_recorded_in_the_ledger(probe_file, tmp_path):
     lanes = _write_lanes(tmp_path, probe_file, "true")
     _run(lanes, tmp_path)
@@ -124,6 +128,7 @@ def test_every_execution_is_recorded_in_the_ledger(probe_file, tmp_path):
     assert [f.name for f in files] == [f"{record['run_id']}.jsonl"]
 
 
+# Validates: SEL-685
 def test_each_run_writes_its_own_ledger_file_and_the_report_reads_them_all(probe_file, tmp_path):
     lanes = _write_lanes(tmp_path, probe_file, "false")  # failing: executes every time
     _run(lanes, tmp_path)
@@ -140,6 +145,7 @@ def test_each_run_writes_its_own_ledger_file_and_the_report_reads_them_all(probe
     assert probe.split()[2:6] == ["2", "2", "0", "2"], probe  # runs, executed, reused, caught
 
 
+# Validates: SEL-684
 def test_an_unmet_precondition_is_red_not_skipped(probe_file, tmp_path):
     """A lane that cannot run has verified nothing, so it must report failure.
 
@@ -198,6 +204,7 @@ def _lock_dir_for(checkout: Path) -> str:
     return result.stdout.strip()
 
 
+# Validates: SEL-686
 def test_every_worktree_shares_one_lock(tmp_path):
     """The database, simulator and port a lane uses belong to the machine.
 
@@ -228,6 +235,7 @@ def _load_runner():
     return module
 
 
+# Validates: SEL-682
 def test_a_trailing_double_star_fingerprints_the_files_under_it(probe_file, tmp_path):
     """`dir/**` must see the files in dir on every Python version.
 
@@ -255,6 +263,7 @@ def test_a_trailing_double_star_fingerprints_the_files_under_it(probe_file, tmp_
     assert "reused" not in second.stdout.splitlines()[0], second.stdout
 
 
+# Validates: SEL-684
 def test_an_input_pattern_that_matches_nothing_is_red(probe_file, tmp_path):
     """A declared input that does not exist silently leaves the fingerprint.
 
@@ -275,6 +284,7 @@ def test_an_input_pattern_that_matches_nothing_is_red(probe_file, tmp_path):
     assert "match no files" in result.stdout, result.stdout
 
 
+# Validates: SEL-684
 def test_the_repository_lanes_declare_only_inputs_that_exist():
     runner = _load_runner()
     lanes = runner.load_lanes(ROOT / "scripts" / "lanes.toml")

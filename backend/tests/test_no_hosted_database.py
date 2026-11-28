@@ -46,6 +46,7 @@ def test_the_check_scans_the_package():
     assert len(list(PACKAGE.rglob("*.py"))) > 50
 
 
+# Validates: SEL-677
 def test_the_check_sees_imports_inside_functions(tmp_path, monkeypatch):
     module = tmp_path / "selko" / "late.py"
     module.parent.mkdir()
@@ -54,6 +55,7 @@ def test_the_check_sees_imports_inside_functions(tmp_path, monkeypatch):
     assert _offenders() == {"late.py": {"asyncpg", "supabase"}}
 
 
+# Validates: SEL-677
 def test_no_python_file_in_the_repository_imports_one():
     found = {}
     for path in sorted(ROOT.rglob("*.py")):
@@ -72,6 +74,7 @@ def test_no_python_file_in_the_repository_imports_one():
     assert not found, f"these files import a hosted-database client: {found}"
 
 
+# Validates: SEL-677
 def test_no_locked_package_is_a_hosted_database_client():
     import tomllib
 

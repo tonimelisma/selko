@@ -33,6 +33,7 @@ def _today():
     return utc_now().date().isoformat()
 
 
+# Validates: SEL-111
 def test_quota_check_and_increment(db, factory, seeded):
     user = factory.user()
     row = quotas.check_and_increment_quota(db, user, "llm_calls", 1)
@@ -45,6 +46,7 @@ def test_quota_check_and_increment(db, factory, seeded):
     assert stored["email_syncs_limit"] == 50
 
 
+# Validates: SEL-111
 def test_quota_refuses_past_the_limit_without_incrementing(db, factory, seeded):
     user = factory.user()
     assert quotas.check_and_increment_quota(db, user, "email_syncs", 50)["allowed"] is True
@@ -53,6 +55,7 @@ def test_quota_refuses_past_the_limit_without_incrementing(db, factory, seeded):
     assert db.query_one("SELECT email_syncs_count FROM usage_quotas WHERE user_id = ?", (user,))[0] == 50
 
 
+# Validates: SEL-111
 def test_quota_types_are_independent_and_per_user(db, factory, seeded):
     user, other = factory.user(), factory.user()
     quotas.check_and_increment_quota(db, user, "calendar_syncs", 3)
@@ -90,6 +93,7 @@ def test_set_user_limit_changes_only_that_column(db, factory, seeded):
         quotas.set_user_limit(db, user, "nope", 1)
 
 
+# Validates: SEL-112
 def test_max_allowed(db, seeded):
     assert quotas.max_allowed(db, "llm_calls_daily") == 1000
     assert quotas.max_allowed(db, "nope_daily") is None

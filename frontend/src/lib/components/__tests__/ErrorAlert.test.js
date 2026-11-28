@@ -14,6 +14,7 @@ describe('ErrorAlert', () => {
 		expect(screen.getByText('Something went wrong')).toBeInTheDocument();
 	});
 
+	// Validates: SEL-581
 	it('has alert role and aria-live for accessibility', () => {
 		render(ErrorAlert, {
 			props: { message: 'Error occurred' }
@@ -24,6 +25,7 @@ describe('ErrorAlert', () => {
 		expect(alert).toHaveAttribute('aria-live', 'polite');
 	});
 
+	// Validates: SEL-581
 	it('renders retry button when onretry is provided', () => {
 		const onretry = vi.fn();
 		render(ErrorAlert, {
@@ -44,6 +46,7 @@ describe('ErrorAlert', () => {
 		expect(onretry).toHaveBeenCalledOnce();
 	});
 
+	// Validates: SEL-581
 	it('does not render retry button when onretry is not provided', () => {
 		render(ErrorAlert, {
 			props: { message: 'Error occurred' }

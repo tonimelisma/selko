@@ -156,6 +156,7 @@ class TestExponentialBackoffEvents:
         delay = (datetime.fromisoformat(row["next_retry_at"]) - datetime.fromisoformat(row["updated_at"]))
         assert delay.total_seconds() == retry_delay_seconds(2) <= 1800
 
+    # Validates: SEL-325
     def test_calendar_quota_deferral_releases_claim_without_spending_attempt(self, db, factory):
         """Quota deferral returns the claimed event to its pre-claim budget."""
         import asyncio
@@ -171,6 +172,7 @@ class TestExponentialBackoffEvents:
         assert row["next_retry_at"] == "2026-04-10T00:00:00.000000Z"
         assert row["failure_detail"] == "Daily calendar sync quota exceeded"
 
+    # Validates: SEL-351
     def test_oauth_park_releases_claim_without_spending_attempt_or_dead_lettering(self, db, factory):
         """An OAuth-blocked sync isn't a real attempt: no dead-letter, no backoff.
 
@@ -219,6 +221,7 @@ class TestDeadLetterEmail:
 class TestDeadLetterEvent:
     """A calendar work item that spends its budget ends failed; one with budget left retries."""
 
+    # Validates: SEL-324
     def test_dead_letter_on_max_sync_attempts(self, db, factory):
         import asyncio
 
@@ -269,6 +272,7 @@ class TestCircuitBreakerStateTransitions:
         assert cb.get_state("test") == CircuitState.CLOSED
         assert cb.is_available("test") is True
 
+    # Validates: SEL-664
     def test_opens_on_high_failure_rate(self):
         """Circuit OPENS when failure rate exceeds threshold."""
         cb = CircuitBreaker(failure_threshold=0.5, min_calls=4)
@@ -282,6 +286,7 @@ class TestCircuitBreakerStateTransitions:
         assert cb.get_state("test") == CircuitState.OPEN
         assert cb.is_available("test") is False
 
+    # Validates: SEL-664
     def test_stays_closed_below_min_calls(self):
         """Circuit stays CLOSED when total calls below min_calls."""
         cb = CircuitBreaker(failure_threshold=0.5, min_calls=10)
@@ -333,6 +338,7 @@ class TestCircuitBreakerStateTransitions:
         cb.record_success("test")
         assert cb.get_state("test") == CircuitState.CLOSED
 
+    # Validates: SEL-664
     def test_half_open_reopens_on_failure(self):
         """HALF_OPEN circuit should re-OPEN on failure."""
         clock = FakeClock()
@@ -391,6 +397,7 @@ class TestCircuitBreakerSeparateServices:
         assert cb.get_state("gmail") == CircuitState.CLOSED
         assert cb.get_state("llm") == CircuitState.OPEN
 
+    # Validates: SEL-664
     def test_three_independent_services(self):
         """Three services (gmail, google_calendar, llm) tracked independently."""
         cb = CircuitBreaker(failure_threshold=0.5, min_calls=3)

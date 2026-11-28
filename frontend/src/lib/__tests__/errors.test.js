@@ -20,6 +20,7 @@ describe('toAppError', () => {
 		expect(toAppError(error)).toBe(error);
 	});
 
+	// Validates: SEL-580
 	it('keeps an API error’s message, code and status', () => {
 		const error = toAppError({ message: 'Event not found', status: 404, code: 'EVENT_NOT_FOUND' });
 		expect(error.message).toBe('Event not found');
@@ -33,6 +34,7 @@ describe('toAppError', () => {
 		expect(error.code).toBe('UNKNOWN');
 	});
 
+	// Validates: SEL-580
 	it('turns network failures into a connection message', () => {
 		expect(toAppError({ message: 'Failed to fetch', status: 0, code: 'NETWORK_ERROR' }).message).toBe(
 			'Unable to connect. Please check your internet connection.'
@@ -40,12 +42,14 @@ describe('toAppError', () => {
 		expect(toAppError(new TypeError('Failed to fetch')).code).toBe('NETWORK_ERROR');
 	});
 
+	// Validates: SEL-580
 	it('turns a timeout into a retry message', () => {
 		const error = toAppError({ message: 'Request timed out. Please try again.', status: 0, code: 'TIMEOUT' });
 		expect(error.code).toBe('TIMEOUT');
 		expect(error.message).toBe('The request timed out. Please try again.');
 	});
 
+	// Validates: SEL-580
 	it('explains a missing session', () => {
 		const error = toAppError({ message: 'Not authenticated', status: 401, code: 'UNAUTHORIZED' });
 		expect(error.message).toBe('Your session has expired. Please log in again.');

@@ -45,6 +45,7 @@ class Recorder:
         self.sent.append(work_type)
 
 
+# Validates: SEL-075
 def test_claim_and_finish_attachment(db, user):
     email = emails.save_email_with_attachment_descriptors(
         db, user, {"email_provider": "gmail", "provider_message_id": "c2-att", "subject": "probe"},
@@ -69,6 +70,7 @@ def test_claim_and_finish_attachment(db, user):
     assert attachments.claim_email_attachment(db, "worker-6") is None
 
 
+# Validates: SEL-075
 def test_claim_order_and_due_filters(db, factory, user, email_id):
     later = add(factory, user, email_id, created_at=ts(-10))
     earliest = add(factory, user, email_id, created_at=ts(-20))
@@ -90,6 +92,7 @@ def test_expired_processing_lease_is_claimable(db, factory, user, email_id):
     assert codec.parse_timestamp(claimed["locked_until"]) > datetime.now(timezone.utc)
 
 
+# Validates: SEL-075
 def test_finish_is_fenced_on_worker(db, factory, user, email_id):
     add(factory, user, email_id)
     claimed = attachments.claim_email_attachment(db, "owner")
@@ -98,6 +101,7 @@ def test_finish_is_fenced_on_worker(db, factory, user, email_id):
     assert db.query_one("SELECT ingestion_status FROM attachments WHERE id = ?", (claimed["id"],))[0] == "processing"
 
 
+# Validates: SEL-075
 def test_finish_rejects_unknown_state(db, factory, user, email_id):
     add(factory, user, email_id)
     claimed = attachments.claim_email_attachment(db, "w")
@@ -156,6 +160,7 @@ def test_store_result_is_fenced_on_the_lock_holder(db, factory, user):
     assert (row["storage_path"], row["content_hash"], row["size_bytes"]) == (f"{user}/x_a.png", "h", 3)
 
 
+# Validates: SEL-720
 def test_insert_get_delete_are_user_scoped(db, factory, user, email_id):
     db.signals = Recorder()
     row = attachments.insert(db, user, {

@@ -6,6 +6,7 @@ from unittest.mock import MagicMock
 from selko.services.event_processing import propose_event_update
 
 
+# Validates: SEL-161
 def test_propose_event_update_gates_noop_datetime():
     gateway = MagicMock()
     gateway.call.return_value = MagicMock(

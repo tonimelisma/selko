@@ -34,6 +34,7 @@ def test_email_identity_metadata_actually_loads(db, factory):
     assert loaded.get("thread_id") == "thread-probe-1"
 
 
+# Validates: SEL-141
 def test_ordinary_email_yields_a_provider_thread_hint(db, factory):
     """Every email has a thread, so every extracted event can carry this hint.
 

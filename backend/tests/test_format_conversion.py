@@ -192,11 +192,13 @@ class TestPrepareContentForProvider:
     """Tests for the full prepare_content_for_provider decision flow."""
 
     # Step 1: Unknown MIME type → discard
+    # Validates: SEL-084
     def test_unknown_mime_type_discarded(self):
         result = prepare_content_for_provider(b"data", "application/zip", "gemini")
         assert result == []
 
     # Step 2: Text-only provider + image → discard
+    # Validates: SEL-084
     def test_text_only_provider_discards_image(self):
         result = prepare_content_for_provider(PNG_IMAGE, "image/png", "deepseek")
         assert result == []
@@ -274,6 +276,7 @@ class TestPrepareContentForProvider:
         # Conversion fails on fake data, so empty result
         assert result == []
 
+    # Validates: SEL-084
     def test_bmp_always_converted_even_on_gemini(self):
         # BMP is in ALWAYS_CONVERT — even though gemini has accepted formats,
         # BMP should be converted not passed through
@@ -315,6 +318,7 @@ class TestPrepareContentForProvider:
         assert len(result) == 3
         assert all(r.mime_type == "image/png" for r in result)
 
+    # Validates: SEL-084
     def test_gemini_and_anthropic_are_only_pdf_passthrough(self):
         """Only gemini and anthropic support native PDF passthrough."""
         for provider in PROVIDER_ACCEPTED_FORMATS:

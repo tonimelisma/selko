@@ -92,6 +92,7 @@ def test_event_sync_requires_auth(api):
     assert api.post(f"/events/{new_id()}/sync").status_code == 401
 
 
+# Validates: SEL-330, SEL-360
 def test_event_sync_leaves_approved_event_for_worker(api, db, factory, owner):
     user, headers = owner
     event = _event(factory, user)
@@ -105,6 +106,7 @@ def test_event_sync_leaves_approved_event_for_worker(api, db, factory, owner):
     assert [w["status"] for w in _work(db, event)] == ["pending"], "nothing re-queued"
 
 
+# Validates: SEL-360
 def test_event_sync_accepts_worker_owned_syncing_state(api, db, factory, owner):
     """A worker winning the approval race is success-in-progress."""
     user, headers = owner
@@ -118,6 +120,7 @@ def test_event_sync_accepts_worker_owned_syncing_state(api, db, factory, owner):
     assert len(_work(db, event)) == 1
 
 
+# Validates: SEL-361
 def test_event_sync_requeues_sync_failed_event_for_worker(api, db, factory, owner):
     """Explicit retry restores a fresh worker attempt budget."""
     user, headers = owner
@@ -134,6 +137,7 @@ def test_event_sync_requeues_sync_failed_event_for_worker(api, db, factory, owne
     assert second["desired_event"]["location"] == "Park"
 
 
+# Validates: SEL-362
 def test_event_sync_refuses_an_unapproved_event(api, db, factory, owner):
     user, headers = owner
     event = _event(factory, user, review_status="pending_review")
@@ -144,11 +148,13 @@ def test_event_sync_refuses_an_unapproved_event(api, db, factory, owner):
     assert _work(db, event) == []
 
 
+# Validates: SEL-362
 def test_event_sync_not_found(api, owner):
     _, headers = owner
     assert api.post(f"/events/{new_id()}/sync", headers=headers).status_code == 404
 
 
+# Validates: SEL-203, SEL-362
 def test_another_users_event_is_not_found(api, db, factory, owner, stranger):
     user, _ = owner
     _, other_headers = stranger
@@ -167,6 +173,7 @@ def test_another_users_event_is_not_found(api, db, factory, owner, stranger):
 # --- apply / reject change -------------------------------------------------------
 
 
+# Validates: SEL-214, SEL-306
 def test_apply_change_applies_the_pending_proposal(api, db, factory, owner):
     """The route itself, not only the service under it (CLAUDE.md: a route no test calls)."""
     user, headers = owner
@@ -182,6 +189,7 @@ def test_apply_change_applies_the_pending_proposal(api, db, factory, owner):
     assert [(w["action"], w["status"]) for w in _work(db, event)] == [("upsert", "pending")]
 
 
+# Validates: SEL-216
 def test_reject_change_restores_and_resolves(api, db, factory, owner):
     user, headers = owner
     event = _event(factory, user, location="Plaza")
@@ -196,6 +204,7 @@ def test_reject_change_restores_and_resolves(api, db, factory, owner):
     assert _work(db, event) == []
 
 
+# Validates: SEL-218
 def test_change_routes_need_a_pending_proposal(api, factory, owner):
     user, headers = owner
     event = _event(factory, user)
@@ -208,6 +217,7 @@ def test_change_routes_need_a_pending_proposal(api, factory, owner):
 # --- undo ----------------------------------------------------------------------
 
 
+# Validates: SEL-238, SEL-378
 def test_undo_calendar_diverged_returns_409(api, db, factory, owner):
     """Diverged GCal edit returns 409 CALENDAR_DIVERGED."""
     from selko.services.calendars import CalendarDivergedError
@@ -236,6 +246,7 @@ def test_undo_calendar_diverged_returns_409(api, db, factory, owner):
     assert _work(db, event) == []
 
 
+# Validates: SEL-238, SEL-307
 def test_undo_force_succeeds(api, db, factory, owner):
     user, headers = owner
     event = _event(factory, user, google_calendar_event_id="gcal-1", synced_at="2029-12-01T00:00:00.000000Z")

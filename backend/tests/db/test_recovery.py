@@ -54,6 +54,7 @@ def _create_and_claim(db, user_id):
 
 
 class TestCompleteIntegrationReauthorization:
+    # Validates: SEL-380
     def test_upserts_credentials_and_creates_calendar_recovery(self, db, factory):
         user = factory.user()
         integration_id = _reauth(db, user)
@@ -83,6 +84,7 @@ class TestCompleteIntegrationReauthorization:
         assert integration["refresh_token"] == "refresh-1"
         assert integration["provider_email"] == "a@example.test"
 
+    # Validates: SEL-381
     def test_reactivates_an_expired_integration_and_replaces_scopes(self, db, factory):
         user = factory.user()
         integration_id = factory.integration(user, provider="google_calendar", status="expired",
@@ -92,6 +94,7 @@ class TestCompleteIntegrationReauthorization:
         assert row["status"] == "active"
         assert row["scopes"] == []
 
+    # Validates: SEL-380
     def test_repeated_reauthorization_supersedes_previous_recovery(self, db, factory):
         user = factory.user()
         _reauth(db, user)
@@ -106,6 +109,7 @@ class TestCompleteIntegrationReauthorization:
         assert old["status"] == "superseded"
         assert old["locked_by"] is None and old["locked_until"] is None
 
+    # Validates: SEL-380
     def test_gmail_reauthorization_creates_no_recovery_but_a_sync_state(self, db, factory):
         user = factory.user()
         integration_id = _reauth(db, user, provider="gmail", scopes=["gmail.readonly"])
@@ -113,6 +117,7 @@ class TestCompleteIntegrationReauthorization:
         state = db.query_one("SELECT * FROM email_sync_state WHERE integration_id = ?", (integration_id,))
         assert state is not None
 
+    # Validates: SEL-380
     @pytest.mark.parametrize("scopes, expected", [
         (["Mail.Read", "https://graph.microsoft.com/Calendars.ReadWrite"], 1),
         (["Mail.Read", "calendars.readwrite"], 1),
@@ -139,6 +144,7 @@ class TestCompleteIntegrationReauthorization:
 
 
 class TestClaimIntegrationRecovery:
+    # Validates: SEL-382
     def test_claim_locks_row_and_increments_attempts(self, db, factory):
         user = factory.user()
         _reauth(db, user)
@@ -155,6 +161,7 @@ class TestClaimIntegrationRecovery:
     def test_claim_returns_none_when_nothing_pending(self, db):
         assert recovery.claim_integration_recovery(db, "worker-1") is None
 
+    # Validates: SEL-382
     def test_claims_oldest_first(self, db, factory):
         first_user, second_user = factory.user(), factory.user()
         first = _reauth(db, first_user)
@@ -162,6 +169,7 @@ class TestClaimIntegrationRecovery:
         claimed = recovery.claim_integration_recovery(db, "w")
         assert claimed["integration_id"] == first
 
+    # Validates: SEL-382
     def test_reclaims_processing_recovery_with_expired_lock(self, db, factory):
         user = factory.user()
         claimed = _create_and_claim(db, user)
@@ -186,12 +194,14 @@ class TestClaimIntegrationRecovery:
         _set(db, "integration_recoveries", rec["id"], next_retry_at="2000-01-01T00:00:00.000000Z")
         assert recovery.claim_integration_recovery(db, "w") is not None
 
+    # Validates: SEL-382
     def test_waiting_rows_are_not_claimed(self, db, factory):
         user = factory.user()
         _reauth(db, user)
         _set(db, "integration_recoveries", _recoveries(db, user)[0]["id"], status="waiting")
         assert recovery.claim_integration_recovery(db, "w") is None
 
+    # Validates: SEL-382
     def test_unlock_expired_returns_locked_rows_to_pending(self, db, factory):
         user = factory.user()
         claimed = _create_and_claim(db, user)
@@ -214,6 +224,7 @@ class TestClaimIntegrationRecovery:
 
 
 class TestRequeueCalendarRecoveryBatch:
+    # Validates: SEL-383
     def test_tags_only_oauth_blocked_events(self, db, factory):
         user = factory.user()
         oauth_event, oauth_item = _blocked_event(db, factory, user, "oauth_required")
@@ -238,6 +249,7 @@ class TestRequeueCalendarRecoveryBatch:
         assert row["remaining_count"] == 2
         assert row["locked_by"] is None and row["locked_until"] is None
 
+    # Validates: SEL-383
     def test_returns_negative_one_when_claim_lost(self, db, factory):
         user = factory.user()
         rec = _create_and_claim(db, user)
@@ -256,6 +268,7 @@ class TestRequeueCalendarRecoveryBatch:
         assert recovery.requeue_calendar_recovery_batch(db, rec["id"], "worker-1", 10, 1) == -1
         assert sorted(r["status"] for r in _recoveries(db, user)) == ["pending", "superseded"]
 
+    # Validates: SEL-383
     def test_attempts_are_capped_below_max(self, db, factory):
         user = factory.user()
         _, item_id = _blocked_event(db, factory, user)
@@ -279,6 +292,7 @@ class TestRequeueCalendarRecoveryBatch:
         rec = _create_and_claim(db, user)
         assert recovery.requeue_calendar_recovery_batch(db, rec["id"], "worker-1") == 0
 
+    # Validates: SEL-383
     def test_only_items_routed_to_the_recovery_provider(self, db, factory):
         user = factory.user()
         google_event, _ = _blocked_event(db, factory, user)  # routes to google (connected)
@@ -324,6 +338,7 @@ class TestRefreshWaitingCalendarRecoveries:
         recovery.requeue_calendar_recovery_batch(db, rec["id"], "worker-1")
         return rec, item_id
 
+    # Validates: SEL-384
     def test_finalizes_completed_once_tagged_events_synced(self, db, factory):
         rec, item_id = self._tagged(db, factory)
         _set(db, "calendar_work_items", item_id, status="succeeded", provider_event_id="recovered")
@@ -336,12 +351,14 @@ class TestRefreshWaitingCalendarRecoveries:
         # Finalized rows are not waiting any more.
         assert recovery.refresh_waiting_calendar_recoveries(db) == 0
 
+    # Validates: SEL-384
     def test_finalizes_completed_with_errors_when_a_tagged_event_fails(self, db, factory):
         rec, item_id = self._tagged(db, factory)
         _set(db, "calendar_work_items", item_id, status="failed", failure_code="invalid_event")
         recovery.refresh_waiting_calendar_recoveries(db)
         assert factory.row("integration_recoveries", rec["id"])["status"] == "completed_with_errors"
 
+    # Validates: SEL-384
     def test_still_waiting_while_tagged_event_is_unresolved(self, db, factory):
         rec, _ = self._tagged(db, factory)
         row = factory.row("integration_recoveries", rec["id"])
@@ -370,6 +387,7 @@ class TestRefreshWaitingCalendarRecoveries:
         assert statuses == ["completed", "completed", "waiting"]
 
 
+# Validates: SEL-385
 def test_latest_recovery_is_the_newest_for_the_user(db, factory):
     user, other = factory.user(), factory.user()
     _reauth(db, user)

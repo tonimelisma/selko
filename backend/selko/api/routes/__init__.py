@@ -1,7 +1,7 @@
 """API route modules.
 
 Server-side endpoints that require secrets (OAuth, Gmail API, LLM, Calendar API).
-The web app's data API is routes/client.py (docs/api-client-endpoints.md).
+The web app's data API is routes/client.py (docs/design/client-api.md).
 """
 
 from selko.api.routes.calendars import router as calendars_router

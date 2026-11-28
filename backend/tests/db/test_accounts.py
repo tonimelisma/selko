@@ -27,18 +27,21 @@ def account(db):
 # --- sign-up ----------------------------------------------------------------
 
 
+# Validates: SEL-400
 def test_sign_up_creates_the_account_and_its_profile(db, account):
     assert account["email"] == "sam@example.test"
     profile = db.query_one("SELECT email, display_name FROM users WHERE id = ?", (account["id"],))
     assert tuple(profile) == ("sam@example.test", "sam")
 
 
+# Validates: SEL-401
 def test_sign_up_twice_is_refused(db, account):
     with pytest.raises(AuthError) as exc:
         accounts.sign_up(db, "sam@example.test", "another-pw")
     assert (exc.value.code, exc.value.status) == ("USER_ALREADY_EXISTS", 409)
 
 
+# Validates: SEL-402
 @pytest.mark.parametrize("password", ["short", "x" * 73, "ä" * 37])
 def test_passwords_outside_the_limits_are_refused(db, password):
     with pytest.raises(AuthError) as exc:
@@ -46,6 +49,7 @@ def test_passwords_outside_the_limits_are_refused(db, password):
     assert exc.value.code == "WEAK_PASSWORD"
 
 
+# Validates: SEL-402
 def test_invalid_email_is_refused(db):
     with pytest.raises(AuthError) as exc:
         accounts.sign_up(db, "not-an-email", "secret-pw")
@@ -55,6 +59,7 @@ def test_invalid_email_is_refused(db):
 # --- sign-in ----------------------------------------------------------------
 
 
+# Validates: SEL-403
 def test_a_password_hashed_by_gotrue_still_signs_in(db):
     """Hashes carried from Supabase Auth are bcrypt $2a$10$: no one resets a password."""
     gotrue_hash = bcrypt.hashpw(b"carried-pw", bcrypt.gensalt(10, prefix=b"2a")).decode()
@@ -64,6 +69,7 @@ def test_a_password_hashed_by_gotrue_still_signs_in(db):
     assert signed.user["email"] == "old@example.test"
 
 
+# Validates: SEL-404
 @pytest.mark.parametrize(
     ("email", "password"), [("sam@example.test", "wrong-pw"), ("nobody@example.test", "secret-pw")]
 )
@@ -73,6 +79,7 @@ def test_wrong_password_and_unknown_email_get_the_same_answer(db, account, email
     assert (exc.value.code, exc.value.message) == ("INVALID_CREDENTIALS", "Invalid login credentials")
 
 
+# Validates: SEL-404
 def test_disabled_account_cannot_sign_in(db, account):
     with db.write() as tx:
         tx.execute("UPDATE accounts SET disabled_at = ? WHERE id = ?", (tx.now_text, account["id"]))
@@ -80,6 +87,7 @@ def test_disabled_account_cannot_sign_in(db, account):
         _sign_in(db)
 
 
+# Validates: SEL-410, SEL-420
 def test_sign_in_issues_a_verifiable_access_token(db, account):
     signed = _sign_in(db)
     identity = accounts.verify_access_token(KEYS, signed.access_token)
@@ -94,6 +102,7 @@ def test_sign_in_issues_a_verifiable_access_token(db, account):
 # --- access tokens ----------------------------------------------------------
 
 
+# Validates: SEL-411
 def test_tokens_signed_with_the_previous_key_still_verify(db, account):
     old = TokenKeys(current="p" * 40)
     token = jwt.encode(
@@ -104,6 +113,7 @@ def test_tokens_signed_with_the_previous_key_still_verify(db, account):
     assert accounts.verify_access_token(KEYS, token).user_id == account["id"]
 
 
+# Validates: SEL-412
 @pytest.mark.parametrize(
     "mutate",
     [
@@ -122,6 +132,7 @@ def test_invalid_access_tokens_are_refused(mutate):
     assert exc.value.status == 401
 
 
+# Validates: SEL-412
 def test_a_token_signed_with_another_secret_is_refused():
     token, _ = accounts.issue_access_token(TokenKeys(current="z" * 40), "u", "e", "s")
     with pytest.raises(AuthError):
@@ -136,6 +147,7 @@ def _age_rotation(db, seconds):
         tx.execute("UPDATE auth_refresh_tokens SET rotated_at = ? WHERE rotated_at IS NOT NULL", (tx.ts(-seconds),))
 
 
+# Validates: SEL-421
 def test_refresh_rotates_the_token(db, account):
     first = _sign_in(db)
     second = accounts.refresh(db, KEYS, first.refresh_token)
@@ -144,6 +156,7 @@ def test_refresh_rotates_the_token(db, account):
     assert third.refresh_token != second.refresh_token
 
 
+# Validates: SEL-422
 def test_a_concurrent_refresh_within_ten_seconds_answers_without_rotating(db, account):
     first = _sign_in(db)
     accounts.refresh(db, KEYS, first.refresh_token)
@@ -152,6 +165,7 @@ def test_a_concurrent_refresh_within_ten_seconds_answers_without_rotating(db, ac
     assert accounts.verify_access_token(KEYS, again.access_token).user_id == account["id"]
 
 
+# Validates: SEL-423
 def test_reusing_a_spent_token_later_revokes_the_session(db, account):
     first = _sign_in(db)
     second = accounts.refresh(db, KEYS, first.refresh_token)
@@ -165,6 +179,7 @@ def test_reusing_a_spent_token_later_revokes_the_session(db, account):
     assert db.query_one("SELECT revoked_reason FROM auth_sessions")[0] == "reuse_detected"
 
 
+# Validates: SEL-424
 def test_an_idle_session_expires(db, account):
     first = _sign_in(db)
     with db.write() as tx:
@@ -174,6 +189,7 @@ def test_an_idle_session_expires(db, account):
     assert db.query_one("SELECT revoked_reason FROM auth_sessions")[0] == "expired"
 
 
+# Validates: SEL-425
 @pytest.mark.parametrize("token", [None, "", "not-a-real-token"])
 def test_refresh_without_a_valid_token_is_refused(db, token):
     with pytest.raises(AuthError) as exc:
@@ -184,6 +200,7 @@ def test_refresh_without_a_valid_token_is_refused(db, token):
 # --- sign-out ---------------------------------------------------------------
 
 
+# Validates: SEL-426
 def test_global_sign_out_ends_every_session(db, account):
     phone, laptop = _sign_in(db), _sign_in(db)
     sid = accounts.verify_access_token(KEYS, phone.access_token).session_id
@@ -193,6 +210,7 @@ def test_global_sign_out_ends_every_session(db, account):
             accounts.refresh(db, KEYS, signed.refresh_token)
 
 
+# Validates: SEL-426
 def test_local_sign_out_ends_only_this_session(db, account):
     phone, laptop = _sign_in(db), _sign_in(db)
     sid = accounts.verify_access_token(KEYS, phone.access_token).session_id
@@ -202,6 +220,7 @@ def test_local_sign_out_ends_only_this_session(db, account):
     assert accounts.refresh(db, KEYS, laptop.refresh_token).user["id"] == account["id"]
 
 
+# Validates: SEL-426
 def test_another_users_session_cannot_be_signed_out(db, account):
     other = accounts.sign_up(db, "other@example.test", "secret-pw")
     mine = _sign_in(db)
@@ -210,6 +229,7 @@ def test_another_users_session_cannot_be_signed_out(db, account):
     assert account_rows.session_is_active(db, sid)
 
 
+# Validates: SEL-470
 def test_deleting_an_account_removes_everything_it_owns(db, account, factory):
     _sign_in(db)
     event = factory.event(account["id"])

@@ -35,6 +35,7 @@ def _run(root: Path, *args: str) -> subprocess.CompletedProcess:
     )
 
 
+# Validates: SEL-688
 def test_prune_defaults_to_dry_run(tmp_path):
     current = _write_result(tmp_path, "current123456", "current", "2026-08-01")
     recent = _write_result(tmp_path, "recent123456", "recent", "2026-07-15")
@@ -49,6 +50,7 @@ def test_prune_defaults_to_dry_run(tmp_path):
     assert old.exists()
 
 
+# Validates: SEL-688
 def test_apply_keeps_current_and_one_superseded_hash(tmp_path):
     current = _write_result(tmp_path, "current123456", "current", "2026-08-03")
     recent = _write_result(tmp_path, "recent123456", "recent", "2026-08-02")
