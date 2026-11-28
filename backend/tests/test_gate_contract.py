@@ -425,3 +425,16 @@ def test_the_health_check_accepts_a_newer_release_that_contains_this_one():
     assert checkout["with"]["fetch-depth"] == 0
     wait = next(s for s in steps if s.get("name", "").startswith("Wait for production"))["run"]
     assert 'merge-base --is-ancestor "$SHA" "$running"' in wait
+
+
+def test_the_image_build_retries_only_a_rate_limited_base_image_pull():
+    """public.ecr.aws answered anonymous pulls with 429 for whole runs.
+
+    One rate-limited pull failed the image job and with it `CI gate`. The
+    build retries that one failure and nothing else: any other build error
+    still fails at once.
+    """
+    build = next(s for s in _ci()["jobs"]["image"]["steps"] if s.get("name") == "Build the image")["run"]
+    assert "for attempt in" in build
+    assert "429 Too Many Requests" in build
+    assert 'PIPESTATUS[0]' in build

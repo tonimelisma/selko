@@ -199,11 +199,23 @@ jobs:
           AZURE_CLIENT_ID: ${{ vars.PROD_AZURE_CLIENT_ID }}
           SELKO_KEYVAULT_URL: ${{ vars.PROD_SELKO_KEYVAULT_URL }}
           SELKO_KEYVAULT_HOSTS_URL: ${{ vars.PROD_SELKO_KEYVAULT_HOSTS_URL }}
+        # The base images come from public.ecr.aws, which answers anonymous
+        # pulls from shared runner addresses with 429 when its limit is hit;
+        # only that is retried, with growing waits.
         run: |
-          docker build --build-arg "GIT_COMMIT_SHA=${GITHUB_SHA}" \
-            --build-arg AZURE_TENANT_ID --build-arg AZURE_CLIENT_ID \
-            --build-arg SELKO_KEYVAULT_URL --build-arg SELKO_KEYVAULT_HOSTS_URL \
-            -t "$IMAGE" .
+          for attempt in 1 2 3 4; do
+            if docker build --build-arg "GIT_COMMIT_SHA=${GITHUB_SHA}" \
+                --build-arg AZURE_TENANT_ID --build-arg AZURE_CLIENT_ID \
+                --build-arg SELKO_KEYVAULT_URL --build-arg SELKO_KEYVAULT_HOSTS_URL \
+                -t "$IMAGE" . 2>&1 | tee "$RUNNER_TEMP/build.log"; [ "${PIPESTATUS[0]}" -eq 0 ]; then
+              break
+            fi
+            if [ "$attempt" -eq 4 ] || ! grep -q '429 Too Many Requests' "$RUNNER_TEMP/build.log"; then
+              exit 1
+            fi
+            echo "::warning::base image pull rate-limited (attempt $attempt); retrying in $((attempt * 60))s"
+            sleep $((attempt * 60))
+          done
           docker image inspect "$IMAGE" --format '{{index .RepoTags 0}} {{.Size}} bytes'
       # The same script as the session's image lane: a fresh database, then the
       # database imported from the Postgres fixture.
