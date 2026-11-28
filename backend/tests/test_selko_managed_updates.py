@@ -160,7 +160,7 @@ def test_a_failed_provenance_lookup_keeps_the_change_for_review(tmp_path):
         broken.close()
 
 
-# Production, Nov 18: "Walnut Creek on Ice" was stored as a span from Nov 20
+# Production, Nov 18: "Riverside on Ice" was stored as a span from Nov 20
 # to Jan 18. A later "The rink opens this Friday" email moved only the start
 # to 16:00, the stored Jan 18 end survived, and the auto-applied update put a
 # timed two-month event on the user's calendar.
@@ -171,7 +171,7 @@ def _season_route(db, factory, spy, email_start, email_end, change_start):
     user = factory.user()
     stored_start = datetime(_YEAR, 11, 20, 8, 0)
     event = factory.event(
-        user, review_status="active", title="Walnut Creek on Ice Opens",
+        user, review_status="active", title="Riverside on Ice Opens",
         start_datetime=_iso_local(stored_start),
         end_datetime=_iso_local(datetime(_YEAR + 1, 1, 18, 17, 0)),
         location="Civic Park", description="Season runs through January 18.", importance="fyi",
@@ -186,7 +186,7 @@ def _season_route(db, factory, spy, email_start, email_end, change_start):
         )],
     )
     extraction = _extraction(
-        email_start, email_end, title="Walnut Creek on Ice Opens", location="Civic Park",
+        email_start, email_end, title="Riverside on Ice Opens", location="Civic Park",
         description="Season runs through January 18.",
     )
     with providers_offline(), \

@@ -79,10 +79,10 @@ class TestStubPlainPart:
     def test_real_plain_text_body_is_left_alone(self):
         """A genuine plain-text email must not be replaced by HTML chrome."""
         plain = (
-            "Hi Toni,\n\nConfirming our meeting on Tuesday at 2pm in the "
+            "Hi Sam,\n\nConfirming our meeting on Tuesday at 2pm in the "
             "Mission office. Bring the quarterly numbers.\n\nThanks,\nAlex\n"
         )
-        msg = _gmail_message(plain=plain, html="<html><body><p>Hi Toni</p></body></html>")
+        msg = _gmail_message(plain=plain, html="<html><body><p>Hi Sam</p></body></html>")
 
         assert parse_gmail_message(msg)["body_text"] == plain
 

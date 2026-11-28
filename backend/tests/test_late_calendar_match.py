@@ -23,7 +23,7 @@ SUPERCUTS_ENTRY = {
     "title": "Supercuts",
     "start_at": "2026-11-01T17:40:00+00:00",
     "end_at": "2026-11-01T18:00:00+00:00",
-    "location": "3000 DANVILLE BLVD STE C, ALAMO, CA 94507",
+    "location": "3000 MAIN ST STE C, RIVERSIDE, CA 90000",
     "origin": "external",
     "status": "confirmed",
     "deleted_at": None,
@@ -43,7 +43,7 @@ def supercuts(db, factory):
     event = factory.event(
         user, title="Supercuts Appointment",
         start_datetime="2026-11-01T17:40:00.000000Z", end_datetime="2026-11-01T18:40:00.000000Z",
-        location="3000 DANVILLE BLVD STE C, ALAMO, California 94507",
+        location="3000 MAIN ST STE C, RIVERSIDE, California 90000",
         description="Haircut appointment at Supercuts.",
     )
     factory.event_source(event, email)
