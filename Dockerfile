@@ -44,6 +44,13 @@ RUN --mount=type=secret,id=ca,required=false \
 # --- runtime -----------------------------------------------------------------
 FROM public.ecr.aws/docker/library/python:3.14-slim-bookworm
 ARG GIT_COMMIT_SHA=""
+# Where production reads its keys (selko.keyvault): the Entra app and the two
+# vaults, passed by CI from repository variables. Not secrets; a value set in
+# the server's env file wins. Empty when built elsewhere.
+ARG AZURE_TENANT_ID=""
+ARG AZURE_CLIENT_ID=""
+ARG SELKO_KEYVAULT_URL=""
+ARG SELKO_KEYVAULT_HOSTS_URL=""
 LABEL org.opencontainers.image.source="https://github.com/tonimelisma/selko" \
       org.opencontainers.image.revision="${GIT_COMMIT_SHA}" \
       org.opencontainers.image.description="Selko: web app, API and workers over one SQLite file"
@@ -56,7 +63,11 @@ ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
     SELKO_DATA_DIR=/data \
     SELKO_WEB_DIR=/app/web \
-    GIT_COMMIT_SHA="${GIT_COMMIT_SHA}"
+    GIT_COMMIT_SHA="${GIT_COMMIT_SHA}" \
+    AZURE_TENANT_ID="${AZURE_TENANT_ID}" \
+    AZURE_CLIENT_ID="${AZURE_CLIENT_ID}" \
+    SELKO_KEYVAULT_URL="${SELKO_KEYVAULT_URL}" \
+    SELKO_KEYVAULT_HOSTS_URL="${SELKO_KEYVAULT_HOSTS_URL}"
 USER 10001:10001
 WORKDIR /data
 VOLUME ["/data"]

@@ -1,7 +1,7 @@
 """Read selko's external API keys from Azure Key Vault at startup.
 
-Owner decision (2026-11-27): every consumer pulls what it needs from Key Vault
-when it starts, with Microsoft's SDK; nothing is pushed or rendered into files.
+Every consumer pulls what it needs from Key Vault when it starts, with
+Microsoft's SDK; nothing is pushed or rendered into files.
 ``selko.config.load_config`` calls :func:`fetch_missing` with the names its
 environment (process environment plus ``.env``) does not already set: a set
 variable always wins, as it does in CI. Each name is fetched at most once per
@@ -9,20 +9,28 @@ process, in parallel, and a key that cannot be read is simply absent: a run
 that does not need it is not blocked, and one that does fails as
 unauthorized.
 
+Where the keys are is configuration, never code:
+
+- ``SELKO_KEYVAULT_URL``: the vault holding the LLM provider keys.
+- ``SELKO_KEYVAULT_HOSTS_URL``: the vault holding the OAuth clients.
+  A name whose vault has no URL is not fetched.
+- ``AZURE_TENANT_ID`` and ``AZURE_CLIENT_ID``: the Entra app that reads them.
+
 The credential is picked by environment, explicitly:
 
-1. ``MELISMA_SECRETS_CLIENT_SECRET`` set (Claude cloud sessions): the Entra app
-   ``cloud-sessions-reader``, which reads ``kv-melisma-dev`` only.
-2. ``SELKO_KEYVAULT_AUTH=gce`` (production on the GCE VM): the Entra app
-   ``host-pilvi`` through workload identity federation, with a Google ID token
-   from the GCE metadata server as the client assertion. It reads
-   ``kv-melisma-dev`` and ``kv-melisma-hosts``.
-3. Otherwise the Azure CLI's sign-in (``az login`` on the Mac). Without ``az``
-   on ``PATH`` (CI, the image check) nothing is fetched.
+1. ``AZURE_CLIENT_SECRET`` set (cloud sessions; the older name
+   ``MELISMA_SECRETS_CLIENT_SECRET`` is accepted too): a client-secret
+   credential for that app.
+2. ``SELKO_KEYVAULT_AUTH=gce`` (production on a GCE VM): that app through
+   workload identity federation, with a Google ID token from the GCE metadata
+   server as the client assertion.
+3. Otherwise the Azure CLI's sign-in (``az login`` on a workstation). Without
+   ``az`` on ``PATH`` (CI, the image check) nothing is fetched.
 
 ``SELKO_KEYVAULT_AUTH=off`` disables the fetch; the test suite sets it unless
 ``--run-llm`` asks for real keys. Values are never logged: only counts and
-names.
+names. The production image carries the tenant, client and vault URLs from
+build arguments until the server's env file provides them.
 """
 
 from __future__ import annotations
@@ -39,18 +47,20 @@ logger = logging.getLogger(__name__)
 if logging.getLogger("azure").level == logging.NOTSET:
     logging.getLogger("azure").setLevel(logging.WARNING)
 
-TENANT_ID = "00000000-0000-0000-0000-000000000000"
-CLOUD_SESSIONS_CLIENT_ID = "5154d2ee-bdf5-49cf-8643-8918b3e8c32c"  # cloud-sessions-reader
-GCE_HOST_CLIENT_ID = "00000000-0000-0000-0000-000000000000"  # host-pilvi
 GCE_IDENTITY_URL = (
     "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/"
     "default/identity?audience=api://AzureADTokenExchange&format=full"
 )
 
-DEV_VAULT = "kv-melisma-dev"
-HOSTS_VAULT = "kv-melisma-hosts"
+#: Scope -> the setting that names its vault's URL.
+DEV_VAULT = "dev"  # the LLM provider keys
+HOSTS_VAULT = "hosts"  # the OAuth clients
+VAULT_URL_SETTINGS = {DEV_VAULT: "SELKO_KEYVAULT_URL", HOSTS_VAULT: "SELKO_KEYVAULT_HOSTS_URL"}
 
-#: Environment variable -> (vault, secret). Only external keys: selko's own
+#: Names the client secret may be set under, the standard one first.
+CLIENT_SECRET_NAMES = ("AZURE_CLIENT_SECRET", "MELISMA_SECRETS_CLIENT_SECRET")
+
+#: Environment variable -> (vault scope, secret). Only external keys: selko's own
 #: SELKO_JWT_SECRET and non-secret settings stay in its env file.
 SECRETS: dict[str, tuple[str, str]] = {
     "ANTHROPIC_API_KEY": (DEV_VAULT, "selko-anthropic-api-key"),
@@ -97,21 +107,27 @@ def _gce_identity_token() -> str:
 
 def make_credential(getenv):
     """The credential this environment uses, or None (with its label)."""
-    client_secret = getenv("MELISMA_SECRETS_CLIENT_SECRET")
     auth = (getenv("SELKO_KEYVAULT_AUTH") or "").strip().lower()
     if auth == "off":
         return None, "off"
+    client_secret = next((v for v in (getenv(n) for n in CLIENT_SECRET_NAMES) if v), None)
+    tenant_id = (getenv("AZURE_TENANT_ID") or "").strip()
+    client_id = (getenv("AZURE_CLIENT_ID") or "").strip()
+    if client_secret or auth == "gce":
+        if not (tenant_id and client_id):
+            logger.warning("Key Vault: AZURE_TENANT_ID or AZURE_CLIENT_ID is not set; nothing fetched")
+            return None, "unconfigured"
     if client_secret:
         from azure.identity import ClientSecretCredential
 
         return ClientSecretCredential(
-            tenant_id=TENANT_ID, client_id=CLOUD_SESSIONS_CLIENT_ID, client_secret=client_secret
-        ), "cloud-sessions-reader"
+            tenant_id=tenant_id, client_id=client_id, client_secret=client_secret
+        ), "client-secret"
     if auth == "gce":
         from azure.identity import ClientAssertionCredential
 
         return ClientAssertionCredential(
-            tenant_id=TENANT_ID, client_id=GCE_HOST_CLIENT_ID, func=_gce_identity_token
+            tenant_id=tenant_id, client_id=client_id, func=_gce_identity_token
         ), "gce"
     if auth:
         logger.warning("Key Vault: unknown SELKO_KEYVAULT_AUTH=%r; nothing fetched", auth)
@@ -123,7 +139,17 @@ def make_credential(getenv):
     return AzureCliCredential(), "azure-cli"
 
 
-def _read_vault(credential, vault: str, pairs: list[tuple[str, str]]) -> dict[str, str]:
+def vault_urls(getenv) -> dict[str, str]:
+    """Scope -> vault URL, for the scopes this environment configures."""
+    urls = {}
+    for scope, setting in VAULT_URL_SETTINGS.items():
+        url = (getenv(setting) or "").strip().rstrip("/")
+        if url:
+            urls[scope] = url
+    return urls
+
+
+def _read_vault(credential, vault_url: str, pairs: list[tuple[str, str]]) -> dict[str, str]:
     """Read ``(env name, secret)`` pairs from one vault, in parallel.
 
     The first read runs alone so the client's token policy holds a token before
@@ -134,7 +160,8 @@ def _read_vault(credential, vault: str, pairs: list[tuple[str, str]]) -> dict[st
     from azure.core.exceptions import ClientAuthenticationError
     from azure.keyvault.secrets import SecretClient
 
-    client = SecretClient(f"https://{vault}.vault.azure.net", credential)
+    client = SecretClient(vault_url, credential)
+    vault = vault_url.removeprefix("https://").split(".", 1)[0]
     found: dict[str, str] = {}
 
     def read(pair: tuple[str, str]) -> bool:
@@ -168,14 +195,26 @@ def fetch_missing(names: Iterable[str], getenv) -> dict[str, str]:
         todo = [n for n in wanted if n not in _attempted]
         if todo:
             credential, label = make_credential(getenv)
+            urls = vault_urls(getenv)
             if credential is not None:
                 by_vault: dict[str, list[tuple[str, str]]] = {}
+                unconfigured = []
                 for name in todo:
-                    vault, secret = SECRETS[name]
-                    by_vault.setdefault(vault, []).append((name, secret))
-                with ThreadPoolExecutor(max_workers=len(by_vault)) as pool:
-                    for found in pool.map(lambda item: _read_vault(credential, *item), by_vault.items()):
-                        _fetched.update(found)
+                    scope, secret = SECRETS[name]
+                    if scope in urls:
+                        by_vault.setdefault(urls[scope], []).append((name, secret))
+                    else:
+                        unconfigured.append(name)
+                if unconfigured:
+                    logger.info(
+                        "Key Vault: no vault URL (%s) for %d keys",
+                        ", ".join(sorted({VAULT_URL_SETTINGS[SECRETS[n][0]] for n in unconfigured})),
+                        len(unconfigured),
+                    )
+                if by_vault:
+                    with ThreadPoolExecutor(max_workers=len(by_vault)) as pool:
+                        for found in pool.map(lambda item: _read_vault(credential, *item), by_vault.items()):
+                            _fetched.update(found)
                 loaded = [n for n in todo if n in _fetched]
                 logger.info(
                     "Key Vault: loaded %d of %d keys (credential: %s)%s",

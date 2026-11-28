@@ -19,6 +19,15 @@ def _fresh_cache():
     keyvault.reset_cache()
 
 
+DEV_URL = "https://dev-vault.vault.azure.net"
+HOSTS_URL = "https://hosts-vault.vault.azure.net"
+URL_TO_SCOPE = {DEV_URL: keyvault.DEV_VAULT, HOSTS_URL: keyvault.HOSTS_VAULT}
+#: The settings an environment that reads both vaults has.
+URLS = {"SELKO_KEYVAULT_URL": DEV_URL, "SELKO_KEYVAULT_HOSTS_URL": HOSTS_URL}
+APP = {"AZURE_TENANT_ID": "00000000-0000-0000-0000-000000000001",
+       "AZURE_CLIENT_ID": "00000000-0000-0000-0000-000000000002"}
+
+
 class FakeSecretClient:
     """Stands in for azure.keyvault.secrets.SecretClient; records every read."""
 
@@ -27,7 +36,7 @@ class FakeSecretClient:
     lock = threading.Lock()
 
     def __init__(self, vault_url, credential):
-        self.vault = vault_url.removeprefix("https://").removesuffix(".vault.azure.net")
+        self.vault = URL_TO_SCOPE[vault_url]
         self.credential = credential
 
     def get_secret(self, name):
@@ -60,19 +69,40 @@ def vault(monkeypatch):
 
 class TestCredentialSelection:
     def test_off_disables_even_with_a_client_secret(self):
-        env = {"SELKO_KEYVAULT_AUTH": "off", "MELISMA_SECRETS_CLIENT_SECRET": "s"}
+        env = {**APP, "SELKO_KEYVAULT_AUTH": "off", "AZURE_CLIENT_SECRET": "s"}
         assert keyvault.make_credential(env.get) == (None, "off")
 
-    def test_cloud_session_uses_the_reader_app(self):
-        credential, label = keyvault.make_credential({"MELISMA_SECRETS_CLIENT_SECRET": "s"}.get)
+    @pytest.mark.parametrize("secret_name", keyvault.CLIENT_SECRET_NAMES)
+    def test_a_client_secret_signs_in_as_the_configured_app(self, secret_name):
+        credential, label = keyvault.make_credential({**APP, secret_name: "s"}.get)
         assert isinstance(credential, ClientSecretCredential)
-        assert label == "cloud-sessions-reader"
-        assert credential._client_id == keyvault.CLOUD_SESSIONS_CLIENT_ID
+        assert label == "client-secret"
+        assert credential._client_id == APP["AZURE_CLIENT_ID"]
+        assert credential._tenant_id == APP["AZURE_TENANT_ID"]
+
+    @pytest.mark.parametrize("env", [
+        {"AZURE_CLIENT_SECRET": "s"},
+        {"AZURE_CLIENT_SECRET": "s", "AZURE_TENANT_ID": "t"},
+        {"SELKO_KEYVAULT_AUTH": "gce", "AZURE_CLIENT_ID": "c"},
+    ])
+    def test_without_tenant_and_client_nothing_is_fetched(self, env):
+        assert keyvault.make_credential(env.get) == (None, "unconfigured")
+
+    def test_no_tenant_client_or_vault_is_written_in_the_code(self):
+        """Where the keys live is configuration: the module names no ID or vault."""
+        import re
+        from pathlib import Path
+
+        source = Path(keyvault.__file__).read_text()
+        assert not re.search(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", source)
+        assert ".vault.azure.net" not in source
 
     def test_gce_uses_workload_identity_with_the_metadata_token(self, monkeypatch):
-        credential, label = keyvault.make_credential({"SELKO_KEYVAULT_AUTH": "gce"}.get)
+        credential, label = keyvault.make_credential({**APP, "SELKO_KEYVAULT_AUTH": "gce"}.get)
         assert isinstance(credential, ClientAssertionCredential)
         assert label == "gce"
+        assert credential._client._client_id == APP["AZURE_CLIENT_ID"]
+        assert credential._client._tenant_id == APP["AZURE_TENANT_ID"]
 
         seen = {}
 
@@ -124,26 +154,26 @@ class TestFetch:
 
     def test_fetches_each_name_from_its_vault_once(self, vault):
         names = list(keyvault.SECRETS)
-        got = keyvault.fetch_missing(names, {}.get)
+        got = keyvault.fetch_missing(names, URLS.get)
         assert got == {name: f"{'dev' if v == keyvault.DEV_VAULT else 'hosts'}:{s}"
                        for name, (v, s) in keyvault.SECRETS.items()}
         assert sorted(vault.reads) == sorted(keyvault.SECRETS.values())
 
         vault.reads.clear()
-        assert keyvault.fetch_missing(names, {}.get) == got
+        assert keyvault.fetch_missing(names, URLS.get) == got
         assert vault.reads == []  # cached for the process
 
     def test_a_missing_secret_does_not_block_the_rest(self, vault):
         del vault.vaults[keyvault.DEV_VAULT]["tinker-api-key"]
-        got = keyvault.fetch_missing(["TINKER_API_KEY", "OPENAI_API_KEY", "GEMINI_API_KEY"], {}.get)
+        got = keyvault.fetch_missing(["TINKER_API_KEY", "OPENAI_API_KEY", "GEMINI_API_KEY"], URLS.get)
         assert set(got) == {"OPENAI_API_KEY", "GEMINI_API_KEY"}
 
     def test_a_vault_the_credential_cannot_read_is_skipped(self, vault):
-        # A cloud session's app reads kv-melisma-dev only.
+        # A cloud session's app reads the LLM keys' vault only.
         vault.vaults[keyvault.HOSTS_VAULT] = {
             s: ClientAuthenticationError("no") for v, s in keyvault.SECRETS.values() if v == keyvault.HOSTS_VAULT
         }
-        got = keyvault.fetch_missing(list(keyvault.SECRETS), {}.get)
+        got = keyvault.fetch_missing(list(keyvault.SECRETS), URLS.get)
         assert set(got) == {n for n, (v, _) in keyvault.SECRETS.items() if v == keyvault.DEV_VAULT}
         assert sum(1 for v, _ in vault.reads if v == keyvault.HOSTS_VAULT) == 1
 
@@ -153,12 +183,17 @@ class TestFetch:
         vault.vaults[keyvault.HOSTS_VAULT] = {
             s: forbidden for v, s in keyvault.SECRETS.values() if v == keyvault.HOSTS_VAULT
         }
-        keyvault.fetch_missing(list(keyvault.SECRETS), {}.get)
+        keyvault.fetch_missing(list(keyvault.SECRETS), URLS.get)
         assert sum(1 for v, _ in vault.reads if v == keyvault.HOSTS_VAULT) == 1
+
+    def test_a_vault_without_a_url_is_not_read(self, vault):
+        got = keyvault.fetch_missing(list(keyvault.SECRETS), {"SELKO_KEYVAULT_URL": DEV_URL}.get)
+        assert set(got) == {n for n, (v, _) in keyvault.SECRETS.items() if v == keyvault.DEV_VAULT}
+        assert all(v == keyvault.DEV_VAULT for v, _ in vault.reads)
 
     def test_no_credential_fetches_nothing(self, monkeypatch):
         monkeypatch.setattr(keyvault, "make_credential", lambda getenv: (None, "no-az"))
-        assert keyvault.fetch_missing(list(keyvault.SECRETS), {}.get) == {}
+        assert keyvault.fetch_missing(list(keyvault.SECRETS), URLS.get) == {}
 
 
 class TestLoadConfigUsesTheVault:
@@ -167,6 +202,8 @@ class TestLoadConfigUsesTheVault:
         monkeypatch.setenv("ENVIRONMENT", "development")
         monkeypatch.setenv("SELKO_DATA_DIR", "data")
         monkeypatch.setenv("LLM_FALLBACK_PROVIDER", "none")
+        for name, value in URLS.items():
+            monkeypatch.setenv(name, value)
         for name in list(keyvault.SECRETS) + [a for v in keyvault.ALIASES.values() for a in v]:
             monkeypatch.delenv(name, raising=False)
 

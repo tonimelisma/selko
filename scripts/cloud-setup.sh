@@ -33,8 +33,9 @@ NODE_MIN_VERSION="22.12.0"
 NODE_PIN_VERSION="22.12.0"
 
 # The LLM keys come from Azure Key Vault, read by selko itself at startup
-# (backend/selko/keyvault.py) with the client secret in the shared cloud
-# environment's only variable, MELISMA_SECRETS_CLIENT_SECRET. Nothing here
+# (backend/selko/keyvault.py) with the shared cloud environment's client
+# secret (AZURE_CLIENT_SECRET, or its older name MELISMA_SECRETS_CLIENT_SECRET)
+# and its AZURE_TENANT_ID, AZURE_CLIENT_ID and SELKO_KEYVAULT_URL. Nothing here
 # fetches them, exports them or writes them anywhere, and no `az` is needed.
 
 SUDO=""
@@ -180,7 +181,7 @@ write_env_files() {
 			# Anthropic placeholder is written only when the session cannot read
 			# the vault. The OAuth clients live in a vault this session's app
 			# cannot read, so they always get one.
-			[[ -n "${MELISMA_SECRETS_CLIENT_SECRET:-}" ]] || echo "ANTHROPIC_API_KEY=placeholder-cloud-session-not-a-key"
+			[[ -n "${AZURE_CLIENT_SECRET:-${MELISMA_SECRETS_CLIENT_SECRET:-}}" ]] || echo "ANTHROPIC_API_KEY=placeholder-cloud-session-not-a-key"
 			echo "GOOGLE_CLIENT_ID=placeholder-cloud-session.apps.googleusercontent.com"
 			echo "GOOGLE_CLIENT_SECRET=placeholder-cloud-session-not-a-secret"
 			echo "MICROSOFT_CLIENT_ID=00000000-0000-0000-0000-000000000000"
@@ -213,7 +214,7 @@ drop_shadowed_llm_placeholders() {
 	# An .env written by an earlier version (or before the vault was
 	# reachable) holds an Anthropic placeholder, which would win over the vault
 	# key. Remove only that placeholder line; a hand-written value stays.
-	[[ -f .env && -n "${MELISMA_SECRETS_CLIENT_SECRET:-}" ]] || return 0
+	[[ -f .env && -n "${AZURE_CLIENT_SECRET:-${MELISMA_SECRETS_CLIENT_SECRET:-}}" ]] || return 0
 	if grep -q "^ANTHROPIC_API_KEY=placeholder-" .env; then
 		sed -i "/^ANTHROPIC_API_KEY=placeholder-/d" .env
 		echo "dropped the ANTHROPIC_API_KEY placeholder from .env: selko reads the key from Key Vault"
@@ -236,8 +237,10 @@ report_status() {
 	[[ -d frontend/node_modules ]] && say "  ready: frontend/node_modules" || { say "  MISSING: frontend/node_modules"; ok=0; }
 	docker info >/dev/null 2>&1 && say "  ready: docker (the image lane)" || say "  note: docker is not running; only the image lane needs it"
 	[[ -f .env ]] && say "  ready: .env" || { say "  MISSING: .env"; ok=0; }
-	if [[ -z "${MELISMA_SECRETS_CLIENT_SECRET:-}" ]]; then
-		say "  note: no MELISMA_SECRETS_CLIENT_SECRET; run_eval and --run-llm have no LLM keys (CLAUDE.md, Owner setup)"
+	if [[ -z "${AZURE_CLIENT_SECRET:-${MELISMA_SECRETS_CLIENT_SECRET:-}}" ]]; then
+		say "  note: no AZURE_CLIENT_SECRET; run_eval and --run-llm have no LLM keys (CLAUDE.md, Key Vault)"
+	elif [[ -z "${AZURE_TENANT_ID:-}" || -z "${AZURE_CLIENT_ID:-}" || -z "${SELKO_KEYVAULT_URL:-}" ]]; then
+		say "  note: AZURE_TENANT_ID, AZURE_CLIENT_ID or SELKO_KEYVAULT_URL is not set in the cloud environment; no LLM keys (CLAUDE.md, Key Vault)"
 	elif [[ -x .venv/bin/python ]]; then
 		# selko's own loader, the way the app runs it; prints a count only.
 		local readable
