@@ -42,7 +42,7 @@ test-results/
 # The ledger is the audit history that makes verification improvable over time
 # (which lanes cost what, which have ever caught a failure). Local-only history
 # is lost with a cloud session's clone, so it is tracked: one file per lane run
-# (.verify/ledger/<run id>.jsonl), staged by .githooks/pre-commit.
+# (.verify/ledger/<run id>.jsonl), committed with the change it verified.
 !.verify/ledger/
 !.verify/ledger/*.jsonl
 

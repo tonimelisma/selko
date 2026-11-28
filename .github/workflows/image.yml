@@ -1,25 +1,19 @@
-# The Selko images: build them, check them the way the server runs them, and on
-# main release them. A merge to main is a release: production follows :main
-# automatically (Toni, 2026-11-25).
+# Release: sign the image CI built and checked, move :main to it, and watch
+# production pick it up. A merge to main is a release: the server follows :main.
 #
-# image   (every push and PR) builds ghcr.io/tonimelisma/selko and checks it
-#         with scripts/image-lane.sh. On main it pushes it as :<sha>, unsigned.
-#         Nothing is pushed unless every check passed, and the image that was
-#         checked is the image that is pushed (one build, pushed by digest).
-# release (main only, after image passes) signs the digest with cosign
-#         (keyless) and moves :main to it. The server follows :main and
-#         accepts only signed digests, so only images that passed every check
-#         reach production.
+# Runs when CI completes for a push to main. Pull requests, the weekly scheduled
+# run and manual CI runs never release.
 #
-# Only a change to what the image is built from releases. On main the trigger is
-# an allowlist of the image's inputs (the files .dockerignore lets in, plus
-# Dockerfile, .dockerignore and this workflow): anything else -- docs, Markdown,
-# lane records, cloud-session scripts -- would rebuild identical code and
-# restart production for nothing. 4406c8ac (scripts/ only) did exactly that and
-# the restart ended in a rollback (docs/deploy-log/2026-11-27-4406c8ac.md).
-# Pull requests also run for the image check's own scripts, so a change to the
-# check is tested before it merges. Keep both lists in step with .dockerignore
-# and with [lanes.image] inputs in scripts/lanes.toml.
+# release  if CI's `image` job pushed ghcr.io/tonimelisma/selko:<sha> for this
+#          commit (only a change to what the image is built from pushes one),
+#          signs that digest with cosign (keyless) and moves :main to it. The
+#          server accepts only digests signed by THIS file on main, so the path
+#          .github/workflows/image.yml, this job and the main branch are the
+#          signing identity: never rename the file or move the signing out of it.
+# health   polls the public /health for up to 15 minutes until it answers with
+#          this commit, then checks production's invariants
+#          (scripts/check-production-health.sh). On failure it opens an issue
+#          labelled `deploy-failure`, which is fixed first, like red CI.
 #
 # A server verifies a pulled image with:
 #   cosign verify ghcr.io/tonimelisma/selko:<sha or main> \
@@ -28,99 +22,17 @@
 name: Image
 
 on:
-  push:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
     branches: [main]
-    paths:
-      - 'Dockerfile'
-      - '.dockerignore'
-      - '.github/workflows/image.yml'
-      - 'pyproject.toml'
-      - 'uv.lock'
-      - 'backend/pyproject.toml'
-      - 'backend/README.md'
-      - 'backend/selko/**'
-      - 'frontend/package.json'
-      - 'frontend/package-lock.json'
-      - 'frontend/jsconfig.json'
-      - 'frontend/svelte.config.js'
-      - 'frontend/vite.config.js'
-      - 'frontend/postcss.config.js'
-      - 'frontend/scripts/**'
-      - 'frontend/src/**'
-      - 'frontend/static/**'
-  pull_request:
-    paths:
-      - 'Dockerfile'
-      - '.dockerignore'
-      - '.github/workflows/image.yml'
-      - 'pyproject.toml'
-      - 'uv.lock'
-      - 'backend/pyproject.toml'
-      - 'backend/README.md'
-      - 'backend/selko/**'
-      - 'frontend/package.json'
-      - 'frontend/package-lock.json'
-      - 'frontend/jsconfig.json'
-      - 'frontend/svelte.config.js'
-      - 'frontend/vite.config.js'
-      - 'frontend/postcss.config.js'
-      - 'frontend/scripts/**'
-      - 'frontend/src/**'
-      - 'frontend/static/**'
-      # The image check itself: tested on the PR, released only with the image.
-      - 'scripts/build-image.sh'
-      - 'scripts/image-check.sh'
-      - 'scripts/image-lane.sh'
-      - 'scripts/check-production-health.sh'
-      - 'scripts/assert-health.sh'
-      - 'backend/tests/fixtures/imported_from_postgres.sql'
-  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  image:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 40
-    concurrency:
-      group: image-${{ github.ref }}
-      cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
-    permissions:
-      contents: read
-      packages: write   # push :<sha> to ghcr.io (main only)
-    env:
-      IMAGE: ghcr.io/tonimelisma/selko:${{ github.sha }}
-    outputs:
-      digest: ${{ steps.push.outputs.digest }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-
-      - name: Build the image
-        run: |
-          docker build --build-arg "GIT_COMMIT_SHA=${GITHUB_SHA}" -t "$IMAGE" .
-          docker image inspect "$IMAGE" --format '{{index .RepoTags 0}} {{.Size}} bytes'
-
-      # The same script as the session's image lane: a fresh database, then the
-      # database imported from the Postgres fixture.
-      - name: Check the image (read-only root, no capabilities, 400 MB, /data only)
-        run: ./scripts/image-lane.sh "$IMAGE"
-
-      - name: Push :<sha>
-        id: push
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          echo "$GH_TOKEN" | docker login ghcr.io -u "${GITHUB_ACTOR}" --password-stdin
-          docker push -q "$IMAGE"
-          digest="$(docker image inspect "$IMAGE" --format '{{index .RepoDigests 0}}')"
-          echo "pushed $digest"
-          echo "digest=$digest" >> "$GITHUB_OUTPUT"
-
   release:
-    needs: image
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.image.outputs.digest != ''
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     concurrency:
@@ -128,38 +40,104 @@ jobs:
       cancel-in-progress: false
     permissions:
       contents: read
-      packages: write   # move :main
-      id-token: write   # cosign keyless signing
+      packages: write # move :main
+      id-token: write # cosign keyless signing
+    env:
+      SHA: ${{ github.event.workflow_run.head_sha }}
+      REPO: ghcr.io/tonimelisma/selko
+    outputs:
+      released: ${{ steps.sign.outputs.released }}
     steps:
       - name: Install cosign
-        uses: sigstore/cosign-installer@v3
+        uses: sigstore/cosign-installer@7e8b541eb2e61bf99390e1afd4be13a184e9ebc5 # v3.10.1
+        with:
+          cosign-release: v2.6.1
 
       - name: Install crane
-        uses: imjasonh/setup-crane@v0.4
+        uses: imjasonh/setup-crane@31b88efe9de28ae0ffa220711af4b60be9435f6e # v0.4
+        with:
+          version: v0.22.1
 
       # :main must point at the very digest that was signed. `crane tag` adds a
-      # tag to the existing manifest; a tool that writes a new manifest (as
-      # `docker buildx imagetools create` does) would leave :main on an
-      # unsigned digest, which the server rightly refuses. So the job proves
-      # it: :main resolves to the signed digest and verifies by itself.
+      # tag to the existing manifest; a tool that writes a new manifest would
+      # leave :main on an unsigned digest, which the server rightly refuses. So
+      # the job proves it: :main resolves to the signed digest and verifies.
       - name: Sign the digest and move :main to it
+        id: sign
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          DIGEST: ${{ needs.image.outputs.digest }}
         run: |
           echo "$GH_TOKEN" | docker login ghcr.io -u "${GITHUB_ACTOR}" --password-stdin
+          if ! digest="$(crane digest "$REPO:$SHA" 2>"$RUNNER_TEMP/digest.err")"; then
+            if grep -q 'MANIFEST_UNKNOWN' "$RUNNER_TEMP/digest.err"; then
+              echo "CI pushed no image for $SHA (nothing the image is built from changed): nothing to release" | tee -a "$GITHUB_STEP_SUMMARY"
+              echo "released=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            cat "$RUNNER_TEMP/digest.err"
+            echo "::error::could not ask the registry for $REPO:$SHA"
+            exit 1
+          fi
           identity="https://github.com/${GITHUB_REPOSITORY}/.github/workflows/image.yml@refs/heads/main"
           issuer="https://token.actions.githubusercontent.com"
-          ref="$DIGEST"
-          repo="${ref%@*}"
-          digest="${ref#*@}"
+          ref="$REPO@$digest"
           cosign sign --yes "$ref"
           cosign verify "$ref" --certificate-identity "$identity" --certificate-oidc-issuer "$issuer" >/dev/null
           crane tag "$ref" main
-          moved="$(crane digest "$repo:main")"
+          moved="$(crane digest "$REPO:main")"
           if [ "$moved" != "$digest" ]; then
-            echo "::error::$repo:main is $moved, not the signed $digest"
+            echo "::error::$REPO:main is $moved, not the signed $digest"
             exit 1
           fi
-          cosign verify "$repo:main" --certificate-identity "$identity" --certificate-oidc-issuer "$issuer" >/dev/null
-          echo "released $ref as $repo:main (same digest, signature verified on :main)"
+          cosign verify "$REPO:main" --certificate-identity "$identity" --certificate-oidc-issuer "$issuer" >/dev/null
+          echo "released $ref as $REPO:main (same digest, signature verified on :main)" | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "released=true" >> "$GITHUB_OUTPUT"
+
+  health:
+    needs: release
+    if: needs.release.outputs.released == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      issues: write # open a deploy-failure issue
+    env:
+      SHA: ${{ github.event.workflow_run.head_sha }}
+      URL: https://api.selkoapp.com
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
+
+      - name: Wait for production to answer with this commit
+        run: |
+          deadline=$(( $(date +%s) + 900 ))
+          while :; do
+            body="$(curl -fsS --max-time 15 "$URL/health" 2>/dev/null || true)"
+            running="$(printf '%s' "$body" | jq -r '.build_sha // empty' 2>/dev/null || true)"
+            if [ "$running" = "$SHA" ]; then
+              echo "production answers with $SHA (status $(printf '%s' "$body" | jq -r .status))"
+              break
+            fi
+            if [ "$(date +%s)" -ge "$deadline" ]; then
+              echo "::error::after 15 minutes $URL/health answers with '${running:-nothing}', not $SHA"
+              exit 1
+            fi
+            sleep 30
+          done
+
+      - name: Check production's health invariants
+        run: ./scripts/check-production-health.sh "$URL"
+
+      - name: Open a deploy-failure issue
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh label create deploy-failure -R "$GITHUB_REPOSITORY" --color B60205 \
+            --description "A release that production did not pick up healthily" 2>/dev/null || true
+          gh issue create -R "$GITHUB_REPOSITORY" --label deploy-failure \
+            --title "Deploy failure: ${SHA:0:8} is not healthy in production" \
+            --body "The release of ${SHA} was signed and :main moved, but within 15 minutes production at ${URL} did not answer /health with this commit, or its health invariants failed. Run: ${RUN_URL}. Diagnose with ./scripts/check-production-health.sh and fix forward before new work."

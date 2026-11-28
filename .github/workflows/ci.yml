@@ -1,0 +1,238 @@
+# CI: every check a change must pass before it merges, in one workflow whose
+# `CI gate` job is the one required status check.
+#
+# changes   path filters: which parts of the tree the change touches. Scheduled
+#           and manual runs test everything.
+# backend   the backend suite (unit + integration, a fresh migrated SQLite file
+#           per database test)
+# frontend  web unit tests with coverage; the production build and svelte-check
+# image     builds the image and checks it the way the server runs it
+#           (scripts/image-lane.sh). On a push to main that touches what the
+#           image is built from, it pushes ghcr.io/tonimelisma/selko:<sha>,
+#           unsigned; image.yml signs and releases it once this run is green.
+# process   requirements, Validates tags and doc links agree; the PR body
+# CI gate   needs every job; passes only when each succeeded or was skipped
+#
+# Keep the `image_inputs` filter in step with .dockerignore and the
+# `image_check` filter with [lanes.image] inputs in scripts/lanes.toml
+# (backend/tests/test_gate_contract.py asserts both).
+name: CI
+
+on:
+  pull_request:
+    # `edited`: a description fixed after the push re-runs the checks that read it.
+    types: [opened, synchronize, reopened, edited]
+  push:
+    branches: [main]
+  schedule:
+    # Weekly full run on main, off the hour, so rot from new toolchains shows up.
+    - cron: "37 5 * * 3"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      # A skipped filter (schedule, dispatch) leaves the output empty: run everything.
+      backend: ${{ steps.filter.outputs.backend || 'true' }}
+      frontend: ${{ steps.filter.outputs.frontend || 'true' }}
+      image_check: ${{ steps.filter.outputs.image_check || 'true' }}
+      image_inputs: ${{ steps.filter.outputs.image_inputs || 'true' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: filter
+        if: github.event_name == 'pull_request' || github.event_name == 'push'
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+              - 'scripts/**'
+              - 'pyproject.toml'
+              - 'uv.lock'
+              - '.env.example'
+              - 'Dockerfile'
+              - '.dockerignore'
+              - '.github/workflows/**'
+            frontend:
+              - 'frontend/**'
+              - 'design/**'
+              - '.github/workflows/ci.yml'
+            image_inputs: &image_inputs
+              - 'Dockerfile'
+              - '.dockerignore'
+              - 'pyproject.toml'
+              - 'uv.lock'
+              - 'backend/pyproject.toml'
+              - 'backend/README.md'
+              - 'backend/selko/**'
+              - 'frontend/package.json'
+              - 'frontend/package-lock.json'
+              - 'frontend/jsconfig.json'
+              - 'frontend/svelte.config.js'
+              - 'frontend/vite.config.js'
+              - 'frontend/postcss.config.js'
+              - 'frontend/scripts/**'
+              - 'frontend/src/**'
+              - 'frontend/static/**'
+            image_check:
+              - *image_inputs
+              - '.github/workflows/ci.yml'
+              - '.github/workflows/image.yml'
+              - 'scripts/build-image.sh'
+              - 'scripts/image-check.sh'
+              - 'scripts/image-lane.sh'
+              - 'scripts/check-production-health.sh'
+              - 'scripts/assert-health.sh'
+              - 'backend/tests/fixtures/imported_from_postgres.sql'
+
+  backend:
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/uv
+          key: uv-${{ runner.os }}-${{ hashFiles('uv.lock') }}
+          restore-keys: |
+            uv-${{ runner.os }}-
+      - name: Set up Python
+        run: uv python install 3.14
+      - name: Prepare test environment
+        run: cp .env.example .env
+      - name: Install dependencies
+        run: |
+          uv sync --extra test
+          uv pip install pytest-xdist==3.8.0
+      # Unit and integration: no service, every test gets its own migrated SQLite file.
+      - name: Run backend tests
+        run: uv run pytest backend/tests/ -v --tb=short -n auto
+
+  frontend-unit:
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Run unit tests with coverage
+        working-directory: frontend
+        run: npm run test:coverage
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          directory: frontend/coverage
+          flags: frontend
+          fail_ci_if_error: false
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  frontend-build:
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Build
+        working-directory: frontend
+        run: npm run build
+      - name: Run svelte-check
+        working-directory: frontend
+        run: npm run check
+
+  # The image is built once: checked here on every PR and push that touches it;
+  # on main the checked image is pushed by digest as :<sha>. Nothing is pushed
+  # unless every check passed, and the image that was checked is the image that
+  # is pushed. image.yml signs it and moves :main once this whole run is green.
+  image:
+    needs: changes
+    if: needs.changes.outputs.image_check == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    permissions:
+      contents: read
+      packages: write # push :<sha> to ghcr.io (main only)
+    env:
+      IMAGE: ghcr.io/tonimelisma/selko:${{ github.sha }}
+      PUBLISH: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.changes.outputs.image_inputs == 'true' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build the image
+        run: |
+          docker build --build-arg "GIT_COMMIT_SHA=${GITHUB_SHA}" -t "$IMAGE" .
+          docker image inspect "$IMAGE" --format '{{index .RepoTags 0}} {{.Size}} bytes'
+      # The same script as the session's image lane: a fresh database, then the
+      # database imported from the Postgres fixture.
+      - name: Check the image (read-only root, no capabilities, 400 MB, /data only)
+        run: ./scripts/image-lane.sh "$IMAGE"
+      - name: Push :<sha>
+        if: env.PUBLISH == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "$GH_TOKEN" | docker login ghcr.io -u "${GITHUB_ACTOR}" --password-stdin
+          docker push -q "$IMAGE"
+          echo "pushed $(docker image inspect "$IMAGE" --format '{{index .RepoDigests 0}}')"
+
+  process:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # pr-check diffs the pull request's base and head
+          persist-credentials: false
+      - name: process-check
+        run: script/process-check
+      - name: pr-check
+        if: github.event_name == 'pull_request'
+        run: script/pr-check
+
+  # The one required status check. It needs every other job and passes only when
+  # each of them succeeded or was skipped, so a cancelled or failed job can never
+  # be merged around. It always reports, whatever the path filters skipped.
+  gate:
+    name: CI gate
+    if: always()
+    needs: [changes, backend, frontend-unit, frontend-build, image, process]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Every job passed
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          echo "$NEEDS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
+          echo "$NEEDS" | jq -e 'all(.[]; .result == "success" or .result == "skipped")' >/dev/null

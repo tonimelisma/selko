@@ -1,0 +1,9 @@
+#!/bin/sh
+# Everything CI checks that runs without Docker, in one command: the backend
+# and frontend lanes and the process check. The image lane
+# (./scripts/image-lane.sh) needs Docker and runs separately.
+set -eu
+cd "$(dirname "$0")/.."
+./scripts/verify.sh backend
+./scripts/verify.sh frontend
+script/process-check

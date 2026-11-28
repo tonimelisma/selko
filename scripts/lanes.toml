@@ -42,8 +42,8 @@ inputs = [
 # it went red because production was still running the code the pending change
 # fixes.
 #
-# It belongs after a deploy, not before one: docs/deploy-log/TEMPLATE.md calls
-# it at each observation window.
+# It belongs after a deploy, not before one: image.yml's health job runs it after
+# every release.
 gate = "observe"
 description = "Production health invariants (dead letters, stale/unclaimable work, workers, listener)"
 # Not fingerprinted on source: this lane checks a *running deployment*, so its
@@ -79,7 +79,7 @@ gate = "prod"
 description = "The image under the server's limits: health, auth, review, live, attachment, a database imported from the Postgres fixture"
 # Builds the image and runs scripts/image-check.sh on it with a read-only
 # root, no capabilities, 400 MB and /data as the only volume -- the same
-# script .github/workflows/image.yml runs on the image it pushes and signs.
+# script CI (.github/workflows/ci.yml) runs on the image it pushes for image.yml to sign.
 command = "./scripts/image-lane.sh"
 inputs = [
     "Dockerfile",

@@ -296,17 +296,27 @@ def test_a_skip_budget_entry_may_list_several_acceptable_reasons(tmp_path):
     assert "skip reason changed" in (rejected.stderr + rejected.stdout)
 
 
-def _image_triggers() -> tuple[list[str], list[str], list[str]]:
-    """(push paths, pull_request paths, tracked files) for image.yml."""
+def _ci() -> dict:
     import yaml
 
-    root = Path(__file__).resolve().parents[2]
-    workflow = yaml.safe_load((root / ".github/workflows/image.yml").read_text())
-    triggers = workflow.get("on", workflow.get(True))
-    for event in ("push", "pull_request"):
-        assert "paths-ignore" not in triggers[event], f"{event}: use a paths allowlist"
-    tracked = subprocess.run(["git", "ls-files"], cwd=root, capture_output=True, text=True, check=True).stdout.split()
-    return triggers["push"]["paths"], triggers["pull_request"]["paths"], tracked
+    return yaml.safe_load((ROOT / ".github/workflows/ci.yml").read_text())
+
+
+def _image_filters() -> tuple[list[str], list[str], list[str]]:
+    """(release inputs, image-check inputs, tracked files) from ci.yml's path filters."""
+    import yaml
+
+    steps = _ci()["jobs"]["changes"]["steps"]
+    filters = yaml.safe_load(next(s for s in steps if s.get("id") == "filter")["with"]["filters"])
+
+    def flat(items):
+        out = []
+        for item in items:
+            out.extend(flat(item) if isinstance(item, list) else [item])
+        return out
+
+    tracked = subprocess.run(["git", "ls-files"], cwd=ROOT, capture_output=True, text=True, check=True).stdout.split()
+    return flat(filters["image_inputs"]), flat(filters["image_check"]), tracked
 
 
 def _matches(path: str, patterns: list[str]) -> bool:
@@ -316,52 +326,86 @@ def _matches(path: str, patterns: list[str]) -> bool:
 
 
 def test_the_release_never_skips_a_change_to_what_the_image_is_built_from():
-    """On main, image.yml releases for every file the image is built from.
+    """On main, CI pushes an image to release for every file the image is built from.
 
     A change there that did not release would merge, and production would
     quietly keep the old build. The image is built from exactly what
     .dockerignore admits, plus the Dockerfile and .dockerignore themselves.
     """
-    root = Path(__file__).resolve().parents[2]
-    push, _, tracked = _image_triggers()
-    admitted = [line[1:] for line in (root / ".dockerignore").read_text().splitlines() if line.startswith("!")]
+    release, _, tracked = _image_filters()
+    admitted = [line[1:] for line in (ROOT / ".dockerignore").read_text().splitlines() if line.startswith("!")]
     built_from = [f for f in tracked if _matches(f, ["Dockerfile", ".dockerignore", *admitted])]
     assert len(built_from) > 100  # the patterns resolved to real files
-    missed = [f for f in built_from if not _matches(f, push)]
+    missed = [f for f in built_from if not _matches(f, release)]
     assert not missed, missed
 
 
 def test_the_release_skips_what_the_image_is_not_built_from():
     """A merge that changes nothing in the image releases nothing.
 
-    Production follows :main, so a release restarts it. 4406c8ac changed only
-    cloud-session scripts, the old paths-ignore filter released it anyway, and
-    that restart ended in a rollback (docs/deploy-log/2026-11-27-4406c8ac.md).
+    Production follows :main, so a release restarts it. A merge that changed
+    only cloud-session scripts once released anyway, and that restart ended in
+    a rollback.
     """
-    push, _, tracked = _image_triggers()
+    release, _, tracked = _image_filters()
     for outside in [
         "scripts/cloud-setup.sh",
-        "scripts/merge-and-cleanup.sh",
         "scripts/image-check.sh",  # checked on the PR; the image is unchanged
+        ".github/workflows/ci.yml",
+        ".github/workflows/image.yml",
         "CLAUDE.md",
-        "docs/deploy-log/TEMPLATE.md",
         "backend/tests/test_gate_contract.py",
-        "legacy/README.md",
     ]:
         assert outside in tracked, outside  # the example is a real file
-        assert not _matches(outside, push), f"{outside} is not in the image but would release"
-    assert not _matches(".verify/ledger/x.jsonl", push)
+        assert not _matches(outside, release), f"{outside} is not in the image but would release"
+    assert not _matches(".verify/ledger/x.jsonl", release)
 
 
 def test_every_pr_that_touches_the_image_or_its_check_runs_the_image_check():
-    """Pull requests run the image check for every image-lane input."""
+    """The image check runs for every image-lane input and everything that releases."""
     import tomllib
 
-    root = Path(__file__).resolve().parents[2]
-    push, pull, tracked = _image_triggers()
-    inputs = tomllib.loads((root / "scripts/lanes.toml").read_text())["lanes"]["image"]["inputs"]
+    release, check, tracked = _image_filters()
+    inputs = tomllib.loads((ROOT / "scripts/lanes.toml").read_text())["lanes"]["image"]["inputs"]
     lane_files = [f for f in tracked if _matches(f, inputs)]
     assert len(lane_files) > 100
-    missed = [f for f in lane_files if not _matches(f, pull)]
+    missed = [f for f in lane_files if not _matches(f, check)]
     assert not missed, missed
-    assert all(p in pull for p in push), "a path that releases on main must be checked on its PR"
+    assert all(p in check for p in release), "a path that releases on main must be checked on its PR"
+
+
+def test_ci_pushes_the_image_only_from_main_and_only_for_image_inputs():
+    """Only a push to main whose diff touches the image's inputs publishes :<sha>."""
+    publish = _ci()["jobs"]["image"]["env"]["PUBLISH"]
+    for clause in ("github.event_name == 'push'", "refs/heads/main", "needs.changes.outputs.image_inputs == 'true'"):
+        assert clause in publish, clause
+
+
+def test_the_gate_needs_every_job_and_always_reports():
+    """`CI gate` is the one required check: it must cover every job and never be skipped."""
+    jobs = _ci()["jobs"]
+    gate = jobs["gate"]
+    assert gate["name"] == "CI gate"
+    assert gate["if"] == "always()"
+    assert set(gate["needs"]) == set(jobs) - {"gate"}
+
+
+def test_the_release_runs_only_after_ci_passed_for_a_push_to_main():
+    """image.yml signs only what a green CI run on a push to main built and checked.
+
+    The signing identity the server verifies is this file on refs/heads/main,
+    so the file name, the signing job and the branch must not change.
+    """
+    import yaml
+
+    workflow = yaml.safe_load((ROOT / ".github/workflows/image.yml").read_text())
+    triggers = workflow.get("on", workflow.get(True))
+    assert set(triggers) == {"workflow_run"}
+    assert triggers["workflow_run"]["workflows"] == ["CI"]
+    assert triggers["workflow_run"]["branches"] == ["main"]
+    release = workflow["jobs"]["release"]
+    assert "github.event.workflow_run.conclusion == 'success'" in release["if"]
+    assert "github.event.workflow_run.event == 'push'" in release["if"]
+    script = "\n".join(s.get("run", "") for s in release["steps"])
+    assert "/.github/workflows/image.yml@refs/heads/main" in script
+    assert "cosign sign" in script

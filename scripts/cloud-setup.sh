@@ -270,9 +270,6 @@ esac
 step "Selko cloud setup (CLAUDE_CODE_REMOTE=true)"
 failed=()
 persist_path
-# On the Mac core.hooksPath lives in .git/config, which a fresh clone does not
-# have, so without this the pre-commit test gate silently never runs here.
-git config core.hooksPath .githooks
 apt_install jq lsof curl openssl || failed+=("apt")
 ensure_docker || failed+=("docker")
 ensure_uv || failed+=("uv-sync")

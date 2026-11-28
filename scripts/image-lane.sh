@@ -6,7 +6,7 @@
 # against a database imported from Postgres: backend/tests/fixtures/
 # imported_from_postgres.sql is the selko.db the one-time importer wrote from
 # the frozen pre-move Postgres fixture (the importer itself was removed after
-# the cutover). CI (.github/workflows/image.yml) runs the same script on the
+# the cutover). CI (.github/workflows/ci.yml) runs the same script on the
 # image it then pushes and signs. Everything it creates is removed on exit.
 set -euo pipefail
 cd "$(dirname "$0")/.."
