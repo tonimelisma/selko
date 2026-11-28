@@ -438,3 +438,21 @@ def test_the_image_build_retries_only_a_rate_limited_base_image_pull():
     assert "for attempt in" in build
     assert "429 Too Many Requests" in build
     assert 'PIPESTATUS[0]' in build
+
+
+def test_ci_pulls_the_base_images_from_a_mirror_without_anonymous_data_limits():
+    """public.ecr.aws refused every pull for a whole PR run once its limit was spent.
+
+    Four attempts over six minutes all got 429, so retrying alone did not
+    help. CI takes the same official images from mirror.gcr.io; the
+    Dockerfile's default stays what cloud sessions' network allows.
+    """
+    import re
+
+    step = next(s for s in _ci()["jobs"]["image"]["steps"] if s.get("name") == "Build the image")
+    assert step["env"]["BASE_REGISTRY"] == "mirror.gcr.io/library"
+    assert "--build-arg BASE_REGISTRY" in step["run"]
+    dockerfile = (ROOT / "Dockerfile").read_text()
+    froms = re.findall(r"^FROM (\S+)", dockerfile, re.M)
+    assert froms and all(f.startswith("${BASE_REGISTRY}/") for f in froms), froms
+    assert "ARG BASE_REGISTRY=public.ecr.aws/docker/library" in dockerfile

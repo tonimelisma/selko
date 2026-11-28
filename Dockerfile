@@ -13,8 +13,14 @@
 # scripts/build-image.sh: it passes the proxy and the proxy's CA as an optional
 # build secret, so the CA is used for downloads and never stored in a layer.
 
+# The official base images, from a registry mirror of Docker Hub's library.
+# CI uses mirror.gcr.io: public.ecr.aws refuses anonymous pulls from shared
+# runner addresses once their data limit is spent. Cloud sessions keep the
+# default, which their network allows.
+ARG BASE_REGISTRY=public.ecr.aws/docker/library
+
 # --- the web app: static files, built once ---------------------------------
-FROM public.ecr.aws/docker/library/node:22.12.0-bookworm-slim AS web
+FROM ${BASE_REGISTRY}/node:22.12.0-bookworm-slim AS web
 WORKDIR /src/frontend
 COPY frontend/package.json frontend/package-lock.json ./
 RUN --mount=type=secret,id=ca,required=false \
@@ -26,7 +32,7 @@ ENV VITE_API_URL=""
 RUN npm run build
 
 # --- Python dependencies ----------------------------------------------------
-FROM public.ecr.aws/docker/library/python:3.14-slim-bookworm AS deps
+FROM ${BASE_REGISTRY}/python:3.14-slim-bookworm AS deps
 COPY --from=ghcr.io/astral-sh/uv:0.11.32 /uv /usr/local/bin/uv
 ENV UV_LINK_MODE=copy UV_COMPILE_BYTECODE=1 UV_PYTHON_DOWNLOADS=never
 WORKDIR /app
@@ -42,7 +48,7 @@ RUN --mount=type=secret,id=ca,required=false \
     uv sync --frozen --no-dev --package selko --no-editable
 
 # --- runtime -----------------------------------------------------------------
-FROM public.ecr.aws/docker/library/python:3.14-slim-bookworm
+FROM ${BASE_REGISTRY}/python:3.14-slim-bookworm
 ARG GIT_COMMIT_SHA=""
 # Where production reads its keys (selko.keyvault): the Entra app and the two
 # vaults, passed by CI from repository variables. Not secrets; a value set in
